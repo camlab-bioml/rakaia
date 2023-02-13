@@ -5,7 +5,7 @@ import pytest
 
 
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true",
-                    reason="Only test the connection in a GA workflow")
+                    reason="Only test the connection in a GA workflow due to passwordless sudo")
 def test_for_connection():
 
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -17,7 +17,8 @@ def test_for_connection():
     assert result != 0
     # assert result == 0
     new_process = Popen(["streamlit", "run", os.path.join(os.path.dirname(__file__), "app.py"),
-                         "--server.headless", "true"], stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
+                         "--server.headless", "true", "--server.port", "8501"],
+                        stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
     result = sock.connect_ex(('localhost', 8501))
     assert result == 103
     new_process.kill()
