@@ -2,9 +2,10 @@ from subprocess import Popen, PIPE, STDOUT
 import socket
 import os
 import pytest
+import platform
 
 
-@pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true",
+@pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
                     reason="Only test the connection in a GA workflow due to passwordless sudo")
 def test_for_connection():
 
