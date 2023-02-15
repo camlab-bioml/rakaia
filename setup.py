@@ -28,6 +28,8 @@ setup(
     """.format(program="ccramic"),
     license="Unlicensed",
     install_requires=["streamlit", "pillow", "pandas", "matplotlib", "fpdf", "streamlit-aggrid",
-                      "pytest", "freeport"],
+                      "pytest", "freeport", "st-clickable_images", "streamlit-drawable-canvas",
+                      "numpy", "scikit-image", "anndata", "scanpy", "phenograph", "seaborn",
+                      "opencv-python"],
     python_requires=">=3.9.0",
 )
