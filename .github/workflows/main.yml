@@ -26,3 +26,9 @@ jobs:
       - name: Run pytest for ccramic
         shell: bash -l {0}
         run: pytest tests/
+      - name: Build docker container and run preliminary checks
+        run: |
+          docker build -t ccramic:latest . 
+          docker run ccramic:latest python --version && which ccramic
+        shell: bash -l {0}
+
