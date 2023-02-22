@@ -30,6 +30,7 @@ jobs:
       - uses: eWaterCycle/setup-singularity@v7
         with:
             singularity-version: 3.11.0
+      - name: Build Singularity container and run preliminary checks
         run: |
           singularity build --fakeroot ccramic.sif Singularity 
           singularity exec ccramic.sif which ccramic
