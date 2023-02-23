@@ -25,7 +25,7 @@ jobs:
       - name: Build docker container and run preliminary checks
         run: |
           docker build -t ccramic:latest . 
-          docker run ccramic:latest python --version && which ccramic
+          docker run ccramic:latest python3 --version && which ccramic
         shell: bash -l {0}
       - uses: eWaterCycle/setup-singularity@v7
         with:
@@ -33,7 +33,7 @@ jobs:
       - name: Build Singularity container and run preliminary checks
         run: |
           singularity build --fakeroot ccramic.sif Singularity 
-          singularity exec ccramic.sif which ccramic
+          singularity exec ccramic.sif which ccramic && python3 --version
         shell: bash -l {0} 
       - name: Install ccramic
         run: pip install .
