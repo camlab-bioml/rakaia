@@ -11,6 +11,16 @@ import base64
 from tempfile import NamedTemporaryFile
 from streamlit_drawable_canvas import st_canvas
 import cv2
+import io
+import re
+import uuid
+import tempfile
+
+from io import BytesIO
+from matplotlib import cm
+
+if "button_id" not in st.session_state:
+        st.session_state["button_id"] = ""
 
 st.set_page_config(layout="wide")
 
@@ -28,7 +38,7 @@ app_css = """
                 background-repeat: no-repeat;
                 padding-top: 120px;
                 background-position: 20px 20px;
-            }
+         canvas   }
     </style>
 """
 st.markdown(app_css, unsafe_allow_html=True)
@@ -36,19 +46,33 @@ st.markdown(app_css, unsafe_allow_html=True)
 dataframe_quant = None
 jpeg = None
 dataset = None
+cell_image = None
+IMAGE_HEIGHT = None
+IMAGE_WIDTH = None
+ASPECT_RATIO = None
 
 
-def create_pdf(image, label):
-    pdf = FPDF()
-    pdf.add_page()
-    pdf.image(image)
-    pdf.cell(200, 10, txt=label,
-                 ln=1, align='C')
-    return pdf
+def get_pasted_image(base_layer, top_layer, destination, aspect_ratio):
 
+    top_layer.thumbnail((600, 600 * aspect_ratio), Image.Resampling.LANCZOS)
 
-def save_annotated_image(canvas):
-    cv2.imwrite(canvas.image_data)
+    # x, y = top_layer.size
+    base_layer.paste(im, (0, 0), im)
+
+    buffered = BytesIO()
+    base_layer.save(buffered, format="PNG")
+    img_data = buffered.getvalue()
+    try:
+        # some strings <-> bytes conversions necessary here
+        b64 = base64.b64encode(img_data.encode()).decode()
+    except AttributeError:
+        b64 = base64.b64encode(img_data).decode()
+
+    return (
+            custom_css
+            + f'<a download="{destination}" id="{button_id}" href="data:file/txt;base64,{b64}">Export PNG</a><br></br>'
+    )
+
 
 
 st.sidebar.title("Configure ccramic browser inputs")
@@ -67,6 +91,11 @@ with image_tab:
     image_label = st.text_input("Annotate your tiff")
     if first_tiff is not None and os.path.splitext(first_tiff.name)[1] in permitted_image_formats:
         cell_image = Image.open(first_tiff)
+        IMAGE_WIDTH, IMAGE_HEIGHT = cell_image.size
+        ASPECT_RATIO = round(IMAGE_WIDTH/IMAGE_HEIGHT, 3)
+        file_path_base = os.path.join(tempfile.gettempdir(), 'base_layer.png')
+        cell_image.thumbnail((600, 600*ASPECT_RATIO), Image.Resampling.LANCZOS)
+        cell_image.save(file_path_base)
     stroke_width = st.slider("Stroke width: ", 1, 25, 3)
     drawing_mode = st.selectbox(
             "Drawing tool:", ("point", "freedraw", "line", "rect", "circle", "transform")
@@ -75,26 +104,77 @@ with image_tab:
         point_display_radius = st.slider("Point display radius: ", 1, 25, 3)
     stroke_color = st.color_picker("Stroke color hex: ")
     bg_color = st.color_picker("Background color hex: ", "#eee")
-    canvas_result = st_canvas(
-            fill_color="rgba(255, 165, 0, 0.3)",  # Fixed fill color with some opacity
-            stroke_width=stroke_width,
-            stroke_color=stroke_color,
-            background_color=bg_color,
-            background_image=cell_image if first_tiff is not None and
-                                           os.path.splitext(first_tiff.name)[1] in permitted_image_formats else None,
-            update_streamlit=True,
-            height=150,
-            drawing_mode=drawing_mode,
-            point_display_radius=point_display_radius if drawing_mode == 'point' else 0,
-            key="canvas",
+
+    if st.session_state["button_id"] == "" or st.session_state["button_id"] is None:
+        st.session_state["button_id"] = re.sub(
+            "\d+", "", str(uuid.uuid4()).replace("-", "")
         )
 
-    # only writes the canvas changes not the background image
-    # if canvas_result.image_data is not None:
-        # cv2.imwrite(f"img.jpg",  canvas_result.image_data)
+    button_id = st.session_state["button_id"]
 
-        # st.markdown(f"Image #{clickable} clicked" if clickable > -1 else "No image clicked")
-        # save_tiff = st.download_button("Save your annotated image file", data=st.image(canvas_result.image_data))
+    custom_css = f""" 
+            <style>
+                #{button_id} {{
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    background-color: rgb(255, 255, 255);
+                    color: rgb(38, 39, 48);
+                    padding: .25rem .75rem;
+                    position: relative;
+                    text-decoration: none;
+                    border-radius: 4px;
+                    border-width: 1px;
+                    border-style: solid;
+                    border-color: rgb(230, 234, 241);
+                    border-image: initial;
+                }} 
+                #{button_id}:hover {{
+                    border-color: rgb(246, 51, 102);
+                    color: rgb(246, 51, 102);
+                }}
+                #{button_id}:active {{
+                    box-shadow: none;
+                    background-color: rgb(246, 51, 102);
+                    color: white;
+                    }}
+            </style> """
+
+    if cell_image is not None:
+        data = st_canvas(drawing_mode=drawing_mode,
+                     key="png_export",
+                     stroke_width=stroke_width,
+                     stroke_color=stroke_color,
+                     background_image=cell_image if first_tiff is not None and
+                                                    os.path.splitext(first_tiff.name)[
+                                                        1] in permitted_image_formats else None,
+                     update_streamlit=True,
+                     height=600,
+                     width=600*ASPECT_RATIO,
+                     point_display_radius=point_display_radius if drawing_mode == 'point' else 0,
+                     )
+
+        if data is not None and data.image_data is not None and cell_image is not None:
+            img_data = data.image_data
+            im = Image.fromarray(img_data, mode="RGBA")
+
+            file_path = os.path.join(tempfile.gettempdir(), f"{st.session_state['button_id']}_pasted.png")
+            # base_layer_path = os.path.join(tempfile.gettempdir(), f"{st.session_state['button_id']}_base_layer.png")
+
+            dl_link = get_pasted_image(cell_image, im, file_path, ASPECT_RATIO)
+
+            st.markdown(dl_link, unsafe_allow_html=True)
+
+    # print(Image.fromarray(canvas_result.image_data).paste(cell_image))
+
+    """
+    if data.image_data is not None:
+        Image.fromarray(data.image_data).save("temp.png")
+        Image.open("temp.png").save("temp_2.png")
+        print(cell_image.paste(Image.open("temp.png"), box=(0, 0)))
+        # cell_image.paste(Image.open("temp.png")).save("temp_2.png")
+    """
+
 
 
 with quantification_tab:

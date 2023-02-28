@@ -29,7 +29,6 @@ setup(
     license="Unlicensed",
     install_requires=["streamlit", "pillow", "pandas", "matplotlib", "fpdf", "streamlit-aggrid",
                       "pytest", "freeport", "st-clickable_images", "streamlit-drawable-canvas",
-                      "numpy", "scikit-image", "anndata", "scanpy", "phenograph", "seaborn",
-                      "opencv-python", "cellprofiler"],
+                      "numpy", "scikit-image", "anndata", "scanpy", "phenograph", "seaborn", "httpx-oauth"],
     python_requires=">=3.9.0",
 )
