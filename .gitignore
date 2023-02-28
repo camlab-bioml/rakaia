@@ -1,8 +1,12 @@
 
 .idea
 
+*.json
+
 *.sif
 *.png
+
+sandbox/
 
 /
 # Byte-compiled / optimized / DLL files

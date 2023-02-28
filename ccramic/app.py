@@ -15,6 +15,9 @@ import io
 import re
 import uuid
 import tempfile
+import json
+import ast
+import copy
 
 from io import BytesIO
 from matplotlib import cm
@@ -70,9 +73,9 @@ def get_pasted_image(base_layer, top_layer, destination, aspect_ratio):
 
     return (
             custom_css
-            + f'<a download="{destination}" id="{button_id}" href="data:file/txt;base64,{b64}">Export PNG</a><br></br>'
+            + f'<a download="{destination}" id="{button_id}" href="data:file/txt;base64,{b64}">Export '
+              f'annotated image</a><br></br>'
     )
-
 
 
 st.sidebar.title("Configure ccramic browser inputs")
@@ -83,6 +86,7 @@ with st.sidebar:
     if dataset is not None and os.path.splitext(dataset.name)[1] in permitted_dataset_formats:
         dataframe_quant = pd.read_csv(dataset)
     first_tiff = st.file_uploader("Select a processed tiff file to view")
+    pre_annotated_json = st.file_uploader("Select a saved JSON to populate the canvas")
 
 
 image_tab, quantification_tab, distribution_tab = st.tabs(["Multiplex Imaging", "Quantification", "Distribution"])
@@ -90,12 +94,14 @@ with image_tab:
     permitted_image_formats = ['.tif', '.png', '.jpeg']
     image_label = st.text_input("Annotate your tiff")
     if first_tiff is not None and os.path.splitext(first_tiff.name)[1] in permitted_image_formats:
-        cell_image = Image.open(first_tiff)
+        if os.path.splitext(first_tiff.name)[1] == ".tif":
+            cell_image = Image.fromarray(plt.imread(first_tiff))
+        else:
+            cell_image = Image.open(first_tiff)
         IMAGE_WIDTH, IMAGE_HEIGHT = cell_image.size
         ASPECT_RATIO = round(IMAGE_WIDTH/IMAGE_HEIGHT, 3)
-        file_path_base = os.path.join(tempfile.gettempdir(), 'base_layer.png')
         cell_image.thumbnail((600, 600*ASPECT_RATIO), Image.Resampling.LANCZOS)
-        cell_image.save(file_path_base)
+        # cell_image.save(file_path_base)
     stroke_width = st.slider("Stroke width: ", 1, 25, 3)
     drawing_mode = st.selectbox(
             "Drawing tool:", ("point", "freedraw", "line", "rect", "circle", "transform")
@@ -141,10 +147,21 @@ with image_tab:
             </style> """
 
     if cell_image is not None:
+        if pre_annotated_json is not None:
+            pre_populate = pre_annotated_json.getvalue().decode("utf-8")
+            replacements = {"null": "None", "false": 'False', "true": 'True'}
+
+            copy = copy.deepcopy(pre_populate)
+            for key, value in replacements.items():
+                copy = copy.replace(key, value)
+
         data = st_canvas(drawing_mode=drawing_mode,
+                         fill_color=bg_color,
+                         initial_drawing=ast.literal_eval(copy) if pre_annotated_json is not None else None,
                      key="png_export",
                      stroke_width=stroke_width,
                      stroke_color=stroke_color,
+                     background_color=bg_color,
                      background_image=cell_image if first_tiff is not None and
                                                     os.path.splitext(first_tiff.name)[
                                                         1] in permitted_image_formats else None,
@@ -158,24 +175,20 @@ with image_tab:
             img_data = data.image_data
             im = Image.fromarray(img_data, mode="RGBA")
 
-            file_path = os.path.join(tempfile.gettempdir(), f"{st.session_state['button_id']}_pasted.png")
+            file_path = os.path.join(f"{st.session_state['button_id']}.png")
             # base_layer_path = os.path.join(tempfile.gettempdir(), f"{st.session_state['button_id']}_base_layer.png")
 
             dl_link = get_pasted_image(cell_image, im, file_path, ASPECT_RATIO)
 
             st.markdown(dl_link, unsafe_allow_html=True)
 
-    # print(Image.fromarray(canvas_result.image_data).paste(cell_image))
-
-    """
-    if data.image_data is not None:
-        Image.fromarray(data.image_data).save("temp.png")
-        Image.open("temp.png").save("temp_2.png")
-        print(cell_image.paste(Image.open("temp.png"), box=(0, 0)))
-        # cell_image.paste(Image.open("temp.png")).save("temp_2.png")
-    """
-
-
+            if data.json_data is not None and len(data.json_data["objects"]) > 0:
+                st.download_button(
+                label="Download the canvas JSON",
+                data=json.dumps(data.json_data, indent=2).encode('utf-8'),
+                file_name="canvas.json",
+                mime="application/json",
+                )
 
 with quantification_tab:
 
