@@ -1,6 +1,6 @@
 import streamlit as st
 import os
-from PIL import Image
+from PIL import Image, ImageSequence
 import pandas as pd
 import matplotlib.pyplot as plt
 from fpdf import FPDF
@@ -18,12 +18,19 @@ import tempfile
 import json
 import ast
 import copy
+import numpy as np
+import plotly.figure_factory as ff
 
 from io import BytesIO
 from matplotlib import cm
 
-if "button_id" not in st.session_state:
-        st.session_state["button_id"] = ""
+
+# initialize important session state variables
+
+session_states = ["button_id"]
+for state in session_states:
+    if state not in st.session_state:
+        st.session_state[state] = ""
 
 st.set_page_config(layout="wide")
 
@@ -88,16 +95,40 @@ with st.sidebar:
     first_tiff = st.file_uploader("Select a processed tiff file to view")
     pre_annotated_json = st.file_uploader("Select a saved JSON to populate the canvas")
 
+if "tabs" not in st.session_state:
+    st.session_state["tabs"] = ["Multiplex Imaging", "Quantification", "Distribution"]
+tabs = st.tabs(st.session_state["tabs"])
 
-image_tab, quantification_tab, distribution_tab = st.tabs(["Multiplex Imaging", "Quantification", "Distribution"])
-with image_tab:
+with tabs[0]:
     permitted_image_formats = ['.tif', '.png', '.jpeg']
     image_label = st.text_input("Annotate your tiff")
     if first_tiff is not None and os.path.splitext(first_tiff.name)[1] in permitted_image_formats:
+        cell_image = Image.open(first_tiff)
         if os.path.splitext(first_tiff.name)[1] == ".tif":
-            cell_image = Image.fromarray(plt.imread(first_tiff))
-        else:
-            cell_image = Image.open(first_tiff)
+            cell_image.load()
+            # image_tab_0 = st.tabs(['image_tab_0'])
+            if cell_image.n_frames > 1:
+                index = 0
+                tab_str = ""
+                tab_assign_str = "st.tabs(["
+                sub_images = []
+                messages = {}
+                for sub_image in ImageSequence.Iterator(cell_image):
+                    sub_images.append(sub_image)
+                    tab_str = tab_str + f"image_tab_{index}, " if index < (cell_image.n_frames - 1) else \
+                        tab_str + f"image_tab_{index}"
+                    tab_assign_str = tab_assign_str + f"'image_tab_{index}', " if index < (cell_image.n_frames - 1) else \
+                        tab_assign_str + f"'image_tab_{index}'])"
+                    messages[index] = f"This is tab number: {index}"
+                    index += 1
+
+                exec(f"{tab_str} = {tab_assign_str}")
+                for i, page in enumerate(ImageSequence.Iterator(cell_image)):
+                    img_byte_arr = io.BytesIO()
+                    page.save(img_byte_arr, format='PNG')
+                    img_byte_arr = img_byte_arr.getvalue()
+                    exec(f"with image_tab_{i}: st.image({img_byte_arr})")
+
         IMAGE_WIDTH, IMAGE_HEIGHT = cell_image.size
         ASPECT_RATIO = round(IMAGE_WIDTH/IMAGE_HEIGHT, 3)
         cell_image.thumbnail((600, 600*ASPECT_RATIO), Image.Resampling.LANCZOS)
@@ -190,7 +221,7 @@ with image_tab:
                 mime="application/json",
                 )
 
-with quantification_tab:
+with tabs[1]:
 
     if dataframe_quant is not None:
         gd = GridOptionsBuilder.from_dataframe(dataframe_quant if dataframe_quant is not None else None)
@@ -213,14 +244,18 @@ with quantification_tab:
         )
         # sel_row = grid_table["selected_rows"]
 
-with distribution_tab:
-    hist_height = st.slider("plot height", 1, 25, 3)
-    hist_width = st.slider("plot width", 1, 25, 1)
-    if dataframe_quant is not None:
-        distribution_choice = st.selectbox("Select a quantification distribution to view",
-                                           options=dataframe_quant.columns)
-        if distribution_choice is not None:
-            hist = plt.figure(figsize=(hist_height, hist_width))
-            plt.hist(dataframe_quant[distribution_choice].tolist())
-            st.pyplot(hist)
+with tabs[2]:
+    config_col, plot_col = st.columns([1,3])
+    with config_col:
+        hist_height = st.slider("plot height", 1, 25, 3)
+        hist_width = st.slider("plot width", 1, 25, 1)
+    with plot_col:
+        if dataframe_quant is not None:
+            distribution_choice = st.multiselect("Select a quantification distribution to view",
+                                           options=dataframe_quant.columns,
+                                             default=None)
+            if distribution_choice is not None and len(distribution_choice) > 0:
+                create_hist = [dataframe_quant[elem].sample(n=3000).tolist() for elem in distribution_choice]
+                fig = ff.create_distplot(create_hist, distribution_choice)
+                st.plotly_chart(fig, use_container_width=True)
 
