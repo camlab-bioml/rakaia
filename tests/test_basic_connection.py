@@ -29,24 +29,14 @@ def test_for_connection():
 
 
 def test_run_docker_basic():
-    try:
-        assert subprocess.check_output(['docker', 'run', 'ccramic:latest', 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
-    except (CalledProcessError, FileNotFoundError) as e:
-        print(f"Error{e}: Docker could not be found, the container could not be found, or the command is incorrect.")
-    try:
-        assert b'.10' or b'.9' in subprocess.check_output(['docker', 'run', 'ccramic:latest', 'python3', '--version'])
-    except (CalledProcessError, FileNotFoundError) as e:
-        print(f"Error{e}: Docker could not be found, the container could not be found, or the command is incorrect.")
+    assert subprocess.check_output(['docker', 'run', 'ccramic:latest', 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
+    assert b'.10' or b'.9' in subprocess.check_output(['docker', 'run', 'ccramic:latest', 'python3', '--version'])
+    assert subprocess.check_output(['docker', 'run', 'ccramic:latest', 'which', 'napari']) == b'/usr/local/bin/napari\n'
 
 
 def test_run_singularity_basic():
     singularity_location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", 'ccramic.sif')
-    try:
-        assert subprocess.check_output(['singularity', 'exec', singularity_location, 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
-    except (CalledProcessError, FileNotFoundError) as e:
-        print(f"Error{e}: Singularity could not be found, the container could not be found, or the command is incorrect.")
-
-    try:
-        assert b'.10' or b'.9' in subprocess.check_output(['singularity', 'exec', singularity_location, 'python3', '--version'])
-    except (CalledProcessError, FileNotFoundError) as e:
-        print(f"Error{e}: Singularity could not be found, the container could not be found, or the command is incorrect.")
+    assert subprocess.check_output(['singularity', 'exec', singularity_location, 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
+    assert b'.10' or b'.9' in subprocess.check_output(['singularity', 'exec', singularity_location, 'python3', '--version'])
+    assert subprocess.check_output(['singularity', 'exec', singularity_location, 'which',
+                                    'napari']) == b'/usr/local/bin/napari\n'

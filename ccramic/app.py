@@ -1,3 +1,4 @@
+import streamlit
 import streamlit as st
 import os
 from PIL import Image, ImageSequence
@@ -20,6 +21,7 @@ import ast
 import copy
 import numpy as np
 import plotly.figure_factory as ff
+import subprocess
 
 from io import BytesIO
 from matplotlib import cm
@@ -62,15 +64,16 @@ IMAGE_WIDTH = None
 ASPECT_RATIO = None
 
 
-def get_pasted_image(base_layer, top_layer, destination, aspect_ratio):
+@st.cache_data
+def get_pasted_image(_base_layer, _top_layer, destination, aspect_ratio):
 
-    top_layer.thumbnail((600, 600 * aspect_ratio), Image.Resampling.LANCZOS)
+    _top_layer.thumbnail((600, 600 * aspect_ratio), Image.Resampling.LANCZOS)
 
     # x, y = top_layer.size
-    base_layer.paste(im, (0, 0), im)
+    _base_layer.paste(im, (0, 0), im)
 
     buffered = BytesIO()
-    base_layer.save(buffered, format="PNG")
+    _base_layer.save(buffered, format="PNG")
     img_data = buffered.getvalue()
     try:
         # some strings <-> bytes conversions necessary here
@@ -85,6 +88,12 @@ def get_pasted_image(base_layer, top_layer, destination, aspect_ratio):
     )
 
 
+@st.cache_data
+def get_histogram_points(dataframe, column_choices):
+    return ff.create_distplot([dataframe[elem].sample(n=3000).tolist() for elem in column_choices],
+                              column_choices)
+
+
 st.sidebar.title("Configure ccramic browser inputs")
 # inputs declared in the sidebar can persist when changing tabs in the session
 with st.sidebar:
@@ -96,7 +105,7 @@ with st.sidebar:
     pre_annotated_json = st.file_uploader("Select a saved JSON to populate the canvas")
 
 if "tabs" not in st.session_state:
-    st.session_state["tabs"] = ["Multiplex Imaging", "Quantification", "Distribution"]
+    st.session_state["tabs"] = ["Multiplex Imaging", "Quantification", "Distribution", "napari"]
 tabs = st.tabs(st.session_state["tabs"])
 
 with tabs[0]:
@@ -255,7 +264,11 @@ with tabs[2]:
                                            options=dataframe_quant.columns,
                                              default=None)
             if distribution_choice is not None and len(distribution_choice) > 0:
-                create_hist = [dataframe_quant[elem].sample(n=3000).tolist() for elem in distribution_choice]
-                fig = ff.create_distplot(create_hist, distribution_choice)
+                fig = get_histogram_points(dataframe_quant, distribution_choice)
                 st.plotly_chart(fig, use_container_width=True)
+
+with tabs[3]:
+    launch_napari = st.button('Load a local instance of napari')
+    if launch_napari:
+        os.system('napari')
 
