@@ -123,29 +123,36 @@ with tabs[0]:
                 index = 0
                 tab_str = ""
                 tab_assign_str = "st.tabs(["
-                sub_images = []
-                messages = {}
-                for sub_image in ImageSequence.Iterator(cell_image):
-                    sub_images.append(sub_image)
-                    tab_str = tab_str + f"image_tab_{index}, " if index < (cell_image.n_frames - 1) else \
-                        tab_str + f"image_tab_{index}"
-                    tab_assign_str = tab_assign_str + f"'image_tab_{index}', " if index < (cell_image.n_frames - 1) else \
-                        tab_assign_str + f"'image_tab_{index}'])"
-                    messages[index] = f"This is tab number: {index}"
-                    index += 1
-
-                exec(f"{tab_str} = {tab_assign_str}")
+                sub_images = {}
+                images_names = {}
                 for i, page in enumerate(ImageSequence.Iterator(cell_image)):
                     img_byte_arr = io.BytesIO()
                     page.save(img_byte_arr, format='PNG')
                     img_byte_arr = img_byte_arr.getvalue()
-                    exec(f"with image_tab_{i}: st.image({img_byte_arr})")
+                    images_names[f"sub_image{i}"] = img_byte_arr
+
+                #     sub_images.append(sub_image)
+                #     tab_str = tab_str + f"image_tab_{index}, " if index < (cell_image.n_frames - 1) else \
+                #         tab_str + f"image_tab_{index}"
+                #     tab_assign_str = tab_assign_str + f"'image_tab_{index}', " if index < (cell_image.n_frames - 1) else \
+                #         tab_assign_str + f"'image_tab_{index}'])"
+                #     messages[index] = f"This is tab number: {index}"
+                #     index += 1
+                #
+                # exec(f"{tab_str} = {tab_assign_str}")
+                #
+                #     exec(f"with image_tab_{i}: cropper_{i} = st_cropper(Image.open(io.BytesIO({img_byte_arr})), "
+                #          f"realtime_update=True,"
+                #          f"box_color='#0000FF', aspect_ratio=None)")
+                sub_tif = st.selectbox("Select a sub image from the multi tif to view", options=images_names.keys())
+                if sub_tif is not None:
+                    cell_image = Image.open(io.BytesIO(images_names[sub_tif]))
+
 
         cell_image = cell_image.convert('RGB')
         IMAGE_WIDTH, IMAGE_HEIGHT = cell_image.size
         ASPECT_RATIO = round(IMAGE_WIDTH/IMAGE_HEIGHT, 3)
-        cell_image.thumbnail((600, 600*ASPECT_RATIO), Image.Resampling.LANCZOS)
-        # cell_image.save(file_path_base)
+        cell_image.thumbnail((600, 600 * ASPECT_RATIO), Image.Resampling.LANCZOS)
     stroke_width = st.slider("Stroke width: ", 1, 25, 3)
     drawing_mode = st.selectbox(
             "Drawing tool:", ("point", "freedraw", "line", "rect", "circle", "transform")
