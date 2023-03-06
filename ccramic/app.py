@@ -64,14 +64,17 @@ IMAGE_WIDTH = None
 ASPECT_RATIO = None
 
 
-@st.cache_data
+# @st.cache_data
 def get_pasted_image(_base_layer, _top_layer, destination, aspect_ratio):
 
     _top_layer.thumbnail((600, 600 * aspect_ratio), Image.Resampling.LANCZOS)
 
+    # _top_layer = _top_layer.convert("RGBA")
+
+    # _base_layer = _base_layer.convert("RBGA")
+
     # x, y = top_layer.size
     _base_layer.paste(im, (0, 0), im)
-
     buffered = BytesIO()
     _base_layer.save(buffered, format="PNG")
     img_data = buffered.getvalue()
@@ -138,6 +141,7 @@ with tabs[0]:
                     img_byte_arr = img_byte_arr.getvalue()
                     exec(f"with image_tab_{i}: st.image({img_byte_arr})")
 
+        cell_image = cell_image.convert('RGB')
         IMAGE_WIDTH, IMAGE_HEIGHT = cell_image.size
         ASPECT_RATIO = round(IMAGE_WIDTH/IMAGE_HEIGHT, 3)
         cell_image.thumbnail((600, 600*ASPECT_RATIO), Image.Resampling.LANCZOS)
@@ -198,7 +202,7 @@ with tabs[0]:
         data = st_canvas(drawing_mode=drawing_mode,
                          fill_color=bg_color,
                          initial_drawing=ast.literal_eval(copy) if pre_annotated_json is not None else None,
-                     key="png_export",
+                        key="png_export",
                      stroke_width=stroke_width,
                      stroke_color=stroke_color,
                      background_color=bg_color,
@@ -208,12 +212,12 @@ with tabs[0]:
                      update_streamlit=True,
                      height=600,
                      width=600*ASPECT_RATIO,
-                     point_display_radius=point_display_radius if drawing_mode == 'point' else 0,
-                     )
+                     point_display_radius=point_display_radius if drawing_mode == 'point' else 0)
 
         if data is not None and data.image_data is not None and cell_image is not None:
             img_data = data.image_data
-            im = Image.fromarray(img_data, mode="RGBA")
+            im = Image.fromarray(img_data.astype('uint8'), mode="RGBA")
+            im.save("test_canvas.png", 'PNG')
 
             file_path = os.path.join(f"{st.session_state['button_id']}.png")
             # base_layer_path = os.path.join(tempfile.gettempdir(), f"{st.session_state['button_id']}_base_layer.png")
