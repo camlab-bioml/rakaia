@@ -1,10 +1,8 @@
-import streamlit
 import streamlit as st
 import os
 from PIL import Image, ImageSequence
 import pandas as pd
 import matplotlib.pyplot as plt
-from fpdf import FPDF
 from st_aggrid import AgGrid, GridUpdateMode, JsCode
 from st_aggrid.grid_options_builder import GridOptionsBuilder
 from st_clickable_images import clickable_images
@@ -22,17 +20,20 @@ import copy
 import numpy as np
 import plotly.figure_factory as ff
 import subprocess
+import scanpy
+import anndata
+import plotly.express as px
+from streamlit_cropper import st_cropper
 
 from io import BytesIO
 from matplotlib import cm
 
-
 # initialize important session state variables
 
-session_states = ["button_id"]
+session_states = ["button_id", "cell_image", "cropped_image", "canvas", "image_cropper"]
 for state in session_states:
     if state not in st.session_state:
-        st.session_state[state] = ""
+        st.session_state[state] = None
 
 st.set_page_config(layout="wide")
 
@@ -62,11 +63,11 @@ cell_image = None
 IMAGE_HEIGHT = None
 IMAGE_WIDTH = None
 ASPECT_RATIO = None
+CROPPER = None
 
 
-# @st.cache_data
+# st.cache_data
 def get_pasted_image(_base_layer, _top_layer, destination, aspect_ratio):
-
     _top_layer.thumbnail((600, 600 * aspect_ratio), Image.Resampling.LANCZOS)
 
     # _top_layer = _top_layer.convert("RGBA")
@@ -97,6 +98,15 @@ def get_histogram_points(dataframe, column_choices):
                               column_choices)
 
 
+@st.cache_data(persist="disk")
+def read_sub_image(image_dict, image_name):
+    return io.BytesIO(image_dict[image_name])
+
+
+def write_cropped_image_to_canvas():
+    pass
+
+
 st.sidebar.title("Configure ccramic browser inputs")
 # inputs declared in the sidebar can persist when changing tabs in the session
 with st.sidebar:
@@ -108,7 +118,7 @@ with st.sidebar:
     pre_annotated_json = st.file_uploader("Select a saved JSON to populate the canvas")
 
 if "tabs" not in st.session_state:
-    st.session_state["tabs"] = ["Multiplex Imaging", "Quantification", "Distribution", "napari"]
+    st.session_state["tabs"] = ["Multiplex Imaging", "Quantification", "Distribution", "napari", "Clustering"]
 tabs = st.tabs(st.session_state["tabs"])
 
 with tabs[0]:
@@ -146,17 +156,16 @@ with tabs[0]:
                 #          f"box_color='#0000FF', aspect_ratio=None)")
                 sub_tif = st.selectbox("Select a sub image from the multi tif to view", options=images_names.keys())
                 if sub_tif is not None:
-                    cell_image = Image.open(io.BytesIO(images_names[sub_tif]))
-
-
-        cell_image = cell_image.convert('RGB')
-        IMAGE_WIDTH, IMAGE_HEIGHT = cell_image.size
-        ASPECT_RATIO = round(IMAGE_WIDTH/IMAGE_HEIGHT, 3)
-        cell_image.thumbnail((600, 600 * ASPECT_RATIO), Image.Resampling.LANCZOS)
+                    cell_image = Image.open(read_sub_image(images_names, sub_tif))
+        if cell_image is not None:
+            cell_image = cell_image.convert('RGB')
+            IMAGE_WIDTH, IMAGE_HEIGHT = cell_image.size
+            ASPECT_RATIO = round(IMAGE_WIDTH / IMAGE_HEIGHT, 3)
+            cell_image.thumbnail((600, 600 * ASPECT_RATIO), Image.Resampling.LANCZOS)
     stroke_width = st.slider("Stroke width: ", 1, 25, 3)
     drawing_mode = st.selectbox(
-            "Drawing tool:", ("point", "freedraw", "line", "rect", "circle", "transform")
-        )
+        "Drawing tool:", ("freedraw", "point", "cropper", "line", "rect", "circle", "transform")
+    )
     if drawing_mode == 'point':
         point_display_radius = st.slider("Point display radius: ", 1, 25, 3)
     stroke_color = st.color_picker("Stroke color hex: ")
@@ -206,43 +215,50 @@ with tabs[0]:
             for key, value in replacements.items():
                 copy = copy.replace(key, value)
 
-        data = st_canvas(drawing_mode=drawing_mode,
-                         fill_color=bg_color,
-                         initial_drawing=ast.literal_eval(copy) if pre_annotated_json is not None else None,
-                        key="png_export",
-                     stroke_width=stroke_width,
-                     stroke_color=stroke_color,
-                     background_color=bg_color,
-                     background_image=cell_image if first_tiff is not None and
-                                                    os.path.splitext(first_tiff.name)[
-                                                        1] in permitted_image_formats else None,
-                     update_streamlit=True,
-                     height=600,
-                     width=600*ASPECT_RATIO,
-                     point_display_radius=point_display_radius if drawing_mode == 'point' else 0)
+        if drawing_mode != "cropper":
+            print(st.session_state["cropped_image"])
+            canvas = st_canvas(drawing_mode=drawing_mode,
+                      fill_color=bg_color,
+                      initial_drawing=ast.literal_eval(copy) if pre_annotated_json is not None else None,
+                      key="canvas",
+                      stroke_width=stroke_width,
+                      stroke_color=stroke_color,
+                      background_color=bg_color,
+                      background_image= st.session_state["cropped_image"] if st.session_state["cropped_image"] is not None else cell_image if cell_image is not
+                                                                        None else None,
+                      update_streamlit=True,
+                      height=600,
+                      width=600 * ASPECT_RATIO,
+                      point_display_radius=point_display_radius if drawing_mode == 'point' else 0)
+            
+            if canvas is not None and canvas.image_data is not None and \
+                    cell_image is not None:
+                img_data = canvas.image_data
+                im = Image.fromarray(img_data.astype('uint8'), mode="RGBA")
+                im.save("test_canvas.png", 'PNG')
 
-        if data is not None and data.image_data is not None and cell_image is not None:
-            img_data = data.image_data
-            im = Image.fromarray(img_data.astype('uint8'), mode="RGBA")
-            im.save("test_canvas.png", 'PNG')
+                file_path = os.path.join(f"{st.session_state['button_id']}.png")
+                # base_layer_path = os.path.join(tempfile.gettempdir(), f"{st.session_state['button_id']}_base_layer.png")
 
-            file_path = os.path.join(f"{st.session_state['button_id']}.png")
-            # base_layer_path = os.path.join(tempfile.gettempdir(), f"{st.session_state['button_id']}_base_layer.png")
+                dl_link = get_pasted_image(cell_image, im, file_path, ASPECT_RATIO)
 
-            dl_link = get_pasted_image(cell_image, im, file_path, ASPECT_RATIO)
+                st.markdown(dl_link, unsafe_allow_html=True)
 
-            st.markdown(dl_link, unsafe_allow_html=True)
+                if canvas.json_data is not None and \
+                        len(canvas.json_data["objects"]) > 0:
+                    st.download_button(
+                        label="Download the canvas JSON",
+                        data=json.dumps(canvas.json_data, indent=2).encode('utf-8'),
+                        file_name="canvas.json",
+                        mime="application/json",
+                    )
+        else:
+            CROPPER = st_cropper(cell_image, key="image_copper")
+            if CROPPER is not None:
+                st.session_state["cropped_image"] = CROPPER
 
-            if data.json_data is not None and len(data.json_data["objects"]) > 0:
-                st.download_button(
-                label="Download the canvas JSON",
-                data=json.dumps(data.json_data, indent=2).encode('utf-8'),
-                file_name="canvas.json",
-                mime="application/json",
-                )
 
 with tabs[1]:
-
     if dataframe_quant is not None:
         gd = GridOptionsBuilder.from_dataframe(dataframe_quant if dataframe_quant is not None else None)
         gd.configure_pagination(enabled=True)
@@ -265,15 +281,15 @@ with tabs[1]:
         # sel_row = grid_table["selected_rows"]
 
 with tabs[2]:
-    config_col, plot_col = st.columns([1,3])
+    config_col, plot_col = st.columns([1, 3])
     with config_col:
         hist_height = st.slider("plot height", 1, 25, 3)
         hist_width = st.slider("plot width", 1, 25, 1)
     with plot_col:
         if dataframe_quant is not None:
             distribution_choice = st.multiselect("Select a quantification distribution to view",
-                                           options=dataframe_quant.columns,
-                                             default=None)
+                                                 options=dataframe_quant.columns,
+                                                 default=None)
             if distribution_choice is not None and len(distribution_choice) > 0:
                 fig = get_histogram_points(dataframe_quant, distribution_choice)
                 st.plotly_chart(fig, use_container_width=True)
@@ -283,3 +299,10 @@ with tabs[3]:
     if launch_napari:
         os.system('napari')
 
+with tabs[4]:
+    anndata_obj = st.file_uploader("Select an anndata object to view", type=['.h5ad'])
+    if anndata_obj is not None:
+        anndata_data = anndata.read_h5ad(anndata_obj)
+        umap = px.scatter(
+        )
+        # st.plotly_chart

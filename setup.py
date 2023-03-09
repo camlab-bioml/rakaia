@@ -31,6 +31,6 @@ setup(
                       "pytest", "freeport", "st-clickable_images", "streamlit-drawable-canvas",
                       "numpy", "scikit-image", "anndata", "scanpy", "phenograph", "seaborn", "httpx-oauth",
                       "seleniumbase", "streamlit_elements", "streamlit-ace", "plotly", "napari",
-                      "opencv-python-headless"],
+                      "opencv-python-headless", 'scanpy', "anndata"],
     python_requires=">=3.9.0",
 )
