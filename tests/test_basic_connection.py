@@ -18,7 +18,7 @@ def test_for_connection():
     result = sock.connect_ex(('localhost', 8501))
     assert result != 0
     # assert result == 0
-    new_process = Popen(["streamlit", "run", os.path.join(os.path.dirname(__file__), "app.py"),
+    new_process = Popen(["streamlit_app", "run", os.path.join(os.path.dirname(__file__), "app.py"),
                          "--server.headless", "true", "--server.port", "8501"],
                         stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
     result = sock.connect_ex(('localhost', 8501))

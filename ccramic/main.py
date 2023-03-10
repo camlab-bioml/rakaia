@@ -1,10 +1,7 @@
 import os
 import subprocess
-
-
-def run_app():
-    subprocess.run(["streamlit", "run", os.path.join(os.path.dirname(__file__), "app.py")])
-
+from dash_app.app import app
+import dash
 
 if __name__ == "__main__":
-    run_app()
+    app.run_server(debug=True)

@@ -6,6 +6,8 @@
 *.sif
 *.png
 
+*.tif
+
 sandbox/
 
 /
