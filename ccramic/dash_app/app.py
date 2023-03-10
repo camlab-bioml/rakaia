@@ -19,20 +19,33 @@ import dash_uploader as du
 from dash_canvas import DashCanvas
 import uuid
 from dash import callback_context, no_update
+import plotly.express as px
 
 
 app = Dash(__name__)
 app.title = "ccramic"
 
+CANVAS_CONFIG = {
+    "modeBarButtonsToAdd": [
+        "drawline",
+        "drawopenpath",
+        "drawclosedpath",
+        "drawcircle",
+        "drawrect",
+        "eraseshape",
+    ]
+}
+
 with tempfile.TemporaryDirectory() as tmpdirname:
     du.configure_upload(app, tmpdirname)
 
 UPLOADED_DICT = {}
+UPLOADED_DICT_PATH = {}
 
 
 def initialize_uploaded_dict():
     UPLOADED_DICT.clear()
-
+    
 
 def append_to_uploaded_dict(key, value):
     UPLOADED_DICT[key] = value
@@ -64,38 +77,17 @@ def create_layered_dict(status: du.UploadStatus):
         raise PreventUpdate
 
 
-@app.callback(Output('output_cell_image', 'children'),
+@app.callback(Output('annotation_canvas', 'figure'),
               Input('image_layers', 'value'))
-def render_image(image):
+def render_image_on_canvas(image):
     if image is not None and image in UPLOADED_DICT.keys():
-        return html.Div([
-        html.Img(src=UPLOADED_DICT[image])
-            ])
+        return px.imshow(UPLOADED_DICT[image], aspect='auto')
     else:
         raise PreventUpdate
 
 
 app.layout = html.Div([
     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
-    # dcc.Upload(
-    #         html.Div([
-    #         'Select a single or multi-view tiff to view ',
-    #         html.A('Select Files')
-    #     ]),
-    #     id='upload-image',
-    #     style={
-    #         'width': '100%',
-    #         'height': '60px',
-    #         'lineHeight': '60px',
-    #         'borderWidth': '1px',
-    #         'borderStyle': 'dashed',
-    #         'borderRadius': '5px',
-    #         'textAlign': 'center',
-    #         'margin': '10px'
-    #     },
-    #     # Allow multiple files to be uploaded
-    #     multiple=False
-    # ),
     du.Upload(
         id='upload-image',
         max_file_size=1800,  # 1800 Mb
@@ -104,12 +96,7 @@ app.layout = html.Div([
         # Unique session id
     ),
     dcc.Dropdown(id='image_layers'),
-    html.Div(id='output_cell_image'),
-    DashCanvas(id='image_annotation',
-               tool='line',
-               lineWidth=5,
-               lineColor='red',
-               width=1000)
+    html.H3("Annotate your tif file"), dcc.Graph(config=CANVAS_CONFIG, id='annotation_canvas')
 
 ])
 
