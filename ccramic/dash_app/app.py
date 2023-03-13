@@ -20,6 +20,7 @@ from dash_canvas import DashCanvas
 import uuid
 from dash import callback_context, no_update
 import plotly.express as px
+import io
 
 
 app = Dash(__name__)
@@ -39,25 +40,19 @@ CANVAS_CONFIG = {
 with tempfile.TemporaryDirectory() as tmpdirname:
     du.configure_upload(app, tmpdirname)
 
-UPLOADED_DICT = {}
-UPLOADED_DICT_PATH = {}
+
+def convert_image_to_bytes(image):
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
 
 
-def initialize_uploaded_dict():
-    UPLOADED_DICT.clear()
-    
-
-def append_to_uploaded_dict(key, value):
-    UPLOADED_DICT[key] = value
-
-
-@du.callback(Output('image_layers', 'options'),
+@du.callback(Output('uploaded_dict', 'data'),
               id='upload-image')
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     if filenames:
-        initialize_uploaded_dict()
-        upload_dict = []
+        upload_dict = {}
         upload_index = 0
         for uploaded in filenames:
             layer_index = 0
@@ -66,22 +61,38 @@ def create_layered_dict(status: du.UploadStatus):
             image.load()
             for i, page in enumerate(ImageSequence.Iterator(image)):
                 layer_designation = "_layer_" + str(layer_index)
-                append_to_uploaded_dict(file_designation + layer_designation, page.convert('RGB'))
-                upload_dict.append(file_designation + layer_designation)
+                page = page.convert('RGB')
+                upload_dict[file_designation + layer_designation] = convert_image_to_bytes(page)
                 layer_index += 1
         if upload_dict:
-            return [{'label': i, 'value': i} for i in upload_dict]
+            print(upload_dict)
+            return upload_dict
         else:
             raise PreventUpdate
     else:
         raise PreventUpdate
 
 
+@app.callback(Output('image_layers', 'options'),
+              Input('uploaded_dict', 'data'))
+def create_dropdown_options(image_dict):
+    if image_dict is not None:
+        return [{'label': i, 'value': i} for i in image_dict.keys()]
+    else:
+        raise PreventUpdate
+
+
+def read_back_base64_to_image(string):
+    image_back = base64.b64decode(string)
+    return Image.open(io.BytesIO(image_back))
+
+
 @app.callback(Output('annotation_canvas', 'figure'),
-              Input('image_layers', 'value'))
-def render_image_on_canvas(image):
-    if image is not None and image in UPLOADED_DICT.keys():
-        return px.imshow(UPLOADED_DICT[image], aspect='auto')
+              Input('image_layers', 'value'),
+              Input('uploaded_dict', 'data'))
+def render_image_on_canvas(image_str, image_dict):
+    if image_str is not None and image_str in image_dict.keys():
+        return px.imshow(read_back_base64_to_image(image_dict[image_str]), aspect='auto')
     else:
         raise PreventUpdate
 
@@ -96,7 +107,9 @@ app.layout = html.Div([
         # Unique session id
     ),
     dcc.Dropdown(id='image_layers'),
-    html.H3("Annotate your tif file"), dcc.Graph(config=CANVAS_CONFIG, id='annotation_canvas')
+    html.H3("Annotate your tif file"), dcc.Graph(config=CANVAS_CONFIG, id='annotation_canvas'),
+    dcc.Store(id='uploaded_dict'),
+    dcc.Store(id='uploaded_dict_paths'),
 
 ])
 
