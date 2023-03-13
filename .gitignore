@@ -8,6 +8,9 @@
 
 *.tif
 
+cache-directory/
+tests/cache-directory/
+
 sandbox/
 
 /

@@ -21,21 +21,21 @@ import uuid
 from dash import callback_context, no_update
 import plotly.express as px
 import io
-
+from flask_caching import Cache
 
 app = Dash(__name__)
 app.title = "ccramic"
 
-CANVAS_CONFIG = {
-    "modeBarButtonsToAdd": [
-        "drawline",
-        "drawopenpath",
-        "drawclosedpath",
-        "drawcircle",
-        "drawrect",
-        "eraseshape",
-    ]
-}
+try:
+    cache = Cache(app.server, config={
+        'CACHE_TYPE': 'redis',
+        'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
+    })
+except (ModuleNotFoundError, RuntimeError) as no_redis:
+    cache = Cache(app.server, config={
+        'CACHE_TYPE': 'filesystem',
+        'CACHE_DIR': 'cache-directory'
+    })
 
 with tempfile.TemporaryDirectory() as tmpdirname:
     du.configure_upload(app, tmpdirname)
@@ -48,7 +48,8 @@ def convert_image_to_bytes(image):
 
 
 @du.callback(Output('uploaded_dict', 'data'),
-              id='upload-image')
+             id='upload-image')
+@cache.memoize(timeout=60)
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     if filenames:
@@ -65,7 +66,6 @@ def create_layered_dict(status: du.UploadStatus):
                 upload_dict[file_designation + layer_designation] = convert_image_to_bytes(page)
                 layer_index += 1
         if upload_dict:
-            print(upload_dict)
             return upload_dict
         else:
             raise PreventUpdate
@@ -76,7 +76,7 @@ def create_layered_dict(status: du.UploadStatus):
 @app.callback(Output('image_layers', 'options'),
               Input('uploaded_dict', 'data'))
 def create_dropdown_options(image_dict):
-    if image_dict is not None:
+    if image_dict:
         return [{'label': i, 'value': i} for i in image_dict.keys()]
     else:
         raise PreventUpdate
@@ -92,6 +92,8 @@ def read_back_base64_to_image(string):
               Input('uploaded_dict', 'data'))
 def render_image_on_canvas(image_str, image_dict):
     if image_str is not None and image_str in image_dict.keys():
+        image_read = read_back_base64_to_image(image_dict[image_str])
+        # print(image_read.size)
         return px.imshow(read_back_base64_to_image(image_dict[image_str]), aspect='auto')
     else:
         raise PreventUpdate
@@ -99,17 +101,33 @@ def render_image_on_canvas(image_str, image_dict):
 
 app.layout = html.Div([
     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
-    du.Upload(
-        id='upload-image',
-        max_file_size=1800,  # 1800 Mb
-        filetypes=['png', 'tif', 'tiff', 'csv'],
-        upload_id="upload-image",
-        # Unique session id
-    ),
-    dcc.Dropdown(id='image_layers'),
-    html.H3("Annotate your tif file"), dcc.Graph(config=CANVAS_CONFIG, id='annotation_canvas'),
+    dcc.Tabs([
+        dcc.Tab(label='Image Annotation', children=[
+            du.Upload(
+                id='upload-image',
+                max_file_size=1800,  # 1800 Mb
+                filetypes=['png', 'tif', 'tiff', 'csv'],
+                upload_id="upload-image",
+            ),
+            dcc.Dropdown(id='image_layers'),
+            html.H3("Annotate your tif file"), dcc.Graph(config={
+                "modeBarButtonsToAdd": [
+                    "drawline",
+                    "drawopenpath",
+                    "drawclosedpath",
+                    "drawcircle",
+                    "drawrect",
+                    "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'}),
+        ]),
+        dcc.Tab(label='Quantification/Clustering', children=[
+            du.Upload(
+                id='upload-quantification',
+                max_file_size=1800,  # 1800 Mb
+                filetypes=['h5ad', 'h5'],
+                upload_id="upload-quantification"),
+        ])
+    ]),
     dcc.Store(id='uploaded_dict'),
     dcc.Store(id='uploaded_dict_paths'),
 
 ])
-
