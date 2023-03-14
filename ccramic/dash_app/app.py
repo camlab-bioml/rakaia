@@ -1,5 +1,6 @@
 import time
 
+import anndata
 from dash import Dash, html, dcc
 import plotly.express as px
 import pandas as pd
@@ -22,8 +23,11 @@ from dash import callback_context, no_update
 import plotly.express as px
 import io
 from flask_caching import Cache
+from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOutput, html, dcc, \
+    ServersideOutputTransform
+import scanpy as sc
 
-app = Dash(__name__)
+app = DashProxy(transforms=[ServersideOutputTransform()])
 app.title = "ccramic"
 
 try:
@@ -47,7 +51,7 @@ def convert_image_to_bytes(image):
     return base64.b64encode(buffered.getvalue()).decode()
 
 
-@du.callback(Output('uploaded_dict', 'data'),
+@du.callback(ServersideOutput('uploaded_dict', 'data'),
              id='upload-image')
 @cache.memoize(timeout=60)
 def create_layered_dict(status: du.UploadStatus):
@@ -63,12 +67,61 @@ def create_layered_dict(status: du.UploadStatus):
             for i, page in enumerate(ImageSequence.Iterator(image)):
                 layer_designation = "_layer_" + str(layer_index)
                 page = page.convert('RGB')
-                upload_dict[file_designation + layer_designation] = convert_image_to_bytes(page)
+                upload_dict[file_designation + layer_designation] = page
+                # upload_dict[file_designation + layer_designation] = convert_image_to_bytes(page)
                 layer_index += 1
         if upload_dict:
             return upload_dict
         else:
             raise PreventUpdate
+    else:
+        raise PreventUpdate
+
+
+@du.callback(ServersideOutput('anndata', 'data'),
+             id='upload-quantification')
+@cache.memoize(timeout=60)
+def create_layered_dict(status: du.UploadStatus):
+    filenames = [str(x) for x in status.uploaded_files]
+    anndata_files = {}
+    if filenames:
+        # return anndata.read_h5ad(filenames[0])
+        index = 0
+        for data_file in filenames:
+            anndata_dict = {}
+            data = anndata.read_h5ad(data_file)
+            anndata_dict["file_path"] = str(data_file)
+            anndata_dict["observations"] = data.X
+            anndata_dict["metadata"] = data.obs
+            anndata_dict["full_obj"] = data
+            for sub_assay in data.obsm_keys():
+                if "assays" not in anndata_dict.keys():
+                    anndata_dict["assays"] = {sub_assay: data.obsm[sub_assay]}
+                else:
+                    anndata_dict["assays"][sub_assay] = data.obsm[sub_assay]
+            # anndata_files["anndata_" + str(index)] = anndata_dict
+            anndata_files = anndata_dict
+    if anndata_files is not None and len(anndata_files) > 0:
+        return anndata_files
+    else:
+        raise PreventUpdate
+
+
+@app.callback(Output('dimension-reduction_options', 'options'),
+              Input('anndata', 'data'))
+def create_anndata_dimension_options(anndata_dict):
+    if anndata_dict and "assays" in anndata_dict.keys():
+        print("updating anndata")
+        return [{'label': i, 'value': i} for i in anndata_dict["assays"].keys()]
+    else:
+        raise PreventUpdate
+
+
+@app.callback(Output('metadata_options', 'options'),
+              Input('anndata', 'data'))
+def create_anndata_dimension_options(anndata_dict):
+    if anndata_dict and "metadata" in anndata_dict.keys():
+        return [{'label': i, 'value': i} for i in anndata_dict["metadata"].columns]
     else:
         raise PreventUpdate
 
@@ -92,9 +145,20 @@ def read_back_base64_to_image(string):
               Input('uploaded_dict', 'data'))
 def render_image_on_canvas(image_str, image_dict):
     if image_str is not None and image_str in image_dict.keys():
-        image_read = read_back_base64_to_image(image_dict[image_str])
-        # print(image_read.size)
-        return px.imshow(read_back_base64_to_image(image_dict[image_str]), aspect='auto')
+        return px.imshow(image_dict[image_str], aspect='auto')
+    else:
+        raise PreventUpdate
+
+
+@app.callback(Output('umap-plot', 'figure'),
+              Input('anndata', 'data'),
+              Input('metadata_options', 'value'),
+              Input('dimension-reduction_options', 'value'))
+def render_umap_plot(anndata, metadata_selection, assay_selection):
+    if anndata and "assays" in anndata.keys() and metadata_selection and assay_selection:
+        data = anndata["full_obj"]
+        return px.scatter(data.obsm[assay_selection], x=0, y=1, color=data.obs[metadata_selection],
+                          labels={'color': metadata_selection})
     else:
         raise PreventUpdate
 
@@ -125,9 +189,11 @@ app.layout = html.Div([
                 max_file_size=1800,  # 1800 Mb
                 filetypes=['h5ad', 'h5'],
                 upload_id="upload-quantification"),
+            dcc.Dropdown(id='dimension-reduction_options'),
+            dcc.Dropdown(id='metadata_options'),
+            dcc.Graph(id='umap-plot', style={'width': '150vh', 'height': '150vh'})
         ])
     ]),
-    dcc.Store(id='uploaded_dict'),
-    dcc.Store(id='uploaded_dict_paths'),
-
+    dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+    dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
 ])

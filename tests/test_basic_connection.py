@@ -46,3 +46,4 @@ def test_run_singularity_basic():
 def test_basic_app_load_from_locale():
     ccramic_app = import_app("ccramic.dash_app.app")
     assert str(type(ccramic_app)) == "<class 'dash.dash.Dash'>"
+
