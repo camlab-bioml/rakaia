@@ -32,6 +32,6 @@ setup(
                       "phenograph", "seaborn", "httpx-oauth", "plotly", "napari",
                       "opencv-python-headless", 'scanpy', "anndata", "dash", "Flask>=2.2.2", "jinja2",
                       'dash-uploader==0.7.0a1', "dash-canvas", "packaging==21.3.0", "Flask-Caching",
-                      "multiprocess"],
+                      "multiprocess", "dash-extensions", "dash_daq"],
     python_requires=">=3.9.0",
 )

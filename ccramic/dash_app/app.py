@@ -25,7 +25,7 @@ import io
 from flask_caching import Cache
 from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOutput, html, dcc, \
     ServersideOutputTransform
-import scanpy as sc
+import dash_daq as daq
 
 app = DashProxy(transforms=[ServersideOutputTransform()])
 app.title = "ccramic"
@@ -142,10 +142,14 @@ def read_back_base64_to_image(string):
 
 @app.callback(Output('annotation_canvas', 'figure'),
               Input('image_layers', 'value'),
-              Input('uploaded_dict', 'data'))
-def render_image_on_canvas(image_str, image_dict):
+              Input('uploaded_dict', 'data'),
+              Input("annotation-color-picker", "value"))
+def render_image_on_canvas(image_str, image_dict, annotation_color):
     if image_str is not None and image_str in image_dict.keys():
-        return px.imshow(image_dict[image_str], aspect='auto')
+        fig = px.imshow(image_dict[image_str], aspect='auto')
+        fig.update_layout(
+            newshape=dict(fillcolor=annotation_color["hex"], line=dict(color=annotation_color["hex"])))
+        return fig
     else:
         raise PreventUpdate
 
@@ -174,6 +178,7 @@ app.layout = html.Div([
                 upload_id="upload-image",
             ),
             dcc.Dropdown(id='image_layers'),
+            daq.ColorPicker(id="annotation-color-picker", label="Color Picker", value=dict(hex="#119DFF")),
             html.H3("Annotate your tif file"), dcc.Graph(config={
                 "modeBarButtonsToAdd": [
                     "drawline",
