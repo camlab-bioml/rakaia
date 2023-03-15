@@ -20,12 +20,13 @@ import dash_uploader as du
 from dash_canvas import DashCanvas
 import uuid
 from dash import callback_context, no_update
-import plotly.express as px
 import io
 from flask_caching import Cache
 from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOutput, html, dcc, \
     ServersideOutputTransform
 import dash_daq as daq
+import plotly.graph_objects as go
+from dash import ctx
 
 app = DashProxy(transforms=[ServersideOutputTransform()])
 app.title = "ccramic"
@@ -141,14 +142,22 @@ def read_back_base64_to_image(string):
 
 
 @app.callback(Output('annotation_canvas', 'figure'),
+              Input('annotation_canvas', 'figure'),
               Input('image_layers', 'value'),
               Input('uploaded_dict', 'data'),
               Input("annotation-color-picker", "value"))
-def render_image_on_canvas(image_str, image_dict, annotation_color):
-    if image_str is not None and image_str in image_dict.keys():
-        fig = px.imshow(image_dict[image_str], aspect='auto')
+@cache.memoize(timeout=60)
+def render_image_on_canvas(existing_canvas, image_str, image_dict, annotation_color):
+    # update the figure depending on which of the inputs is triggered:
+    # Update to the color picker: keep the existing canvas
+    # Update to the selected image: clear the existing canvas
+    if ctx.triggered_id == "annotation-color-picker" and existing_canvas is not None:
+        fig = go.Figure(existing_canvas)
         fig.update_layout(
             newshape=dict(fillcolor=annotation_color["hex"], line=dict(color=annotation_color["hex"])))
+        return fig
+    elif image_str is not None and image_str in image_dict.keys():
+        fig = px.imshow(image_dict[image_str])
         return fig
     else:
         raise PreventUpdate
