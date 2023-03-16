@@ -26,9 +26,10 @@ from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOu
     ServersideOutputTransform
 import dash_daq as daq
 import plotly.graph_objects as go
+import dash_bootstrap_components as dbc
 from dash import ctx
 
-app = DashProxy(transforms=[ServersideOutputTransform()])
+app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
 
 try:
@@ -176,6 +177,18 @@ def render_umap_plot(anndata, metadata_selection, assay_selection):
         raise PreventUpdate
 
 
+@app.callback(
+    Output("metadata-distribution", "figure"),
+    Input('anndata', 'data'),
+    Input('metadata_options', 'value'))
+def display_metadata_distribution(anndata_obj, metadata_selection):
+    if anndata_obj is not None and metadata_selection is not None:
+        data = anndata_obj['metadata'][metadata_selection]
+        return px.histogram(data, range_x=[min(data), max(data)])
+    else:
+        raise PreventUpdate
+
+
 app.layout = html.Div([
     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
     dcc.Tabs([
@@ -186,16 +199,20 @@ app.layout = html.Div([
                 filetypes=['png', 'tif', 'tiff', 'csv'],
                 upload_id="upload-image",
             ),
-            dcc.Dropdown(id='image_layers'),
-            daq.ColorPicker(id="annotation-color-picker", label="Color Picker", value=dict(hex="#119DFF")),
-            html.H3("Annotate your tif file"), dcc.Graph(config={
-                "modeBarButtonsToAdd": [
-                    "drawline",
-                    "drawopenpath",
-                    "drawclosedpath",
-                    "drawcircle",
-                    "drawrect",
-                    "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'}),
+            html.Div([dbc.Row([
+                dbc.Col(html.Div([dcc.Dropdown(id='image_layers'),
+                                  html.H3("Annotate your tif file"), dcc.Graph(config={
+                        "modeBarButtonsToAdd": [
+                            "drawline",
+                            "drawopenpath",
+                            "drawclosedpath",
+                            "drawcircle",
+                            "drawrect",
+                            "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'})]),
+                        width=9),
+                dbc.Col(html.Div([daq.ColorPicker(id="annotation-color-picker",
+                                                  label="Color Picker", value=dict(hex="#119DFF"))]), width=3),
+                ])])
         ]),
         dcc.Tab(label='Quantification/Clustering', children=[
             du.Upload(
@@ -203,9 +220,16 @@ app.layout = html.Div([
                 max_file_size=1800,  # 1800 Mb
                 filetypes=['h5ad', 'h5'],
                 upload_id="upload-quantification"),
-            dcc.Dropdown(id='dimension-reduction_options'),
-            dcc.Dropdown(id='metadata_options'),
-            dcc.Graph(id='umap-plot', style={'width': '150vh', 'height': '150vh'})
+                html.Div([dbc.Row([
+                dbc.Col(html.Div(["Dimension Reduction/Clustering",
+                                 dcc.Dropdown(id='dimension-reduction_options'),
+                                  dcc.Graph(id='umap-plot', style={'width': '150vh', 'height': '150vh'})]),
+                        width=6),
+                dbc.Col(html.Div(["Metadata Distribution",
+                                 dcc.Dropdown(id='metadata_options'),
+                                dcc.Graph(id="metadata-distribution")]), width=6),
+                ])]),
+
         ])
     ]),
     dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
