@@ -28,6 +28,7 @@ import dash_daq as daq
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 from dash import ctx
+from tifffile import TiffFile
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -58,24 +59,20 @@ def convert_image_to_bytes(image):
 @cache.memoize(timeout=60)
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
-    if filenames:
-        upload_dict = {}
-        upload_index = 0
-        for uploaded in filenames:
-            layer_index = 0
-            file_designation = str(uuid.uuid4()) + str(upload_index)
-            image = Image.open(uploaded)
-            image.load()
-            for i, page in enumerate(ImageSequence.Iterator(image)):
-                layer_designation = "_layer_" + str(layer_index)
-                page = page.convert('RGB')
-                upload_dict[file_designation + layer_designation] = page
-                # upload_dict[file_designation + layer_designation] = convert_image_to_bytes(page)
-                layer_index += 1
-        if upload_dict:
-            return upload_dict
+    upload_dict = {}
+    if len(filenames) > 0:
+        layer_index = 0
+        file_designation = str(uuid.uuid4())
+        if filenames[0].endswith('.tiff'):
+            with TiffFile(filenames[0]) as tif:
+                for page in tif.pages:
+                    upload_dict[file_designation + str(f"_{layer_index}")] = Image.fromarray(page.asarray())
+                    layer_index += 1
         else:
-            raise PreventUpdate
+            upload_dict[file_designation + str(f"_{layer_index}")] = Image.open(filenames[0])
+    
+    if upload_dict:
+        return upload_dict
     else:
         raise PreventUpdate
 
@@ -158,10 +155,19 @@ def render_image_on_canvas(existing_canvas, image_str, image_dict, annotation_co
             newshape=dict(fillcolor=annotation_color["hex"], line=dict(color=annotation_color["hex"])))
         return fig
     elif image_str is not None and image_str in image_dict.keys():
-        fig = px.imshow(image_dict[image_str])
+        fig = px.imshow(image_dict[image_str], color_continuous_scale='gray')
         return fig
     else:
         raise PreventUpdate
+
+# @app.callback(Output('tiff_image', 'src'),
+#                Input('image_layers', 'value'),
+#                Input('uploaded_dict', 'data'))
+# def render_image(image_str, image_dict):
+#     if image_str is not None and image_dict is not None:
+#         print(image_dict[image_str])
+#         # image_dict[image_str].save(image_str + ".png")
+#         return read_back_base64_to_image(image_dict[image_str])
 
 
 @app.callback(Output('umap-plot', 'figure'),
@@ -201,14 +207,17 @@ app.layout = html.Div([
             ),
             html.Div([dbc.Row([
                 dbc.Col(html.Div([dcc.Dropdown(id='image_layers'),
-                                  html.H3("Annotate your tif file"), dcc.Graph(config={
+                                  html.H3("Annotate your tif file"),
+                                  dcc.Graph(config={
                         "modeBarButtonsToAdd": [
                             "drawline",
                             "drawopenpath",
                             "drawclosedpath",
                             "drawcircle",
                             "drawrect",
-                            "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'})]),
+                            "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'}),
+                        # html.Img(id='tiff_image', src=''),
+                                  ]),
                         width=9),
                 dbc.Col(html.Div([daq.ColorPicker(id="annotation-color-picker",
                                                   label="Color Picker", value=dict(hex="#119DFF"))]), width=3),
