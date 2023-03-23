@@ -1,6 +1,6 @@
 import os
 import subprocess
-from dash_app.app import app
+from app.app import app
 import dash
 
 if __name__ == "__main__":

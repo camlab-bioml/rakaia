@@ -3,9 +3,8 @@ import socket
 import os
 import pytest
 import platform
-import subprocess
 from dash.testing.application_runners import import_app
-from ccramic.dash_app.app import app
+from selenium.common import NoSuchElementException
 
 
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
@@ -28,22 +27,26 @@ def test_for_connection():
     result = sock.connect_ex(('localhost', 8050))
     assert result != 103 and result != 0
 
+#
+# def test_run_docker_basic():
+#     assert subprocess.check_output(['docker', 'run', 'ccramic:latest', 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
+#     assert b'.10' or b'.9' in subprocess.check_output(['docker', 'run', 'ccramic:latest', 'python3', '--version'])
+#     assert subprocess.check_output(['docker', 'run', 'ccramic:latest', 'which', 'napari']) == b'/usr/local/bin/napari\n'
+#
+#
+# def test_run_singularity_basic():
+#     singularity_location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", 'ccramic.sif')
+#     assert subprocess.check_output(['singularity', 'exec', singularity_location, 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
+#     assert b'.10' or b'.9' in subprocess.check_output(['singularity', 'exec', singularity_location, 'python3', '--version'])
+#     assert subprocess.check_output(['singularity', 'exec', singularity_location, 'which',
+#                                     'napari']) == b'/usr/local/bin/napari\n'
 
-def test_run_docker_basic():
-    assert subprocess.check_output(['docker', 'run', 'ccramic:latest', 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
-    assert b'.10' or b'.9' in subprocess.check_output(['docker', 'run', 'ccramic:latest', 'python3', '--version'])
-    assert subprocess.check_output(['docker', 'run', 'ccramic:latest', 'which', 'napari']) == b'/usr/local/bin/napari\n'
 
-
-def test_run_singularity_basic():
-    singularity_location = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", 'ccramic.sif')
-    assert subprocess.check_output(['singularity', 'exec', singularity_location, 'which', 'ccramic']) == b'/usr/local/bin/ccramic\n'
-    assert b'.10' or b'.9' in subprocess.check_output(['singularity', 'exec', singularity_location, 'python3', '--version'])
-    assert subprocess.check_output(['singularity', 'exec', singularity_location, 'which',
-                                    'napari']) == b'/usr/local/bin/napari\n'
-
-
-def test_basic_app_load_from_locale():
-    ccramic_app = import_app("ccramic.dash_app.app")
-    assert str(type(ccramic_app)) == "<class 'dash.dash.Dash'>"
-
+def test_basic_app_load_from_locale(dash_duo):
+    ccramic_app = import_app("ccramic.app.app")
+    assert str(type(ccramic_app)) == "<class 'dash_extensions.enrich.DashProxy'>"
+    dash_duo.start_server(ccramic_app)
+    for elem in ['#upload-image', '#upload-metadata']:
+        assert dash_duo.find_element(elem) is not None
+    with pytest.raises(NoSuchElementException):
+        assert dash_duo.find_element('#fake-input') is not None

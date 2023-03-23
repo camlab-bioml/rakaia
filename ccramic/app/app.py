@@ -30,6 +30,7 @@ import dash_bootstrap_components as dbc
 from dash import ctx
 from tifffile import TiffFile
 from matplotlib import pyplot as plt
+from .utils import generate_tiff_stack
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -154,9 +155,10 @@ def read_back_base64_to_image(string):
               Input('annotation_canvas', 'figure'),
               Input('image_layers', 'value'),
               Input('uploaded_dict', 'data'),
-              Input("annotation-color-picker", "value"))
+              Input("annotation-color-picker", "value"),
+              Input("image-config", "value"))
 @cache.memoize(timeout=60)
-def render_image_on_canvas(existing_canvas, image_str, image_dict, annotation_color):
+def render_image_on_canvas(existing_canvas, image_str, image_dict, annotation_color, image_config):
     # update the figure depending on which of the inputs is triggered:
     # Update to the color picker: keep the existing canvas
     # Update to the selected image: clear the existing canvas
@@ -165,11 +167,20 @@ def render_image_on_canvas(existing_canvas, image_str, image_dict, annotation_co
         fig.update_layout(
             newshape=dict(fillcolor=annotation_color["hex"], line=dict(color=annotation_color["hex"])))
         return fig
-    elif image_str is not None and image_str in image_dict.keys():
-        fig = px.imshow(Image.fromarray(image_dict[image_str]), color_continuous_scale='gray')
-        return fig
-    else:
-        raise PreventUpdate
+    elif image_config == "Single Image":
+        if image_str is not None and image_str in image_dict.keys() and isinstance(image_str, str):
+            print(image_str)
+            fig = px.imshow(Image.fromarray(image_dict[image_str]), color_continuous_scale='gray')
+            return fig
+        else:
+            raise PreventUpdate
+    elif image_config == "Multi-Image":
+        print(image_str)
+        if image_str is not None and len(image_str) > 1:
+            fig = px.imshow(generate_tiff_stack(image_dict, image_str))
+            return fig
+        else:
+            raise PreventUpdate
 
 
 @app.callback(Output('umap-plot', 'figure'),
@@ -243,6 +254,16 @@ def populate_datatable_columns(column_dict):
 
 
 @app.callback(
+    Output("image_layers", "multi"),
+    Input("image-config", "value"))
+def toggle_single_multi_images(configuration):
+    if configuration is not None:
+        return True if configuration == "Multi-Image" else None
+    else:
+        raise PreventUpdate
+
+
+@app.callback(
     Output("download-edited-table", "data"),
     Input("btn-download-metadata", "n_clicks"),
     Input("imc-metadata-editable", "data"),
@@ -265,7 +286,7 @@ app.layout = html.Div([
                 max_files=10,
                 filetypes=['png', 'tif', 'tiff'],
                 upload_id="upload-image",
-            ),dcc.Dropdown(id='image_layers'),
+            ),dcc.Dropdown(id='image_layers', multi=False),
                                   html.H3("Annotate your tif file"),
                                   dash_table.DataTable(
                                       id='imc-metadata-editable',
@@ -295,6 +316,7 @@ app.layout = html.Div([
                 upload_id="upload-image",
             ), html.Button("Download Edited metadata", id="btn-download-metadata"),
                     dcc.Download(id="download-edited-table"),
+                    dcc.RadioItems(['Single Image', 'Multi-Image'], 'Single Image', id='image-config'),
                     daq.ColorPicker(id="annotation-color-picker",
                                                   label="Color Picker", value=dict(hex="#119DFF"))]), width=3),
                 ])])
