@@ -81,7 +81,11 @@ def create_layered_dict(status: du.UploadStatus):
             if upload.endswith('.tiff') or upload.endswith('.tif'):
                 with TiffFile(upload) as tif:
                     for page in tif.pages:
-                        upload_dict[file_designation + str(f"_{layer_index}")] = page.asarray()
+                        image = page.asarray()
+                        height, width = image.shape
+                        aspect_ratio = width / height
+
+                        upload_dict[file_designation + str(f"_{layer_index}")] = resize(image, )
                         layer_index += 1
             else:
                 upload_dict[file_designation + str(f"_{layer_index}")] = Image.open(upload)
@@ -115,6 +119,30 @@ def create_layered_dict(status: du.UploadStatus):
             anndata_files = anndata_dict
     if anndata_files is not None and len(anndata_files) > 0:
         return anndata_files
+    else:
+        raise PreventUpdate
+
+
+@du.callback(ServersideOutput('carousel_dict', 'data'),
+             id='upload-image-carousel')
+@cache.memoize(timeout=60)
+def create_carousel_dict(status: du.UploadStatus):
+    filenames = [str(x) for x in status.uploaded_files]
+    upload_dict = {}
+    if len(filenames) > 0:
+        for upload in filenames:
+            layer_index = 0
+            file_designation = str(uuid.uuid4())
+            if upload.endswith('.tiff') or upload.endswith('.tif'):
+                with TiffFile(upload) as tif:
+                    for page in tif.pages:
+                        upload_dict[file_designation + str(f"_{layer_index}")] = Image.fromarray(page.asarray())
+                        layer_index += 1
+            else:
+                upload_dict[file_designation + str(f"_{layer_index}")] = Image.open(upload)
+
+    if upload_dict:
+        return upload_dict
     else:
         raise PreventUpdate
 
@@ -169,13 +197,11 @@ def render_image_on_canvas(existing_canvas, image_str, image_dict, annotation_co
         return fig
     elif image_config == "Single Image":
         if image_str is not None and image_str in image_dict.keys() and isinstance(image_str, str):
-            print(image_str)
             fig = px.imshow(Image.fromarray(image_dict[image_str]), color_continuous_scale='gray')
             return fig
         else:
             raise PreventUpdate
     elif image_config == "Multi-Image":
-        print(image_str)
         if image_str is not None and len(image_str) > 1:
             fig = px.imshow(generate_tiff_stack(image_dict, image_str))
             return fig
@@ -268,9 +294,21 @@ def toggle_single_multi_images(configuration):
     Input("btn-download-metadata", "n_clicks"),
     Input("imc-metadata-editable", "data"),
     prevent_initial_call=True)
-def func(n_clicks, datatable_contents):
+def download_edited_metadata(n_clicks, datatable_contents):
     if n_clicks is not None and n_clicks > 0:
         return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "metadata.csv")
+    else:
+        raise PreventUpdate
+
+
+@app.callback(Output('tiff-collage', 'items'),
+              Input('carousel_dict', 'data'))
+@cache.memoize(timeout=60)
+def get_carousel_source_images(carousel_dict):
+    if carousel_dict is not None:
+        items = [{"key": key, "src": value, "header": "", "caption": key} for key, value in carousel_dict.items()]
+        print(items)
+        return items
     else:
         raise PreventUpdate
 
@@ -278,6 +316,22 @@ def func(n_clicks, datatable_contents):
 app.layout = html.Div([
     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
     dcc.Tabs([
+        dcc.Tab(label='Image Carousel', children=[
+            du.Upload(
+                id='upload-image-carousel',
+                max_file_size=5000,
+                filetypes=['tif', 'tiff'],
+                upload_id="upload-image-carousel"),
+            html.Div([dbc.Row([
+                dbc.Col(html.Div([
+                    dbc.Carousel(id='tiff-collage', items=[],
+                    style={'height': '35%', 'width': '35%'}, controls=True,
+                    indicators=True,
+                    interval=None)]),
+                        width=6),
+            ])]),
+
+        ]),
         dcc.Tab(label='Image Annotation', children=[
             html.Div([dbc.Row([
                 dbc.Col(html.Div([du.Upload(
@@ -293,10 +347,6 @@ app.layout = html.Div([
                                       columns=[],
                                       data=None,
                                       editable=True),
-                                  # dbc.Carousel(id='tiff-collage', items=[],
-                                  #              style={'height': '25%'}, controls=True,
-                                  #               indicators=True,
-                                  #               interval=None,),
                                   dcc.Graph(config={
                         "modeBarButtonsToAdd": [
                             "drawline",
@@ -341,5 +391,6 @@ app.layout = html.Div([
     ]),
     dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
-    dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot")
+    dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
+    dcc.Loading(dcc.Store(id="carousel_dict"), fullscreen=True, type="dot")
 ])
