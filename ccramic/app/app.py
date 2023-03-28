@@ -317,6 +317,20 @@ def download_edited_metadata(n_clicks, datatable_contents):
         raise PreventUpdate
 
 
+@app.callback(Output('blend-color-legend', 'children'),
+              Input('blending_colours', 'data'),
+              Input('images_in_blend', 'options'))
+def create_legend(blend_colours, current_blend):
+    children = []
+    if blend_colours is not None and current_blend is not None:
+        for key, value in blend_colours.items():
+            if blend_colours[key] != '#FFFFFF':
+                children.append(html.H6(f"{key}", style={"color": f"{value}"}))
+        return html.Div(children=children)
+    else:
+        raise PreventUpdate
+
+
 # @app.callback(Output('tiff-collage', 'items'),
 #               Input('carousel_dict', 'data'),
 #               background=True,
@@ -394,7 +408,8 @@ app.layout = html.Div([
                     dcc.Download(id="download-edited-table"),
                     dcc.Dropdown(id='images_in_blend', multi=False),
                     daq.ColorPicker(id="annotation-color-picker",
-                                    label="Color Picker", value=dict(hex="#119DFF"))]), width=3),
+                                    label="Color Picker", value=dict(hex="#119DFF")),
+                html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'})]), width=3),
             ])])
         ]),
         dcc.Tab(label='Quantification/Clustering', children=[
