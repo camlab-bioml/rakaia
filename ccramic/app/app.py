@@ -86,14 +86,12 @@ def create_layered_dict(status: du.UploadStatus):
                 # with TiffFile(upload) as tif:
                 #     for page in tif.pages:
                 #         # page = page.convert('RGB')
-                print("read tiff")
-                image = Image.fromarray(tifffile.imread(upload))
                 #nimage = image.convert('RGB')
-                upload_dict[file_designation + str(f"_{layer_index}")] = tifffile.imread(upload)
+                upload_dict[os.path.basename(upload)] = tifffile.imread(upload)
             else:
                 image = Image.open(upload)
                 # image = image.convert('RGB')
-                upload_dict[file_designation + str(f"_{layer_index}")] = image
+                upload_dict[os.path.basename(upload)] = image
 
     if upload_dict:
         return upload_dict
@@ -158,6 +156,7 @@ def create_anndata_dimension_options(anndata_dict):
     if anndata_dict and "assays" in anndata_dict.keys():
         return [{'label': i, 'value': i} for i in anndata_dict["assays"].keys()]
     else:
+        # image = Image.fromarray(tifffile.imread(upload))
         raise PreventUpdate
 
 
@@ -179,29 +178,70 @@ def create_dropdown_options(image_dict):
         raise PreventUpdate
 
 
+@app.callback(Output('images_in_blend', 'options'),
+              Input('image_layers', 'value'))
+def create_dropdown_blend(chosen_for_blend):
+    if chosen_for_blend:
+        return [{'label': i, 'value': i} for i in chosen_for_blend]
+    else:
+        raise PreventUpdate
+
+
 def read_back_base64_to_image(string):
     image_back = base64.b64decode(string)
     return Image.open(io.BytesIO(image_back))
 
 
+@app.callback(Input("annotation-color-picker", 'value'),
+              Input('images_in_blend', 'value'),
+              Input('uploaded_dict', 'data'),
+              Input('blending_colours', 'data'),
+              Output('blending_colours', 'data'))
+def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict):
+    if current_blend_dict is None and uploaded is not None:
+        current_blend_dict = {}
+        for uploaded in uploaded.keys():
+            current_blend_dict[uploaded] = '#FFFFFF'
+    if ctx.triggered_id == 'annotation-color-picker' and layer is not None:
+        current_blend_dict[layer] = colour['hex']
+        return current_blend_dict
+
+    # elif ctx.triggered_id == 'image_layers' and blend_dict is not None:
+    #     for cur in options:
+    #         if cur not in blend_dict.keys():
+    #             blend_dict[cur] = '#FFFFFF'
+    #     return blend_dict
+    else:
+        return current_blend_dict
+
+
+# @app.callback(Output("annotation-color-picker", 'value'),
+#               Input('images_in_blend', 'value'),
+#               Input('blending_colours', 'data'))
+# def update_color_wheel(cur_selected, colour_dict):
+#     if cur_selected is not None and cur_selected in colour_dict.keys():
+#         return colour_dict[cur_selected].lower()
+#     else:
+#         raise PreventUpdate
+
+
 @app.callback(Output('annotation_canvas', 'figure'),
               Input('image_layers', 'value'),
               Input('uploaded_dict', 'data'),
-              Input("annotation-color-picker", 'value'))
-def render_image_on_canvas(image_str, image_dict, selected_color):
-    layer_colour = ImageColor.getcolor(selected_color['hex'], "RGB") if \
-        ctx.triggered_id == "annotation-color-picker" else (255, 255, 255)
-    print(selected_color)
-    print(layer_colour)
-    if image_str is not None and len(image_str) >= 1:
+              Input('blending_colours', 'data'))
+def render_image_on_canvas(image_str, image_dict, blend_colour_dict):
+    if blend_colour_dict is None and image_str is not None:
+        blend_colour_dict = {}
+        for selected in image_str:
+            blend_colour_dict[selected] = '#FFFFFF'
+    if image_str is not None and len(image_str) <= 1:
             # (isinstance(image_str, list) and len(image_str) < 2):
         # image = Image.fromarray(image_dict[image_str[0]]).convert('RGB')
-        image = Image.fromarray(image_dict[image_str[0]]).convert('RGB')
-        image = recolour_greyscale(image, layer_colour)
+        image = recolour_greyscale(image_dict[image_str[0]], blend_colour_dict[image_str[0]])
         fig = px.imshow(image)
         return fig
-    elif image_str is not None and len(image_str) > 1:
-        fig = px.imshow(generate_tiff_stack(image_dict, image_str))
+    if image_str is not None and len(image_str) > 1:
+        fig = px.imshow(generate_tiff_stack(image_dict, image_str, blend_colour_dict))
         return fig
     else:
         raise PreventUpdate
@@ -235,19 +275,6 @@ def fig_to_uri(in_fig, close_all=True, **save_args):
     encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
     return "data:image/png;base64,{}".format(encoded)
 
-
-# @app.callback(
-#     Output("tiff-collage", "items"),
-#     Input('uploaded_dict', 'data'))
-# def update_collage(tiff_dict):
-#     if tiff_dict is not None and len(tiff_dict) > 0:
-#         children = [
-#             {'key': key, "src": f"{str(base64.b64encode(value))}"} for key, value in tiff_dict.items()
-#         ]
-#         print(children)
-#         return children
-#     else:
-#         raise PreventUpdate
 
 
 @du.callback(ServersideOutput('image-metadata', 'data'),
@@ -290,25 +317,25 @@ def download_edited_metadata(n_clicks, datatable_contents):
         raise PreventUpdate
 
 
-@app.callback(Output('tiff-collage', 'items'),
-              Input('carousel_dict', 'data'),
-              background=True,
-              manager=background_callback_manager)
-def get_carousel_source_images(carousel_dict):
-    if carousel_dict is not None:
-        return [{"key": key, "src": value} for key, value in carousel_dict.items()]
-    else:
-        raise PreventUpdate
-
-
-@app.callback(Output('current-carousel-index', 'children'),
-              Input('tiff-collage', 'active_index'),
-              Input('carousel_dict', 'data'))
-def show_carousel_index(index, carousel_dict):
-    if index is not None and ctx.triggered_id == "tiff-collage":
-        return f"Current carousel: {list(carousel_dict.keys())[index]}"
-    else:
-        raise PreventUpdate
+# @app.callback(Output('tiff-collage', 'items'),
+#               Input('carousel_dict', 'data'),
+#               background=True,
+#               manager=background_callback_manager)
+# def get_carousel_source_images(carousel_dict):
+#     if carousel_dict is not None:
+#         return [{"key": key, "src": value} for key, value in carousel_dict.items()]
+#     else:
+#         raise PreventUpdate
+#
+#
+# @app.callback(Output('current-carousel-index', 'children'),
+#               Input('tiff-collage', 'active_index'),
+#               Input('carousel_dict', 'data'))
+# def show_carousel_index(index, carousel_dict):
+#     if index is not None and ctx.triggered_id == "tiff-collage":
+#         return f"Current carousel: {list(carousel_dict.keys())[index]}"
+#     else:
+#         raise PreventUpdate
 
 
 app.layout = html.Div([
@@ -365,7 +392,7 @@ app.layout = html.Div([
                     upload_id="upload-image",
                 ), html.Button("Download Edited metadata", id="btn-download-metadata"),
                     dcc.Download(id="download-edited-table"),
-                    dcc.RadioItems(['Single Image', 'Multi-Image'], 'Single Image', id='image-config'),
+                    dcc.Dropdown(id='images_in_blend', multi=False),
                     daq.ColorPicker(id="annotation-color-picker",
                                     label="Color Picker", value=dict(hex="#119DFF"))]), width=3),
             ])])
@@ -389,6 +416,7 @@ app.layout = html.Div([
         ])
     ]),
     dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+    dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="carousel_dict"), fullscreen=True, type="dot")

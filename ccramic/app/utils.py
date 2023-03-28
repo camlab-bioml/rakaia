@@ -22,27 +22,31 @@ from numpy import array
 from skimage.io import imread, imsave
 from PIL import Image
 import random
+from PIL import ImageColor
 
 def get_luma(rbg):
     R, G, B, = rbg
     return 0.2126*R + 0.7152*G + 0.0722*B
 
 
-def generate_tiff_stack(tiff_dict, tiff_list):
-    image = tiff_dict[tiff_list[0]]
+def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
+    print(tiff_list[1:])
+    image = recolour_greyscale(tiff_dict[tiff_list[0]], colour_dict[tiff_list[0]])
     for other in tiff_list[1:]:
-        image = image + tiff_dict[other]
+        image = image + recolour_greyscale(tiff_dict[other], colour_dict[other])
 
-    return Image.fromarray(image).convert('RGB')
+    return Image.fromarray(image)
 
-def recolour_greyscale(image, colour):
+
+def recolour_greyscale(array, colour):
+    image = Image.fromarray(array)
+    image = image.convert('RGB')
     pixels = image.load()
-    print(pixels)
     for i in range(image.height):
         for j in range(image.width):
             luma = get_luma(pixels[i, j])
             if luma > 0.05:
-                pixels[i, j] = colour
+                pixels[i, j] = ImageColor.getcolor(colour, "RGB")
             else:
                 pixels[i, j] = (0, 0, 0)
 
