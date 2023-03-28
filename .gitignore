@@ -9,7 +9,9 @@ file_system_store/
 *.png
 
 *.tif
+*.tiff
 
+cache/
 cache-directory/
 tests/cache-directory/
 

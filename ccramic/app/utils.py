@@ -23,15 +23,28 @@ from skimage.io import imread, imsave
 from PIL import Image
 import random
 
+def get_luma(rbg):
+    R, G, B, = rbg
+    return 0.2126*R + 0.7152*G + 0.0722*B
+
 
 def generate_tiff_stack(tiff_dict, tiff_list):
-    print(tiff_list)
-    height, width = tiff_dict[tiff_list[0]].shape
-    tiffarray = np.zeros((height, width, 3))
-    for stack in tiff_list:
-        tiffarray[:, :, random.randint(0, 1)] = tiff_dict[stack]
-        tiffarray = rescale(tiffarray, 1)
+    image = tiff_dict[tiff_list[0]]
+    for other in tiff_list[1:]:
+        image = image + tiff_dict[other]
 
-    return Image.fromarray(np.array(tiffarray, dtype='uint8'))
+    return Image.fromarray(image).convert('RGB')
 
+def recolour_greyscale(image, colour):
+    pixels = image.load()
+    print(pixels)
+    for i in range(image.height):
+        for j in range(image.width):
+            luma = get_luma(pixels[i, j])
+            if luma > 0.05:
+                pixels[i, j] = colour
+            else:
+                pixels[i, j] = (0, 0, 0)
+
+    return np.array(image)
 

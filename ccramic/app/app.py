@@ -1,10 +1,11 @@
 import time
 
 import anndata
+import tifffile
 from dash import Dash, html, dcc
 import plotly.express as px
 import pandas as pd
-from PIL import Image, ImageSequence
+from PIL import Image, ImageSequence, ImageColor
 
 from dash.dependencies import Input, Output, State
 from dash import dcc, html, dash_table
@@ -27,10 +28,11 @@ from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOu
 import dash_daq as daq
 import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
-from dash import ctx
+from dash import ctx, DiskcacheManager, CeleryManager
 from tifffile import TiffFile
 from matplotlib import pyplot as plt
-from .utils import generate_tiff_stack
+from .utils import generate_tiff_stack, recolour_greyscale
+import diskcache
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -41,10 +43,12 @@ try:
         'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
     })
 except (ModuleNotFoundError, RuntimeError) as no_redis:
-    cache = Cache(app.server, config={
-        'CACHE_TYPE': 'filesystem',
-        'CACHE_DIR': 'cache-directory'
-    })
+    # cache = Cache(app.server, config={
+    #     'CACHE_TYPE': 'filesystem',
+    #     'CACHE_DIR': 'cache-directory'
+    # })
+    cache = diskcache.Cache("./cache")
+    background_callback_manager = DiskcacheManager(cache)
 
 with tempfile.TemporaryDirectory() as tmpdirname:
     du.configure_upload(app, tmpdirname)
@@ -70,7 +74,7 @@ def display_metadata_distribution(anndata_obj, metadata_selection):
 
 @du.callback(ServersideOutput('uploaded_dict', 'data'),
              id='upload-image')
-@cache.memoize(timeout=60)
+@cache.memoize()
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     upload_dict = {}
@@ -79,17 +83,18 @@ def create_layered_dict(status: du.UploadStatus):
             layer_index = 0
             file_designation = str(uuid.uuid4())
             if upload.endswith('.tiff') or upload.endswith('.tif'):
-                with TiffFile(upload) as tif:
-                    for page in tif.pages:
-                        image = page.asarray()
-                        height, width = image.shape
-                        aspect_ratio = width / height
-
-                        upload_dict[file_designation + str(f"_{layer_index}")] = resize(image, )
-                        layer_index += 1
+                # with TiffFile(upload) as tif:
+                #     for page in tif.pages:
+                #         # page = page.convert('RGB')
+                print("read tiff")
+                image = Image.fromarray(tifffile.imread(upload))
+                #nimage = image.convert('RGB')
+                upload_dict[file_designation + str(f"_{layer_index}")] = tifffile.imread(upload)
             else:
-                upload_dict[file_designation + str(f"_{layer_index}")] = Image.open(upload)
-    
+                image = Image.open(upload)
+                # image = image.convert('RGB')
+                upload_dict[file_designation + str(f"_{layer_index}")] = image
+
     if upload_dict:
         return upload_dict
     else:
@@ -98,7 +103,7 @@ def create_layered_dict(status: du.UploadStatus):
 
 @du.callback(ServersideOutput('anndata', 'data'),
              id='upload-quantification')
-@cache.memoize(timeout=60)
+@cache.memoize()
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     anndata_files = {}
@@ -125,7 +130,7 @@ def create_layered_dict(status: du.UploadStatus):
 
 @du.callback(ServersideOutput('carousel_dict', 'data'),
              id='upload-image-carousel')
-@cache.memoize(timeout=60)
+@cache.memoize()
 def create_carousel_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     upload_dict = {}
@@ -180,33 +185,26 @@ def read_back_base64_to_image(string):
 
 
 @app.callback(Output('annotation_canvas', 'figure'),
-              Input('annotation_canvas', 'figure'),
               Input('image_layers', 'value'),
               Input('uploaded_dict', 'data'),
-              Input("annotation-color-picker", "value"),
-              Input("image-config", "value"))
-@cache.memoize(timeout=60)
-def render_image_on_canvas(existing_canvas, image_str, image_dict, annotation_color, image_config):
-    # update the figure depending on which of the inputs is triggered:
-    # Update to the color picker: keep the existing canvas
-    # Update to the selected image: clear the existing canvas
-    if ctx.triggered_id == "annotation-color-picker" and existing_canvas is not None:
-        fig = go.Figure(existing_canvas)
-        fig.update_layout(
-            newshape=dict(fillcolor=annotation_color["hex"], line=dict(color=annotation_color["hex"])))
+              Input("annotation-color-picker", 'value'))
+def render_image_on_canvas(image_str, image_dict, selected_color):
+    layer_colour = ImageColor.getcolor(selected_color['hex'], "RGB") if \
+        ctx.triggered_id == "annotation-color-picker" else (255, 255, 255)
+    print(selected_color)
+    print(layer_colour)
+    if image_str is not None and len(image_str) >= 1:
+            # (isinstance(image_str, list) and len(image_str) < 2):
+        # image = Image.fromarray(image_dict[image_str[0]]).convert('RGB')
+        image = Image.fromarray(image_dict[image_str[0]]).convert('RGB')
+        image = recolour_greyscale(image, layer_colour)
+        fig = px.imshow(image)
         return fig
-    elif image_config == "Single Image":
-        if image_str is not None and image_str in image_dict.keys() and isinstance(image_str, str):
-            fig = px.imshow(Image.fromarray(image_dict[image_str]), color_continuous_scale='gray')
-            return fig
-        else:
-            raise PreventUpdate
-    elif image_config == "Multi-Image":
-        if image_str is not None and len(image_str) > 1:
-            fig = px.imshow(generate_tiff_stack(image_dict, image_str))
-            return fig
-        else:
-            raise PreventUpdate
+    elif image_str is not None and len(image_str) > 1:
+        fig = px.imshow(generate_tiff_stack(image_dict, image_str))
+        return fig
+    else:
+        raise PreventUpdate
 
 
 @app.callback(Output('umap-plot', 'figure'),
@@ -254,7 +252,7 @@ def fig_to_uri(in_fig, close_all=True, **save_args):
 
 @du.callback(ServersideOutput('image-metadata', 'data'),
              id='upload-metadata')
-@cache.memoize(timeout=60)
+@cache.memoize()
 def create_imc_meta_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     imaging_metadata = {}
@@ -280,35 +278,35 @@ def populate_datatable_columns(column_dict):
 
 
 @app.callback(
-    Output("image_layers", "multi"),
-    Input("image-config", "value"))
-def toggle_single_multi_images(configuration):
-    if configuration is not None:
-        return True if configuration == "Multi-Image" else None
-    else:
-        raise PreventUpdate
-
-
-@app.callback(
     Output("download-edited-table", "data"),
     Input("btn-download-metadata", "n_clicks"),
     Input("imc-metadata-editable", "data"),
     prevent_initial_call=True)
 def download_edited_metadata(n_clicks, datatable_contents):
-    if n_clicks is not None and n_clicks > 0:
+    if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
+            ctx.triggered_id == "btn-download-metadata":
         return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "metadata.csv")
     else:
         raise PreventUpdate
 
 
 @app.callback(Output('tiff-collage', 'items'),
-              Input('carousel_dict', 'data'))
-@cache.memoize(timeout=60)
+              Input('carousel_dict', 'data'),
+              background=True,
+              manager=background_callback_manager)
 def get_carousel_source_images(carousel_dict):
     if carousel_dict is not None:
-        items = [{"key": key, "src": value, "header": "", "caption": key} for key, value in carousel_dict.items()]
-        print(items)
-        return items
+        return [{"key": key, "src": value} for key, value in carousel_dict.items()]
+    else:
+        raise PreventUpdate
+
+
+@app.callback(Output('current-carousel-index', 'children'),
+              Input('tiff-collage', 'active_index'),
+              Input('carousel_dict', 'data'))
+def show_carousel_index(index, carousel_dict):
+    if index is not None and ctx.triggered_id == "tiff-collage":
+        return f"Current carousel: {list(carousel_dict.keys())[index]}"
     else:
         raise PreventUpdate
 
@@ -325,51 +323,52 @@ app.layout = html.Div([
             html.Div([dbc.Row([
                 dbc.Col(html.Div([
                     dbc.Carousel(id='tiff-collage', items=[],
-                    style={'height': '35%', 'width': '35%'}, controls=True,
-                    indicators=True,
-                    interval=None)]),
-                        width=6),
+                                 style={'height': '35%', 'width': '35%'}, controls=True,
+                                 indicators=True,
+                                 interval=None),
+                    html.Div(id='current-carousel-index', style={'whiteSpace': 'pre-line'})]),
+                    width=6),
             ])]),
 
         ]),
         dcc.Tab(label='Image Annotation', children=[
             html.Div([dbc.Row([
                 dbc.Col(html.Div([du.Upload(
-                id='upload-image',
-                max_file_size=5000,
-                max_files=10,
-                filetypes=['png', 'tif', 'tiff'],
-                upload_id="upload-image",
-            ),dcc.Dropdown(id='image_layers', multi=False),
-                                  html.H3("Annotate your tif file"),
-                                  dash_table.DataTable(
-                                      id='imc-metadata-editable',
-                                      columns=[],
-                                      data=None,
-                                      editable=True),
-                                  dcc.Graph(config={
+                    id='upload-image',
+                    max_file_size=5000,
+                    max_files=200,
+                    filetypes=['png', 'tif', 'tiff'],
+                    upload_id="upload-image",
+                ), dcc.Dropdown(id='image_layers', multi=True),
+                    html.H3("Annotate your tif file"),
+                    dash_table.DataTable(
+                        id='imc-metadata-editable',
+                        columns=[],
+                        data=None,
+                        editable=True),
+                    dcc.Graph(config={
                         "modeBarButtonsToAdd": [
                             "drawline",
                             "drawopenpath",
                             "drawclosedpath",
                             "drawcircle",
                             "drawrect",
-                            "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'}),
-                        # html.Img(id='tiff_image', src=''),
-                                  ]),
-                        width=9),
+                            "eraseshape"]}, id='annotation_canvas', style={'width': '75vh', 'height': '75vh'}),
+                    # html.Img(id='tiff_image', src=''),
+                ]),
+                    width=9),
                 dbc.Col(html.Div([du.Upload(
-                id='upload-metadata',
-                max_file_size=1000,
-                max_files=1,
-                filetypes=['csv'],
-                upload_id="upload-image",
-            ), html.Button("Download Edited metadata", id="btn-download-metadata"),
+                    id='upload-metadata',
+                    max_file_size=1000,
+                    max_files=1,
+                    filetypes=['csv'],
+                    upload_id="upload-image",
+                ), html.Button("Download Edited metadata", id="btn-download-metadata"),
                     dcc.Download(id="download-edited-table"),
                     dcc.RadioItems(['Single Image', 'Multi-Image'], 'Single Image', id='image-config'),
                     daq.ColorPicker(id="annotation-color-picker",
-                                                  label="Color Picker", value=dict(hex="#119DFF"))]), width=3),
-                ])])
+                                    label="Color Picker", value=dict(hex="#119DFF"))]), width=3),
+            ])])
         ]),
         dcc.Tab(label='Quantification/Clustering', children=[
             du.Upload(
@@ -377,15 +376,15 @@ app.layout = html.Div([
                 max_file_size=5000,
                 filetypes=['h5ad', 'h5'],
                 upload_id="upload-quantification"),
-                html.Div([dbc.Row([
+            html.Div([dbc.Row([
                 dbc.Col(html.Div(["Dimension Reduction/Clustering",
-                                 dcc.Dropdown(id='dimension-reduction_options'),
+                                  dcc.Dropdown(id='dimension-reduction_options'),
                                   dcc.Graph(id='umap-plot', style={'width': '150vh', 'height': '150vh'})]),
                         width=6),
                 dbc.Col(html.Div(["Metadata Distribution",
-                                 dcc.Dropdown(id='metadata_options'),
-                                dcc.Graph(id="metadata-distribution")]), width=6),
-                ])]),
+                                  dcc.Dropdown(id='metadata_options'),
+                                  dcc.Graph(id="metadata-distribution")]), width=6),
+            ])]),
 
         ])
     ]),
