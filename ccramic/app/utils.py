@@ -34,7 +34,6 @@ def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
     # image = recolour_greyscale(tiff_dict[tiff_list[0]], colour_dict[tiff_list[0]])
     # for other in tiff_list[1:]:
     #     image = image + recolour_greyscale(tiff_dict[other], colour_dict[other]
-
     return Image.fromarray(sum([recolour_greyscale(tiff_dict[elem], colour_dict[elem]) for elem in tiff_list]))
 
 
