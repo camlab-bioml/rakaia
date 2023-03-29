@@ -24,30 +24,31 @@ from PIL import Image
 import random
 from PIL import ImageColor
 
+
 def get_luma(rbg):
     R, G, B, = rbg
     return 0.2126*R + 0.7152*G + 0.0722*B
 
 
 def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
-    print(tiff_list[1:])
-    image = recolour_greyscale(tiff_dict[tiff_list[0]], colour_dict[tiff_list[0]])
-    for other in tiff_list[1:]:
-        image = image + recolour_greyscale(tiff_dict[other], colour_dict[other])
+    # image = recolour_greyscale(tiff_dict[tiff_list[0]], colour_dict[tiff_list[0]])
+    # for other in tiff_list[1:]:
+    #     image = image + recolour_greyscale(tiff_dict[other], colour_dict[other]
 
-    return Image.fromarray(image)
+    return Image.fromarray(sum([recolour_greyscale(tiff_dict[elem], colour_dict[elem]) for elem in tiff_list]))
 
 
 def recolour_greyscale(array, colour):
     image = Image.fromarray(array)
     image = image.convert('RGB')
     pixels = image.load()
+    r, g, b = ImageColor.getcolor(colour, "RGB")
     for i in range(image.height):
         for j in range(image.width):
-            luma = get_luma(pixels[i, j])
-            if luma > 0.05:
-                pixels[i, j] = ImageColor.getcolor(colour, "RGB")
-            else:
+            try:
+                luma = get_luma(pixels[i, j])
+                pixels[i, j] = (int(r * (luma / 255)), int(g * (luma / 255)), int(b * (luma / 255)))
+            except ZeroDivisionError:
                 pixels[i, j] = (0, 0, 0)
 
     return np.array(image)

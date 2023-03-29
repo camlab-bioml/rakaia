@@ -33,6 +33,7 @@ from tifffile import TiffFile
 from matplotlib import pyplot as plt
 from .utils import generate_tiff_stack, recolour_greyscale
 import diskcache
+import h5py
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -99,6 +100,17 @@ def create_layered_dict(status: du.UploadStatus):
         raise PreventUpdate
 
 
+# @app.callback(Input('uploaded_dict', 'data'),
+#               Output('hdf5_obj', 'data'))
+# def create_h5df_file(uploaded_dict):
+#     hf = h5py.File('data.h5', 'w')
+#     if uploaded_dict is not None:
+#         for key, value in uploaded_dict.items():
+#             hf.create_dataset(key, data=value)
+#             print(key, value)
+#         hf.close()
+
+
 @du.callback(ServersideOutput('anndata', 'data'),
              id='upload-quantification')
 @cache.memoize()
@@ -125,29 +137,29 @@ def create_layered_dict(status: du.UploadStatus):
     else:
         raise PreventUpdate
 
-
-@du.callback(ServersideOutput('carousel_dict', 'data'),
-             id='upload-image-carousel')
-@cache.memoize()
-def create_carousel_dict(status: du.UploadStatus):
-    filenames = [str(x) for x in status.uploaded_files]
-    upload_dict = {}
-    if len(filenames) > 0:
-        for upload in filenames:
-            layer_index = 0
-            file_designation = str(uuid.uuid4())
-            if upload.endswith('.tiff') or upload.endswith('.tif'):
-                with TiffFile(upload) as tif:
-                    for page in tif.pages:
-                        upload_dict[file_designation + str(f"_{layer_index}")] = Image.fromarray(page.asarray())
-                        layer_index += 1
-            else:
-                upload_dict[file_designation + str(f"_{layer_index}")] = Image.open(upload)
-
-    if upload_dict:
-        return upload_dict
-    else:
-        raise PreventUpdate
+#
+# @du.callback(ServersideOutput('carousel_dict', 'data'),
+#              id='upload-image-carousel')
+# @cache.memoize()
+# def create_carousel_dict(status: du.UploadStatus):
+#     filenames = [str(x) for x in status.uploaded_files]
+#     upload_dict = {}
+#     if len(filenames) > 0:
+#         for upload in filenames:
+#             layer_index = 0
+#             file_designation = str(uuid.uuid4())
+#             if upload.endswith('.tiff') or upload.endswith('.tif'):
+#                 with TiffFile(upload) as tif:
+#                     for page in tif.pages:
+#                         upload_dict[file_designation + str(f"_{layer_index}")] = Image.fromarray(page.asarray())
+#                         layer_index += 1
+#             else:
+#                 upload_dict[file_designation + str(f"_{layer_index}")] = Image.open(upload)
+#
+#     if upload_dict:
+#         return upload_dict
+#     else:
+#         raise PreventUpdate
 
 
 @app.callback(Output('dimension-reduction_options', 'options'),
@@ -215,16 +227,6 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict):
         return current_blend_dict
 
 
-# @app.callback(Output("annotation-color-picker", 'value'),
-#               Input('images_in_blend', 'value'),
-#               Input('blending_colours', 'data'))
-# def update_color_wheel(cur_selected, colour_dict):
-#     if cur_selected is not None and cur_selected in colour_dict.keys():
-#         return colour_dict[cur_selected].lower()
-#     else:
-#         raise PreventUpdate
-
-
 @app.callback(Output('annotation_canvas', 'figure'),
               Input('image_layers', 'value'),
               Input('uploaded_dict', 'data'),
@@ -234,7 +236,7 @@ def render_image_on_canvas(image_str, image_dict, blend_colour_dict):
         blend_colour_dict = {}
         for selected in image_str:
             blend_colour_dict[selected] = '#FFFFFF'
-    if image_str is not None and len(image_str) <= 1:
+    if image_str is not None and len(image_str) <= 1 and len(image_str) > 0:
             # (isinstance(image_str, list) and len(image_str) < 2):
         # image = Image.fromarray(image_dict[image_str[0]]).convert('RGB')
         image = recolour_greyscale(image_dict[image_str[0]], blend_colour_dict[image_str[0]])
@@ -317,14 +319,38 @@ def download_edited_metadata(n_clicks, datatable_contents):
         raise PreventUpdate
 
 
+def create_hdf5_file(data, path):
+    if data is not None:
+        hf = h5py.File(os.path.join(path, 'data.h5'), 'w')
+        for key, value in data.items():
+            hf.create_dataset(key, data=value)
+        hf.close()
+
+
+@app.callback(
+    Output("download-hdf5", "data"),
+    Input("btn-download-data-hdf5", "n_clicks"),
+    Input("uploaded_dict", "data"),
+    prevent_initial_call=True)
+def download_dataset_as_hdf5(n_clicks, uploaded_contents):
+    if n_clicks is not None and n_clicks > 0 and uploaded_contents is not None and \
+            ctx.triggered_id == "btn-download-data-hdf5":
+        with tempfile.TemporaryDirectory(dir="/tmp") as tempdir:
+            create_hdf5_file(uploaded_contents, tempdir)
+            return dcc.send_file(os.path.join(tempdir, 'data.h5'))
+    else:
+        raise PreventUpdate
+
+
 @app.callback(Output('blend-color-legend', 'children'),
               Input('blending_colours', 'data'),
               Input('images_in_blend', 'options'))
 def create_legend(blend_colours, current_blend):
+    current_blend = [elem['label'] for elem in current_blend] if current_blend is not None else None
     children = []
     if blend_colours is not None and current_blend is not None:
         for key, value in blend_colours.items():
-            if blend_colours[key] != '#FFFFFF':
+            if blend_colours[key] != '#FFFFFF' and key in current_blend:
                 children.append(html.H6(f"{key}", style={"color": f"{value}"}))
         return html.Div(children=children)
     else:
@@ -355,23 +381,23 @@ def create_legend(blend_colours, current_blend):
 app.layout = html.Div([
     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
     dcc.Tabs([
-        dcc.Tab(label='Image Carousel', children=[
-            du.Upload(
-                id='upload-image-carousel',
-                max_file_size=5000,
-                filetypes=['tif', 'tiff'],
-                upload_id="upload-image-carousel"),
-            html.Div([dbc.Row([
-                dbc.Col(html.Div([
-                    dbc.Carousel(id='tiff-collage', items=[],
-                                 style={'height': '35%', 'width': '35%'}, controls=True,
-                                 indicators=True,
-                                 interval=None),
-                    html.Div(id='current-carousel-index', style={'whiteSpace': 'pre-line'})]),
-                    width=6),
-            ])]),
-
-        ]),
+        # dcc.Tab(label='Image Carousel', children=[
+        #     du.Upload(
+        #         id='upload-image-carousel',
+        #         max_file_size=5000,
+        #         filetypes=['tif', 'tiff'],
+        #         upload_id="upload-image-carousel"),
+        #     html.Div([dbc.Row([
+        #         dbc.Col(html.Div([
+        #             dbc.Carousel(id='tiff-collage', items=[],
+        #                          style={'height': '35%', 'width': '35%'}, controls=True,
+        #                          indicators=True,
+        #                          interval=None),
+        #             html.Div(id='current-carousel-index', style={'whiteSpace': 'pre-line'})]),
+        #             width=6),
+        #     ])]),
+        #
+        # ]),
         dcc.Tab(label='Image Annotation', children=[
             html.Div([dbc.Row([
                 dbc.Col(html.Div([du.Upload(
@@ -394,7 +420,7 @@ app.layout = html.Div([
                             "drawclosedpath",
                             "drawcircle",
                             "drawrect",
-                            "eraseshape"]}, id='annotation_canvas', style={'width': '75vh', 'height': '75vh'}),
+                            "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'}),
                     # html.Img(id='tiff_image', src=''),
                 ]),
                     width=9),
@@ -409,6 +435,8 @@ app.layout = html.Div([
                     dcc.Dropdown(id='images_in_blend', multi=False),
                     daq.ColorPicker(id="annotation-color-picker",
                                     label="Color Picker", value=dict(hex="#119DFF")),
+                html.Button("Download Data as HDF5", id="btn-download-data-hdf5"),
+                dcc.Download(id="download-hdf5"),
                 html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'})]), width=3),
             ])])
         ]),
@@ -431,8 +459,9 @@ app.layout = html.Div([
         ])
     ]),
     dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+    dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
-    dcc.Loading(dcc.Store(id="carousel_dict"), fullscreen=True, type="dot")
+    # dcc.Loading(dcc.Store(id="carousel_dict"), fullscreen=True, type="dot")
 ])

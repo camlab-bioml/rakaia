@@ -11,6 +11,10 @@ file_system_store/
 *.tif
 *.tiff
 
+*.h5
+*.h5ad
+*.hdf5
+
 cache/
 cache-directory/
 tests/cache-directory/
