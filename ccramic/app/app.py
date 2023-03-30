@@ -81,14 +81,20 @@ def create_layered_dict(status: du.UploadStatus):
     upload_dict = {}
     if len(filenames) > 0:
         for upload in filenames:
-            layer_index = 0
-            file_designation = str(uuid.uuid4())
             if upload.endswith('.tiff') or upload.endswith('.tif'):
-                # with TiffFile(upload) as tif:
-                #     for page in tif.pages:
-                #         # page = page.convert('RGB')
-                #nimage = image.convert('RGB')
-                upload_dict[os.path.basename(upload)] = tifffile.imread(upload)
+                if 'ome' not in upload:
+                    upload_dict[os.path.basename(upload)] = tifffile.imread(upload)
+                else:
+                    with TiffFile(upload) as tif:
+                        channel_index = 0
+                        for page in tif.pages:
+                            upload_dict[str("channel_" + f"{channel_index}_") +
+                                        os.path.basename(upload)] = (page.asarray() // 256).astype(np.uint8)
+                            channel_index += 1.
+            elif upload.endswith('.h5'):
+                data_h5 = h5py.File(upload, "r")
+                for elem in list(data_h5.keys()):
+                    upload_dict[elem] = data_h5[elem][()]
             else:
                 image = Image.open(upload)
                 # image = image.convert('RGB')
@@ -98,17 +104,6 @@ def create_layered_dict(status: du.UploadStatus):
         return upload_dict
     else:
         raise PreventUpdate
-
-
-# @app.callback(Input('uploaded_dict', 'data'),
-#               Output('hdf5_obj', 'data'))
-# def create_h5df_file(uploaded_dict):
-#     hf = h5py.File('data.h5', 'w')
-#     if uploaded_dict is not None:
-#         for key, value in uploaded_dict.items():
-#             hf.create_dataset(key, data=value)
-#             print(key, value)
-#         hf.close()
 
 
 @du.callback(ServersideOutput('anndata', 'data'),
@@ -136,30 +131,6 @@ def create_layered_dict(status: du.UploadStatus):
         return anndata_files
     else:
         raise PreventUpdate
-
-#
-# @du.callback(ServersideOutput('carousel_dict', 'data'),
-#              id='upload-image-carousel')
-# @cache.memoize()
-# def create_carousel_dict(status: du.UploadStatus):
-#     filenames = [str(x) for x in status.uploaded_files]
-#     upload_dict = {}
-#     if len(filenames) > 0:
-#         for upload in filenames:
-#             layer_index = 0
-#             file_designation = str(uuid.uuid4())
-#             if upload.endswith('.tiff') or upload.endswith('.tif'):
-#                 with TiffFile(upload) as tif:
-#                     for page in tif.pages:
-#                         upload_dict[file_designation + str(f"_{layer_index}")] = Image.fromarray(page.asarray())
-#                         layer_index += 1
-#             else:
-#                 upload_dict[file_designation + str(f"_{layer_index}")] = Image.open(upload)
-#
-#     if upload_dict:
-#         return upload_dict
-#     else:
-#         raise PreventUpdate
 
 
 @app.callback(Output('dimension-reduction_options', 'options'),
@@ -205,40 +176,41 @@ def read_back_base64_to_image(string):
 
 
 @app.callback(Input("annotation-color-picker", 'value'),
-              Input('images_in_blend', 'value'),
+              State('images_in_blend', 'value'),
               Input('uploaded_dict', 'data'),
               Input('blending_colours', 'data'),
               Output('blending_colours', 'data'))
 def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict):
-    if current_blend_dict is None and uploaded is not None:
-        current_blend_dict = {}
-        for uploaded in uploaded.keys():
-            current_blend_dict[uploaded] = '#FFFFFF'
-    if ctx.triggered_id == 'annotation-color-picker' and layer is not None:
+    if ctx.triggered_id == "uploaded_dict":
+        if current_blend_dict is None and uploaded is not None:
+            current_blend_dict = {}
+            for pot_layer in list(uploaded.keys()):
+                current_blend_dict[pot_layer] = '#FFFFFF'
+            return current_blend_dict
+        elif current_blend_dict is not None and uploaded is not None:
+            for pot_layer in list(uploaded.keys()):
+                current_blend_dict[pot_layer] = '#FFFFFF'
+            return current_blend_dict
+    if ctx.triggered_id == 'annotation-color-picker' and \
+            layer is not None and current_blend_dict is not None:
         current_blend_dict[layer] = colour['hex']
         return current_blend_dict
-
-    # elif ctx.triggered_id == 'image_layers' and blend_dict is not None:
-    #     for cur in options:
-    #         if cur not in blend_dict.keys():
-    #             blend_dict[cur] = '#FFFFFF'
-    #     return blend_dict
     else:
-        return current_blend_dict
+        return None
 
 
 @app.callback(Output('annotation_canvas', 'figure'),
               Input('image_layers', 'value'),
-              Input('uploaded_dict', 'data'),
-              Input('blending_colours', 'data'))
+              State('uploaded_dict', 'data'),
+              Input('blending_colours', 'data'),
+              prevent_initial_call=True)
 def render_image_on_canvas(image_str, image_dict, blend_colour_dict):
     if blend_colour_dict is None and image_str is not None:
         blend_colour_dict = {}
         for selected in image_str:
-            blend_colour_dict[selected] = '#FFFFFF'
-    if image_str is not None and len(image_str) <= 1 and len(image_str) > 0:
-            # (isinstance(image_str, list) and len(image_str) < 2):
-        # image = Image.fromarray(image_dict[image_str[0]]).convert('RGB')
+            if selected not in blend_colour_dict.keys():
+                blend_colour_dict[selected] = '#ffffff'
+    if image_str is not None and 1 >= len(image_str) > 0:
         image = recolour_greyscale(image_dict[image_str[0]], blend_colour_dict[image_str[0]])
         fig = px.imshow(image)
         return fig
@@ -276,7 +248,6 @@ def fig_to_uri(in_fig, close_all=True, **save_args):
     out_img.seek(0)  # rewind file
     encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
     return "data:image/png;base64,{}".format(encoded)
-
 
 
 @du.callback(ServersideOutput('image-metadata', 'data'),
@@ -381,30 +352,13 @@ def create_legend(blend_colours, current_blend):
 app.layout = html.Div([
     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
     dcc.Tabs([
-        # dcc.Tab(label='Image Carousel', children=[
-        #     du.Upload(
-        #         id='upload-image-carousel',
-        #         max_file_size=5000,
-        #         filetypes=['tif', 'tiff'],
-        #         upload_id="upload-image-carousel"),
-        #     html.Div([dbc.Row([
-        #         dbc.Col(html.Div([
-        #             dbc.Carousel(id='tiff-collage', items=[],
-        #                          style={'height': '35%', 'width': '35%'}, controls=True,
-        #                          indicators=True,
-        #                          interval=None),
-        #             html.Div(id='current-carousel-index', style={'whiteSpace': 'pre-line'})]),
-        #             width=6),
-        #     ])]),
-        #
-        # ]),
         dcc.Tab(label='Image Annotation', children=[
             html.Div([dbc.Row([
                 dbc.Col(html.Div([du.Upload(
                     id='upload-image',
                     max_file_size=5000,
                     max_files=200,
-                    filetypes=['png', 'tif', 'tiff'],
+                    filetypes=['png', 'tif', 'tiff', 'h5'],
                     upload_id="upload-image",
                 ), dcc.Dropdown(id='image_layers', multi=True),
                     html.H3("Annotate your tif file"),
@@ -439,7 +393,7 @@ app.layout = html.Div([
                 dcc.Download(id="download-hdf5"),
                 html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'})]), width=3),
             ])])
-        ]),
+        ], id='tab-annotation'),
         dcc.Tab(label='Quantification/Clustering', children=[
             du.Upload(
                 id='upload-quantification',
@@ -456,7 +410,7 @@ app.layout = html.Div([
                                   dcc.Graph(id="metadata-distribution")]), width=6),
             ])]),
 
-        ])
+        ], id='tab-quant')
     ]),
     dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),

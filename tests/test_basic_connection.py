@@ -50,3 +50,8 @@ def test_basic_app_load_from_locale(dash_duo):
         assert dash_duo.find_element(elem) is not None
     with pytest.raises(NoSuchElementException):
         assert dash_duo.find_element('#fake-input') is not None
+
+    dash_duo.find_element('#tab-quant').click()
+
+    for elem in ['#upload-quantification']:
+        assert dash_duo.find_element(elem) is not None

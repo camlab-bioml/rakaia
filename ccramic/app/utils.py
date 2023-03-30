@@ -42,8 +42,8 @@ def recolour_greyscale(array, colour):
     image = image.convert('RGB')
     pixels = image.load()
     r, g, b = ImageColor.getcolor(colour, "RGB")
-    for i in range(image.height):
-        for j in range(image.width):
+    for i in range(image.width):
+        for j in range(image.height):
             try:
                 luma = get_luma(pixels[i, j])
                 pixels[i, j] = (int(r * (luma / 255)), int(g * (luma / 255)), int(b * (luma / 255)))
