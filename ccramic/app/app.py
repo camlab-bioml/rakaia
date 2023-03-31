@@ -34,6 +34,7 @@ from matplotlib import pyplot as plt
 from .utils import generate_tiff_stack, recolour_greyscale
 import diskcache
 import h5py
+from flask.helpers import send_file
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -290,27 +291,29 @@ def download_edited_metadata(n_clicks, datatable_contents):
         raise PreventUpdate
 
 
-def create_hdf5_file(data, path):
-    if data is not None:
-        hf = h5py.File(os.path.join(path, 'data.h5'), 'w')
-        for key, value in data.items():
+@app.callback(Output('download-link', 'href'),
+              [Input('uploaded_dict', 'data')])
+def update_href(uploaded):
+    if uploaded is not None:
+        relative_filename = os.path.join(tmpdirname,
+            'downloads',
+            'data.h5')
+        if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
+            os.makedirs(os.path.join(tmpdirname, 'downloads'))
+        hf = h5py.File(relative_filename, 'w')
+        for key, value in uploaded.items():
             hf.create_dataset(key, data=value)
-        hf.close()
+        try:
+            hf.close()
+        except:
+            pass
+        return str(relative_filename)
 
 
-@app.callback(
-    Output("download-hdf5", "data"),
-    Input("btn-download-data-hdf5", "n_clicks"),
-    Input("uploaded_dict", "data"),
-    prevent_initial_call=True)
-def download_dataset_as_hdf5(n_clicks, uploaded_contents):
-    if n_clicks is not None and n_clicks > 0 and uploaded_contents is not None and \
-            ctx.triggered_id == "btn-download-data-hdf5":
-        with tempfile.TemporaryDirectory(dir="/tmp") as tempdir:
-            create_hdf5_file(uploaded_contents, tempdir)
-            return dcc.send_file(os.path.join(tempdir, 'data.h5'))
-    else:
-        raise PreventUpdate
+@app.server.route(os.path.join(tmpdirname) + '/downloads/<path:path>')
+def serve_static(path):
+    return flask.send_from_directory(
+        os.path.join(tmpdirname, 'downloads'), path)
 
 
 @app.callback(Output('blend-color-legend', 'children'),
@@ -326,27 +329,6 @@ def create_legend(blend_colours, current_blend):
         return html.Div(children=children)
     else:
         raise PreventUpdate
-
-
-# @app.callback(Output('tiff-collage', 'items'),
-#               Input('carousel_dict', 'data'),
-#               background=True,
-#               manager=background_callback_manager)
-# def get_carousel_source_images(carousel_dict):
-#     if carousel_dict is not None:
-#         return [{"key": key, "src": value} for key, value in carousel_dict.items()]
-#     else:
-#         raise PreventUpdate
-#
-#
-# @app.callback(Output('current-carousel-index', 'children'),
-#               Input('tiff-collage', 'active_index'),
-#               Input('carousel_dict', 'data'))
-# def show_carousel_index(index, carousel_dict):
-#     if index is not None and ctx.triggered_id == "tiff-collage":
-#         return f"Current carousel: {list(carousel_dict.keys())[index]}"
-#     else:
-#         raise PreventUpdate
 
 
 app.layout = html.Div([
@@ -374,7 +356,8 @@ app.layout = html.Div([
                             "drawclosedpath",
                             "drawcircle",
                             "drawrect",
-                            "eraseshape"]}, id='annotation_canvas', style={'width': '150vh', 'height': '150vh'}),
+                            "eraseshape"]}, id='annotation_canvas',
+                        style={'width': '150vh', 'height': '150vh'}),
                     # html.Img(id='tiff_image', src=''),
                 ]),
                     width=9),
@@ -389,8 +372,7 @@ app.layout = html.Div([
                     dcc.Dropdown(id='images_in_blend', multi=False),
                     daq.ColorPicker(id="annotation-color-picker",
                                     label="Color Picker", value=dict(hex="#119DFF")),
-                html.Button("Download Data as HDF5", id="btn-download-data-hdf5"),
-                dcc.Download(id="download-hdf5"),
+                    html.A(id='download-link', children='Download File'),
                 html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'})]), width=3),
             ])])
         ], id='tab-annotation'),

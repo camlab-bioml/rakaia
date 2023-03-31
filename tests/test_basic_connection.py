@@ -5,6 +5,7 @@ import pytest
 import platform
 from dash.testing.application_runners import import_app
 from selenium.common import NoSuchElementException
+import time
 
 
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
@@ -42,6 +43,17 @@ def test_for_connection():
 #                                     'napari']) == b'/usr/local/bin/napari\n'
 
 
+def recursive_wait_for_elem(app, elem, duration):
+    if duration >= 15:
+        return NoSuchElementException
+    else:
+        time.sleep(duration)
+        try:
+            app.find_element(elem).click()
+        except NoSuchElementException:
+            recursive_wait_for_elem(app, elem, int(1.1*duration))
+
+
 def test_basic_app_load_from_locale(dash_duo):
     ccramic_app = import_app("ccramic.app.app")
     assert str(type(ccramic_app)) == "<class 'dash_extensions.enrich.DashProxy'>"
@@ -51,7 +63,7 @@ def test_basic_app_load_from_locale(dash_duo):
     with pytest.raises(NoSuchElementException):
         assert dash_duo.find_element('#fake-input') is not None
 
-    dash_duo.find_element('#tab-quant').click()
+    recursive_wait_for_elem(dash_duo, '#tab-quant', 1)
 
     for elem in ['#upload-quantification']:
         assert dash_duo.find_element(elem) is not None
