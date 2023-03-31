@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest"]
-        python-version: ["3.9", "3.9"]
+        python-version: ["3.9"]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v4
@@ -36,7 +36,6 @@ jobs:
 #          singularity exec ccramic.sif which ccramic && python3 --version
         # shell: bash -l {0} 
       - name: Install ccramic
-        shell: bash -l {0} 
         run: pip install .
       - name: Run pytest for ccramic
         shell: bash -l {0}
