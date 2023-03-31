@@ -3,10 +3,10 @@ from setuptools import setup, find_packages
 setup(
     name="ccramic",
     version="0.1.0",
-    url='https://github.com/matt-sd-watson/ccramic/',
+    url='https://github.com/camlab-bioml/ccramic',
     project_urls={
-        "Issues": "https://github.com/matt-sd-watson/ccramic/issues",
-        "Source": "https://github.com/matt-sd-watson/ccramic",
+        "Issues": "https://github.com/camlab-bioml/ccramic/issues",
+        "Source": "https://github.com/camlab-bioml/ccramic",
     },
     author="Matthew Watson",
     author_email="mwatson@lunenfeld.ca",
@@ -17,7 +17,7 @@ setup(
     description="",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
-    keywords=["single-cell download repository"],
+    keywords=["imaging cytometry classifier single-cell"],
     classifiers=[
         "Intended Audience :: Science/Research",
         "Programming Language :: Python :: 3.9"
@@ -27,7 +27,12 @@ setup(
     {program} = ccramic.main:run_app
     """.format(program="ccramic"),
     license="Unlicensed",
-    install_requires=["streamlit", "pillow", "pandas", "matplotlib", "fpdf", "streamlit-aggrid",
-                      "pytest", "freeport"],
+    install_requires=["pillow", "pandas", "matplotlib", "fpdf",
+                      "pytest", "freeport", "numpy", "scikit-image", "anndata", "scanpy",
+                      "phenograph", "seaborn", "httpx-oauth", "plotly", "napari",
+                      "opencv-python-headless", 'scanpy', "anndata", "dash", "Flask>=2.2.2", "jinja2",
+                      'dash-uploader==0.7.0a1', "dash-canvas", "packaging==21.3.0", "Flask-Caching",
+                      "multiprocess", "dash-extensions", "dash_daq", "dash-google-auth", "dash-bootstrap-components",
+                      "pyvips", "imctools", "tifffile", "dash[testing]", "selenium", "diskcache"],
     python_requires=">=3.9.0",
 )

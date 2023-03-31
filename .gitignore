@@ -1,5 +1,27 @@
 
-.idea/
+file_system_store/
+
+.idea
+
+*.json
+
+*.sif
+*.png
+
+*.tif
+*.tiff
+
+*.h5
+*.h5ad
+*.hdf5
+
+cache/
+cache-directory/
+tests/cache-directory/
+
+sandbox/
+
+/
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
