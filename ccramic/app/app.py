@@ -310,6 +310,16 @@ def update_href(uploaded):
         return str(relative_filename)
 
 
+@app.callback(
+    Output('annotation_canvas', 'style'),
+    Input('annotation-canvas-size', 'value'))
+def update_output(value):
+    if value is not None:
+        return {'width': f'{value}vh', 'height': f'{value}vh'}
+    else:
+        raise PreventUpdate
+
+
 @app.server.route(os.path.join(tmpdirname) + '/downloads/<path:path>')
 def serve_static(path):
     return flask.send_from_directory(
@@ -335,29 +345,45 @@ app.layout = html.Div([
     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
     dcc.Tabs([
         dcc.Tab(label='Image Annotation', children=[
-            html.Div([dbc.Row([
-                dbc.Col(html.Div([du.Upload(
+            html.Div([dcc.Tabs([dcc.Tab(label='Pixel Analysis', children=[
+                html.Div([
+                    dbc.Row([
+                        dbc.Col(
+                            html.Div([
+                                du.Upload(
                     id='upload-image',
                     max_file_size=5000,
                     max_files=200,
                     filetypes=['png', 'tif', 'tiff', 'h5'],
-                    upload_id="upload-image",
-                ), dcc.Dropdown(id='image_layers', multi=True),
+                    upload_id="upload-image"),
+                    dcc.Dropdown(id='image_layers', multi=True),
+                                dcc.Slider(50, 200, 10, value=125,
+                                           id='annotation-canvas-size'),
                     html.H3("Annotate your tif file"),
+                                dcc.Graph(config={
+                                    "modeBarButtonsToAdd": [
+                                        "drawline",
+                                        "drawopenpath",
+                                        "drawclosedpath",
+                                        "drawcircle",
+                                        "drawrect",
+                                        "eraseshape"]}, id='annotation_canvas',
+                                    style={'width': '125vh', 'height': '125vh'}),
+                            ]), width=9),
+                    dbc.Col(html.Div([
+                    dcc.Dropdown(id='images_in_blend', multi=False),
+                    daq.ColorPicker(id="annotation-color-picker",
+                                    label="Color Picker", value=dict(hex="#119DFF")),
+                    html.A(id='download-link', children='Download File'),
+                html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'})]), width=3),
+                    ])])]),
+                dcc.Tab(label="Panel Metadata", children=[html.Div([dbc.Row([
+                dbc.Col(html.Div([
                     dash_table.DataTable(
                         id='imc-metadata-editable',
                         columns=[],
                         data=None,
                         editable=True),
-                    dcc.Graph(config={
-                        "modeBarButtonsToAdd": [
-                            "drawline",
-                            "drawopenpath",
-                            "drawclosedpath",
-                            "drawcircle",
-                            "drawrect",
-                            "eraseshape"]}, id='annotation_canvas',
-                        style={'width': '150vh', 'height': '150vh'}),
                     # html.Img(id='tiff_image', src=''),
                 ]),
                     width=9),
@@ -368,13 +394,8 @@ app.layout = html.Div([
                     filetypes=['csv'],
                     upload_id="upload-image",
                 ), html.Button("Download Edited metadata", id="btn-download-metadata"),
-                    dcc.Download(id="download-edited-table"),
-                    dcc.Dropdown(id='images_in_blend', multi=False),
-                    daq.ColorPicker(id="annotation-color-picker",
-                                    label="Color Picker", value=dict(hex="#119DFF")),
-                    html.A(id='download-link', children='Download File'),
-                html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'})]), width=3),
-            ])])
+                    dcc.Download(id="download-edited-table")]), width=3),
+            ])])])])]),
         ], id='tab-annotation'),
         dcc.Tab(label='Quantification/Clustering', children=[
             du.Upload(
@@ -398,6 +419,5 @@ app.layout = html.Div([
     dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
-    dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
-    # dcc.Loading(dcc.Store(id="carousel_dict"), fullscreen=True, type="dot")
+    dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot")
 ])
