@@ -1,33 +1,17 @@
-import tifffile
-from tifffile import TiffFile
-from imctools.converters import ome2analysis
-from imctools.converters import ome2histocat
-from imctools.converters import mcdfolder2imcfolder
-from imctools.converters import exportacquisitioncsv
-import os
-from os import listdir
-import pathlib
-import shutil
-import re
-import pandas as pd
+# from imctools.converters import ome2analysis
+# from imctools.converters import ome2histocat
+# from imctools.converters import mcdfolder2imcfolder
+# from imctools.converters import exportacquisitioncsv
 import numpy as np
-import skimage
-from skimage.transform import rescale, resize
-from skimage import exposure
-from numpy import array
-from glob import glob
-from shutil import copyfile
-from skimage import exposure
-from numpy import array
-from skimage.io import imread, imsave
 from PIL import Image
-import random
 from PIL import ImageColor
+import io
+import base64
 
 
 def get_luma(rbg):
-    R, G, B, = rbg
-    return 0.2126*R + 0.7152*G + 0.0722*B
+    red, green, blue = rbg
+    return 0.2126*red + 0.7152*red + 0.0722*blue
 
 
 def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
@@ -52,3 +36,29 @@ def recolour_greyscale(array, colour):
 
     return np.array(image)
 
+
+def convert_image_to_bytes(image):
+    buffered = io.BytesIO()
+    image.save(buffered, format="PNG")
+    return base64.b64encode(buffered.getvalue()).decode()
+
+
+def read_back_base64_to_image(string):
+    image_back = base64.b64decode(string)
+    return Image.open(io.BytesIO(image_back))
+
+
+# def fig_to_uri(in_fig, close_all=True, **save_args):
+#     """
+#     Save a figure as a URI
+#     :param in_fig:
+#     :return:
+#     """
+#     out_img = BytesIO()
+#     in_fig.savefig(out_img, format='png', **save_args)
+#     if close_all:
+#         in_fig.clf()
+#         plt.close('all')
+#     out_img.seek(0)  # rewind file
+#     encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
+#     return "data:image/png;base64,{}".format(encoded)

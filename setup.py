@@ -33,6 +33,7 @@ setup(
                       "opencv-python-headless", 'scanpy', "anndata", "dash", "Flask>=2.2.2", "jinja2",
                       'dash-uploader==0.7.0a1', "dash-canvas", "packaging==21.3.0", "Flask-Caching",
                       "multiprocess", "dash-extensions", "dash_daq", "dash-google-auth", "dash-bootstrap-components",
-                      "pyvips", "imctools", "tifffile", "dash[testing]", "selenium", "diskcache"],
+                      "pyvips", "imctools", "tifffile", "dash[testing]", "selenium", "diskcache", "h5py",
+                      "orjson"],
     python_requires=">=3.9.0",
 )
