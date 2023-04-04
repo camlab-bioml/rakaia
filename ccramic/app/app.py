@@ -17,13 +17,15 @@ from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOu
     ServersideOutputTransform
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-from dash import ctx, DiskcacheManager
+from dash import ctx, DiskcacheManager, Patch
 from tifffile import TiffFile
 # from matplotlib import pyplot as plt
 from .utils import generate_tiff_stack, recolour_greyscale
 import diskcache
 import h5py
 import orjson
+from sqlite3 import DatabaseError
+from readimc import TXTFile, MCDFile
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -38,8 +40,11 @@ except (ModuleNotFoundError, RuntimeError) as no_redis:
     #     'CACHE_TYPE': 'filesystem',
     #     'CACHE_DIR': 'cache-directory'
     # })
-    cache = diskcache.Cache("./cache")
-    background_callback_manager = DiskcacheManager(cache)
+    try:
+        cache = diskcache.Cache("./cache")
+        background_callback_manager = DiskcacheManager(cache)
+    except DatabaseError:
+        cache = None
 
 with tempfile.TemporaryDirectory() as tmpdirname:
     du.configure_upload(app, tmpdirname)
@@ -59,7 +64,7 @@ def display_metadata_distribution(anndata_obj, metadata_selection):
 
 @du.callback(ServersideOutput('uploaded_dict', 'data'),
              id='upload-image')
-@cache.memoize()
+# @cache.memoize()
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     upload_dict = {'single-channel': {}, 'multi-channel': {}}
@@ -80,6 +85,27 @@ def create_layered_dict(status: du.UploadStatus):
                 for image_type in list(data_h5.keys()):
                     for dataset in data_h5[image_type]:
                         upload_dict[image_type][dataset] = data_h5[image_type][dataset][()]
+            elif upload.endswith('.mcd'):
+                with MCDFile(upload) as mcd_file:
+                    channel_labels = None
+                    slide_index = 0
+                    for slide in mcd_file.slides:
+                        acquisition_index = 0
+                        for acq in slide.acquisitions:
+                            if channel_labels is None:
+                                channel_labels = acq.channel_labels
+                            else:
+                                assert all(label in acq.channel_labels for label in channel_labels)
+                            img = mcd_file.read_acquisition(acq)
+                            channel_index = 0
+                            for channel in img:
+                                upload_dict['single-channel']["slide_" + str(slide_index) + "_acq_" +
+                                                              str(acquisition_index) + "_" +
+                                                              channel_labels[channel_index]] = channel
+                                channel_index += 1
+                            acquisition_index += 1
+                        slide_index += 1
+
             else:
                 image = Image.open(upload)
                 upload_dict[os.path.basename(upload)] = image
@@ -92,7 +118,7 @@ def create_layered_dict(status: du.UploadStatus):
 
 @du.callback(ServersideOutput('anndata', 'data'),
              id='upload-quantification')
-@cache.memoize()
+# @cache.memoize()
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     anndata_files = {}
@@ -109,7 +135,6 @@ def create_layered_dict(status: du.UploadStatus):
                     anndata_dict["assays"] = {sub_assay: data.obsm[sub_assay]}
                 else:
                     anndata_dict["assays"][sub_assay] = data.obsm[sub_assay]
-            # anndata_files["anndata_" + str(index)] = anndata_dict
             anndata_files = anndata_dict
     if anndata_files is not None and len(anndata_files) > 0:
         return anndata_files
@@ -164,14 +189,14 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, imag
     if ctx.triggered_id == "uploaded_dict":
         if current_blend_dict is None and uploaded is not None:
             current_blend_dict = {'single-channel': {}, 'multi-channel': {}}
-            for type in current_blend_dict.keys():
-                for pot_layer in list(uploaded[type].keys()):
-                    current_blend_dict[type][pot_layer] = '#FFFFFF'
+            for im_type in current_blend_dict.keys():
+                for pot_layer in list(uploaded[im_type].keys()):
+                    current_blend_dict[im_type][pot_layer] = '#FFFFFF'
             return current_blend_dict
         elif current_blend_dict is not None and uploaded is not None:
-            for type in ['single-channel', 'multi-channel']:
-                for pot_layer in list(uploaded[type].keys()):
-                    current_blend_dict[type][pot_layer] = '#FFFFFF'
+            for im_type in ['single-channel', 'multi-channel']:
+                for pot_layer in list(uploaded[im_type].keys()):
+                    current_blend_dict[im_type][pot_layer] = '#FFFFFF'
             return current_blend_dict
     if ctx.triggered_id == 'annotation-color-picker' and \
             layer is not None and current_blend_dict is not None and image_type is not None:
@@ -188,22 +213,25 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, imag
               State('tiff-image-type', 'value'),
               prevent_initial_call=True)
 def render_image_on_canvas(image_str, image_dict, blend_colour_dict, image_type):
-    if blend_colour_dict is None and image_str is not None and image_type is not None and \
+    try:
+        if blend_colour_dict is None and image_str is not None and image_type is not None and \
+                len(image_dict[image_type].keys()) > 0:
+            blend_colour_dict = {'single-channel': {}, 'multi-channel': {}}
+            for selected in image_str:
+                if selected not in blend_colour_dict[image_type].keys():
+                    blend_colour_dict[image_type][selected] = '#ffffff'
+        if image_str is not None and 1 >= len(image_str) > 0 and \
             len(image_dict[image_type].keys()) > 0:
-        blend_colour_dict = {'single-channel': {}, 'multi-channel': {}}
-        for selected in image_str:
-            if selected not in blend_colour_dict[image_type].keys():
-                blend_colour_dict[image_type][selected] = '#ffffff'
-    if image_str is not None and 1 >= len(image_str) > 0 and \
+            image = recolour_greyscale(image_dict[image_type][image_str[0]], blend_colour_dict[image_type][image_str[0]])
+            fig = px.imshow(image)
+            return fig
+        if image_str is not None and len(image_str) > 1 and \
             len(image_dict[image_type].keys()) > 0:
-        image = recolour_greyscale(image_dict[image_type][image_str[0]], blend_colour_dict[image_type][image_str[0]])
-        fig = px.imshow(image)
-        return fig
-    if image_str is not None and len(image_str) > 1 and \
-            len(image_dict[image_type].keys()) > 0:
-        fig = generate_tiff_stack(image_dict[image_type], image_str, blend_colour_dict[image_type])
-        return px.imshow(fig)
-    else:
+            fig = generate_tiff_stack(image_dict[image_type], image_str, blend_colour_dict[image_type])
+            return px.imshow(fig)
+        else:
+            raise PreventUpdate
+    except KeyError:
         raise PreventUpdate
 
 
@@ -222,7 +250,7 @@ def render_umap_plot(anndata_obj, metadata_selection, assay_selection):
 
 @du.callback(ServersideOutput('image-metadata', 'data'),
              id='upload-metadata')
-@cache.memoize()
+# @cache.memoize()
 def create_imc_meta_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
     imaging_metadata = {}
@@ -293,7 +321,7 @@ def update_canvas_size(value):
               # Input('image-analysis', 'value'),
               State('uploaded_dict', 'data'),
               Input('tiff-image-type', 'value'))
-@cache.memoize()
+# @cache.memoize()
 def create_image_grid(data, image_type):
     if data is not None and image_type is not None:
         row_children = []
@@ -343,7 +371,7 @@ app.layout = html.Div([
                                                                          max_file_size=5000,
                                                                          max_files=200,
                                                                          filetypes=['png', 'tif',
-                                                                                    'tiff', 'h5'],
+                                                                                    'tiff', 'h5', 'mcd'],
                                                                          upload_id="upload-image"),
                                                                      html.Div([html.H5("Choose image type",
                                                                     style={'width': '35%', 'display': 'inline-block'}),
@@ -374,9 +402,9 @@ app.layout = html.Div([
                                                                              "drawcircle",
                                                                              "drawrect",
                                                                              "eraseshape"]},
-                                                                         id='annotation_canvas',
-                                                                         style={'width': '120vh',
-                                                                                'height': '120vh'}),
+                                                                         id='annotation_canvas',)
+                                                                         # style={'width': '120vh',
+                                                                         #        'height': '120vh'}),
                                                                  ]), width=9),
                                                              dbc.Col(html.Div([
                                                                  dcc.Dropdown(id='images_in_blend',

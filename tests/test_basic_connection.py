@@ -44,7 +44,7 @@ def test_for_connection():
 
 
 def recursive_wait_for_elem(app, elem, duration):
-    if duration >= 15:
+    if duration >= 2:
         return NoSuchElementException
     else:
         time.sleep(duration)
@@ -58,7 +58,7 @@ def test_basic_app_load_from_locale(dash_duo):
     ccramic_app = import_app("ccramic.app.app")
     assert str(type(ccramic_app)) == "<class 'dash_extensions.enrich.DashProxy'>"
     dash_duo.start_server(ccramic_app)
-    for elem in ['#upload-image', '#upload-metadata']:
+    for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:
         assert dash_duo.find_element(elem) is not None
     with pytest.raises(NoSuchElementException):
         assert dash_duo.find_element('#fake-input') is not None
