@@ -20,12 +20,13 @@ import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager, Patch
 from tifffile import TiffFile
 # from matplotlib import pyplot as plt
-from .utils import generate_tiff_stack, recolour_greyscale
+from .utils import generate_tiff_stack, recolour_greyscale, df_to_sarray
 import diskcache
 import h5py
 import orjson
 from sqlite3 import DatabaseError
 from readimc import TXTFile, MCDFile
+from io import BytesIO
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -36,15 +37,14 @@ try:
         'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
     })
 except (ModuleNotFoundError, RuntimeError) as no_redis:
-    # cache = Cache(app.server, config={
-    #     'CACHE_TYPE': 'filesystem',
-    #     'CACHE_DIR': 'cache-directory'
-    # })
     try:
         cache = diskcache.Cache("./cache")
         background_callback_manager = DiskcacheManager(cache)
     except DatabaseError:
-        cache = None
+        cache = Cache(app.server, config={
+        'CACHE_TYPE': 'filesystem',
+        'CACHE_DIR': 'cache-directory'
+    })
 
 with tempfile.TemporaryDirectory() as tmpdirname:
     du.configure_upload(app, tmpdirname)
@@ -67,7 +67,7 @@ def display_metadata_distribution(anndata_obj, metadata_selection):
 # @cache.memoize()
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
-    upload_dict = {'single-channel': {}, 'multi-channel': {}}
+    upload_dict = {'single-channel': {}, 'multi-channel': {}, 'metadata': None}
     if len(filenames) > 0:
         for upload in filenames:
             if upload.endswith('.tiff') or upload.endswith('.tif'):
@@ -82,11 +82,19 @@ def create_layered_dict(status: du.UploadStatus):
                             channel_index += 1.
             elif upload.endswith('.h5'):
                 data_h5 = h5py.File(upload, "r")
-                for image_type in list(data_h5.keys()):
-                    for dataset in data_h5[image_type]:
-                        upload_dict[image_type][dataset] = data_h5[image_type][dataset][()]
+                for cat in list(data_h5.keys()):
+                    if 'metadata' not in cat:
+                        for dataset in data_h5[cat]:
+                            upload_dict[cat][dataset] = data_h5[cat][dataset][()]
+                    else:
+                        meta_back = pd.DataFrame(data_h5['metadata'])
+                        for col in meta_back.columns:
+                            meta_back[col] = meta_back[col].str.decode("utf-8")
+                        meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
+                        upload_dict[cat] = meta_back
             elif upload.endswith('.mcd'):
                 with MCDFile(upload) as mcd_file:
+                    channel_names = None
                     channel_labels = None
                     slide_index = 0
                     for slide in mcd_file.slides:
@@ -94,8 +102,14 @@ def create_layered_dict(status: du.UploadStatus):
                         for acq in slide.acquisitions:
                             if channel_labels is None:
                                 channel_labels = acq.channel_labels
+                                channel_names = acq.channel_names
+                                upload_dict['metadata'] = {'Cycle': range(1, len(channel_names) + 1, 1),
+                                                           'Channel Name': channel_names,
+                                                           'Channel Label': channel_labels}
+                                upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label']
                             else:
                                 assert all(label in acq.channel_labels for label in channel_labels)
+                                assert all(name in acq.channel_names for name in channel_names)
                             img = mcd_file.read_acquisition(acq)
                             channel_index = 0
                             for channel in img:
@@ -267,9 +281,13 @@ def create_imc_meta_dict(status: du.UploadStatus):
 @app.callback(
     Output("imc-metadata-editable", "columns"),
     Output("imc-metadata-editable", "data"),
+    Input('uploaded_dict', 'data'),
     Input('image-metadata', 'data'))
-def populate_datatable_columns(column_dict):
-    if column_dict is not None:
+def populate_datatable_columns(uploaded, column_dict):
+    if uploaded is not None and len(uploaded['metadata']) > 0:
+        return [{'id': p, 'name': p} for p in uploaded['metadata'].keys()], \
+               pd.DataFrame(uploaded['metadata']).to_dict(orient='records')
+    elif column_dict is not None:
         return column_dict["columns"], column_dict["data"]
     else:
         raise PreventUpdate
@@ -298,11 +316,20 @@ def update_href(uploaded):
         if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
             os.makedirs(os.path.join(tmpdirname, 'downloads'))
         hf = h5py.File(relative_filename, 'w')
-        groups = ['single-channel', 'multi-channel']
-        for group in groups:
-            hf.create_group(group)
-            for key, value in uploaded[group].items():
-                hf[group].create_dataset(key, data=value)
+        channels = ['single-channel', 'multi-channel']
+        for group in list(uploaded.keys()):
+            if group in channels:
+                hf.create_group(group)
+                for key, value in uploaded[group].items():
+                    hf[group].create_dataset(key, data=value)
+            elif 'metadata' in group:
+                meta_to_write = pd.DataFrame(uploaded['metadata'])
+                if 'columns' not in group:
+                    for col in meta_to_write:
+                        meta_to_write[col] = meta_to_write[col].astype(str)
+                    hf.create_dataset('metadata', data=meta_to_write.to_numpy())
+                else:
+                    hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
         hf.close()
         return str(relative_filename)
 
