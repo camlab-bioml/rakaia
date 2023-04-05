@@ -20,13 +20,14 @@ import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager, Patch
 from tifffile import TiffFile
 # from matplotlib import pyplot as plt
-from .utils import generate_tiff_stack, recolour_greyscale, df_to_sarray
+from .utils import generate_tiff_stack, recolour_greyscale, df_to_sarray, get_area_statistics
 import diskcache
 import h5py
 import orjson
 from sqlite3 import DatabaseError
 from readimc import TXTFile, MCDFile
 from io import BytesIO
+import math
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
 app.title = "ccramic"
@@ -344,6 +345,42 @@ def update_canvas_size(value):
         raise PreventUpdate
 
 
+@app.callback(
+    Output('selected-area-info', 'children'),
+    Input('produce-area-info', 'n_clicks'),
+     State('annotation_canvas', 'figure'),
+    State('annotation_canvas', 'relayoutData'),
+    State('uploaded_dict', 'data'),
+    State('image_layers', 'value'),
+    State('tiff-image-type', 'value'))
+def update_area_information(action, graph, graph_layout, upload, layers, image_type):
+    range_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+    if graph is not None and action is not None and graph_layout is not None and all([elem in graph_layout for
+                                                                                      elem in range_keys]):
+        children = []
+        x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
+        x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
+        y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
+        y_range_high = math.ceil(int(graph_layout['yaxis.range[0]']))
+        assert x_range_high >= x_range_low
+        assert y_range_high >= y_range_low
+        for layer in layers:
+            mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low, x_range_high,
+                                                             y_range_low, y_range_high)
+            children.append(html.H6(f"{layer}: Mean: {mean_exp}, Max: {max_xep}, Min: {min_exp}"))
+        # children = []
+        # if 'xaxis.range[0]' in graph_layout:
+        #     children.append(html.H6(f"x axis region: {graph_layout['xaxis.range[1]']} to "
+        #                             f"{graph_layout['xaxis.range[0]']}"))
+        # if 'yaxis.range[0]' in graph_layout:
+        #     children.append(html.H6(f"y axis region: {graph_layout['yaxis.range[1]']} to "
+        #                             f"{graph_layout['yaxis.range[0]']}"))
+        # return children
+        return children
+    else:
+        raise PreventUpdate
+
+
 @app.callback(Output('image-gallery-row', 'children'),
               # Input('image-analysis', 'value'),
               State('uploaded_dict', 'data'),
@@ -445,6 +482,13 @@ app.layout = html.Div([
                                                                               'whiteSpace': 'pre-line'}),
                                                                  html.A(id='download-link',
                                                                         children='Download File'),
+                                                                    html.Br(),
+                                                            html.Button('Get info on selected area',
+                                                                        id='produce-area-info', n_clicks=0),
+                                                                html.Br(),
+                                                                    html.Div(id='selected-area-info',
+                                                                          style={
+                                                                              'whiteSpace': 'pre-line'})
                                                              ]), width=3),
                                                          ])])]),
                                          dcc.Tab(label="Image Gallery", id='gallery-tab',
