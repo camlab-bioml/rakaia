@@ -285,7 +285,7 @@ def create_imc_meta_dict(status: du.UploadStatus):
     Input('uploaded_dict', 'data'),
     Input('image-metadata', 'data'))
 def populate_datatable_columns(uploaded, column_dict):
-    if uploaded is not None and len(uploaded['metadata']) > 0:
+    if uploaded is not None and uploaded['metadata'] is not None:
         return [{'id': p, 'name': p} for p in uploaded['metadata'].keys()], \
                pd.DataFrame(uploaded['metadata']).to_dict(orient='records')
     elif column_dict is not None:
@@ -346,39 +346,44 @@ def update_canvas_size(value):
 
 
 @app.callback(
-    Output('selected-area-info', 'children'),
-    Input('produce-area-info', 'n_clicks'),
+    Output("selected-area-table", "data"),
      State('annotation_canvas', 'figure'),
-    State('annotation_canvas', 'relayoutData'),
+    Input('annotation_canvas', 'relayoutData'),
     State('uploaded_dict', 'data'),
     State('image_layers', 'value'),
     State('tiff-image-type', 'value'))
-def update_area_information(action, graph, graph_layout, upload, layers, image_type):
+def update_area_information(graph, graph_layout, upload, layers, image_type):
     range_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-    if graph is not None and action is not None and graph_layout is not None and all([elem in graph_layout for
-                                                                                      elem in range_keys]):
-        children = []
-        x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
-        x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
-        y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
-        y_range_high = math.ceil(int(graph_layout['yaxis.range[0]']))
-        assert x_range_high >= x_range_low
-        assert y_range_high >= y_range_low
-        for layer in layers:
-            mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low, x_range_high,
+    if graph is not None and graph_layout is not None and all([elem in graph_layout for
+                                                               elem in range_keys]):
+
+        try:
+            x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
+            x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
+            y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
+            y_range_high = math.ceil(int(graph_layout['yaxis.range[0]']))
+            assert x_range_high >= x_range_low
+            assert y_range_high >= y_range_low
+
+            mean_panel = []
+            max_panel = []
+            min_panel = []
+            for layer in layers:
+                mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low, x_range_high,
                                                              y_range_low, y_range_high)
-            children.append(html.H6(f"{layer}: Mean: {mean_exp}, Max: {max_xep}, Min: {min_exp}"))
-        # children = []
-        # if 'xaxis.range[0]' in graph_layout:
-        #     children.append(html.H6(f"x axis region: {graph_layout['xaxis.range[1]']} to "
-        #                             f"{graph_layout['xaxis.range[0]']}"))
-        # if 'yaxis.range[0]' in graph_layout:
-        #     children.append(html.H6(f"y axis region: {graph_layout['yaxis.range[1]']} to "
-        #                             f"{graph_layout['yaxis.range[0]']}"))
-        # return children
-        return children
+                mean_panel.append(round(float(mean_exp), 2))
+                max_panel.append(round(float(max_xep), 2))
+                min_panel.append(round(float(min_exp), 2))
+
+            layer_dict = {'Layer': layers, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
+
+            return pd.DataFrame(layer_dict).to_dict(orient='records')
+        except AssertionError:
+            return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+                                 'Min': []}).to_dict(orient='records')
     else:
-        raise PreventUpdate
+        return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+                             'Min': []}).to_dict(orient='records')
 
 
 @app.callback(Output('image-gallery-row', 'children'),
@@ -469,7 +474,7 @@ app.layout = html.Div([
                                                                          id='annotation_canvas',)
                                                                          # style={'width': '120vh',
                                                                          #        'height': '120vh'}),
-                                                                 ]), width=9),
+                                                                 ]), width=8),
                                                              dbc.Col(html.Div([
                                                                  dcc.Dropdown(id='images_in_blend',
                                                                               multi=False),
@@ -483,13 +488,16 @@ app.layout = html.Div([
                                                                  html.A(id='download-link',
                                                                         children='Download File'),
                                                                     html.Br(),
-                                                            html.Button('Get info on selected area',
-                                                                        id='produce-area-info', n_clicks=0),
                                                                 html.Br(),
-                                                                    html.Div(id='selected-area-info',
-                                                                          style={
-                                                                              'whiteSpace': 'pre-line'})
-                                                             ]), width=3),
+                                                                    # html.Div(id='selected-area-info',
+                                                                    #       style={
+                                                                    #           'whiteSpace': 'pre-line'}),
+                                                                html.Div([dash_table.DataTable(
+                                                             id='selected-area-table',
+                                                             columns=[{'id': p, 'name': p} for p in
+                                                                      ['Layer', 'Mean', 'Max', 'Min']],
+                                                             data=None)], style={"width": "85%"}),
+                                                             ]), width=4),
                                                          ])])]),
                                          dcc.Tab(label="Image Gallery", id='gallery-tab',
                                                  children=[html.Div(id="image-gallery", children=[
