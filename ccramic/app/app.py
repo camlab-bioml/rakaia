@@ -1,4 +1,3 @@
-
 import anndata
 import tifffile
 import plotly.express as px
@@ -20,7 +19,7 @@ import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager, Patch
 from tifffile import TiffFile
 # from matplotlib import pyplot as plt
-from .utils import generate_tiff_stack, recolour_greyscale, df_to_sarray, get_area_statistics
+from .utils import generate_tiff_stack, recolour_greyscale, get_area_statistics, convert_to_below_255
 import diskcache
 import h5py
 import orjson
@@ -43,9 +42,9 @@ except (ModuleNotFoundError, RuntimeError) as no_redis:
         background_callback_manager = DiskcacheManager(cache)
     except DatabaseError:
         cache = Cache(app.server, config={
-        'CACHE_TYPE': 'filesystem',
-        'CACHE_DIR': 'cache-directory'
-    })
+            'CACHE_TYPE': 'filesystem',
+            'CACHE_DIR': 'cache-directory'
+        })
 
 with tempfile.TemporaryDirectory() as tmpdirname:
     du.configure_upload(app, tmpdirname)
@@ -73,14 +72,15 @@ def create_layered_dict(status: du.UploadStatus):
         for upload in filenames:
             if upload.endswith('.tiff') or upload.endswith('.tif'):
                 if 'ome' not in upload:
-                    upload_dict['single-channel'][os.path.basename(upload)] = tifffile.imread(upload)
+                    upload_dict['single-channel'][os.path.basename(upload)] = convert_to_below_255(tifffile.imread(upload))
                 else:
                     with TiffFile(upload) as tif:
                         channel_index = 0
                         for page in tif.pages:
                             upload_dict['multi-channel'][str("channel_" + f"{channel_index}_") +
-                                        os.path.basename(upload)] = (page.asarray() // 256).astype(np.uint8)
-                            channel_index += 1.
+                                                         os.path.basename(upload)] = \
+                                convert_to_below_255(page.asarray())
+                            channel_index += 1
             elif upload.endswith('.h5'):
                 data_h5 = h5py.File(upload, "r")
                 for cat in list(data_h5.keys()):
@@ -236,12 +236,13 @@ def render_image_on_canvas(image_str, image_dict, blend_colour_dict, image_type)
                 if selected not in blend_colour_dict[image_type].keys():
                     blend_colour_dict[image_type][selected] = '#ffffff'
         if image_str is not None and 1 >= len(image_str) > 0 and \
-            len(image_dict[image_type].keys()) > 0:
-            image = recolour_greyscale(image_dict[image_type][image_str[0]], blend_colour_dict[image_type][image_str[0]])
+                len(image_dict[image_type].keys()) > 0:
+            image = recolour_greyscale(image_dict[image_type][image_str[0]],
+                                       blend_colour_dict[image_type][image_str[0]])
             fig = px.imshow(image)
             return fig
         if image_str is not None and len(image_str) > 1 and \
-            len(image_dict[image_type].keys()) > 0:
+                len(image_dict[image_type].keys()) > 0:
             fig = generate_tiff_stack(image_dict[image_type], image_str, blend_colour_dict[image_type])
             return px.imshow(fig)
         else:
@@ -340,46 +341,86 @@ def update_href(uploaded):
     Input('annotation-canvas-size', 'value'))
 def update_canvas_size(value):
     if value is not None:
-        return {'width': f'{value}vh', 'height': f'{value}vh'}
+        return {'width': f'{1.5*value}vh', 'height': f'{1.5*value}vh'}
     else:
         raise PreventUpdate
 
 
 @app.callback(
     Output("selected-area-table", "data"),
-     State('annotation_canvas', 'figure'),
+    State('annotation_canvas', 'figure'),
     Input('annotation_canvas', 'relayoutData'),
     State('uploaded_dict', 'data'),
     State('image_layers', 'value'),
     State('tiff-image-type', 'value'))
 def update_area_information(graph, graph_layout, upload, layers, image_type):
-    range_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-    if graph is not None and graph_layout is not None and all([elem in graph_layout for
-                                                               elem in range_keys]):
+    # print(graph_layout)
+    # these range keys correspond to the zoom feature
+    zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
-        try:
-            x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
-            x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
-            y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
-            y_range_high = math.ceil(int(graph_layout['yaxis.range[0]']))
-            assert x_range_high >= x_range_low
-            assert y_range_high >= y_range_low
-
+    if graph is not None and graph_layout is not None:
+        # option 1: if shapes are drawn on the canvas
+        if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
+            # these are for each sample
             mean_panel = []
             max_panel = []
             min_panel = []
             for layer in layers:
-                mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low, x_range_high,
-                                                             y_range_low, y_range_high)
-                mean_panel.append(round(float(mean_exp), 2))
-                max_panel.append(round(float(max_xep), 2))
-                min_panel.append(round(float(min_exp), 2))
+                # for each layer we store the values for each shape
+                shapes_mean = []
+                shapes_max = []
+                shapes_min = []
+                for shape in graph_layout['shapes']:
+                    if shape['type'] == 'rect':
+                        x_range_low = math.ceil(int(shape['x0']))
+                        x_range_high = math.ceil(int(shape['x1']))
+                        y_range_low = math.ceil(int(shape['y0']))
+                        y_range_high = math.ceil(int(shape['y1']))
+
+                        assert x_range_high >= x_range_low
+                        assert y_range_high >= y_range_low
+
+                        mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low,
+                                                                         x_range_high,
+                                                                         y_range_low, y_range_high)
+                        shapes_mean.append(round(float(mean_exp), 2))
+                        shapes_max.append(round(float(max_xep), 2))
+                        shapes_min.append(round(float(min_exp), 2))
+
+                mean_panel.append(round(sum(shapes_mean) / len(shapes_mean), 2))
+                max_panel.append(round(sum(shapes_max) / len(shapes_max), 2))
+                min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
 
             layer_dict = {'Layer': layers, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
             return pd.DataFrame(layer_dict).to_dict(orient='records')
-        except AssertionError:
-            return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+
+        # option 2: if the zoom is used
+        elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
+                all([elem in graph_layout for elem in zoom_keys]):
+            try:
+                x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
+                x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
+                y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
+                y_range_high = math.ceil(int(graph_layout['yaxis.range[0]']))
+                assert x_range_high >= x_range_low
+                assert y_range_high >= y_range_low
+
+                mean_panel = []
+                max_panel = []
+                min_panel = []
+                for layer in layers:
+                    mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low, x_range_high,
+                                                                 y_range_low, y_range_high)
+                    mean_panel.append(round(float(mean_exp), 2))
+                    max_panel.append(round(float(max_xep), 2))
+                    min_panel.append(round(float(min_exp), 2))
+
+                layer_dict = {'Layer': layers, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
+
+                return pd.DataFrame(layer_dict).to_dict(orient='records')
+
+            except (AssertionError, ValueError):
+                return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
     else:
         return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
@@ -396,8 +437,9 @@ def create_image_grid(data, image_type):
         row_children = []
         for chosen in list(data[image_type].keys()):
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(chosen, className="card-text")),
-                                                  dbc.CardImg(src=Image.fromarray(data[image_type][chosen]).convert('RGB'),
-                                                              bottom=True)]), width=3))
+                                                  dbc.CardImg(
+                                                      src=Image.fromarray(data[image_type][chosen]).convert('RGB'),
+                                                      bottom=True)]), width=3))
 
         return row_children
 
@@ -443,23 +485,30 @@ app.layout = html.Div([
                                                                                     'tiff', 'h5', 'mcd'],
                                                                          upload_id="upload-image"),
                                                                      html.Div([html.H5("Choose image type",
-                                                                    style={'width': '35%', 'display': 'inline-block'}),
-                                                                    html.H5("Choose image layers",
-                                                                    style={'width': '65%', 'display': 'inline-block'}),
+                                                                                       style={'width': '35%',
+                                                                                              'display': 'inline-block'}),
+                                                                               html.H5("Choose image layers",
+                                                                                       style={'width': '65%',
+                                                                                              'display': 'inline-block'}),
                                                                                dcc.Dropdown(
-                                                                         id='tiff-image-type',
-                                                                         multi=False,
-                                                                        options=['single-channel', 'multi-channel'],
-                                                                     style={'width': '30%', 'display': 'inline-block',
-                                                                            'margin-right': '-30'}),
-                                                                         dcc.Dropdown(
-                                                                         id='image_layers',
-                                                                         multi=True,
-                                                                         style={'width': '70%', 'display': 'inline-block'})],
-                                                                     style={'width': '125%', 'height': '125%',
-                                                                            'display': 'inline-block', 'margin-left': '-30'}),
-                                                                     dcc.Slider(50, 200, 10,
-                                                                                value=120,
+                                                                                   id='tiff-image-type',
+                                                                                   multi=False,
+                                                                                   options=['single-channel',
+                                                                                            'multi-channel'],
+                                                                                   style={'width': '30%',
+                                                                                          'display': 'inline-block',
+                                                                                          'margin-right': '-30'}),
+                                                                               dcc.Dropdown(
+                                                                                   id='image_layers',
+                                                                                   multi=True,
+                                                                                   style={'width': '70%',
+                                                                                          'height': '100px',
+                                                                                          'display': 'inline-block'})],
+                                                                              style={'width': '125%', 'height': '100%',
+                                                                                     'display': 'inline-block',
+                                                                                     'margin-left': '-30'}),
+                                                                     dcc.Slider(50, 100, 10,
+                                                                                value=75,
                                                                                 id='annotation-canvas-size'),
                                                                      html.H3(
                                                                          "Annotate your tif file"),
@@ -471,9 +520,9 @@ app.layout = html.Div([
                                                                              "drawcircle",
                                                                              "drawrect",
                                                                              "eraseshape"]},
-                                                                         id='annotation_canvas',)
-                                                                         # style={'width': '120vh',
-                                                                         #        'height': '120vh'}),
+                                                                         id='annotation_canvas', )
+                                                                     # style={'width': '120vh',
+                                                                     #        'height': '120vh'}),
                                                                  ]), width=8),
                                                              dbc.Col(html.Div([
                                                                  dcc.Dropdown(id='images_in_blend',
@@ -487,16 +536,16 @@ app.layout = html.Div([
                                                                               'whiteSpace': 'pre-line'}),
                                                                  html.A(id='download-link',
                                                                         children='Download File'),
-                                                                    html.Br(),
-                                                                html.Br(),
-                                                                    # html.Div(id='selected-area-info',
-                                                                    #       style={
-                                                                    #           'whiteSpace': 'pre-line'}),
-                                                                html.Div([dash_table.DataTable(
-                                                             id='selected-area-table',
-                                                             columns=[{'id': p, 'name': p} for p in
-                                                                      ['Layer', 'Mean', 'Max', 'Min']],
-                                                             data=None)], style={"width": "85%"}),
+                                                                 html.Br(),
+                                                                 html.Br(),
+                                                                 # html.Div(id='selected-area-info',
+                                                                 #       style={
+                                                                 #           'whiteSpace': 'pre-line'}),
+                                                                 html.Div([dash_table.DataTable(
+                                                                     id='selected-area-table',
+                                                                     columns=[{'id': p, 'name': p} for p in
+                                                                              ['Layer', 'Mean', 'Max', 'Min']],
+                                                                     data=None)], style={"width": "85%"}),
                                                              ]), width=4),
                                                          ])])]),
                                          dcc.Tab(label="Image Gallery", id='gallery-tab',

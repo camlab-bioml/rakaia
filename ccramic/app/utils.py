@@ -11,7 +11,7 @@ import base64
 
 def get_luma(rbg):
     red, green, blue = rbg
-    return 0.2126*red + 0.7152*red + 0.0722*blue
+    return 0.2126 * red + 0.7152 * red + 0.0722 * blue
 
 
 def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
@@ -28,18 +28,15 @@ def recolour_greyscale(array, colour):
     r, g, b = ImageColor.getcolor(colour, "RGB")
     for i in range(image.width):
         for j in range(image.height):
-            if pixels[i, j] != (0, 0, 0):
-                try:
-                    luma = get_luma(pixels[i, j])
-                    transform = []
-                    for col in [r, g, b]:
-                        try:
-                            transform.append(int(col * (luma / 255)))
-                        except ZeroDivisionError:
-                            transform.append(0)
-                    pixels[i, j] = (transform[0], transform[1], transform[2])
-                except ZeroDivisionError:
-                    pixels[i, j] = (0, 0, 0)
+            if pixels[i, j] != (0, 0, 0) and pixels[i, j] is not None:
+                luma = get_luma(pixels[i, j])
+                transform = []
+                for col in [r, g, b]:
+                    try:
+                        transform.append(int(col * (luma / 255)))
+                    except ZeroDivisionError:
+                        transform.append(0)
+                pixels[i, j] = (transform[0], transform[1], transform[2])
 
     return np.array(image)
 
@@ -116,4 +113,9 @@ def df_to_sarray(df):
 def get_area_statistics(array, x_range_low, x_range_high, y_range_low, y_range_high):
     subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-    return np.average(subset), np.amax(subset), np.amin(subset)
+    return 100 * np.average(subset) / np.max(array), 100 * np.amax(subset) / np.max(array), \
+           100 * np.amin(subset) / np.max(array)
+
+
+def convert_to_below_255(array):
+    return array if np.max(array) <= 255 else (array // 256).astype(np.uint8)
