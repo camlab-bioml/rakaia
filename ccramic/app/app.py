@@ -19,7 +19,8 @@ import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager, Patch
 from tifffile import TiffFile
 # from matplotlib import pyplot as plt
-from .utils import generate_tiff_stack, recolour_greyscale, get_area_statistics, convert_to_below_255
+from .utils import generate_tiff_stack, recolour_greyscale, get_area_statistics, convert_to_below_255, \
+    resize_for_canvas
 import diskcache
 import h5py
 import orjson
@@ -91,7 +92,10 @@ def create_layered_dict(status: du.UploadStatus):
                         meta_back = pd.DataFrame(data_h5['metadata'])
                         for col in meta_back.columns:
                             meta_back[col] = meta_back[col].str.decode("utf-8")
-                        meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
+                        try:
+                            meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
+                        except KeyError:
+                            pass
                         upload_dict[cat] = meta_back
             elif upload.endswith('.mcd'):
                 with MCDFile(upload) as mcd_file:
@@ -348,13 +352,13 @@ def update_canvas_size(value):
 
 @app.callback(
     Output("selected-area-table", "data"),
-    State('annotation_canvas', 'figure'),
+    Input('annotation_canvas', 'figure'),
     Input('annotation_canvas', 'relayoutData'),
     State('uploaded_dict', 'data'),
     State('image_layers', 'value'),
     State('tiff-image-type', 'value'))
 def update_area_information(graph, graph_layout, upload, layers, image_type):
-    # print(graph_layout)
+    
     # these range keys correspond to the zoom feature
     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -422,6 +426,9 @@ def update_area_information(graph, graph_layout, upload, layers, image_type):
             except (AssertionError, ValueError):
                 return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
+        else:
+            return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+                                 'Min': []}).to_dict(orient='records')
     else:
         return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
                              'Min': []}).to_dict(orient='records')
@@ -438,7 +445,8 @@ def create_image_grid(data, image_type):
         for chosen in list(data[image_type].keys()):
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(chosen, className="card-text")),
                                                   dbc.CardImg(
-                                                      src=Image.fromarray(data[image_type][chosen]).convert('RGB'),
+                                                      src=resize_for_canvas(Image.fromarray(data[image_type][chosen]).
+                                                      convert('RGB')),
                                                       bottom=True)]), width=3))
 
         return row_children
@@ -479,7 +487,8 @@ app.layout = html.Div([
                                                                  html.Div([
                                                                      du.Upload(
                                                                          id='upload-image',
-                                                                         max_file_size=5000,
+                                                                         max_file_size=10000,
+                                                                         max_total_size=10000,
                                                                          max_files=200,
                                                                          filetypes=['png', 'tif',
                                                                                     'tiff', 'h5', 'mcd'],
