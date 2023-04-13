@@ -10,8 +10,7 @@ import base64
 
 
 def get_luma(rbg):
-    red, green, blue = rbg
-    return 0.2126 * red + 0.7152 * red + 0.0722 * blue
+    return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
 
 
 def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
@@ -22,23 +21,45 @@ def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
 
 
 def recolour_greyscale(array, colour):
-    image = Image.fromarray(array)
-    image = image.convert('RGB')
-    pixels = image.load()
-    r, g, b = ImageColor.getcolor(colour, "RGB")
-    for i in range(image.width):
-        for j in range(image.height):
-            if pixels[i, j] != (0, 0, 0) and pixels[i, j] is not None:
-                luma = get_luma(pixels[i, j])
-                transform = []
-                for col in [r, g, b]:
-                    try:
-                        transform.append(int(col * (luma / 255)))
-                    except ZeroDivisionError:
-                        transform.append(0)
-                pixels[i, j] = (transform[0], transform[1], transform[2])
+    if colour not in ['#ffffff', '#FFFFFF']:
+        image = Image.fromarray(array)
+        image = image.convert('RGB')
+        red, green, blue = ImageColor.getcolor(colour, "RGB")
+    # array = np.array(image)
+    #
+    # print(red, green, blue)
+    #
+    # a = array[:, :, 0] > 0
+    # b = array[:, :, 1] > 0
+    # c = array[:, :, 2] > 0
+    #
+    # luma = np.apply_along_axis(get_luma_list, 2, array)
+    #
+    # array[a, 0] = red * luma[a] / 255
+    # array[b, 1] = green * luma[b] / 255
+    # array[c, 2] = blue * luma[c] / 255
+    #
+    # return array
 
-    return np.array(image)
+        pixels = image.load()
+
+        for i in range(image.width):
+            for j in range(image.height):
+                if sum(pixels[i, j]) > 10 and pixels[i, j] is not None:
+                    luma = get_luma(pixels[i, j])
+                    # transform = []
+                    # for col in [red, green, blue]:
+                    #     try:
+                    #         transform.append(int(col * (luma / 255)))
+                    #     except ZeroDivisionError:
+                    #         transform.append(0)
+                    pixels[i, j] = (int(red * (luma / 255)), int(green * (luma / 255)), int(blue * (luma / 255)))
+
+        return np.array(image)
+    else:
+        image = Image.fromarray(array)
+        image = image.convert('RGB')
+        return np.array(image)
 
 
 def convert_image_to_bytes(image):
