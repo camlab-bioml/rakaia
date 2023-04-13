@@ -28,6 +28,7 @@ from sqlite3 import DatabaseError
 from readimc import TXTFile, MCDFile
 from io import BytesIO
 import math
+import plotly.graph_objects as go
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP],
                 )
@@ -250,27 +251,33 @@ def render_image_on_canvas(image_str, image_dict, blend_colour_dict, image_type)
                 len(image_dict[image_type].keys()) > 0:
             image = recolour_greyscale(image_dict[image_type][image_str[0]],
                                        blend_colour_dict[image_type][image_str[0]])
-            fig = px.imshow(image).add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+            fig = px.imshow(image)
+
+            fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
                                    yref='paper',
-                                   x=1,
+                                   x=0.99,
                                    xanchor='right',
                                    y=0.1,
                                    yanchor='bottom',
                                    showarrow=False)
-            return fig
+            return fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                     xaxis = go.XAxis(showticklabels=False),
+                                     yaxis = go.YAxis(showticklabels=False))
         if image_str is not None and len(image_str) > 1 and \
                 len(image_dict[image_type].keys()) > 0:
-            fig = generate_tiff_stack(image_dict[image_type],
+            stack = generate_tiff_stack(image_dict[image_type],
                 image_str, blend_colour_dict[image_type])
 
-            return px.imshow(fig).add_annotation(
+            fig = px.imshow(stack).add_annotation(
                 text=legend_text, font={"size": 15}, xref='paper',
                                    yref='paper',
-                                   x=1,
                                    xanchor='right',
-                                   y=0.05,
                                    yanchor='bottom',
                                    showarrow=False)
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                              xaxis=go.XAxis(showticklabels=False),
+                              yaxis=go.YAxis(showticklabels=False))
+            return fig
         else:
             raise PreventUpdate
     except KeyError:
@@ -364,10 +371,17 @@ def update_href(uploaded):
 
 @app.callback(
     Output('annotation_canvas', 'style'),
-    Input('annotation-canvas-size', 'value'))
-def update_canvas_size(value):
+    Input('annotation-canvas-size', 'value'),
+    Input('annotation_canvas', 'figure'))
+def update_canvas_size(value, current_canvas):
+    if current_canvas is not None:
+        # aspect ratio is width divided by height
+        aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                       int(current_canvas['layout']['yaxis']['range'][0])
+    else:
+        aspect_ratio = 1
     if value is not None:
-        return {'width': f'{1.5*value}vh', 'height': f'{1.5*value}vh'}
+        return {'width': f'{value*aspect_ratio}vh', 'height': f'{value}vh'}
     else:
         raise PreventUpdate
 
