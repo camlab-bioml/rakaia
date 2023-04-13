@@ -29,7 +29,8 @@ from readimc import TXTFile, MCDFile
 from io import BytesIO
 import math
 
-app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP],
+                )
 app.title = "ccramic"
 
 try:
@@ -229,8 +230,7 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, imag
               Input('image_layers', 'value'),
               State('uploaded_dict', 'data'),
               Input('blending_colours', 'data'),
-              State('tiff-image-type', 'value'),
-              prevent_initial_call=True)
+              State('tiff-image-type', 'value'))
 def render_image_on_canvas(image_str, image_dict, blend_colour_dict, image_type):
     try:
         if blend_colour_dict is None and image_str is not None and image_type is not None and \
@@ -239,16 +239,38 @@ def render_image_on_canvas(image_str, image_dict, blend_colour_dict, image_type)
             for selected in image_str:
                 if selected not in blend_colour_dict[image_type].keys():
                     blend_colour_dict[image_type][selected] = '#ffffff'
+        legend_text = ''
+        if image_str is not None:
+            for image in image_str:
+                if blend_colour_dict[image_type][image] not in ['#ffffff', '#FFFFFF']:
+                    legend_text = legend_text + f'<span style="color:' \
+                                                f'{blend_colour_dict[image_type][image]}">{image}</span><br>'
+
         if image_str is not None and 1 >= len(image_str) > 0 and \
                 len(image_dict[image_type].keys()) > 0:
             image = recolour_greyscale(image_dict[image_type][image_str[0]],
                                        blend_colour_dict[image_type][image_str[0]])
-            fig = px.imshow(image)
+            fig = px.imshow(image).add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                                   yref='paper',
+                                   x=1,
+                                   xanchor='right',
+                                   y=0.1,
+                                   yanchor='bottom',
+                                   showarrow=False)
             return fig
         if image_str is not None and len(image_str) > 1 and \
                 len(image_dict[image_type].keys()) > 0:
-            fig = generate_tiff_stack(image_dict[image_type], image_str, blend_colour_dict[image_type])
-            return px.imshow(fig)
+            fig = generate_tiff_stack(image_dict[image_type],
+                image_str, blend_colour_dict[image_type])
+
+            return px.imshow(fig).add_annotation(
+                text=legend_text, font={"size": 15}, xref='paper',
+                                   yref='paper',
+                                   x=1,
+                                   xanchor='right',
+                                   y=0.05,
+                                   yanchor='bottom',
+                                   showarrow=False)
         else:
             raise PreventUpdate
     except KeyError:
@@ -358,7 +380,7 @@ def update_canvas_size(value):
     State('image_layers', 'value'),
     State('tiff-image-type', 'value'))
 def update_area_information(graph, graph_layout, upload, layers, image_type):
-    
+
     # these range keys correspond to the zoom feature
     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -469,6 +491,8 @@ def create_legend(blend_colours, current_blend, image_type):
         for key, value in blend_colours[image_type].items():
             if blend_colours[image_type][key] != '#FFFFFF' and key in current_blend:
                 children.append(html.H6(f"{key}", style={"color": f"{value}"}))
+
+
         return html.Div(children=children)
     else:
         raise PreventUpdate
@@ -529,7 +553,7 @@ app.layout = html.Div([
                                                                              "drawcircle",
                                                                              "drawrect",
                                                                              "eraseshape"]},
-                                                                         id='annotation_canvas', )
+                                                                         id='annotation_canvas')
                                                                      # style={'width': '120vh',
                                                                      #        'height': '120vh'}),
                                                                  ]), width=8),
