@@ -19,7 +19,8 @@ import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager, Patch
 from tifffile import TiffFile
 # from matplotlib import pyplot as plt
-from .utils import generate_tiff_stack, recolour_greyscale, get_area_statistics, convert_to_below_255
+from .utils import generate_tiff_stack, recolour_greyscale, get_area_statistics, convert_to_below_255, \
+    resize_for_canvas
 import diskcache
 import h5py
 import orjson
@@ -27,8 +28,10 @@ from sqlite3 import DatabaseError
 from readimc import TXTFile, MCDFile
 from io import BytesIO
 import math
+import plotly.graph_objects as go
 
-app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP])
+app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP],
+                )
 app.title = "ccramic"
 
 try:
@@ -205,11 +208,9 @@ def create_dropdown_blend(chosen_for_blend):
               Input('image_layers', 'value'),
               State('canvas-layers', 'data'),
               Output('blending_colours', 'data'),
-              Output('canvas-layers', 'data'),
+              ServersideOutput('canvas-layers', 'data'),
               prevent_initial_call=True)
 def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, image_type, add_to_layer, all_layers):
-    print("checking layers")
-    print(all_layers)
     # if data is uploaded, initialize the colour dict with white
     # do not update the layers if none have been selected
     if ctx.triggered_id == "uploaded_dict":
@@ -232,33 +233,48 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, imag
             if elem not in current_blend_dict[image_type].keys():
                 current_blend_dict[image_type][elem] = '#FFFFFF'
             if elem not in all_layers[image_type].keys():
-                all_layers[image_type][elem] = recolour_greyscale(uploaded[image_type][elem],
-                                                                  '#FFFFFF')
+                all_layers[image_type][elem] = np.array(recolour_greyscale(uploaded[image_type][elem],
+                                                                  '#FFFFFF')).astype(np.uint8)
         return current_blend_dict, all_layers
     # if the trigger is the colour wheel, update the specific layer with the colour chosen
     # update the layers with the colour
     if ctx.triggered_id == 'annotation-color-picker' and \
             layer is not None and current_blend_dict is not None and image_type is not None:
         current_blend_dict[image_type][layer] = colour['hex']
-        all_layers[image_type][layer] = recolour_greyscale(uploaded[image_type][layer],
-                                                          colour['hex'])
+        all_layers[image_type][layer] = np.array(recolour_greyscale(uploaded[image_type][layer],
+                                                          colour['hex'])).astype(np.uint8)
         return current_blend_dict, all_layers
     else:
-        return None
+        raise PreventUpdate
 
 
 @app.callback(Output('annotation_canvas', 'figure'),
               Input('canvas-layers', 'data'),
               State('image_layers', 'value'),
               State('tiff-image-type', 'value'),
+              State('blending_colours', 'data'),
               prevent_initial_call=True)
-def render_image_on_canvas(canvas_layers, currently_selected, image_type):
-    if canvas_layers is not None and currently_selected is not None:
-        print("updating fig")
-        # fig = Image.fromarray(sum([canvas_layers[image_type][elem] for elem in currently_selected]))
-        fig = canvas_layers[image_type][currently_selected[0]]
-        print(fig)
-        return px.imshow(fig)
+def render_image_on_canvas(canvas_layers, currently_selected, image_type, blend_colour_dict):
+    if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None:
+        legend_text = ''
+        for image in currently_selected:
+                if blend_colour_dict[image_type][image] not in ['#ffffff', '#FFFFFF']:
+                    legend_text = legend_text + f'<span style="color:' \
+                                                f'{blend_colour_dict[image_type][image]}">{image}</span><br>'
+        image = Image.fromarray(sum([np.asarray(canvas_layers[image_type][elem]) for elem in currently_selected]))
+        # image = Image.fromarray(canvas_layers[image_type][currently_selected[0]])
+        fig = px.imshow(image)
+        # fig = canvas_layers[image_type][currently_selected[0]]
+        fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                           yref='paper',
+                           x=0.99,
+                           xanchor='right',
+                           y=0.1,
+                           yanchor='bottom',
+                           showarrow=False)
+        return fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                 xaxis=go.XAxis(showticklabels=False),
+                                 yaxis=go.YAxis(showticklabels=False))
     else:
         raise PreventUpdate
 
@@ -350,23 +366,30 @@ def update_href(uploaded):
 
 @app.callback(
     Output('annotation_canvas', 'style'),
-    Input('annotation-canvas-size', 'value'))
-def update_canvas_size(value):
+    Input('annotation-canvas-size', 'value'),
+    Input('annotation_canvas', 'figure'))
+def update_canvas_size(value, current_canvas):
+    if current_canvas is not None:
+        # aspect ratio is width divided by height
+        aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                       int(current_canvas['layout']['yaxis']['range'][0])
+    else:
+        aspect_ratio = 1
     if value is not None:
-        return {'width': f'{1.5*value}vh', 'height': f'{1.5*value}vh'}
+        return {'width': f'{value*aspect_ratio}vh', 'height': f'{value}vh'}
     else:
         raise PreventUpdate
 
 
 @app.callback(
     Output("selected-area-table", "data"),
-    State('annotation_canvas', 'figure'),
+    Input('annotation_canvas', 'figure'),
     Input('annotation_canvas', 'relayoutData'),
     State('uploaded_dict', 'data'),
     State('image_layers', 'value'),
     State('tiff-image-type', 'value'))
 def update_area_information(graph, graph_layout, upload, layers, image_type):
-    # print(graph_layout)
+
     # these range keys correspond to the zoom feature
     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -434,6 +457,9 @@ def update_area_information(graph, graph_layout, upload, layers, image_type):
             except (AssertionError, ValueError):
                 return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
+        else:
+            return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+                                 'Min': []}).to_dict(orient='records')
     else:
         return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
                              'Min': []}).to_dict(orient='records')
@@ -451,7 +477,8 @@ def create_image_grid(data, image_type, render_gallery):
         for chosen in list(data[image_type].keys()):
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(chosen, className="card-text")),
                                                   dbc.CardImg(
-                                                      src=Image.fromarray(data[image_type][chosen]).convert('RGB'),
+                                                      src=resize_for_canvas(Image.fromarray(data[image_type][chosen]).
+                                                      convert('RGB')),
                                                       bottom=True)]), width=3))
 
         return row_children
@@ -474,6 +501,8 @@ def create_legend(blend_colours, current_blend, image_type):
         for key, value in blend_colours[image_type].items():
             if blend_colours[image_type][key] != '#FFFFFF' and key in current_blend:
                 children.append(html.H6(f"{key}", style={"color": f"{value}"}))
+
+
         return html.Div(children=children)
     else:
         raise PreventUpdate

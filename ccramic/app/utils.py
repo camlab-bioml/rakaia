@@ -47,19 +47,19 @@ def recolour_greyscale(array, colour):
             for j in range(image.height):
                 if sum(pixels[i, j]) > 10 and pixels[i, j] is not None:
                     luma = get_luma(pixels[i, j])
-                    # transform = []
-                    # for col in [red, green, blue]:
-                    #     try:
-                    #         transform.append(int(col * (luma / 255)))
-                    #     except ZeroDivisionError:
-                    #         transform.append(0)
+                # transform = []
+                # for col in [red, green, blue]:
+                #     try:
+                #         transform.append(int(col * (luma / 255)))
+                #     except ZeroDivisionError:
+                #         transform.append(0)
                     pixels[i, j] = (int(red * (luma / 255)), int(green * (luma / 255)), int(blue * (luma / 255)))
 
-        return np.array(image)
+        return np.array(image).astype(np.uint8)
     else:
         image = Image.fromarray(array)
         image = image.convert('RGB')
-        return np.array(image)
+        return np.array(image).astype(np.uint8)
 
 
 def convert_image_to_bytes(image):
@@ -140,3 +140,9 @@ def get_area_statistics(array, x_range_low, x_range_high, y_range_low, y_range_h
 
 def convert_to_below_255(array):
     return array if np.max(array) <= 255 else (array // 256).astype(np.uint8)
+
+
+def resize_for_canvas(image, basewidth=400):
+    wpercent = (basewidth / float(image.size[0]))
+    hsize = int((float(image.size[1]) * float(wpercent)))
+    return image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
