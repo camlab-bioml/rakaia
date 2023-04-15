@@ -25,41 +25,45 @@ def recolour_greyscale(array, colour):
         image = Image.fromarray(array)
         image = image.convert('RGB')
         red, green, blue = ImageColor.getcolor(colour, "RGB")
-    # array = np.array(image)
-    #
-    # print(red, green, blue)
-    #
-    # a = array[:, :, 0] > 0
-    # b = array[:, :, 1] > 0
-    # c = array[:, :, 2] > 0
-    #
-    # luma = np.apply_along_axis(get_luma_list, 2, array)
-    #
-    # array[a, 0] = red * luma[a] / 255
-    # array[b, 1] = green * luma[b] / 255
-    # array[c, 2] = blue * luma[c] / 255
-    #
-    # return array
 
-        pixels = image.load()
+        # # array = np.array(image)
+        # # print(array.shape)
+        # # for i in range(3, 256):
+        # #     array[(array[:, :, 0] == i) & (array[:, :, 1] == i) &
+        # #             (array[:, :, 2] == i)] = [red*(i/255), green *(i/255), blue*(i/255)]
+        #
+        # pixels = image.load()
+        #
+        # for i in range(image.width):
+        #     for j in range(image.height):
+        #         if sum(pixels[i, j]) > 10 and pixels[i, j] is not None:
+        #             # luma = get_luma(pixels[i, j])
+        #         # transform = []
+        #         # for col in [red, green, blue]:
+        #         #     try:
+        #         #         transform.append(int(col * (luma / 255)))
+        #         #     except ZeroDivisionError:
+        #         #         transform.append(0)
+        #             val = pixels[i, j][0]
+        #             pixels[i, j] = (int(red * (val / 255)), int(green * (val / 255)), int(blue * (val / 255)))
+        #
+        # return np.array(image)
 
-        for i in range(image.width):
-            for j in range(image.height):
-                if sum(pixels[i, j]) > 10 and pixels[i, j] is not None:
-                    luma = get_luma(pixels[i, j])
-                # transform = []
-                # for col in [red, green, blue]:
-                #     try:
-                #         transform.append(int(col * (luma / 255)))
-                #     except ZeroDivisionError:
-                #         transform.append(0)
-                    pixels[i, j] = (int(red * (luma / 255)), int(green * (luma / 255)), int(blue * (luma / 255)))
+        array = np.array(image)
 
-        return np.array(image).astype(np.uint8)
+        new_array = np.empty((array.shape[0], array.shape[1], 3))
+        new_array[:, :, 0] = red
+        new_array[:, :, 1] = green
+        new_array[:, :, 2] = blue
+
+        converted = new_array * (np.array(image) / 255)
+        # print(converted)
+        return converted.astype(np.uint8)
+
     else:
         image = Image.fromarray(array)
         image = image.convert('RGB')
-        return np.array(image).astype(np.uint8)
+        return np.array(image)
 
 
 def convert_image_to_bytes(image):
