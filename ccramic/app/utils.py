@@ -10,8 +10,7 @@ import base64
 
 
 def get_luma(rbg):
-    red, green, blue = rbg
-    return 0.2126*red + 0.7152*red + 0.0722*blue
+    return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
 
 
 def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
@@ -22,19 +21,49 @@ def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
 
 
 def recolour_greyscale(array, colour):
-    image = Image.fromarray(array)
-    image = image.convert('RGB')
-    pixels = image.load()
-    r, g, b = ImageColor.getcolor(colour, "RGB")
-    for i in range(image.width):
-        for j in range(image.height):
-            try:
-                luma = get_luma(pixels[i, j])
-                pixels[i, j] = (int(r * (luma / 255)), int(g * (luma / 255)), int(b * (luma / 255)))
-            except ZeroDivisionError:
-                pixels[i, j] = (0, 0, 0)
+    if colour not in ['#ffffff', '#FFFFFF']:
+        image = Image.fromarray(array)
+        image = image.convert('RGB')
+        red, green, blue = ImageColor.getcolor(colour, "RGB")
 
-    return np.array(image)
+        # # array = np.array(image)
+        # # print(array.shape)
+        # # for i in range(3, 256):
+        # #     array[(array[:, :, 0] == i) & (array[:, :, 1] == i) &
+        # #             (array[:, :, 2] == i)] = [red*(i/255), green *(i/255), blue*(i/255)]
+        #
+        # pixels = image.load()
+        #
+        # for i in range(image.width):
+        #     for j in range(image.height):
+        #         if sum(pixels[i, j]) > 10 and pixels[i, j] is not None:
+        #             # luma = get_luma(pixels[i, j])
+        #         # transform = []
+        #         # for col in [red, green, blue]:
+        #         #     try:
+        #         #         transform.append(int(col * (luma / 255)))
+        #         #     except ZeroDivisionError:
+        #         #         transform.append(0)
+        #             val = pixels[i, j][0]
+        #             pixels[i, j] = (int(red * (val / 255)), int(green * (val / 255)), int(blue * (val / 255)))
+        #
+        # return np.array(image)
+
+        array = np.array(image)
+
+        new_array = np.empty((array.shape[0], array.shape[1], 3))
+        new_array[:, :, 0] = red
+        new_array[:, :, 1] = green
+        new_array[:, :, 2] = blue
+
+        converted = new_array * (np.array(image) / 255)
+        # print(converted)
+        return converted.astype(np.uint8)
+
+    else:
+        image = Image.fromarray(array)
+        image = image.convert('RGB')
+        return np.array(image)
 
 
 def convert_image_to_bytes(image):
@@ -104,3 +133,20 @@ def df_to_sarray(df):
             raise
 
     return z, dtype
+
+
+def get_area_statistics(array, x_range_low, x_range_high, y_range_low, y_range_high):
+    subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+                          range(int(x_range_low), int(x_range_high), 1))]
+    return 100 * np.average(subset) / np.max(array), 100 * np.amax(subset) / np.max(array), \
+           100 * np.amin(subset) / np.max(array)
+
+
+def convert_to_below_255(array):
+    return array if np.max(array) <= 255 else (array // 256).astype(np.uint8)
+
+
+def resize_for_canvas(image, basewidth=400):
+    wpercent = (basewidth / float(image.size[0]))
+    hsize = int((float(image.size[1]) * float(wpercent)))
+    return image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
