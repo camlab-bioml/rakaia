@@ -29,6 +29,7 @@ from io import BytesIO
 import math
 import plotly.graph_objects as go
 from ccramic import __version__
+from pathlib import Path
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP],
                 )
@@ -73,6 +74,13 @@ def create_layered_dict(status: du.UploadStatus):
     # upload_dict = {'single-channel': {}, 'multi-channel': {}, 'metadata': None}
     upload_dict = {}
     if len(filenames) > 0:
+        upload_dict['metadata'] = {}
+        metadata_channels = []
+        metadata_labels = []
+        experiment_index = 0
+        upload_dict["experiment" + str(experiment_index)] = {}
+        upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
+        upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)] = {}
         for upload in filenames:
             # if reading back in data with h5
             if upload.endswith('.h5'):
@@ -96,30 +104,34 @@ def create_layered_dict(status: du.UploadStatus):
                             pass
                         upload_dict[exp] = meta_back
             else:
-                experiment_index = 0
-                upload_dict["experiment" + str(experiment_index)] = {}
                 # slide_index = 0
                 # acquisition_index = 0
                 # if tiffs are uploaded, treat as one slide and one acquisition
                 if upload.endswith('.tiff') or upload.endswith('.tif'):
-                    upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
-                    upload_dict["experiment" + str(experiment_index)]["slide" + str(0)][
-                        "acq" + str(0)] = {}
                     if 'ome' not in upload:
-                        basename = str(upload).split(".tif")[0]
+                        tiff_path = Path(upload)
+                        file__name, file_extension = os.path.splitext(tiff_path)
+                        basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
                         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][basename] = \
                             convert_to_below_255(tifffile.imread(upload))
+                        metadata_channels.append(basename)
+                        metadata_labels.append(basename)
                     else:
                         with TiffFile(upload) as tif:
                             basename = str(upload).split(".ome.tiff")[0]
-                            channel_index = 0
+                            multi_channel_index = 0
                             for page in tif.pages:
                                 upload_dict["experiment" + str(experiment_index)]["slide" +
                                                     str(0)]["acq" + str(0)][basename][basename +
                                                     str("channel_" + f"{channel_index}_") +
                                                          os.path.basename(upload)] = \
                                     convert_to_below_255(page.asarray())
-                                channel_index += 1
+                                multi_channel_index += 1
+
+                    upload_dict['metadata'] = {'Cycle': range(1, len(metadata_channels) + 1, 1),
+                                           'Channel Name': metadata_channels,
+                                           'Channel Label': metadata_labels}
+                    upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label']
                 elif upload.endswith('.mcd'):
                     with MCDFile(upload) as mcd_file:
                         channel_names = None
@@ -151,8 +163,8 @@ def create_layered_dict(status: du.UploadStatus):
                                 acq_index += 1
                             slide_index += 1
                     experiment_index += 1
-    if upload_dict:
-        return upload_dict
+        if upload_dict:
+            return upload_dict
     else:
         raise PreventUpdate
 
