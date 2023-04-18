@@ -70,17 +70,31 @@ def display_metadata_distribution(anndata_obj, metadata_selection):
 # @cache.memoize()
 def create_layered_dict(status: du.UploadStatus):
     filenames = [str(x) for x in status.uploaded_files]
-    upload_dict = {'single-channel': {}, 'multi-channel': {}, 'metadata': None}
+    # upload_dict = {'single-channel': {}, 'multi-channel': {}, 'metadata': None}
+    upload_dict = {}
     if len(filenames) > 0:
         for upload in filenames:
+            experiment_index = 0
+            upload_dict["experiment" + str(experiment_index)] = {}
+            # slide_index = 0
+            # acquisition_index = 0
+            # if tiffs are uploaded, treat as one slide and one acquisition
             if upload.endswith('.tiff') or upload.endswith('.tif'):
+                upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
+                upload_dict["experiment" + str(experiment_index)]["slide" + str(0)][
+                    "acq" + str(0)] = {}
                 if 'ome' not in upload:
-                    upload_dict['single-channel'][os.path.basename(upload)] = convert_to_below_255(tifffile.imread(upload))
+                    basename = str(upload).split(".tif")[0]
+                    upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][basename] = \
+                        convert_to_below_255(tifffile.imread(upload))
                 else:
                     with TiffFile(upload) as tif:
+                        basename = str(upload).split(".ome.tiff")[0]
                         channel_index = 0
                         for page in tif.pages:
-                            upload_dict['multi-channel'][str("channel_" + f"{channel_index}_") +
+                            upload_dict["experiment" + str(experiment_index)]["slide" +
+                                                    str(0)]["acq" + str(0)][basename][basename +
+                                                    str("channel_" + f"{channel_index}_") +
                                                          os.path.basename(upload)] = \
                                 convert_to_below_255(page.asarray())
                             channel_index += 1
@@ -105,8 +119,11 @@ def create_layered_dict(status: du.UploadStatus):
                     channel_labels = None
                     slide_index = 0
                     for slide in mcd_file.slides:
-                        acquisition_index = 0
+                        upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)] = {}
+                        acq_index = 0
                         for acq in slide.acquisitions:
+                            upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)][
+                                "acq" + str(acq_index)] = {}
                             if channel_labels is None:
                                 channel_labels = acq.channel_labels
                                 channel_names = acq.channel_names
@@ -120,22 +137,37 @@ def create_layered_dict(status: du.UploadStatus):
                             img = mcd_file.read_acquisition(acq)
                             channel_index = 0
                             for channel in img:
-                                upload_dict['single-channel']["slide_" + str(slide_index) + "_acq_" +
-                                                              str(acquisition_index) + "_" +
-                                                              channel_names[channel_index]] = channel
+                                upload_dict["experiment" + str(experiment_index)]["slide" +
+                                                        str(slide_index)]["acq" +
+                                                        str(acq_index)][channel_names[channel_index]] = channel
                                 channel_index += 1
-                            acquisition_index += 1
+                            acq_index += 1
                         slide_index += 1
-
-            else:
-                image = Image.open(upload)
-                upload_dict[os.path.basename(upload)] = image
+                experiment_index += 1
+            # else:
+            #     image = Image.open(upload)
+            #     upload_dict[os.path.basename(upload)] = image
 
     if upload_dict:
         return upload_dict
     else:
         raise PreventUpdate
 
+
+@app.callback(Output('data-collection', 'options'),
+              Input('uploaded_dict', 'data'))
+def populate_dataset_options(uploaded):
+    if uploaded is not None:
+        datasets = []
+        for exp in uploaded.keys():
+            if "metadata" not in exp:
+                for slide in uploaded[exp].keys():
+                    for acq in uploaded[exp][slide].keys():
+                        datasets.append(f"{exp}_{slide}_{acq}")
+        return datasets
+    else:
+        raise PreventUpdate
+    
 
 @du.callback(ServersideOutput('anndata', 'data'),
              id='upload-quantification')
@@ -183,13 +215,14 @@ def create_anndata_dimension_options(anndata_dict):
 
 @app.callback(Output('image_layers', 'options'),
               Input('uploaded_dict', 'data'),
-              Input('tiff-image-type', 'value'))
-def create_dropdown_options(image_dict, image_type):
-    if image_dict and image_type:
-        return [{'label': i, 'value': i} for i in image_dict[image_type].keys()]
+              Input('data-collection', 'value'))
+def create_dropdown_options(image_dict, data_selection):
+    if image_dict and data_selection:
+        split = data_selection.split("_")
+        exp, slide, acq = split[0], split[1], split[2]
+        return [{'label': i, 'value': i} for i in image_dict[exp][slide][acq].keys()]
     else:
         raise PreventUpdate
-
 
 @app.callback(Output('images_in_blend', 'options'),
               Input('image_layers', 'value'))
@@ -204,64 +237,103 @@ def create_dropdown_blend(chosen_for_blend):
               State('images_in_blend', 'value'),
               Input('uploaded_dict', 'data'),
               Input('blending_colours', 'data'),
-              State('tiff-image-type', 'value'),
+              Input('data-collection', 'value'),
               Input('image_layers', 'value'),
               State('canvas-layers', 'data'),
               Output('blending_colours', 'data'),
               ServersideOutput('canvas-layers', 'data'),
               prevent_initial_call=True)
-def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, image_type, add_to_layer, all_layers):
+def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer, all_layers):
     # if data is uploaded, initialize the colour dict with white
     # do not update the layers if none have been selected
-    if ctx.triggered_id == "uploaded_dict":
+    if ctx.triggered_id in ["uploaded_dict"]:
         if current_blend_dict is None and uploaded is not None:
-            current_blend_dict = {'single-channel': {}, 'multi-channel': {}}
-            for im_type in current_blend_dict.keys():
-                for pot_layer in list(uploaded[im_type].keys()):
-                    current_blend_dict[im_type][pot_layer] = '#FFFFFF'
-            return current_blend_dict, None
+            print("making new")
+            current_blend_dict = {}
+            for exp in uploaded.keys():
+                if "metadata" not in exp:
+                    current_blend_dict[exp] = {}
+                    for slide in uploaded[exp].keys():
+                        current_blend_dict[exp][slide] = {}
+                        for acq in uploaded[exp][slide].keys():
+                            current_blend_dict[exp][slide][acq] = {}
+                            for channel in uploaded[exp][slide][acq].keys():
+                                current_blend_dict[exp][slide][acq][channel] = '#FFFFFF'
+            print(current_blend_dict)
         elif current_blend_dict is not None and uploaded is not None:
-            for im_type in ['single-channel', 'multi-channel']:
-                for pot_layer in list(uploaded[im_type].keys()):
-                    current_blend_dict[im_type][pot_layer] = '#FFFFFF'
-            return current_blend_dict, None
+            print("updating")
+            for exp in uploaded.keys():
+                if "metadata" not in exp:
+                    for slide in uploaded[exp].keys():
+                        for acq in uploaded[exp][slide].keys():
+                            for channel in uploaded[exp][slide][acq].keys():
+                                current_blend_dict[exp][slide][acq][channel] = '#FFFFFF'
+            print(current_blend_dict)
+        return current_blend_dict, None
     # if a new image is added to the layer, update the colour to white by default
     # update the layers with the colour
-    elif ctx.triggered_id == "image_layers" and add_to_layer is not None:
-        all_layers = {'single-channel': {}, 'multi-channel': {}} if all_layers is None else all_layers
+    if ctx.triggered_id == "image_layers" and add_to_layer is not None:
+        print(current_blend_dict)
+        split = data_selection.split("_")
+        exp, slide, acq = split[0], split[1], split[2]
+        print(exp, slide, acq)
+        if all_layers is None:
+            all_layers = {}
+        if exp not in all_layers.keys():
+            all_layers[exp] = {}
+        if slide not in all_layers[exp].keys():
+            all_layers[exp][slide] = {}
+        if acq not in all_layers[exp][slide].keys():
+            all_layers[exp][slide][acq] = {}
         for elem in add_to_layer:
-            if elem not in current_blend_dict[image_type].keys():
-                current_blend_dict[image_type][elem] = '#FFFFFF'
-            if elem not in all_layers[image_type].keys():
-                all_layers[image_type][elem] = np.array(recolour_greyscale(uploaded[image_type][elem],
+            if elem not in current_blend_dict[exp][slide][acq].keys():
+                current_blend_dict[exp][slide][acq][elem] = '#FFFFFF'
+            if elem not in all_layers[exp][slide][acq].keys():
+                all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded[exp][slide][acq][elem],
                                                                   '#FFFFFF')).astype(np.uint8)
         return current_blend_dict, all_layers
     # if the trigger is the colour wheel, update the specific layer with the colour chosen
     # update the layers with the colour
     if ctx.triggered_id == 'annotation-color-picker' and \
-            layer is not None and current_blend_dict is not None and image_type is not None:
-        current_blend_dict[image_type][layer] = colour['hex']
-        all_layers[image_type][layer] = np.array(recolour_greyscale(uploaded[image_type][layer],
+            layer is not None and current_blend_dict is not None and data_selection is not None:
+        split = data_selection.split("_")
+        exp, slide, acq = split[0], split[1], split[2]
+        current_blend_dict[exp][slide][acq][layer] = colour['hex']
+        all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(uploaded[exp][slide][acq][layer],
                                                           colour['hex'])).astype(np.uint8)
         return current_blend_dict, all_layers
     else:
         raise PreventUpdate
 
 
+@app.callback(Output('image_layers', 'value'),
+              Input('data-collection', 'value'),
+              State('image_layers', 'value'),
+              prevent_initial_call=True)
+def reset_image_layers_selected(current_layers, new_selection):
+    if new_selection is not None and current_layers is not None:
+        if len(current_layers) > 0:
+            return []
+    else:
+        raise PreventUpdate
+
 @app.callback(Output('annotation_canvas', 'figure'),
               Input('canvas-layers', 'data'),
               State('image_layers', 'value'),
-              State('tiff-image-type', 'value'),
+              State('data-collection', 'value'),
               State('blending_colours', 'data'),
               prevent_initial_call=True)
-def render_image_on_canvas(canvas_layers, currently_selected, image_type, blend_colour_dict):
-    if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None:
+def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict):
+    if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
+            data_selection is not None:
+        split = data_selection.split("_")
+        exp, slide, acq = split[0], split[1], split[2]
         legend_text = ''
         for image in currently_selected:
-            if blend_colour_dict[image_type][image] not in ['#ffffff', '#FFFFFF']:
+            if blend_colour_dict[exp][slide][acq][image] not in ['#ffffff', '#FFFFFF']:
                 legend_text = legend_text + f'<span style="color:' \
-                            f'{blend_colour_dict[image_type][image]}">{image}</span><br>'
-        image = sum([np.asarray(canvas_layers[image_type][elem]) for elem in currently_selected])
+                            f'{blend_colour_dict[exp][slide][acq][image]}">{image}</span><br>'
+        image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected])
         try:
             fig = px.imshow(image)
             # fig = canvas_layers[image_type][currently_selected[0]]
@@ -346,8 +418,6 @@ def create_channel_label_dict(metadata):
         for elem in metadata:
             alias_dict[elem['Channel Name']] = elem['Channel Label']
 
-        print(alias_dict)
-
 
 
 @app.callback(
@@ -414,13 +484,15 @@ def update_canvas_size(value, current_canvas):
     Input('annotation_canvas', 'relayoutData'),
     State('uploaded_dict', 'data'),
     State('image_layers', 'value'),
-    State('tiff-image-type', 'value'))
-def update_area_information(graph, graph_layout, upload, layers, image_type):
+    State('data-collection', 'value'))
+def update_area_information(graph, graph_layout, upload, layers, data_selection):
 
     # these range keys correspond to the zoom feature
     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
-    if graph is not None and graph_layout is not None:
+    if graph is not None and graph_layout is not None and data_selection is not None:
+        split = data_selection.split("_")
+        exp, slide, acq = split[0], split[1], split[2]
         # option 1: if shapes are drawn on the canvas
         if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
             # these are for each sample
@@ -442,7 +514,7 @@ def update_area_information(graph, graph_layout, upload, layers, image_type):
                         assert x_range_high >= x_range_low
                         assert y_range_high >= y_range_low
 
-                        mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low,
+                        mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer], x_range_low,
                                                                          x_range_high,
                                                                          y_range_low, y_range_high)
                         shapes_mean.append(round(float(mean_exp), 2))
@@ -471,7 +543,7 @@ def update_area_information(graph, graph_layout, upload, layers, image_type):
                 max_panel = []
                 min_panel = []
                 for layer in layers:
-                    mean_exp, max_xep, min_exp = get_area_statistics(upload[image_type][layer], x_range_low, x_range_high,
+                    mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer], x_range_low, x_range_high,
                                                                  y_range_low, y_range_high)
                     mean_panel.append(round(float(mean_exp), 2))
                     max_panel.append(round(float(max_xep), 2))
@@ -495,16 +567,18 @@ def update_area_information(graph, graph_layout, upload, layers, image_type):
 @app.callback(Output('image-gallery-row', 'children'),
               # Input('image-analysis', 'value'),
               State('uploaded_dict', 'data'),
-              Input('tiff-image-type', 'value'),
-              Input('render-image-gallery', 'n_clicks'))
+              Input('data-collection', 'value'))
 # @cache.memoize()
-def create_image_grid(data, image_type, render_gallery):
-    if data is not None and image_type is not None and (render_gallery is not None and render_gallery > 0):
+def create_image_grid(data, data_selection):
+    if data is not None and data is not None:
+        split = data_selection.split("_")
+        exp, slide, acq = split[0], split[1], split[2]
         row_children = []
-        for chosen in list(data[image_type].keys()):
+        for chosen in list(data[exp][slide][acq].keys()):
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(chosen, className="card-text")),
                                                   dbc.CardImg(
-                                                      src=resize_for_canvas(Image.fromarray(data[image_type][chosen]).
+                                                src=resize_for_canvas(
+                                                    Image.fromarray(data[exp][slide][acq][chosen]).
                                                       convert('RGB')),
                                                       bottom=True)]), width=3))
 
@@ -520,13 +594,15 @@ def serve_static(path):
 @app.callback(Output('blend-color-legend', 'children'),
               Input('blending_colours', 'data'),
               Input('images_in_blend', 'options'),
-              State('tiff-image-type', 'value'))
-def create_legend(blend_colours, current_blend, image_type):
+              State('data-collection', 'value'))
+def create_legend(blend_colours, current_blend, data_selection):
     current_blend = [elem['label'] for elem in current_blend] if current_blend is not None else None
     children = []
-    if blend_colours is not None and current_blend is not None and image_type is not None:
-        for key, value in blend_colours[image_type].items():
-            if blend_colours[image_type][key] != '#FFFFFF' and key in current_blend:
+    if blend_colours is not None and current_blend is not None and data_selection is not None:
+        split = data_selection.split("_")
+        exp, slide, acq = split[0], split[1], split[2]
+        for key, value in blend_colours[exp][slide][acq].items():
+            if blend_colours[exp][slide][acq][key] != '#FFFFFF' and key in current_blend:
                 children.append(html.H6(f"{key}", style={"color": f"{value}"}))
 
         return html.Div(children=children)
@@ -553,22 +629,19 @@ app.layout = html.Div([
                                                                          filetypes=['png', 'tif',
                                                                                     'tiff', 'h5', 'mcd'],
                                                                          upload_id="upload-image"),
-                                                                     html.Div([html.H5("Choose image type",
+                                                                     html.Div([html.H5("Choose data collection",
                                                                                        style={'width': '35%',
                                                                                               'display': 'inline-block'}),
-                                                                               html.H5("Choose image layers",
+                                                                               html.H5("Choose channel image",
                                                                                        style={'width': '65%',
                                                                                     'display': 'inline-block'}),
                                                                                dcc.Dropdown(
-                                                                                   id='tiff-image-type',
+                                                                                   id='data-collection',
                                                                                    multi=False,
-                                                                                   options=['single-channel',
-                                                                                            'multi-channel'],
+                                                                                   options=[],
                                                                                    style={'width': '30%',
                                                                                           'display': 'inline-block',
                                                                                           'margin-right': '-30'}),
-                                                                    html.Button("Render image gallery",
-                                                                    id="render-image-gallery"),
                                                                                dcc.Dropdown(
                                                                                    id='image_layers',
                                                                                    multi=True,
