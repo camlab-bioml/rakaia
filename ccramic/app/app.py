@@ -74,36 +74,18 @@ def create_layered_dict(status: du.UploadStatus):
     upload_dict = {}
     if len(filenames) > 0:
         for upload in filenames:
-            experiment_index = 0
-            upload_dict["experiment" + str(experiment_index)] = {}
-            # slide_index = 0
-            # acquisition_index = 0
-            # if tiffs are uploaded, treat as one slide and one acquisition
-            if upload.endswith('.tiff') or upload.endswith('.tif'):
-                upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
-                upload_dict["experiment" + str(experiment_index)]["slide" + str(0)][
-                    "acq" + str(0)] = {}
-                if 'ome' not in upload:
-                    basename = str(upload).split(".tif")[0]
-                    upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][basename] = \
-                        convert_to_below_255(tifffile.imread(upload))
-                else:
-                    with TiffFile(upload) as tif:
-                        basename = str(upload).split(".ome.tiff")[0]
-                        channel_index = 0
-                        for page in tif.pages:
-                            upload_dict["experiment" + str(experiment_index)]["slide" +
-                                                    str(0)]["acq" + str(0)][basename][basename +
-                                                    str("channel_" + f"{channel_index}_") +
-                                                         os.path.basename(upload)] = \
-                                convert_to_below_255(page.asarray())
-                            channel_index += 1
-            elif upload.endswith('.h5'):
+            # if reading back in data with h5
+            if upload.endswith('.h5'):
                 data_h5 = h5py.File(upload, "r")
-                for cat in list(data_h5.keys()):
-                    if 'metadata' not in cat:
-                        for dataset in data_h5[cat]:
-                            upload_dict[cat][dataset] = data_h5[cat][dataset][()]
+                for exp in list(data_h5.keys()):
+                    upload_dict[exp] = {}
+                    if 'metadata' not in exp:
+                        for slide in data_h5[exp].keys():
+                            upload_dict[exp][slide] = {}
+                            for acq in data_h5[exp][slide].keys():
+                                upload_dict[exp][slide][acq] = {}
+                                for channel in data_h5[exp][slide][acq]:
+                                    upload_dict[exp][slide][acq][channel] = data_h5[exp][slide][acq][channel][()]
                     else:
                         meta_back = pd.DataFrame(data_h5['metadata'])
                         for col in meta_back.columns:
@@ -112,42 +94,63 @@ def create_layered_dict(status: du.UploadStatus):
                             meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
                         except KeyError:
                             pass
-                        upload_dict[cat] = meta_back
-            elif upload.endswith('.mcd'):
-                with MCDFile(upload) as mcd_file:
-                    channel_names = None
-                    channel_labels = None
-                    slide_index = 0
-                    for slide in mcd_file.slides:
-                        upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)] = {}
-                        acq_index = 0
-                        for acq in slide.acquisitions:
-                            upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)][
-                                "acq" + str(acq_index)] = {}
-                            if channel_labels is None:
-                                channel_labels = acq.channel_labels
-                                channel_names = acq.channel_names
-                                upload_dict['metadata'] = {'Cycle': range(1, len(channel_names) + 1, 1),
+                        upload_dict[exp] = meta_back
+            else:
+                experiment_index = 0
+                upload_dict["experiment" + str(experiment_index)] = {}
+                # slide_index = 0
+                # acquisition_index = 0
+                # if tiffs are uploaded, treat as one slide and one acquisition
+                if upload.endswith('.tiff') or upload.endswith('.tif'):
+                    upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
+                    upload_dict["experiment" + str(experiment_index)]["slide" + str(0)][
+                        "acq" + str(0)] = {}
+                    if 'ome' not in upload:
+                        basename = str(upload).split(".tif")[0]
+                        upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][basename] = \
+                            convert_to_below_255(tifffile.imread(upload))
+                    else:
+                        with TiffFile(upload) as tif:
+                            basename = str(upload).split(".ome.tiff")[0]
+                            channel_index = 0
+                            for page in tif.pages:
+                                upload_dict["experiment" + str(experiment_index)]["slide" +
+                                                    str(0)]["acq" + str(0)][basename][basename +
+                                                    str("channel_" + f"{channel_index}_") +
+                                                         os.path.basename(upload)] = \
+                                    convert_to_below_255(page.asarray())
+                                channel_index += 1
+                elif upload.endswith('.mcd'):
+                    with MCDFile(upload) as mcd_file:
+                        channel_names = None
+                        channel_labels = None
+                        slide_index = 0
+                        for slide in mcd_file.slides:
+                            upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)] = {}
+                            acq_index = 0
+                            for acq in slide.acquisitions:
+                                upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)][
+                                    "acq" + str(acq_index)] = {}
+                                if channel_labels is None:
+                                    channel_labels = acq.channel_labels
+                                    channel_names = acq.channel_names
+                                    upload_dict['metadata'] = {'Cycle': range(1, len(channel_names) + 1, 1),
                                                            'Channel Name': channel_names,
                                                            'Channel Label': channel_labels}
-                                upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label']
-                            else:
-                                assert all(label in acq.channel_labels for label in channel_labels)
-                                assert all(name in acq.channel_names for name in channel_names)
-                            img = mcd_file.read_acquisition(acq)
-                            channel_index = 0
-                            for channel in img:
-                                upload_dict["experiment" + str(experiment_index)]["slide" +
+                                    upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label']
+                                else:
+                                    assert all(label in acq.channel_labels for label in channel_labels)
+                                    assert all(name in acq.channel_names for name in channel_names)
+                                img = mcd_file.read_acquisition(acq)
+                                channel_index = 0
+                                for channel in img:
+                                    upload_dict["experiment" + str(experiment_index)]["slide" +
                                                         str(slide_index)]["acq" +
                                                         str(acq_index)][channel_names[channel_index]] = channel
-                                channel_index += 1
-                            acq_index += 1
-                        slide_index += 1
-                experiment_index += 1
-            # else:
-            #     image = Image.open(upload)
-            #     upload_dict[os.path.basename(upload)] = image
-
+                                    channel_index += 1
+                                acq_index += 1
+                            slide_index += 1
+                    experiment_index += 1
     if upload_dict:
         return upload_dict
     else:
@@ -224,6 +227,7 @@ def create_dropdown_options(image_dict, data_selection):
     else:
         raise PreventUpdate
 
+
 @app.callback(Output('images_in_blend', 'options'),
               Input('image_layers', 'value'))
 def create_dropdown_blend(chosen_for_blend):
@@ -236,8 +240,8 @@ def create_dropdown_blend(chosen_for_blend):
 @app.callback(Input("annotation-color-picker", 'value'),
               State('images_in_blend', 'value'),
               Input('uploaded_dict', 'data'),
-              Input('blending_colours', 'data'),
-              Input('data-collection', 'value'),
+              State('blending_colours', 'data'),
+              State('data-collection', 'value'),
               Input('image_layers', 'value'),
               State('canvas-layers', 'data'),
               Output('blending_colours', 'data'),
@@ -246,6 +250,7 @@ def create_dropdown_blend(chosen_for_blend):
 def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer, all_layers):
     # if data is uploaded, initialize the colour dict with white
     # do not update the layers if none have been selected
+    print(current_blend_dict)
     if ctx.triggered_id in ["uploaded_dict"]:
         if current_blend_dict is None and uploaded is not None:
             print("making new")
@@ -260,7 +265,8 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data
                             for channel in uploaded[exp][slide][acq].keys():
                                 current_blend_dict[exp][slide][acq][channel] = '#FFFFFF'
             print(current_blend_dict)
-        elif current_blend_dict is not None and uploaded is not None:
+            return current_blend_dict, None
+        if current_blend_dict is not None and uploaded is not None:
             print("updating")
             for exp in uploaded.keys():
                 if "metadata" not in exp:
@@ -269,10 +275,11 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data
                             for channel in uploaded[exp][slide][acq].keys():
                                 current_blend_dict[exp][slide][acq][channel] = '#FFFFFF'
             print(current_blend_dict)
+            return current_blend_dict, None
         return current_blend_dict, None
     # if a new image is added to the layer, update the colour to white by default
     # update the layers with the colour
-    if ctx.triggered_id == "image_layers" and add_to_layer is not None:
+    if ctx.triggered_id == "image_layers" and add_to_layer is not None and current_blend_dict is not None:
         print(current_blend_dict)
         split = data_selection.split("_")
         exp, slide, acq = split[0], split[1], split[2]
@@ -295,7 +302,8 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data
     # if the trigger is the colour wheel, update the specific layer with the colour chosen
     # update the layers with the colour
     if ctx.triggered_id == 'annotation-color-picker' and \
-            layer is not None and current_blend_dict is not None and data_selection is not None:
+            layer is not None and current_blend_dict is not None and data_selection is not None and \
+            current_blend_dict is not None:
         split = data_selection.split("_")
         exp, slide, acq = split[0], split[1], split[2]
         current_blend_dict[exp][slide][acq][layer] = colour['hex']
@@ -443,20 +451,23 @@ def update_href(uploaded):
         if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
             os.makedirs(os.path.join(tmpdirname, 'downloads'))
         hf = h5py.File(relative_filename, 'w')
-        channels = ['single-channel', 'multi-channel']
-        for group in list(uploaded.keys()):
-            if group in channels:
-                hf.create_group(group)
-                for key, value in uploaded[group].items():
-                    hf[group].create_dataset(key, data=value)
-            elif 'metadata' in group:
+        for exp in list(uploaded.keys()):
+            if 'metadata' in exp:
                 meta_to_write = pd.DataFrame(uploaded['metadata'])
-                if 'columns' not in group:
+                if 'columns' not in exp:
                     for col in meta_to_write:
                         meta_to_write[col] = meta_to_write[col].astype(str)
                     hf.create_dataset('metadata', data=meta_to_write.to_numpy())
                 else:
                     hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
+            else:
+                hf.create_group(exp)
+                for slide in uploaded[exp].keys():
+                    hf[exp].create_group(slide)
+                    for acq in uploaded[exp][slide].keys():
+                        hf[exp][slide].create_group(acq)
+                        for key, value in uploaded[exp][slide][acq].items():
+                            hf[exp][slide][acq].create_dataset(key, data=value)
         hf.close()
         return str(relative_filename)
 
