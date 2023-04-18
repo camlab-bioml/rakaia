@@ -19,8 +19,7 @@ import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager, Patch
 from tifffile import TiffFile
 # from matplotlib import pyplot as plt
-from .utils import generate_tiff_stack, recolour_greyscale, get_area_statistics, convert_to_below_255, \
-    resize_for_canvas
+from .utils import *
 import diskcache
 import h5py
 import orjson
@@ -29,6 +28,7 @@ from readimc import TXTFile, MCDFile
 from io import BytesIO
 import math
 import plotly.graph_objects as go
+from ccramic import __version__
 
 app = DashProxy(transforms=[ServersideOutputTransform()], external_stylesheets=[dbc.themes.BOOTSTRAP],
                 )
@@ -122,7 +122,7 @@ def create_layered_dict(status: du.UploadStatus):
                             for channel in img:
                                 upload_dict['single-channel']["slide_" + str(slide_index) + "_acq_" +
                                                               str(acquisition_index) + "_" +
-                                                              channel_labels[channel_index]] = channel
+                                                              channel_names[channel_index]] = channel
                                 channel_index += 1
                             acquisition_index += 1
                         slide_index += 1
@@ -224,7 +224,7 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, imag
             for im_type in ['single-channel', 'multi-channel']:
                 for pot_layer in list(uploaded[im_type].keys()):
                     current_blend_dict[im_type][pot_layer] = '#FFFFFF'
-            return current_blend_dict
+            return current_blend_dict, None
     # if a new image is added to the layer, update the colour to white by default
     # update the layers with the colour
     elif ctx.triggered_id == "image_layers" and add_to_layer is not None:
@@ -258,23 +258,35 @@ def render_image_on_canvas(canvas_layers, currently_selected, image_type, blend_
     if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None:
         legend_text = ''
         for image in currently_selected:
-                if blend_colour_dict[image_type][image] not in ['#ffffff', '#FFFFFF']:
-                    legend_text = legend_text + f'<span style="color:' \
-                                                f'{blend_colour_dict[image_type][image]}">{image}</span><br>'
-        image = Image.fromarray(sum([np.asarray(canvas_layers[image_type][elem]) for elem in currently_selected]))
-        # image = Image.fromarray(canvas_layers[image_type][currently_selected[0]])
-        fig = px.imshow(image)
-        # fig = canvas_layers[image_type][currently_selected[0]]
-        fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
-                           yref='paper',
-                           x=0.99,
-                           xanchor='right',
-                           y=0.1,
-                           yanchor='bottom',
-                           showarrow=False)
-        return fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                 xaxis=go.XAxis(showticklabels=False),
-                                 yaxis=go.YAxis(showticklabels=False))
+            if blend_colour_dict[image_type][image] not in ['#ffffff', '#FFFFFF']:
+                legend_text = legend_text + f'<span style="color:' \
+                            f'{blend_colour_dict[image_type][image]}">{image}</span><br>'
+        image = sum([np.asarray(canvas_layers[image_type][elem]) for elem in currently_selected])
+        try:
+            fig = px.imshow(image)
+            # fig = canvas_layers[image_type][currently_selected[0]]
+            if legend_text != '':
+                fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                                   yref='paper',
+                                   x=0.99,
+                                   xanchor='right',
+                                   y=0.1,
+                                   yanchor='bottom',
+                                   showarrow=False)
+
+            # for adding a scale bar
+            # fig.add_shape(
+            #     type='line',
+            #     x0=image.shape[0]*0.1, x1=image.shape[0]*0.1 + 50,
+            #     y0=image.shape[0]*0.1, y1=image.shape[0]*0.1, line_color='white'
+            # )
+
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                              xaxis=go.XAxis(showticklabels=False),
+                              yaxis=go.YAxis(showticklabels=False))
+            return fig
+        except ValueError:
+            raise PreventUpdate
     else:
         raise PreventUpdate
 
@@ -300,7 +312,8 @@ def create_imc_meta_dict(status: du.UploadStatus):
     imaging_metadata = {}
     if filenames:
         imc_frame = pd.read_csv(filenames[0])
-        imaging_metadata["columns"] = [{'id': p, 'name': p} for p in imc_frame.columns]
+        imaging_metadata["columns"] = [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
+                                       p in imc_frame.columns]
         imaging_metadata["data"] = imc_frame.to_dict(orient='records')
 
         return imaging_metadata
@@ -315,12 +328,26 @@ def create_imc_meta_dict(status: du.UploadStatus):
     Input('image-metadata', 'data'))
 def populate_datatable_columns(uploaded, column_dict):
     if uploaded is not None and uploaded['metadata'] is not None:
-        return [{'id': p, 'name': p} for p in uploaded['metadata'].keys()], \
+        return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
+                p in uploaded['metadata'].keys()], \
                pd.DataFrame(uploaded['metadata']).to_dict(orient='records')
     elif column_dict is not None:
         return column_dict["columns"], column_dict["data"]
     else:
         raise PreventUpdate
+
+
+@app.callback(
+    Input("imc-metadata-editable", "data"),
+    Output('alias-dict', 'data'))
+def create_channel_label_dict(metadata):
+    if metadata is not None:
+        alias_dict = {}
+        for elem in metadata:
+            alias_dict[elem['Channel Name']] = elem['Channel Label']
+
+        print(alias_dict)
+
 
 
 @app.callback(
@@ -502,7 +529,6 @@ def create_legend(blend_colours, current_blend, image_type):
             if blend_colours[image_type][key] != '#FFFFFF' and key in current_blend:
                 children.append(html.H6(f"{key}", style={"color": f"{value}"}))
 
-
         return html.Div(children=children)
     else:
         raise PreventUpdate
@@ -644,5 +670,6 @@ app.layout = html.Div([
     dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
     dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
-    dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot")
+    dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
+    dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot")
 ])

@@ -3,5 +3,10 @@ import subprocess
 from app.app import app
 import dash
 
-if __name__ == "__main__":
+
+def main():
     app.run_server(debug=True)
+
+
+if __name__ == "__main__":
+    main()

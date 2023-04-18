@@ -24,7 +24,7 @@ setup(
     ],
     entry_points="""
     [console_scripts]
-    {program} = ccramic.main:run_app
+    {program} = ccramic.main:main
     """.format(program="ccramic"),
     license="Unlicensed",
     install_requires=["pillow", "pandas", "matplotlib", "fpdf",

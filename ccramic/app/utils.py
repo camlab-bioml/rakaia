@@ -150,3 +150,8 @@ def resize_for_canvas(image, basewidth=400):
     wpercent = (basewidth / float(image.size[0]))
     hsize = int((float(image.size[1]) * float(wpercent)))
     return image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+
+
+def make_metadata_column_editable(column_name):
+    # only allow the channel label column to be edited
+    return "Label" in column_name or column_name == "Channel Label"
