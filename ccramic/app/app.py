@@ -250,10 +250,8 @@ def create_dropdown_blend(chosen_for_blend):
 def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer, all_layers):
     # if data is uploaded, initialize the colour dict with white
     # do not update the layers if none have been selected
-    print(current_blend_dict)
     if ctx.triggered_id in ["uploaded_dict"]:
         if current_blend_dict is None and uploaded is not None:
-            print("making new")
             current_blend_dict = {}
             for exp in uploaded.keys():
                 if "metadata" not in exp:
@@ -264,26 +262,21 @@ def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data
                             current_blend_dict[exp][slide][acq] = {}
                             for channel in uploaded[exp][slide][acq].keys():
                                 current_blend_dict[exp][slide][acq][channel] = '#FFFFFF'
-            print(current_blend_dict)
             return current_blend_dict, None
         if current_blend_dict is not None and uploaded is not None:
-            print("updating")
             for exp in uploaded.keys():
                 if "metadata" not in exp:
                     for slide in uploaded[exp].keys():
                         for acq in uploaded[exp][slide].keys():
                             for channel in uploaded[exp][slide][acq].keys():
                                 current_blend_dict[exp][slide][acq][channel] = '#FFFFFF'
-            print(current_blend_dict)
             return current_blend_dict, None
         return current_blend_dict, None
     # if a new image is added to the layer, update the colour to white by default
     # update the layers with the colour
     if ctx.triggered_id == "image_layers" and add_to_layer is not None and current_blend_dict is not None:
-        print(current_blend_dict)
         split = data_selection.split("_")
         exp, slide, acq = split[0], split[1], split[2]
-        print(exp, slide, acq)
         if all_layers is None:
             all_layers = {}
         if exp not in all_layers.keys():
@@ -325,13 +318,15 @@ def reset_image_layers_selected(current_layers, new_selection):
     else:
         raise PreventUpdate
 
+
 @app.callback(Output('annotation_canvas', 'figure'),
               Input('canvas-layers', 'data'),
               State('image_layers', 'value'),
               State('data-collection', 'value'),
               State('blending_colours', 'data'),
+              Input('alias-dict', 'data'),
               prevent_initial_call=True)
-def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict):
+def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases):
     if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
             data_selection is not None:
         split = data_selection.split("_")
@@ -339,8 +334,9 @@ def render_image_on_canvas(canvas_layers, currently_selected, data_selection, bl
         legend_text = ''
         for image in currently_selected:
             if blend_colour_dict[exp][slide][acq][image] not in ['#ffffff', '#FFFFFF']:
+                label = aliases[image] if aliases is not None and image in aliases.keys() else image
                 legend_text = legend_text + f'<span style="color:' \
-                            f'{blend_colour_dict[exp][slide][acq][image]}">{image}</span><br>'
+                            f'{blend_colour_dict[exp][slide][acq][image]}">{label}</span><br>'
         image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected])
         try:
             fig = px.imshow(image)
@@ -400,7 +396,6 @@ def create_imc_meta_dict(status: du.UploadStatus):
     else:
         raise PreventUpdate
 
-
 @app.callback(
     Output("imc-metadata-editable", "columns"),
     Output("imc-metadata-editable", "data"),
@@ -425,7 +420,7 @@ def create_channel_label_dict(metadata):
         alias_dict = {}
         for elem in metadata:
             alias_dict[elem['Channel Name']] = elem['Channel Label']
-
+        return alias_dict
 
 
 @app.callback(
@@ -442,8 +437,9 @@ def download_edited_metadata(n_clicks, datatable_contents):
 
 
 @app.callback(Output('download-link', 'href'),
-              [Input('uploaded_dict', 'data')])
-def update_href(uploaded):
+              [Input('uploaded_dict', 'data'),
+            Input('imc-metadata-editable', 'data')])
+def update_href(uploaded, metadata_sheet):
     if uploaded is not None:
         relative_filename = os.path.join(tmpdirname,
                                          'downloads',
@@ -453,7 +449,8 @@ def update_href(uploaded):
         hf = h5py.File(relative_filename, 'w')
         for exp in list(uploaded.keys()):
             if 'metadata' in exp:
-                meta_to_write = pd.DataFrame(uploaded['metadata'])
+                meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
+                    pd.DataFrame(uploaded['metadata'])
                 if 'columns' not in exp:
                     for col in meta_to_write:
                         meta_to_write[col] = meta_to_write[col].astype(str)
@@ -477,7 +474,8 @@ def update_href(uploaded):
     Input('annotation-canvas-size', 'value'),
     Input('annotation_canvas', 'figure'))
 def update_canvas_size(value, current_canvas):
-    if current_canvas is not None:
+    if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
+            'range' in current_canvas['layout']['yaxis']:
         # aspect ratio is width divided by height
         aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
                        int(current_canvas['layout']['yaxis']['range'][0])
@@ -605,8 +603,9 @@ def serve_static(path):
 @app.callback(Output('blend-color-legend', 'children'),
               Input('blending_colours', 'data'),
               Input('images_in_blend', 'options'),
-              State('data-collection', 'value'))
-def create_legend(blend_colours, current_blend, data_selection):
+              State('data-collection', 'value'),
+              Input('alias-dict', 'data'))
+def create_legend(blend_colours, current_blend, data_selection, aliases):
     current_blend = [elem['label'] for elem in current_blend] if current_blend is not None else None
     children = []
     if blend_colours is not None and current_blend is not None and data_selection is not None:
@@ -614,7 +613,8 @@ def create_legend(blend_colours, current_blend, data_selection):
         exp, slide, acq = split[0], split[1], split[2]
         for key, value in blend_colours[exp][slide][acq].items():
             if blend_colours[exp][slide][acq][key] != '#FFFFFF' and key in current_blend:
-                children.append(html.H6(f"{key}", style={"color": f"{value}"}))
+                label = aliases[key] if aliases is not None and key in aliases.keys() else key
+                children.append(html.H6(f"{label}", style={"color": f"{value}"}))
 
         return html.Div(children=children)
     else:
