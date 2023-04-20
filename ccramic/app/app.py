@@ -118,15 +118,17 @@ def create_layered_dict(status: du.UploadStatus):
                         metadata_labels.append(basename)
                     else:
                         with TiffFile(upload) as tif:
-                            basename = str(upload).split(".ome.tiff")[0]
+                            tiff_path = Path(upload)
+                            file__name, file_extension = os.path.splitext(tiff_path)
+                            basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
                             multi_channel_index = 0
                             for page in tif.pages:
+                                identifier = str(basename) + str("_channel_" + f"{multi_channel_index}")
                                 upload_dict["experiment" + str(experiment_index)]["slide" +
-                                                    str(0)]["acq" + str(0)][basename][basename +
-                                                    str("channel_" + f"{channel_index}_") +
-                                                         os.path.basename(upload)] = \
-                                    convert_to_below_255(page.asarray())
+                                                    str(0)]["acq" + str(0)][identifier] = convert_to_below_255(page.asarray())
                                 multi_channel_index += 1
+                                metadata_channels.append(identifier)
+                                metadata_labels.append(identifier)
 
                     upload_dict['metadata'] = {'Cycle': range(1, len(metadata_channels) + 1, 1),
                                            'Channel Name': metadata_channels,
@@ -408,6 +410,7 @@ def create_imc_meta_dict(status: du.UploadStatus):
     else:
         raise PreventUpdate
 
+
 @app.callback(
     Output("imc-metadata-editable", "columns"),
     Output("imc-metadata-editable", "data"),
@@ -450,7 +453,7 @@ def download_edited_metadata(n_clicks, datatable_contents):
 
 @app.callback(Output('download-link', 'href'),
               [Input('uploaded_dict', 'data'),
-            Input('imc-metadata-editable', 'data')])
+               Input('imc-metadata-editable', 'data')])
 def update_href(uploaded, metadata_sheet):
     if uploaded is not None:
         relative_filename = os.path.join(tmpdirname,
@@ -505,13 +508,14 @@ def update_canvas_size(value, current_canvas):
     Input('annotation_canvas', 'relayoutData'),
     State('uploaded_dict', 'data'),
     State('image_layers', 'value'),
-    State('data-collection', 'value'))
-def update_area_information(graph, graph_layout, upload, layers, data_selection):
+    State('data-collection', 'value'),
+    State('image-analysis', 'value'))
+def update_area_information(graph, graph_layout, upload, layers, data_selection, cur_tab):
 
     # these range keys correspond to the zoom feature
     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
-    if graph is not None and graph_layout is not None and data_selection is not None:
+    if graph is not None and graph_layout is not None and data_selection is not None and cur_tab == "tab-1":
         split = data_selection.split("_")
         exp, slide, acq = split[0], split[1], split[2]
         # option 1: if shapes are drawn on the canvas
