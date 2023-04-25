@@ -7,7 +7,7 @@ from flask import current_app as app
 # def home():
 #     """Landing page."""
 #     return render_template(
-#         'index.jinja2',
+#         'home.html',
 #         title='ccramic',
 #         description='Cell-type Classification (using) Rapid Analysis (of) Multiplexed Imaging (mass) Cytometry.',
 #         template='home-template',

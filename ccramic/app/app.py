@@ -17,7 +17,7 @@ from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOu
 import dash_daq as daq
 import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager, Patch
-from tifffile import TiffFile
+from tifffile import TiffFile, imwrite
 # from matplotlib import pyplot as plt
 from .utils import *
 import diskcache
@@ -30,9 +30,10 @@ import math
 import plotly.graph_objects as go
 from ccramic import __version__
 from pathlib import Path
+import dash_auth
 
 
-def init_callbacks(dash_app, tmpdirname):
+def init_callbacks(dash_app, tmpdirname, cache):
     dash_app.config.suppress_callback_exceptions = True
 
     @dash_app.callback(
@@ -162,7 +163,7 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'options'),
-                  Input('uploaded_dict', 'data'))
+                       Input('uploaded_dict', 'data'))
     def populate_dataset_options(uploaded):
         if uploaded is not None:
             datasets = []
@@ -201,7 +202,7 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('dimension-reduction_options', 'options'),
-                  Input('anndata', 'data'))
+                       Input('anndata', 'data'))
     def create_anndata_dimension_options(anndata_dict):
         if anndata_dict and "assays" in anndata_dict.keys():
             return [{'label': i, 'value': i} for i in anndata_dict["assays"].keys()]
@@ -209,7 +210,7 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('metadata_options', 'options'),
-                  Input('anndata', 'data'))
+                       Input('anndata', 'data'))
     def create_anndata_dimension_options(anndata_dict):
         if anndata_dict and "metadata" in anndata_dict.keys():
             return [{'label': i, 'value': i} for i in anndata_dict["metadata"].columns]
@@ -217,8 +218,8 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('image_layers', 'options'),
-                  Input('uploaded_dict', 'data'),
-                  Input('data-collection', 'value'))
+                       Input('uploaded_dict', 'data'),
+                       Input('data-collection', 'value'))
     def create_dropdown_options(image_dict, data_selection):
         if image_dict and data_selection:
             split = data_selection.split("_")
@@ -228,7 +229,7 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('images_in_blend', 'options'),
-                  Input('image_layers', 'value'))
+                       Input('image_layers', 'value'))
     def create_dropdown_blend(chosen_for_blend):
         if chosen_for_blend:
             return [{'label': i, 'value': i} for i in chosen_for_blend]
@@ -236,15 +237,15 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Input("annotation-color-picker", 'value'),
-                  State('images_in_blend', 'value'),
-                  Input('uploaded_dict', 'data'),
-                  State('blending_colours', 'data'),
-                  State('data-collection', 'value'),
-                  Input('image_layers', 'value'),
-                  State('canvas-layers', 'data'),
-                  Output('blending_colours', 'data'),
-                  ServersideOutput('canvas-layers', 'data'),
-                  prevent_initial_call=True)
+                       State('images_in_blend', 'value'),
+                       Input('uploaded_dict', 'data'),
+                       State('blending_colours', 'data'),
+                       State('data-collection', 'value'),
+                       Input('image_layers', 'value'),
+                       State('canvas-layers', 'data'),
+                       Output('blending_colours', 'data'),
+                       ServersideOutput('canvas-layers', 'data'),
+                       prevent_initial_call=True)
     def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
                                    all_layers):
         # if data is uploaded, initialize the colour dict with white
@@ -307,9 +308,9 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('image_layers', 'value'),
-                  Input('data-collection', 'value'),
-                  State('image_layers', 'value'),
-                  prevent_initial_call=True)
+                       Input('data-collection', 'value'),
+                       State('image_layers', 'value'),
+                       prevent_initial_call=True)
     def reset_image_layers_selected(current_layers, new_selection):
         if new_selection is not None and current_layers is not None:
             if len(current_layers) > 0:
@@ -318,12 +319,14 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure'),
-                  Input('canvas-layers', 'data'),
-                  State('image_layers', 'value'),
-                  State('data-collection', 'value'),
-                  State('blending_colours', 'data'),
-                  Input('alias-dict', 'data'),
-                  prevent_initial_call=True)
+                       Output('download-link-canvas-tiff', 'href'),
+                       Input('canvas-layers', 'data'),
+                       State('image_layers', 'value'),
+                       State('data-collection', 'value'),
+                       State('blending_colours', 'data'),
+                       Input('alias-dict', 'data'),
+                       prevent_initial_call=True)
+    # @cache.memoize()
     def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None:
@@ -358,16 +361,21 @@ def init_callbacks(dash_app, tmpdirname):
                 fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                                   xaxis=go.XAxis(showticklabels=False),
                                   yaxis=go.YAxis(showticklabels=False))
-                return fig
+                dest_file = os.path.join(tmpdirname, 'downloads', "canvas.tiff")
+                if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
+                    os.makedirs(os.path.join(tmpdirname, 'downloads'))
+                imwrite(dest_file, image, photometric='rgb')
+
+                return fig, str(dest_file)
             except ValueError:
                 raise PreventUpdate
         else:
             raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
-                  Input('anndata', 'data'),
-                  Input('metadata_options', 'value'),
-                  Input('dimension-reduction_options', 'value'))
+                       Input('anndata', 'data'),
+                       Input('metadata_options', 'value'),
+                       Input('dimension-reduction_options', 'value'))
     def render_umap_plot(anndata_obj, metadata_selection, assay_selection):
         if anndata_obj and "assays" in anndata_obj.keys() and metadata_selection and assay_selection:
             data = anndata_obj["full_obj"]
@@ -430,9 +438,9 @@ def init_callbacks(dash_app, tmpdirname):
             raise PreventUpdate
 
     @dash_app.callback(Output('download-link', 'href'),
-                  [Input('uploaded_dict', 'data'),
-                   Input('imc-metadata-editable', 'data')])
-    def update_href(uploaded, metadata_sheet):
+                       [Input('uploaded_dict', 'data'),
+                        Input('imc-metadata-editable', 'data')])
+    def update_download_href_h5(uploaded, metadata_sheet):
         if uploaded is not None:
             relative_filename = os.path.join(tmpdirname,
                                              'downloads',
@@ -453,8 +461,6 @@ def init_callbacks(dash_app, tmpdirname):
                 else:
                     hf.create_group(exp)
                     for slide in uploaded[exp].keys():
-                        print("new slide")
-                        print(slide)
                         hf[exp].create_group(slide)
                         for acq in uploaded[exp][slide].keys():
                             hf[exp][slide].create_group(acq)
@@ -553,24 +559,24 @@ def init_callbacks(dash_app, tmpdirname):
                         max_panel.append(round(float(max_xep), 2))
                         min_panel.append(round(float(min_exp), 2))
 
-                    layer_dict = {'Layer': layers, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
+                    layer_dict = {'Channel': layers, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
 
                     return pd.DataFrame(layer_dict).to_dict(orient='records')
 
                 except (AssertionError, ValueError):
-                    return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+                    return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                          'Min': []}).to_dict(orient='records')
             else:
-                return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+                return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                      'Min': []}).to_dict(orient='records')
         else:
-            return pd.DataFrame({'Layer': [], 'Mean': [], 'Max': [],
+            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
-                  # Input('image-analysis', 'value'),
-                  State('uploaded_dict', 'data'),
-                  Input('data-collection', 'value'))
+                       # Input('image-analysis', 'value'),
+                       State('uploaded_dict', 'data'),
+                       Input('data-collection', 'value'))
     # @cache.memoize()
     def create_image_grid(data, data_selection):
         if data is not None and data is not None:
@@ -595,10 +601,10 @@ def init_callbacks(dash_app, tmpdirname):
             os.path.join(tmpdirname, 'downloads'), path)
 
     @dash_app.callback(Output('blend-color-legend', 'children'),
-                  Input('blending_colours', 'data'),
-                  Input('images_in_blend', 'options'),
-                  State('data-collection', 'value'),
-                  Input('alias-dict', 'data'))
+                       Input('blending_colours', 'data'),
+                       Input('images_in_blend', 'options'),
+                       State('data-collection', 'value'),
+                       Input('alias-dict', 'data'))
     def create_legend(blend_colours, current_blend, data_selection, aliases):
         current_blend = [elem['label'] for elem in current_blend] if current_blend is not None else None
         children = []
@@ -616,28 +622,36 @@ def init_callbacks(dash_app, tmpdirname):
 
 
 def init_dashboard(server):
-
-    dash_app = DashProxy(transforms=[ServersideOutputTransform()],
+    dash_app = DashProxy(__name__,
+                         transforms=[ServersideOutputTransform()],
                          external_stylesheets=[dbc.themes.BOOTSTRAP],
                          server=server,
                          routes_pathname_prefix="/ccramic/")
     dash_app.title = "ccramic"
     server.config['APPLICATION_ROOT'] = "/ccramic"
 
-    # try:
-    #     cache = Cache(dash_app.server, config={
-    #         'CACHE_TYPE': 'redis',
-    #         'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
-    #     })
-    # except (ModuleNotFoundError, RuntimeError) as no_redis:
-    #     try:
-    #         cache = diskcache.Cache("./cache")
-    #         background_callback_manager = DiskcacheManager(cache)
-    #     except DatabaseError:
-    #         cache = Cache(dash_app.server, config={
-    #             'CACHE_TYPE': 'filesystem',
-    #             'CACHE_DIR': 'cache-directory'
-    #         })
+    # VALID_USERNAME_PASSWORD_PAIRS = {
+    #     'ccramic_user': 'ccramic'
+    # }
+    #
+    # dash_auth.BasicAuth(
+    #     dash_app,
+    #     VALID_USERNAME_PASSWORD_PAIRS
+    # )
+    try:
+        cache = Cache(dash_app.server, config={
+            'CACHE_TYPE': 'redis',
+            'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
+        })
+    except (ModuleNotFoundError, RuntimeError) as no_redis:
+        try:
+            cache = diskcache.Cache("./cache")
+            background_callback_manager = DiskcacheManager(cache)
+        except DatabaseError:
+            cache = Cache(dash_app.server, config={
+                'CACHE_TYPE': 'filesystem',
+                'CACHE_DIR': 'cache-directory'
+            })
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         du.configure_upload(dash_app, tmpdirname)
@@ -660,7 +674,7 @@ def init_dashboard(server):
                                                                              max_files=200,
                                                                              filetypes=['png', 'tif',
                                                                                         'tiff', 'h5', 'mcd']),
-                                                                             # upload_id="upload-image"),
+                                                                         # upload_id="upload-image"),
                                                                          html.Div([html.H5("Choose data collection",
                                                                                            style={'width': '35%',
                                                                                                   'display': 'inline-block'}),
@@ -684,7 +698,7 @@ def init_dashboard(server):
                                                                                          'height': '100%',
                                                                                          'display': 'inline-block',
                                                                                          'margin-left': '-30'}),
-                                                                         dcc.Slider(50, 100, 10,
+                                                                         dcc.Slider(50, 100, 5,
                                                                                     value=75,
                                                                                     id='annotation-canvas-size'),
                                                                          html.H3(
@@ -717,6 +731,8 @@ def init_dashboard(server):
                                                                             children='Download File'),
                                                                      html.Br(),
                                                                      html.Br(),
+                                                                     html.A(id='download-link-canvas-tiff',
+                                                                            children='Download Canvas as tiff'),
                                                                      # html.Div(id='selected-area-info',
                                                                      #       style={
                                                                      #           'whiteSpace': 'pre-line'}),
@@ -782,6 +798,6 @@ def init_dashboard(server):
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname)
+    init_callbacks(dash_app, tmpdirname, cache)
 
     return dash_app.server

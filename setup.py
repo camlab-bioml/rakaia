@@ -34,6 +34,7 @@ setup(
                       'dash-uploader==0.7.0a1', "dash-canvas", "packaging==21.3.0", "Flask-Caching",
                       "multiprocess", "dash-extensions", "dash_daq", "dash-google-auth", "dash-bootstrap-components",
                       "pyvips", "imctools", "tifffile", "dash[testing]", "selenium", "diskcache", "h5py",
-                      "orjson", "dash>=2.9.0", "readimc", "Cython"],
+                      "orjson", "dash>=2.9.0", "readimc", "Cython", "dash-auth", "Flask-HTTPAuth",
+                      "kaleido"],
     python_requires=">=3.9.0",
 )
