@@ -325,11 +325,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
                        Input('alias-dict', 'data'),
+                       Input('annotation_canvas', 'figure'),
+                       Input('annotation_canvas', 'relayoutData'),
                        prevent_initial_call=True)
     # @cache.memoize()
-    def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases):
+    def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
+                               cur_graph, cur_graph_layout):
+
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
-                data_selection is not None:
+                data_selection is not None and ctx.triggered_id != "annotation_canvas":
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
@@ -345,22 +349,44 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 if legend_text != '':
                     fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
                                        yref='paper',
-                                       x=0.99,
-                                       xanchor='right',
-                                       y=0.1,
-                                       yanchor='bottom',
+                                       x=0.95,
+                                       # xanchor='right',
+                                       y=0.05,
+                                       # yanchor='bottom',
                                        showarrow=False)
 
                 # for adding a scale bar
-                # fig.add_shape(
-                #     type='line',
-                #     x0=image.shape[0]*0.1, x1=image.shape[0]*0.1 + 50,
-                #     y0=image.shape[0]*0.1, y1=image.shape[0]*0.1, line_color='white'
-                # )
+                fig.add_shape(type="line",
+                              xref="paper", yref="paper",
+                              x0=0.05, y0=0.05, x1=0.125,
+                              y1=0.05,
+                              line=dict(
+                                  color="white",
+                                  width=2,
+                              ),
+                              )
+                # add annotation for the scaling
+                scale_val = str(int((0.125 - 0.05) * image.shape[1])) + "um"
+                scale_text = f'<span style="color: white">{scale_val}</span><br>'
+                fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
+                                   yref='paper',
+                                   x=0.05,
+                                   # xanchor='right',
+                                   y=0.06,
+                                   # yanchor='bottom',
+                                   showarrow=False)
 
                 fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                                   xaxis=go.XAxis(showticklabels=False),
-                                  yaxis=go.YAxis(showticklabels=False))
+                                  yaxis=go.YAxis(showticklabels=False),
+                                  margin=dict(
+                                      l=25,
+                                      r=10,
+                                      b=25,
+                                      t=35,
+                                      pad=2
+                                  ))
+
                 dest_file = os.path.join(tmpdirname, 'downloads', "canvas.tiff")
                 if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
                     os.makedirs(os.path.join(tmpdirname, 'downloads'))
@@ -369,6 +395,36 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 return fig, str(dest_file)
             except ValueError:
                 raise PreventUpdate
+
+        # update the scale bar with and without zooming
+        elif ctx.triggered_id == "annotation_canvas" and cur_graph is not None and 'shapes' not in cur_graph_layout:
+            # find the text annotation that has um in the text and the correct location
+            for annotations in cur_graph['layout']['annotations']:
+                if 'um' in annotations['text'] and annotations['y'] == 0.06:
+                    x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1]))) + 1
+                    x_range_low = math.floor(int(abs(cur_graph['layout']['xaxis']['range'][0])))
+                    assert x_range_high >= x_range_low
+                    scale_val = int((0.125 - 0.05) * (x_range_high - x_range_low))
+                    scale_val = scale_val if scale_val > 0 else 1
+                    scale_text = f'<span style="color: white">{str(scale_val) + "um"}</span><br>'
+                    # get the index of thre list element corresponding to this text annotation
+                    index = cur_graph['layout']['annotations'].index(annotations)
+                    cur_graph['layout']['annotations'][index]['text'] = scale_text
+
+            fig = go.Figure(cur_graph)
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                  xaxis=go.XAxis(showticklabels=False),
+                                  yaxis=go.YAxis(showticklabels=False),
+                                  margin=dict(
+                                      l=25,
+                                      r=10,
+                                      b=25,
+                                      t=35,
+                                      pad=2
+                                  ))
+            return fig, None
+            # else:
+            #     raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -472,17 +528,30 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(
         Output('annotation_canvas', 'style'),
         Input('annotation-canvas-size', 'value'),
-        Input('annotation_canvas', 'figure'))
-    def update_canvas_size(value, current_canvas):
-        if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
-                'range' in current_canvas['layout']['yaxis']:
-            # aspect ratio is width divided by height
-            aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
-                           int(current_canvas['layout']['yaxis']['range'][0])
-        else:
-            aspect_ratio = 1
-        if value is not None:
-            return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
+        Input('annotation_canvas', 'figure'),
+        State('annotation_canvas', 'relayoutData'))
+    def update_canvas_size(value, current_canvas, cur_graph_layout):
+        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+
+        # only update the resolution if the zoom is not used
+        if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]):
+            # if the current canvas is not None, update using the aspect ratio
+            # otherwise, use aspect of 1
+            if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
+                    'range' in current_canvas['layout']['yaxis']:
+                # aspect ratio is width divided by height
+                aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                               int(current_canvas['layout']['yaxis']['range'][0])
+            else:
+                aspect_ratio = 1
+
+            if value is not None:
+                return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
+            else:
+                raise PreventUpdate
+
+        elif value is not None and current_canvas is None:
+            return {'width': f'{value}vh', 'height': f'{value}vh'}
         else:
             raise PreventUpdate
 
@@ -493,8 +562,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
         State('uploaded_dict', 'data'),
         State('image_layers', 'value'),
         State('data-collection', 'value'),
-        State('image-analysis', 'value'))
-    def update_area_information(graph, graph_layout, upload, layers, data_selection, cur_tab):
+        State('image-analysis', 'value'),
+        State('alias-dict', 'data'),
+        prevent_initial_call=True)
+    def update_area_information(graph, graph_layout, upload, layers, data_selection, cur_tab, aliases_dict):
         # these range keys correspond to the zoom feature
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -507,39 +578,46 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 mean_panel = []
                 max_panel = []
                 min_panel = []
+                aliases = []
                 for layer in layers:
-                    # for each layer we store the values for each shape
-                    shapes_mean = []
-                    shapes_max = []
-                    shapes_min = []
-                    for shape in graph_layout['shapes']:
-                        if shape['type'] == 'rect':
-                            x_range_low = math.ceil(int(shape['x0']))
-                            x_range_high = math.ceil(int(shape['x1']))
-                            y_range_low = math.ceil(int(shape['y0']))
-                            y_range_high = math.ceil(int(shape['y1']))
+                    try:
+                        # for each layer we store the values for each shape
+                        shapes_mean = []
+                        shapes_max = []
+                        shapes_min = []
+                        for shape in graph_layout['shapes']:
+                            if shape['type'] == 'rect':
+                                x_range_low = math.ceil(int(shape['x0']))
+                                x_range_high = math.ceil(int(shape['x1']))
+                                y_range_low = math.ceil(int(shape['y0']))
+                                y_range_high = math.ceil(int(shape['y1']))
 
-                            assert x_range_high >= x_range_low
-                            assert y_range_high >= y_range_low
+                                assert x_range_high >= x_range_low
+                                assert y_range_high >= y_range_low
 
-                            mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer],
+                                mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer],
                                                                              x_range_low,
                                                                              x_range_high,
                                                                              y_range_low, y_range_high)
-                            shapes_mean.append(round(float(mean_exp), 2))
-                            shapes_max.append(round(float(max_xep), 2))
-                            shapes_min.append(round(float(min_exp), 2))
+                                shapes_mean.append(round(float(mean_exp), 2))
+                                shapes_max.append(round(float(max_xep), 2))
+                                shapes_min.append(round(float(min_exp), 2))
 
-                    mean_panel.append(round(sum(shapes_mean) / len(shapes_mean), 2))
-                    max_panel.append(round(sum(shapes_max) / len(shapes_max), 2))
-                    min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
+                        mean_panel.append(round(sum(shapes_mean) / len(shapes_mean), 2))
+                        max_panel.append(round(sum(shapes_max) / len(shapes_max), 2))
+                        min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
+                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
 
-                layer_dict = {'Layer': layers, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
+                    except (AssertionError, ValueError, ZeroDivisionError):
+                        pass
+
+                layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
                 return pd.DataFrame(layer_dict).to_dict(orient='records')
 
             # option 2: if the zoom is used
             elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
                     all([elem in graph_layout for elem in zoom_keys]):
+
                 try:
                     x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
                     x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
@@ -551,6 +629,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     mean_panel = []
                     max_panel = []
                     min_panel = []
+                    aliases = []
                     for layer in layers:
                         mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer], x_range_low,
                                                                          x_range_high,
@@ -558,12 +637,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
                         mean_panel.append(round(float(mean_exp), 2))
                         max_panel.append(round(float(max_xep), 2))
                         min_panel.append(round(float(min_exp), 2))
+                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
 
-                    layer_dict = {'Channel': layers, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
+                    layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
 
                     return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-                except (AssertionError, ValueError):
+                except (AssertionError, ValueError, ZeroDivisionError):
                     return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                          'Min': []}).to_dict(orient='records')
             else:
@@ -739,7 +819,7 @@ def init_dashboard(server):
                                                                      html.Div([dash_table.DataTable(
                                                                          id='selected-area-table',
                                                                          columns=[{'id': p, 'name': p} for p in
-                                                                                  ['Layer', 'Mean', 'Max', 'Min']],
+                                                                                  ['Channel', 'Mean', 'Max', 'Min']],
                                                                          data=None)], style={"width": "85%"}),
                                                                  ]), width=4),
                                                              ])])]),
