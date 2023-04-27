@@ -1,14 +1,9 @@
-from subprocess import Popen, PIPE
-import socket
-import os
+import base64
+
 import pytest
-import platform
-from dash.testing.application_runners import import_app
 from selenium.common import NoSuchElementException
 import time
-from ccramic import init_app
-from ccramic.app.app import init_dashboard
-import json
+from ccramic.app import init_app
 
 
 @pytest.fixture(scope="module")
@@ -72,11 +67,13 @@ def recursive_wait_for_elem(app, elem, duration):
 
 
 def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
+    credentials = base64.b64encode(b"ccramic_user:ccramic-1").decode('utf-8')
     assert str(type(ccramic_flask_test_app)) == "<class 'flask.app.Flask'>"
-    response = client.get('/')
+    response = client.get('/', headers={"Authorization": "Basic {}".format(credentials)})
     assert response.status_code == 200
     # test landing page alias
-    assert client.get("/ccramic").data == response.data
+    assert client.get("/").data == b'Unauthorized Access'
+    client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
     # for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:
     #     assert dash_duo.find_element(elem) is not None
     # with pytest.raises(NoSuchElementException):

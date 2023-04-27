@@ -12,7 +12,7 @@ setup(
     author_email="mwatson@lunenfeld.ca",
     packages=find_packages(),
     package_dir={"ccramic": "ccramic"},
-    package_data={'': ['*.json']},
+    package_data={'': ['*.json', "*.html", "*.css"]},
     include_package_data=True,
     description="",
     long_description=open("README.md").read(),
@@ -24,7 +24,7 @@ setup(
     ],
     entry_points="""
     [console_scripts]
-    {program} = ccramic.main:main
+    {program} = ccramic.app.wsgi:main
     """.format(program="ccramic"),
     license="Unlicensed",
     install_requires=["pillow", "pandas", "matplotlib", "fpdf",

@@ -2,12 +2,10 @@ import anndata
 import tifffile
 import plotly.express as px
 import pandas as pd
-from PIL import Image
 from dash import dash_table
 import os
 # from io import BytesIO
 from dash.exceptions import PreventUpdate
-import numpy as np
 import flask
 import tempfile
 import dash_uploader as du
@@ -16,21 +14,17 @@ from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOu
     ServersideOutputTransform
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-from dash import ctx, DiskcacheManager, Patch
+from dash import ctx, DiskcacheManager
 from tifffile import TiffFile, imwrite
 # from matplotlib import pyplot as plt
 from .utils import *
 import diskcache
 import h5py
-import orjson
 from sqlite3 import DatabaseError
-from readimc import TXTFile, MCDFile
-from io import BytesIO
+from readimc import MCDFile
 import math
 import plotly.graph_objects as go
-from ccramic import __version__
 from pathlib import Path
-import dash_auth
 
 
 def init_callbacks(dash_app, tmpdirname, cache):
@@ -390,7 +384,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 dest_file = os.path.join(tmpdirname, 'downloads', "canvas.tiff")
                 if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
                     os.makedirs(os.path.join(tmpdirname, 'downloads'))
+
+                # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
+                # buf = io.BytesIO(fig_bytes)
+                # img = Image.open(buf)
                 imwrite(dest_file, image, photometric='rgb')
+                # plotly.offline.plot(fig, filename='tiff.html')
+                # pio.write_image(fig, 'test_back.png', width=im.width, height=im.height)
 
                 return fig, str(dest_file)
             except ValueError:
@@ -401,10 +401,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
             # find the text annotation that has um in the text and the correct location
             for annotations in cur_graph['layout']['annotations']:
                 if 'um' in annotations['text'] and annotations['y'] == 0.06:
-                    x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1]))) + 1
+                    x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1])))
                     x_range_low = math.floor(int(abs(cur_graph['layout']['xaxis']['range'][0])))
                     assert x_range_high >= x_range_low
-                    scale_val = int((0.125 - 0.05) * (x_range_high - x_range_low))
+                    scale_val = math.ceil(int((0.125 - 0.05) * (x_range_high - x_range_low))) + 1
                     scale_val = scale_val if scale_val > 0 else 1
                     scale_text = f'<span style="color: white">{str(scale_val) + "um"}</span><br>'
                     # get the index of thre list element corresponding to this text annotation
@@ -425,6 +425,40 @@ def init_callbacks(dash_app, tmpdirname, cache):
             return fig, None
             # else:
             #     raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+
+
+    @dash_app.callback(Output('annotation_canvas', 'config'),
+                       Input('annotation_canvas', 'figure'),
+                       State('annotation_canvas', 'relayoutData'),
+                       prevent_initial_call=True)
+    def set_graph_config(current_canvas, cur_canvas_layout):
+        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+
+        # only update the resolution if the zoom is not used
+        if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
+                'range' in current_canvas['layout']['yaxis'] and \
+            all([elem not in cur_canvas_layout for elem in zoom_keys]):
+            config = {
+                "modeBarButtonsToAdd": [
+                    "drawline",
+                    "drawopenpath",
+                    "drawclosedpath",
+                    "drawcircle",
+                    "drawrect",
+                    "eraseshape"],
+                'toImageButtonOptions': {
+                    'format': 'png',  # one of png, svg, jpeg, webp
+                    'filename': 'canvas',
+                    'height': int(current_canvas['layout']['yaxis']['range'][0]),
+                    'width': int(current_canvas['layout']['xaxis']['range'][1]),
+                    # 'scale': 2  # Multiply title/legend/axis/canvas sizes by this factor
+                }
+            }
+
+            return config
         else:
             raise PreventUpdate
 
@@ -791,7 +825,11 @@ def init_dashboard(server):
                                                                                  "drawclosedpath",
                                                                                  "drawcircle",
                                                                                  "drawrect",
-                                                                                 "eraseshape"]},
+                                                                                 "eraseshape"],
+                                                                             'toImageButtonOptions': {'format': 'png',
+                                                                                                'filename': 'canvas',
+                                                                                                       'scale': 1}
+                                                                         },
                                                                              id='annotation_canvas',
                                                                              style={"margin-top": "-30"})
                                                                          # style={'width': '120vh',
