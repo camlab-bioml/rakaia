@@ -239,9 +239,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('canvas-layers', 'data'),
                        Output('blending_colours', 'data'),
                        ServersideOutput('canvas-layers', 'data'),
+                       Input('to-scale-intensity', 'value'),
+                       Input('pixel-intensity-mod', 'value'),
                        prevent_initial_call=True)
-    def set_blend_colour_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
-                                   all_layers):
+    def set_blend_options_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
+                                   all_layers, to_scale_intensity, intensity_scale_value):
         # if data is uploaded, initialize the colour dict with white
         # do not update the layers if none have been selected
 
@@ -290,13 +292,37 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # if the trigger is the colour wheel, update the specific layer with the colour chosen
         # update the layers with the colour
         if ctx.triggered_id == 'annotation-color-picker' and \
+                    layer is not None and current_blend_dict is not None and data_selection is not None and \
+                    current_blend_dict is not None:
+            split = data_selection.split("_")
+            exp, slide, acq = split[0], split[1], split[2]
+            current_blend_dict[exp][slide][acq][layer] = colour['hex']
+            if len(to_scale_intensity) > 0 and 'Scale Pixels' in to_scale_intensity and intensity_scale_value != 1:
+                try:
+                    array = np.array(uploaded[exp][slide][acq][layer] * intensity_scale_value).astype(np.uint8)
+                except TypeError:
+                    array = uploaded[exp][slide][acq][layer]
+            else:
+                array = uploaded[exp][slide][acq][layer]
+            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                                                                             colour['hex'])).astype(np.uint8)
+            return current_blend_dict, all_layers
+
+        if ctx.triggered_id in ['to-scale-intensity', 'pixel-intensity-mod'] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
-            current_blend_dict[exp][slide][acq][layer] = colour['hex']
-            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(uploaded[exp][slide][acq][layer],
-                                                                             colour['hex'])).astype(np.uint8)
+            if len(to_scale_intensity) > 0 and 'Scale Pixels' in to_scale_intensity and intensity_scale_value != 1:
+                try:
+                    array = np.array(uploaded[exp][slide][acq][layer] * intensity_scale_value).astype(np.uint8)
+                except TypeError:
+                    array = uploaded[exp][slide][acq][layer]
+            else:
+                array = uploaded[exp][slide][acq][layer]
+            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                                                                             current_blend_dict[exp][slide]
+                                                                            [acq][layer])).astype(np.uint8)
             return current_blend_dict, all_layers
         else:
             raise PreventUpdate
@@ -427,8 +453,6 @@ def init_callbacks(dash_app, tmpdirname, cache):
             #     raise PreventUpdate
         else:
             raise PreventUpdate
-
-
 
     @dash_app.callback(Output('annotation_canvas', 'config'),
                        Input('annotation_canvas', 'figure'),
@@ -836,29 +860,44 @@ def init_dashboard(server):
                                                                          #        'height': '120vh'}),
                                                                      ]), width=8),
                                                                  dbc.Col(html.Div([
+                                                                     html.H5("Select channel to modify"),
                                                                      dcc.Dropdown(id='images_in_blend',
                                                                                   multi=False),
+                                                                     html.Br(),
                                                                      daq.ColorPicker(
                                                                          id="annotation-color-picker",
                                                                          label="Color Picker",
-                                                                         value=dict(hex="#119DFF")),
+                                                                             value=dict(hex="#1978B6")),
+                                                                    html.Br(),
+                                                                     html.H5("Adjust pixel scaling intensity",
+                                                                             style={'width': '75%'}),
+                                                                     dcc.Checklist(id='to-scale-intensity',
+                                                                         options=['Scale Pixels'], value=[]),
+                                                                     dcc.Input(
+                                                                         id="pixel-intensity-mod", type="number",
+                                                                         placeholder="Adjust intensity scaling",
+                                                                         min=0.1, max=2, step=0.1, value=1
+                                                                     ),
                                                                      html.Div(id='blend-color-legend',
                                                                               style={
                                                                                   'whiteSpace': 'pre-line'}),
+                                                                     html.Br(),
                                                                      html.A(id='download-link',
                                                                             children='Download File'),
-                                                                     html.Br(),
                                                                      html.Br(),
                                                                      html.A(id='download-link-canvas-tiff',
                                                                             children='Download Canvas as tiff'),
                                                                      # html.Div(id='selected-area-info',
                                                                      #       style={
                                                                      #           'whiteSpace': 'pre-line'}),
+                                                                     html.Br(),
+                                                                     html.Br(),
                                                                      html.Div([dash_table.DataTable(
                                                                          id='selected-area-table',
                                                                          columns=[{'id': p, 'name': p} for p in
                                                                                   ['Channel', 'Mean', 'Max', 'Min']],
-                                                                         data=None)], style={"width": "85%"}),
+                                                                         data=None),
+                                                                     ], style={"width": "85%"}),
                                                                  ]), width=4),
                                                              ])])]),
                                              dcc.Tab(label="Image Gallery", id='gallery-tab',

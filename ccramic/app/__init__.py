@@ -60,7 +60,7 @@ def init_app():
         import ccramic.app.routes
 
         # Import Dash application
-        from ccramic.app.app import init_dashboard, init_callbacks
+        from .app import init_dashboard, init_callbacks
         app = init_dashboard(app)
         # init_callbacks(app)
 
