@@ -25,19 +25,10 @@ from readimc import MCDFile
 import math
 import plotly.graph_objects as go
 from pathlib import Path
-
+import matplotlib.pyplot as plt
 
 def init_callbacks(dash_app, tmpdirname, cache):
     dash_app.config.suppress_callback_exceptions = True
-
-    @dash_app.callback(
-        Output('display-selected-values', 'children'),
-        Input('checklist', 'value'))
-    def try_callback(input):
-        if input is not None:
-            return u'{} chosen'.format(
-                input
-            )
 
     @dash_app.callback(
         Output("metadata-distribution", "figure"),
@@ -46,6 +37,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
     def display_metadata_distribution(anndata_obj, metadata_selection):
         if anndata_obj is not None and metadata_selection is not None:
             data = anndata_obj['metadata'][metadata_selection]
+            fig = px.histogram(data, range_x=[min(data), max(data)])
+            fig.update_layout(dragmode='drawrect')
             return px.histogram(data, range_x=[min(data), max(data)])
         else:
             raise PreventUpdate
@@ -239,11 +232,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('canvas-layers', 'data'),
                        Output('blending_colours', 'data'),
                        ServersideOutput('canvas-layers', 'data'),
-                       Input('to-scale-intensity', 'value'),
-                       Input('pixel-intensity-mod', 'value'),
+                       # Input('pixel-hist', 'figure'),
+                       Input('pixel-hist', 'relayoutData'),
                        prevent_initial_call=True)
     def set_blend_options_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
-                                   all_layers, to_scale_intensity, intensity_scale_value):
+                                    all_layers, hist_layout):
         # if data is uploaded, initialize the colour dict with white
         # do not update the layers if none have been selected
 
@@ -292,38 +285,77 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # if the trigger is the colour wheel, update the specific layer with the colour chosen
         # update the layers with the colour
         if ctx.triggered_id == 'annotation-color-picker' and \
-                    layer is not None and current_blend_dict is not None and data_selection is not None and \
-                    current_blend_dict is not None:
-            split = data_selection.split("_")
-            exp, slide, acq = split[0], split[1], split[2]
-            current_blend_dict[exp][slide][acq][layer] = colour['hex']
-            if len(to_scale_intensity) > 0 and 'Scale Pixels' in to_scale_intensity and intensity_scale_value != 1:
-                try:
-                    array = np.array(uploaded[exp][slide][acq][layer] * intensity_scale_value).astype(np.uint8)
-                except TypeError:
-                    array = uploaded[exp][slide][acq][layer]
-            else:
-                array = uploaded[exp][slide][acq][layer]
-            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                             colour['hex'])).astype(np.uint8)
-            return current_blend_dict, all_layers
-
-        if ctx.triggered_id in ['to-scale-intensity', 'pixel-intensity-mod'] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
-            if len(to_scale_intensity) > 0 and 'Scale Pixels' in to_scale_intensity and intensity_scale_value != 1:
-                try:
-                    array = np.array(uploaded[exp][slide][acq][layer] * intensity_scale_value).astype(np.uint8)
-                except TypeError:
-                    array = uploaded[exp][slide][acq][layer]
-            else:
-                array = uploaded[exp][slide][acq][layer]
+            current_blend_dict[exp][slide][acq][layer] = colour['hex']
+            array = uploaded[exp][slide][acq][layer]
+            if hist_layout is not None and 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) > 0:
+                lower_bound = hist_layout['shapes'][0]['x0']
+                upper_bound = hist_layout['shapes'][0]['x1']
+                original_max = np.max(array)
+                scale_factor = original_max / upper_bound
+                array = np.where(array < lower_bound, 0, array)
+                array = np.where(array > 0, array * scale_factor, 0)
+            elif hist_layout is not None and 'shapes[0].x0' and 'shapes[0].x1' in hist_layout:
+                lower_bound = hist_layout['shapes[0].x0']
+                array = np.where(array < lower_bound, 0, array)
+                upper_bound = hist_layout['shapes[0].x1']
+                original_max = np.max(array)
+                scale_factor = original_max / upper_bound
+                array = np.where(array < lower_bound, 0, array)
+                array = np.where(array > 0, array * scale_factor, 0)
+
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                             current_blend_dict[exp][slide]
-                                                                            [acq][layer])).astype(np.uint8)
+                                                                             colour['hex'])).astype(np.uint8)
             return current_blend_dict, all_layers
+
+        if ctx.triggered_id == "pixel-hist" and \
+                layer is not None and current_blend_dict is not None and data_selection is not None and \
+                current_blend_dict is not None:
+            split = data_selection.split("_")
+            exp, slide, acq = split[0], split[1], split[2]
+            array = np.array(Image.fromarray(uploaded[exp][slide][acq][layer]).convert('L'))
+            if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) > 0:
+                lower_bound = hist_layout['shapes'][0]['x0']
+                upper_bound = hist_layout['shapes'][0]['x1']
+                original_max = np.max(array)
+                scale_factor = original_max / upper_bound
+                array = np.where(array < lower_bound, 0, array)
+                array = np.where(array > 0, array * scale_factor, 0)
+            
+            elif 'shapes[0].x0' and 'shapes[0].x1' in hist_layout:
+                lower_bound = hist_layout['shapes[0].x0']
+                array = np.where(array < lower_bound, 0, array)
+                upper_bound = hist_layout['shapes[0].x1']
+                original_max = np.max(array)
+                scale_factor = original_max / upper_bound
+                array = np.where(array < lower_bound, 0, array)
+                array = np.where(array > 0, array * scale_factor, 0)
+
+            # array = array * scale_factor
+            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array, current_blend_dict[exp][slide]
+                                                                                 [acq][layer])).astype(np.uint8)
+
+            return current_blend_dict, all_layers
+
+        # if ctx.triggered_id == 'to-scale-intensity' and layer is not None and \
+        #         current_blend_dict is not None and data_selection is not None and \
+        #         current_blend_dict is not None:
+        #     split = data_selection.split("_")
+        #     exp, slide, acq = split[0], split[1], split[2]
+        #     if len(to_scale_intensity) > 0 and 'Toggle scaling' in to_scale_intensity and intensity_scale_value != 1:
+        #         try:
+        #             array = np.array(uploaded[exp][slide][acq][layer] * intensity_scale_value).astype(np.uint8)
+        #         except TypeError:
+        #             array = uploaded[exp][slide][acq][layer]
+        #     else:
+        #         array = uploaded[exp][slide][acq][layer]
+        #     all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+        #                                                                      current_blend_dict[exp][slide]
+        #                                                                      [acq][layer])).astype(np.uint8)
+        #     return current_blend_dict, all_layers
         else:
             raise PreventUpdate
 
@@ -365,20 +397,23 @@ def init_callbacks(dash_app, tmpdirname, cache):
             image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected])
             try:
                 fig = px.imshow(image)
+                x_axis_placement = 0.000008333333 * image.shape[1]
+                x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
                 # fig = canvas_layers[image_type][currently_selected[0]]
                 if legend_text != '':
                     fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
                                        yref='paper',
-                                       x=0.95,
+                                       x=(1- x_axis_placement),
                                        # xanchor='right',
                                        y=0.05,
                                        # yanchor='bottom',
                                        showarrow=False)
 
+                # set the x-axis scale placement based on the size of the image
                 # for adding a scale bar
                 fig.add_shape(type="line",
                               xref="paper", yref="paper",
-                              x0=0.05, y0=0.05, x1=0.125,
+                              x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
                               y1=0.05,
                               line=dict(
                                   color="white",
@@ -386,11 +421,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
                               ),
                               )
                 # add annotation for the scaling
-                scale_val = str(int((0.125 - 0.05) * image.shape[1])) + "um"
+                scale_val = str(int(0.075 * image.shape[1])) + "um"
                 scale_text = f'<span style="color: white">{scale_val}</span><br>'
                 fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
-                                   x=0.05,
+                                   x=x_axis_placement + (0.05/len(scale_val)),
                                    # xanchor='right',
                                    y=0.06,
                                    # yanchor='bottom',
@@ -400,8 +435,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                   xaxis=go.XAxis(showticklabels=False),
                                   yaxis=go.YAxis(showticklabels=False),
                                   margin=dict(
-                                      l=25,
-                                      r=10,
+                                      l=10,
+                                      r=5,
                                       b=25,
                                       t=35,
                                       pad=2
@@ -430,7 +465,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1])))
                     x_range_low = math.floor(int(abs(cur_graph['layout']['xaxis']['range'][0])))
                     assert x_range_high >= x_range_low
-                    scale_val = math.ceil(int((0.125 - 0.05) * (x_range_high - x_range_low))) + 1
+                    scale_val = math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1
                     scale_val = scale_val if scale_val > 0 else 1
                     scale_text = f'<span style="color: white">{str(scale_val) + "um"}</span><br>'
                     # get the index of thre list element corresponding to this text annotation
@@ -439,15 +474,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
             fig = go.Figure(cur_graph)
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                  xaxis=go.XAxis(showticklabels=False),
-                                  yaxis=go.YAxis(showticklabels=False),
-                                  margin=dict(
-                                      l=25,
-                                      r=10,
-                                      b=25,
-                                      t=35,
-                                      pad=2
-                                  ))
+                              xaxis=go.XAxis(showticklabels=False),
+                              yaxis=go.YAxis(showticklabels=False),
+                              margin=dict(
+                                  l=25,
+                                  r=10,
+                                  b=25,
+                                  t=35,
+                                  pad=2
+                              ))
             return fig, None
             # else:
             #     raise PreventUpdate
@@ -464,7 +499,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # only update the resolution if the zoom is not used
         if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
                 'range' in current_canvas['layout']['yaxis'] and \
-            all([elem not in cur_canvas_layout for elem in zoom_keys]):
+                all([elem not in cur_canvas_layout for elem in zoom_keys]):
             config = {
                 "modeBarButtonsToAdd": [
                     "drawline",
@@ -654,9 +689,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                 assert y_range_high >= y_range_low
 
                                 mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer],
-                                                                             x_range_low,
-                                                                             x_range_high,
-                                                                             y_range_low, y_range_high)
+                                                                                 x_range_low,
+                                                                                 x_range_high,
+                                                                                 y_range_low, y_range_high)
                                 shapes_mean.append(round(float(mean_exp), 2))
                                 shapes_max.append(round(float(max_xep), 2))
                                 shapes_min.append(round(float(min_exp), 2))
@@ -758,6 +793,36 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(
+        Output("download-collapse", "is_open"),
+        [Input("open-download-collapse", "n_clicks")],
+        [State("download-collapse", "is_open")],
+    )
+    def toggle_collapse(n, is_open):
+        if n:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(Output("pixel-hist", 'figure'),
+                       Input('images_in_blend', 'value'),
+                       State('uploaded_dict', 'data'),
+                       State('data-collection', 'value'),)
+    def create_pixel_histogram(selected_channel, uploaded, data_selection):
+        if None not in (selected_channel, uploaded, data_selection):
+            split = data_selection.split("_")
+            exp, slide, acq = split[0], split[1], split[2]
+            # binwidth = 10
+            converted = Image.fromarray(uploaded[exp][slide][acq][selected_channel]).convert('L')
+            converted = np.array(converted, dtype=int)
+            data = np.hstack(converted)
+            hist = np.random.choice(data, int(data.shape[0] / 100)) if data.shape[0] > 20000000 else data
+            return px.histogram(hist, range_x=[min(hist), max(hist)])
+            #
+            # bins=range(min(int(np.hstack(data))),\
+            #                               max(int(np.hstack(data))) + binwidth, binwidth))
+        else:
+            raise PreventUpdate
+
 
 def init_dashboard(server):
     dash_app = DashProxy(__name__,
@@ -851,8 +916,8 @@ def init_dashboard(server):
                                                                                  "drawrect",
                                                                                  "eraseshape"],
                                                                              'toImageButtonOptions': {'format': 'png',
-                                                                                                'filename': 'canvas',
-                                                                                                       'scale': 1}
+                                                                                                      'filename': 'canvas',
+                                                                                                      'scale': 1}
                                                                          },
                                                                              id='annotation_canvas',
                                                                              style={"margin-top": "-30"})
@@ -860,44 +925,86 @@ def init_dashboard(server):
                                                                          #        'height': '120vh'}),
                                                                      ]), width=8),
                                                                  dbc.Col(html.Div([
-                                                                     html.H5("Select channel to modify"),
+                                                                     html.H5("Select channel to modify",
+                                                                             style={'width': '50%',
+                                                                                    'display': 'inline-block'}
+                                                                             ),
+                                                                     html.Abbr("\u2753",
+                                                                    title="Select a channel image to change colour or "
+                                                                          "pixel intensity.",
+                                                                               style={'width': '5%',
+                                                                                      'display': 'inline-block'}
+                                                                               ),
                                                                      dcc.Dropdown(id='images_in_blend',
                                                                                   multi=False),
                                                                      html.Br(),
                                                                      daq.ColorPicker(
                                                                          id="annotation-color-picker",
                                                                          label="Color Picker",
-                                                                             value=dict(hex="#1978B6")),
-                                                                    html.Br(),
-                                                                     html.H5("Adjust pixel scaling intensity",
+                                                                         value=dict(hex="#1978B6")),
+
+                                                                     html.Br(),
+                                                                     dcc.Graph(id="pixel-hist",
+                                                                                         figure={'layout': {
+                                                                                             'margin': dict(
+                                                                                                 l=10,
+                                                                                                 r=5,
+                                                                                                 b=25,
+                                                                                                 t=35,
+                                                                                                 pad=2),
+                                                                                         }}, style={'width': '60vh',
+                                                                                                    'height': '30vh'},
+                                                                               config={
+                                                                                   "modeBarButtonsToAdd": [
+                                                                                       "drawrect",
+                                                                                       "eraseshape"]},
+                                                                               relayoutData={'dragmode': 'drawrect'}),
+                                                                     html.Br(),
+                                                                     html.Br(),
+                                                                     html.H6("Current canvas blend",
                                                                              style={'width': '75%'}),
-                                                                     dcc.Checklist(id='to-scale-intensity',
-                                                                         options=['Scale Pixels'], value=[]),
-                                                                     dcc.Input(
-                                                                         id="pixel-intensity-mod", type="number",
-                                                                         placeholder="Adjust intensity scaling",
-                                                                         min=0.1, max=2, step=0.1, value=1
-                                                                     ),
                                                                      html.Div(id='blend-color-legend',
                                                                               style={
                                                                                   'whiteSpace': 'pre-line'}),
                                                                      html.Br(),
-                                                                     html.A(id='download-link',
-                                                                            children='Download File'),
-                                                                     html.Br(),
-                                                                     html.A(id='download-link-canvas-tiff',
-                                                                            children='Download Canvas as tiff'),
                                                                      # html.Div(id='selected-area-info',
                                                                      #       style={
                                                                      #           'whiteSpace': 'pre-line'}),
                                                                      html.Br(),
                                                                      html.Br(),
+                                                                     html.H6("Selection information",
+                                                                             style={'width': '75%'}),
                                                                      html.Div([dash_table.DataTable(
                                                                          id='selected-area-table',
                                                                          columns=[{'id': p, 'name': p} for p in
                                                                                   ['Channel', 'Mean', 'Max', 'Min']],
                                                                          data=None),
                                                                      ], style={"width": "85%"}),
+
+                                                                     html.Br(),
+                                                                     dbc.Button(
+                                                                         "Show download links",
+                                                                         id="open-download-collapse",
+                                                                         className="mb-3",
+                                                                         color="primary",
+                                                                         n_clicks=0,
+                                                                     ),
+                                                                     dbc.Tooltip(
+                                                                         "Hover over this to get the download links.",
+                                                                         target="open-download-collapse",
+                                                                     ),
+                                                                     html.Div(
+                                                                         dbc.Collapse(
+                                                                            html.Div([html.A(id='download-link',
+                                                                                    children='Download File'),
+                                                                             html.Br(),
+                                                                             html.A(id='download-link-canvas-tiff',
+                                                                                    children='Download Canvas as tiff')]),
+                                                                             id="download-collapse",
+                                                                             is_open=False,
+                                                                         ),
+                                                                         style={"minHeight": "100px"},
+                                                                     ),
                                                                  ]), width=4),
                                                              ])])]),
                                              dcc.Tab(label="Image Gallery", id='gallery-tab',

@@ -22,7 +22,7 @@ def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
 
 def recolour_greyscale(array, colour):
     if colour not in ['#ffffff', '#FFFFFF']:
-        image = Image.fromarray(array)
+        image = Image.fromarray(array.astype(np.uint8))
         image = image.convert('RGB')
         red, green, blue = ImageColor.getcolor(colour, "RGB")
 
