@@ -12,7 +12,7 @@ setup(
     author_email="mwatson@lunenfeld.ca",
     packages=find_packages(),
     package_dir={"ccramic": "ccramic"},
-    package_data={'': ['*.json']},
+    package_data={'': ['*.json', "*.html", "*.css"]},
     include_package_data=True,
     description="",
     long_description=open("README.md").read(),
@@ -24,7 +24,7 @@ setup(
     ],
     entry_points="""
     [console_scripts]
-    {program} = ccramic.main:run_app
+    {program} = ccramic.app.wsgi:main
     """.format(program="ccramic"),
     license="Unlicensed",
     install_requires=["pillow", "pandas", "matplotlib", "fpdf",
@@ -34,6 +34,7 @@ setup(
                       'dash-uploader==0.7.0a1', "dash-canvas", "packaging==21.3.0", "Flask-Caching",
                       "multiprocess", "dash-extensions", "dash_daq", "dash-google-auth", "dash-bootstrap-components",
                       "pyvips", "imctools", "tifffile", "dash[testing]", "selenium", "diskcache", "h5py",
-                      "orjson", "dash>=2.9.0", "readimc", "Cython"],
+                      "orjson", "dash>=2.9.0", "readimc", "Cython", "dash-auth", "Flask-HTTPAuth",
+                      "kaleido"],
     python_requires=">=3.9.0",
 )

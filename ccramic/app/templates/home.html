@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <style>
+    title {text-align: center;}
+    h1 {text-align: center;}
+    p {text-align: center;}
+    div {text-align: center;}
+</style>
+    <title>ccramic</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='main.css') }}">
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1 class="logo">ccramic</h1>
+        <h2 class="logo">Cell-type Classification (using) Rapid
+        Analysis (of) Multiplexed Imaging (mass) Cytometry</h2>
+        <strong><nav>
+          <ul class="menu">
+            <a href="/ccramic/">Launch ccramic image viewer</a>
+            <br>
+            <a href="/help/">Access ccramic help</a>
+            <br>
+            <a href="https://github.com/camlab-bioml/ccramic">View source code</a>
+          </ul>
+        </nav></strong>
+      </div>
+    </header>
+    <div class="container">
+      {% block content %}
+      {% endblock %}
+    </div>
+  </body>
+</html>
