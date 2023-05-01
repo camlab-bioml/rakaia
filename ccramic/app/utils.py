@@ -155,3 +155,22 @@ def resize_for_canvas(image, basewidth=400):
 def make_metadata_column_editable(column_name):
     # only allow the channel label column to be edited
     return "Label" in column_name or column_name == "Channel Label"
+
+
+def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
+    """
+    Filter an array by an upper and lower bound on the pixel values.
+    Filter on the lower bound: removes any pixels less than the lower bound
+    Filter on the upper bound: sets the upper bound as the new max intensity and scales all pixels
+    relative to the new max.
+    Example: original max intensity 255, new upper bound = 100. Scaling will be done to each pixel retained
+    by multiplying by 255/100
+    """
+    array = np.array(Image.fromarray(array).convert('L'))
+    original_max = np.max(array)
+    scale_factor = original_max / upper_bound
+    scale_factor = original_max / upper_bound
+    array = np.where(array < lower_bound, 0, array)
+    array = np.where(array > 0, array * scale_factor, 0)
+    return array
+
