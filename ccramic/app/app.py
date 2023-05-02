@@ -238,13 +238,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('bool-apply-filter', 'value'),
                        State('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
+                       Input('canvas-refresh', 'n_clicks'),
                        prevent_initial_call=True)
     def set_blend_options_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
-                                    all_layers, hist_layout, filter_chosen, filter_name, filter_value):
+                                    all_layers, hist_layout, filter_chosen, filter_name, filter_value,
+                                   refresh_count):
         # if data is uploaded, initialize the colour dict with white
         # do not update the layers if none have been selected
 
-        if ctx.triggered_id in ["uploaded_dict"]:
+        if ctx.triggered_id in ["uploaded_dict", "canvas-refresh"] and ctx.triggered_id not in ['image-analysis']:
             if current_blend_dict is None and uploaded is not None:
                 current_blend_dict = {}
                 for exp in uploaded.keys():
@@ -280,7 +282,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
             return current_blend_dict, None
         # if a new image is added to the layer, update the colour to white by default
         # update the layers with the colour
-        if ctx.triggered_id == "image_layers" and add_to_layer is not None and current_blend_dict is not None:
+        if ctx.triggered_id in ["image_layers", "canvas_refresh"] and add_to_layer is not None and \
+                current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             if all_layers is None:
@@ -307,9 +310,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
             return current_blend_dict, all_layers
         # if the trigger is the colour wheel, update the specific layer with the colour chosen
         # update the layers with the colour
-        if ctx.triggered_id == 'annotation-color-picker' and \
+        if ctx.triggered_id in ['annotation-color-picker', 'canvas-refresh'] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
-                current_blend_dict is not None:
+                current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
@@ -329,9 +332,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                                                              colour['hex'])).astype(np.uint8)
             return current_blend_dict, all_layers
 
-        if ctx.triggered_id == "bool-apply-filter" and layer is not None and \
+        if ctx.triggered_id in ["bool-apply-filter", "canvas-refresh"] and layer is not None and \
                 current_blend_dict is not None and data_selection is not None and \
-                current_blend_dict is not None and filter_value is not None:
+                current_blend_dict is not None and filter_value is not None and \
+                ctx.triggered_id not in ['image-analysis']:
+
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded[exp][slide][acq][layer]
@@ -356,14 +361,17 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
 
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                             current_blend_dict[exp][slide][acq][layer][
-                                                                                 'color'])).astype(np.uint8)
+                                                current_blend_dict[exp][slide][acq][layer][
+                                                'color'])).astype(np.uint8)
 
             return current_blend_dict, all_layers
 
-        if ctx.triggered_id == "pixel-hist" and \
+        # imp: the histogram will reset on a tab change, so ensure that a tab change won't reset the canvas
+        if ctx.triggered_id in ["pixel-hist", "canvas-refresh"] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
-                current_blend_dict is not None:
+                current_blend_dict is not None and ctx.triggered_id not in ['image-analysis'] and \
+                hist_layout != {'autosize': True}:
+
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded[exp][slide][acq][layer]
@@ -435,13 +443,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('alias-dict', 'data'),
                        Input('annotation_canvas', 'figure'),
                        Input('annotation_canvas', 'relayoutData'),
+                       Input('custom-scale-val', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
-                               cur_graph, cur_graph_layout):
+                               cur_graph, cur_graph_layout, custom_scale_val):
 
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
-                data_selection is not None and ctx.triggered_id != "annotation_canvas":
+                data_selection is not None and ctx.triggered_id not in ["annotation_canvas", "custom-scale-val",
+                                                                        "image-analysis"]:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
@@ -477,11 +487,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
                               ),
                               )
                 # add annotation for the scaling
-                scale_val = str(int(0.075 * image.shape[1])) + "um"
-                scale_text = f'<span style="color: white">{scale_val}</span><br>'
+                # scale_val = int(custom_scale_val) if custom_scale_val is not None else
+                scale_val = int(0.075 * image.shape[1])
+                scale_annot = str(scale_val) + "um"
+                scale_text = f'<span style="color: white">{scale_annot}</span><br>'
                 fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
-                                   x=x_axis_placement + (0.05 / len(scale_val)),
+                                   x=x_axis_placement + (0.05 / len(scale_annot)),
                                    # xanchor='right',
                                    y=0.06,
                                    # yanchor='bottom',
@@ -514,16 +526,20 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 raise PreventUpdate
 
         # update the scale bar with and without zooming
-        elif ctx.triggered_id == "annotation_canvas" and cur_graph is not None and 'shapes' not in cur_graph_layout:
+        elif ctx.triggered_id in ["annotation_canvas", "custom-scale-val"] and \
+                cur_graph is not None and \
+                'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"]:
             # find the text annotation that has um in the text and the correct location
             for annotations in cur_graph['layout']['annotations']:
                 if 'um' in annotations['text'] and annotations['y'] == 0.06:
                     x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1])))
                     x_range_low = math.floor(int(abs(cur_graph['layout']['xaxis']['range'][0])))
                     assert x_range_high >= x_range_low
-                    scale_val = math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1
+                    scale_val = int(custom_scale_val) if custom_scale_val is not None else \
+                        int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
                     scale_val = scale_val if scale_val > 0 else 1
-                    scale_text = f'<span style="color: white">{str(scale_val) + "um"}</span><br>'
+                    scale_annot = str(scale_val) + "um"
+                    scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
                     # get the index of thre list element corresponding to this text annotation
                     index = cur_graph['layout']['annotations'].index(annotations)
                     cur_graph['layout']['annotations'][index]['text'] = scale_text
@@ -865,7 +881,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'))
     def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
-        if None not in (selected_channel, uploaded, data_selection):
+        if None not in (selected_channel, uploaded, data_selection) and ctx.triggered_id not in ["image-analysis"]:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             # binwidth = 10
@@ -976,8 +992,14 @@ def init_dashboard(server):
                                                              style={'width': '125%', 'height': '100%',
                                                                     'display': 'inline-block', 'margin-left': '-30'}),
                                                          dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
-                                                         html.H3("Annotate your tif file",
-                                                                 style={"margin=bottom": "-30"}),
+                                                         html.Div([html.H3("Image/Channel Blending",
+                                                                 style={
+                                                                        "margin-right": "50px"}),
+                                                                   html.Br(),
+                                                                   html.Button('Refresh canvas',
+                                                                               id='canvas-refresh', n_clicks=0,
+                                                                   style={"margin-left": "50"})],
+                                                                  style={"display": "flex", "width": "100%"}),
                                                          dcc.Graph(config={"modeBarButtonsToAdd": [
                                                              "drawline",
                                                              "drawopenpath",
@@ -989,7 +1011,7 @@ def init_dashboard(server):
                                                                  'format': 'png',
                                                                  'filename': 'canvas',
                                                                  'scale': 1}},
-                                                             id='annotation_canvas', style={"margin-top": "-30"})]),
+                                                             id='annotation_canvas', style={"margin-top": "-30px"})]),
                                                          width=8),
                                                          dbc.Col(html.Div([html.H5("Select channel to modify",
                                                                                    style={'width': '50%',
@@ -1036,6 +1058,14 @@ def init_dashboard(server):
                                                                            html.Div(id='blend-color-legend',
                                                                                     style={'whiteSpace': 'pre-line'}),
                                                                            html.Br(),
+                                                                           html.Br(),
+                                                                           html.H6("Add custom scale value",
+                                                                                   style={'width': '75%'}),
+                                                                           dcc.Input(
+                                                                               id="custom-scale-val",
+                                                                               type="number",
+                                                                               value=None,
+                                                                           ),
                                                                            html.Br(),
                                                                            html.Br(),
                                                                            html.H6("Selection information",
