@@ -170,6 +170,6 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     original_max = np.max(array)
     scale_factor = original_max / upper_bound
     array = np.where(array < lower_bound, 0, array)
-    array = np.where(array > 0, array * scale_factor, 0)
+    array = array * scale_factor
     return array
 

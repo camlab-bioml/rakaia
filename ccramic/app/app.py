@@ -27,6 +27,8 @@ import plotly.graph_objects as go
 from pathlib import Path
 import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter, median_filter
+from .parsers import *
+
 
 def init_callbacks(dash_app, tmpdirname, cache):
     dash_app.config.suppress_callback_exceptions = True
@@ -44,109 +46,42 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
-    @du.callback(ServersideOutput('uploaded_dict', 'data'),
+    @du.callback(Output('session_config', 'data'),
                  id='upload-image')
     # @cache.memoize()
-    def create_layered_dict(status: du.UploadStatus):
+    def get_session_uploads_from_drag_and_drop(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
-        upload_dict = {}
-        if len(filenames) > 0:
-            upload_dict['metadata'] = {}
-            metadata_channels = []
-            metadata_labels = []
-            experiment_index = 0
-            upload_dict["experiment" + str(experiment_index)] = {}
-            upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
-            upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)] = {}
-            for upload in filenames:
-                # if reading back in data with h5
-                if upload.endswith('.h5'):
-                    data_h5 = h5py.File(upload, "r")
-                    for exp in list(data_h5.keys()):
-                        upload_dict[exp] = {}
-                        if 'metadata' not in exp:
-                            for slide in data_h5[exp].keys():
-                                upload_dict[exp][slide] = {}
-                            for acq in data_h5[exp][slide].keys():
-                                upload_dict[exp][slide][acq] = {}
-                                for channel in data_h5[exp][slide][acq]:
-                                    upload_dict[exp][slide][acq][channel] = data_h5[exp][slide][acq][channel][()]
-                        else:
-                            meta_back = pd.DataFrame(data_h5['metadata'])
-                            for col in meta_back.columns:
-                                meta_back[col] = meta_back[col].str.decode("utf-8")
-                            try:
-                                meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
-                            except KeyError:
-                                pass
-                            upload_dict[exp] = meta_back
-                else:
-                    # slide_index = 0
-                    # acquisition_index = 0
-                    # if tiffs are uploaded, treat as one slide and one acquisition
-                    if upload.endswith('.tiff') or upload.endswith('.tif'):
-                        if 'ome' not in upload:
-                            tiff_path = Path(upload)
-                            file__name, file_extension = os.path.splitext(tiff_path)
-                            basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
-                            upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][
-                                basename] = \
-                                convert_to_below_255(tifffile.imread(upload))
-                            metadata_channels.append(basename)
-                            metadata_labels.append(basename)
-                        else:
-                            with TiffFile(upload) as tif:
-                                tiff_path = Path(upload)
-                                file__name, file_extension = os.path.splitext(tiff_path)
-                                basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
-                                multi_channel_index = 0
-                                for page in tif.pages:
-                                    identifier = str(basename) + str("_channel_" + f"{multi_channel_index}")
-                                    upload_dict["experiment" + str(experiment_index)]["slide" +
-                                                                                      str(0)]["acq" + str(0)][
-                                        identifier] = convert_to_below_255(page.asarray())
-                                    multi_channel_index += 1
-                                    metadata_channels.append(identifier)
-                                    metadata_labels.append(identifier)
+        session_config = {'uploads': []}
+        for file in filenames:
+            session_config['uploads'].append(file)
+            return session_config
+        else:
+            raise PreventUpdate
 
-                        upload_dict['metadata'] = {'Cycle': range(1, len(metadata_channels) + 1, 1),
-                                                   'Channel Name': metadata_channels,
-                                                   'Channel Label': metadata_labels}
-                        upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label']
-                    elif upload.endswith('.mcd'):
-                        with MCDFile(upload) as mcd_file:
-                            channel_names = None
-                            channel_labels = None
-                            slide_index = 0
-                            for slide in mcd_file.slides:
-                                upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)] = {}
-                                acq_index = 0
-                                for acq in slide.acquisitions:
-                                    upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)][
-                                        "acq" + str(acq_index)] = {}
-                                    if channel_labels is None:
-                                        channel_labels = acq.channel_labels
-                                        channel_names = acq.channel_names
-                                        upload_dict['metadata'] = {'Cycle': range(1, len(channel_names) + 1, 1),
-                                                                   'Channel Name': channel_names,
-                                                                   'Channel Label': channel_labels}
-                                        upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label']
-                                    else:
-                                        assert all(label in acq.channel_labels for label in channel_labels)
-                                        assert all(name in acq.channel_names for name in channel_names)
-                                    img = mcd_file.read_acquisition(acq)
-                                    channel_index = 0
-                                    for channel in img:
-                                        upload_dict["experiment" + str(experiment_index)]["slide" +
-                                                                                          str(slide_index)]["acq" +
-                                                                                                            str(acq_index)][
-                                            channel_names[channel_index]] = channel
-                                        channel_index += 1
-                                    acq_index += 1
-                                slide_index += 1
-                        experiment_index += 1
-            if upload_dict:
-                return upload_dict
+    @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
+                       State('read-filepath', 'value'),
+                       Input('add-file-by-path', 'n_clicks'),
+                       State('session_config', 'data'),
+                       prevent_initial_call=True)
+    # @cache.memoize()
+    def get_session_uploads_from_filepath(filepath, clicks, cur_session):
+        if filepath is not None and clicks > 0:
+            session_config = cur_session if cur_session is not None and \
+                                            len(cur_session['uploads']) > 0 else {'uploads': []}
+            if os.path.exists(filepath):
+                session_config['uploads'].append(filepath)
+                return session_config
+            else:
+                raise PreventUpdate
+
+    @dash_app.callback(ServersideOutput('uploaded_dict', 'data'),
+                 Input('session_config', 'data'),
+                       prevent_initial_call=True)
+    # @cache.memoize()
+    def create_upload_dict_from_filepath_string(session_dict):
+        if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
+            upload_dict, blend_dict = populate_upload_dict(session_dict['uploads'])
+            return upload_dict
         else:
             raise PreventUpdate
 
@@ -238,15 +173,19 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('bool-apply-filter', 'value'),
                        State('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
-                       Input('canvas-refresh', 'n_clicks'),
+                       Input('session_config', 'data'),
                        prevent_initial_call=True)
     def set_blend_options_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
                                     all_layers, hist_layout, filter_chosen, filter_name, filter_value,
-                                   refresh_count):
+                                    session_dict):
         # if data is uploaded, initialize the colour dict with white
         # do not update the layers if none have been selected
 
-        if ctx.triggered_id in ["uploaded_dict", "canvas-refresh"] and ctx.triggered_id not in ['image-analysis']:
+        if ctx.triggered_id == "session_config" and uploaded is not None:
+            upload_dict, current_blend_dict = populate_upload_dict(session_dict['uploads'])
+            return current_blend_dict, None
+
+        if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
             if current_blend_dict is None and uploaded is not None:
                 current_blend_dict = {}
                 for exp in uploaded.keys():
@@ -282,7 +221,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
             return current_blend_dict, None
         # if a new image is added to the layer, update the colour to white by default
         # update the layers with the colour
-        if ctx.triggered_id in ["image_layers", "canvas_refresh"] and add_to_layer is not None and \
+        if ctx.triggered_id in ["image_layers"] and add_to_layer is not None and \
                 current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
@@ -297,11 +236,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
             for elem in add_to_layer:
                 if elem not in current_blend_dict[exp][slide][acq].keys():
                     current_blend_dict[exp][slide][acq][elem] = {'color': None,
-                                                                'x_lower_bound': None,
-                                                                'x_upper_bound': None,
-                                                                'y_ceiling': None,
-                                                                'filter_type': None,
-                                                                'filter_val': None}
+                                                                 'x_lower_bound': None,
+                                                                 'x_upper_bound': None,
+                                                                 'y_ceiling': None,
+                                                                 'filter_type': None,
+                                                                 'filter_val': None}
                     current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
                 if elem not in all_layers[exp][slide][acq].keys():
                     # create a nested dict with the image and all of the filters being used for it
@@ -310,7 +249,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
             return current_blend_dict, all_layers
         # if the trigger is the colour wheel, update the specific layer with the colour chosen
         # update the layers with the colour
-        if ctx.triggered_id in ['annotation-color-picker', 'canvas-refresh'] and \
+        if ctx.triggered_id in ['annotation-color-picker'] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
             split = data_selection.split("_")
@@ -332,7 +271,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                                                              colour['hex'])).astype(np.uint8)
             return current_blend_dict, all_layers
 
-        if ctx.triggered_id in ["bool-apply-filter", "canvas-refresh"] and layer is not None and \
+        if ctx.triggered_id in ["bool-apply-filter"] and layer is not None and \
                 current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None and filter_value is not None and \
                 ctx.triggered_id not in ['image-analysis']:
@@ -348,26 +287,26 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                                         current_blend_dict[exp][slide][acq][layer]['x_upper_bound'])
 
             if len(filter_chosen) > 0 and filter_name is not None:
-               if filter_name == "median":
-                   array = median_filter(array, filter_value)
-               else:
-                   array = gaussian_filter(array, filter_value)
+                if filter_name == "median":
+                    array = median_filter(array, filter_value)
+                else:
+                    array = gaussian_filter(array, filter_value)
 
-               current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
-               current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
+                current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
+                current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
 
             else:
                 current_blend_dict[exp][slide][acq][layer]['filter_type'] = None
                 current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
 
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                current_blend_dict[exp][slide][acq][layer][
-                                                'color'])).astype(np.uint8)
+                                                                             current_blend_dict[exp][slide][acq][layer][
+                                                                                 'color'])).astype(np.uint8)
 
             return current_blend_dict, all_layers
 
         # imp: the histogram will reset on a tab change, so ensure that a tab change won't reset the canvas
-        if ctx.triggered_id in ["pixel-hist", "canvas-refresh"] and \
+        if ctx.triggered_id in ["pixel-hist"] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None and ctx.triggered_id not in ['image-analysis'] and \
                 hist_layout != {'autosize': True}:
@@ -408,7 +347,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
             # if filters have been selected, apply them as well
 
             if current_blend_dict[exp][slide][acq][layer]['filter_type'] is not None and \
-            current_blend_dict[exp][slide][acq][layer]['filter_val'] is not None:
+                    current_blend_dict[exp][slide][acq][layer]['filter_val'] is not None:
                 if current_blend_dict[exp][slide][acq][layer]['filter_type'] == "median":
                     array = median_filter(array, current_blend_dict[exp][slide][acq][layer]['filter_val'])
                 else:
@@ -416,7 +355,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
             # array = array * scale_factor
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                    current_blend_dict[exp][slide][acq][layer]['color'])).astype(np.uint8)
+                                                                             current_blend_dict[exp][slide][acq][layer][
+                                                                                 'color'])).astype(np.uint8)
 
             return current_blend_dict, all_layers
 
@@ -441,9 +381,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
                        Input('alias-dict', 'data'),
-                       Input('annotation_canvas', 'figure'),
+                       State('annotation_canvas', 'figure'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('custom-scale-val', 'value'),
+                       # Input('image-analysis', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
@@ -528,24 +469,35 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # update the scale bar with and without zooming
         elif ctx.triggered_id in ["annotation_canvas", "custom-scale-val"] and \
                 cur_graph is not None and \
-                'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"]:
+                'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"] and \
+                cur_graph_layout != {"autosize": True}:
             # find the text annotation that has um in the text and the correct location
             for annotations in cur_graph['layout']['annotations']:
                 if 'um' in annotations['text'] and annotations['y'] == 0.06:
-                    x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1])))
-                    x_range_low = math.floor(int(abs(cur_graph['layout']['xaxis']['range'][0])))
-                    assert x_range_high >= x_range_low
-                    scale_val = int(custom_scale_val) if custom_scale_val is not None else \
-                        int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
-                    scale_val = scale_val if scale_val > 0 else 1
-                    scale_annot = str(scale_val) + "um"
-                    scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                    # get the index of thre list element corresponding to this text annotation
-                    index = cur_graph['layout']['annotations'].index(annotations)
-                    cur_graph['layout']['annotations'][index]['text'] = scale_text
+                    if cur_graph_layout != {'autosize': True}:
+                        x_range_high = 0
+                        x_range_low = 0
+                        # use different variables depending on how the ranges are written in the dict
+                        # IMP: the variables will be written differently after a tab change
+                        if 'xaxis' in cur_graph['layout']:
+                            x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1])))
+                            x_range_low = math.floor(int(abs(cur_graph['layout']['xaxis']['range'][0])))
+                        elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
+                            x_range_high = math.ceil(int(abs(cur_graph_layout['xaxis.range[1]'])))
+                            x_range_low = math.ceil(int(abs(cur_graph_layout['xaxis.range[1]'])))
 
-            fig = go.Figure(cur_graph)
-            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                        assert x_range_high >= x_range_low
+                        scale_val = int(custom_scale_val) if custom_scale_val is not None else \
+                            int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                        scale_val = scale_val if scale_val > 0 else 1
+                        scale_annot = str(scale_val) + "um"
+                        scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                        # get the index of thre list element corresponding to this text annotation
+                        index = cur_graph['layout']['annotations'].index(annotations)
+                        cur_graph['layout']['annotations'][index]['text'] = scale_text
+
+                        fig = go.Figure(cur_graph)
+                        fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                               xaxis=go.XAxis(showticklabels=False),
                               yaxis=go.YAxis(showticklabels=False),
                               margin=dict(
@@ -555,11 +507,46 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                   t=35,
                                   pad=2
                               ))
+                    else:
+                        fig = go.Figure(cur_graph)
+                        fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                      xaxis=go.XAxis(showticklabels=False, autorange=True),
+                                      yaxis=go.YAxis(showticklabels=False, autorange=True),
+                                      margin=dict(
+                                          l=25,
+                                          r=10,
+                                          b=25,
+                                          t=35,
+                                          pad=2
+                                      ))
             return fig, None
             # else:
             #     raise PreventUpdate
+        # elif ctx.triggered_id in ["image-analysis"] and cur_graph is not None and cur_tab == "tab-1":
+        #     fig = go.Figure(cur_graph)
+        #     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+        #                       xaxis=go.XAxis(showticklabels=False, autorange=True),
+        #                       yaxis=go.YAxis(showticklabels=False, autorange=True),
+        #                       margin=dict(
+        #                           l=25,
+        #                           r=10,
+        #                           b=25,
+        #                           t=35,
+        #                           pad=2
+        #                       ))
+        #     return fig, None
         else:
             raise PreventUpdate
+
+    # @dash_app.callback(Input('image-analysis', 'value'),
+    #                    Output('annotation_canvas', 'relayoutData'),
+    #                    prevent_initial_call=True)
+    # def reset_canvas_on_tab_change(cur_tab):
+    #
+    #     if cur_tab == "tab=1":
+    #         return {'xaxis.autorange': True, 'yaxis.autorange': True}
+    #     else:
+    #         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'config'),
                        Input('annotation_canvas', 'figure'),
@@ -659,9 +646,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('download-link', 'href'),
-                       [Input('uploaded_dict', 'data'),
-                        Input('imc-metadata-editable', 'data')])
-    def update_download_href_h5(uploaded, metadata_sheet):
+                       Input('uploaded_dict', 'data'),
+                        Input('imc-metadata-editable', 'data'),
+                       Input('blending_colours', 'data'))
+    def update_download_href_h5(uploaded, metadata_sheet, blend_dict):
         if uploaded is not None:
             relative_filename = os.path.join(tmpdirname,
                                              'downloads',
@@ -686,7 +674,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
                         for acq in uploaded[exp][slide].keys():
                             hf[exp][slide].create_group(acq)
                             for key, value in uploaded[exp][slide][acq].items():
-                                hf[exp][slide][acq].create_dataset(key, data=value)
+                                hf[exp][slide][acq].create_group(key)
+                                if 'image' not in hf[exp][slide][acq][key]:
+                                    hf[exp][slide][acq][key].create_dataset('image', data=value)
+                                if blend_dict is not None:
+                                    for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
+                                        data_write = blend_val if blend_val is not None else "None"
+                                        hf[exp][slide][acq][key].create_dataset(blend_key, data=data_write)
+
             hf.close()
             return str(relative_filename)
 
@@ -976,6 +971,17 @@ def init_dashboard(server):
                                                                    max_total_size=10000,
                                                                    max_files=200,
                                                                    filetypes=['png', 'tif', 'tiff', 'h5', 'mcd']),
+                                                         dcc.Input(
+                                                             id="read-filepath",
+                                                             type="text",
+                                                             placeholder="Add upload by file path (local runs only)",
+                                                             value=None,
+                                                         ),
+                                                         dbc.Button("Add file by path",
+                                                                    id="add-file-by-path",
+                                                                    className="mb-3",
+                                                                    color="primary", n_clicks=0,
+                                                                    style={"margin-left": "20px", "margin-top": "10px"}),
                                                          html.Div([html.H5(
                                                              "Choose data collection",
                                                              style={'width': '35%',
@@ -993,12 +999,10 @@ def init_dashboard(server):
                                                                     'display': 'inline-block', 'margin-left': '-30'}),
                                                          dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
                                                          html.Div([html.H3("Image/Channel Blending",
-                                                                 style={
-                                                                        "margin-right": "50px"}),
+                                                                           style={
+                                                                               "margin-right": "50px"}),
                                                                    html.Br(),
-                                                                   html.Button('Refresh canvas',
-                                                                               id='canvas-refresh', n_clicks=0,
-                                                                   style={"margin-left": "50"})],
+                                                                   ],
                                                                   style={"display": "flex", "width": "100%"}),
                                                          dcc.Graph(config={"modeBarButtonsToAdd": [
                                                              "drawline",
@@ -1011,6 +1015,7 @@ def init_dashboard(server):
                                                                  'format': 'png',
                                                                  'filename': 'canvas',
                                                                  'scale': 1}},
+                                                             relayoutData={'autosize': True},
                                                              id='annotation_canvas', style={"margin-top": "-30px"})]),
                                                          width=8),
                                                          dbc.Col(html.Div([html.H5("Select channel to modify",
@@ -1035,8 +1040,8 @@ def init_dashboard(server):
                                                                                             'height': '30vh'},
                                                                                      config={"modeBarButtonsToAdd": [
                                                                                          "drawrect", "eraseshape"],
-                                                                                             'modeBarButtonsToRemove': [
-                                                                                                 'zoom', 'pan']}),
+                                                                                         'modeBarButtonsToRemove': [
+                                                                                             'zoom', 'pan']}),
                                                                            html.Br(),
                                                                            dcc.Checklist(
                                                                                options=[' apply/refresh filter'],
@@ -1092,7 +1097,7 @@ def init_dashboard(server):
                                                                                              id='download-link-canvas-tiff',
                                                                                              children='Download Canvas as tiff')]),
                                                                                id="download-collapse", is_open=False),
-                                                                                    style={"minHeight": "100px"})]),
+                                                                               style={"minHeight": "100px"})]),
                                                                  width=4)])])]),
 
                                              dcc.Tab(label="Image Gallery", id='gallery-tab',
@@ -1132,6 +1137,7 @@ def init_dashboard(server):
             ], id='tab-quant')
         ]),
         dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+        dcc.Loading(dcc.Store(id="session_config"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
