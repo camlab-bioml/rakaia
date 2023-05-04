@@ -22,10 +22,11 @@ def populate_upload_dict(uploaded_files):
         upload_dict["experiment" + str(experiment_index)] = {}
         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)] = {}
-        blend_dict = upload_dict.copy()
+        blend_dict = None
         for upload in filenames:
             # if reading back in data with h5
             if upload.endswith('.h5'):
+                blend_dict = upload_dict.copy()
                 data_h5 = h5py.File(upload, "r")
                 for exp in list(data_h5.keys()):
                     upload_dict[exp] = {}
@@ -41,7 +42,14 @@ def populate_upload_dict(uploaded_files):
                                 blend_dict[exp][slide][acq][channel] = {}
                                 for blend_key, blend_val in data_h5[exp][slide][acq][channel].items():
                                     if 'image' not in blend_key:
-                                        blend_dict[exp][slide][acq][channel][blend_key] = blend_val[()]
+                                        if blend_val[()] != b'None':
+                                            try:
+                                                data_add = blend_val[()].decode("utf-8")
+                                            except AttributeError:
+                                                data_add = str(blend_val[()])
+                                        else:
+                                            data_add = None
+                                        blend_dict[exp][slide][acq][channel][blend_key] = data_add
                     else:
                         meta_back = pd.DataFrame(data_h5['metadata'])
                         for col in meta_back.columns:
@@ -116,7 +124,6 @@ def populate_upload_dict(uploaded_files):
                                 acq_index += 1
                             slide_index += 1
                     experiment_index += 1
-        print(upload_dict, blend_dict)
         return upload_dict, blend_dict
     else:
         return None

@@ -181,9 +181,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # if data is uploaded, initialize the colour dict with white
         # do not update the layers if none have been selected
 
+        # populate the blend dict from an h5 upload from a previous session
         if ctx.triggered_id == "session_config" and uploaded is not None:
             upload_dict, current_blend_dict = populate_upload_dict(session_dict['uploads'])
-            return current_blend_dict, None
+            if current_blend_dict is not None:
+                return current_blend_dict, None
+            else:
+                raise PreventUpdate
 
         if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
             if current_blend_dict is None and uploaded is not None:
@@ -262,8 +266,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
             if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                     current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
                 array = filter_by_upper_and_lower_bound(array,
-                                                        current_blend_dict[exp][slide][acq][layer]['x_lower_bound'],
-                                                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'])
+                                        float(current_blend_dict[exp][slide][acq][layer]['x_lower_bound']),
+                                        float(current_blend_dict[exp][slide][acq][layer]['x_upper_bound']))
 
             # if filters have been selected, apply them before recolouring
 
@@ -283,14 +287,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
             if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                     current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
                 array = filter_by_upper_and_lower_bound(array,
-                                                        current_blend_dict[exp][slide][acq][layer]['x_lower_bound'],
-                                                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'])
+                                    float(current_blend_dict[exp][slide][acq][layer]['x_lower_bound']),
+                                    float(current_blend_dict[exp][slide][acq][layer]['x_upper_bound']))
 
             if len(filter_chosen) > 0 and filter_name is not None:
                 if filter_name == "median":
-                    array = median_filter(array, filter_value)
+                    array = median_filter(array, int(filter_value))
                 else:
-                    array = gaussian_filter(array, filter_value)
+                    array = gaussian_filter(array, int(filter_value))
 
                 current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
                 current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
@@ -349,9 +353,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
             if current_blend_dict[exp][slide][acq][layer]['filter_type'] is not None and \
                     current_blend_dict[exp][slide][acq][layer]['filter_val'] is not None:
                 if current_blend_dict[exp][slide][acq][layer]['filter_type'] == "median":
-                    array = median_filter(array, current_blend_dict[exp][slide][acq][layer]['filter_val'])
+                    array = median_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
                 else:
-                    array = gaussian_filter(array, current_blend_dict[exp][slide][acq][layer]['filter_val'])
+                    array = gaussian_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
 
             # array = array * scale_factor
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
@@ -905,6 +909,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(Output('bool-apply-filter', 'value'),
                        Output('filter-type', 'value'),
                        Output('kernel-val-filter', 'value'),
+                       Output("annotation-color-picker", 'value'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
@@ -914,12 +919,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             if current_blend_dict[exp][slide][acq][selected_channel]['filter_type'] is not None and \
-                    current_blend_dict[exp][slide][acq][selected_channel]['filter_val'] is not None:
+                    current_blend_dict[exp][slide][acq][selected_channel]['filter_val'] is not None and \
+                    current_blend_dict[exp][slide][acq][selected_channel]['color'] is not None:
                 return [' apply/refresh filter'], \
                        current_blend_dict[exp][slide][acq][selected_channel]['filter_type'], \
-                       current_blend_dict[exp][slide][acq][selected_channel]['filter_val']
+                       current_blend_dict[exp][slide][acq][selected_channel]['filter_val'], \
+                       dict(hex=current_blend_dict[exp][slide][acq][selected_channel]['color'])
             else:
-                return [], "median", 3
+                return [], "median", 3, dict(hex="#1978B6")
         else:
             raise PreventUpdate
 
