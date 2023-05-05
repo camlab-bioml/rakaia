@@ -127,3 +127,27 @@ def populate_upload_dict(uploaded_files):
         return upload_dict, blend_dict
     else:
         return None
+
+
+def create_new_blending_dict(uploaded):
+    """
+    Create a new blending/config dictionary from an uploaded dictionary
+    """
+    current_blend_dict = {}
+    for exp in uploaded.keys():
+        if "metadata" not in exp:
+            current_blend_dict[exp] = {}
+            for slide in uploaded[exp].keys():
+                current_blend_dict[exp][slide] = {}
+                for acq in uploaded[exp][slide].keys():
+                    current_blend_dict[exp][slide][acq] = {}
+                    for channel in uploaded[exp][slide][acq].keys():
+                        current_blend_dict[exp][slide][acq][channel] = {'color': None,
+                                                                        'x_lower_bound': None,
+                                                                        'x_upper_bound': None,
+                                                                        'y_ceiling': None,
+                                                                        'filter_type': None,
+                                                                        'filter_val': None}
+                        current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
+
+    return current_blend_dict

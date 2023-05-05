@@ -75,7 +75,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 raise PreventUpdate
 
     @dash_app.callback(ServersideOutput('uploaded_dict', 'data'),
-                 Input('session_config', 'data'),
+                       Input('session_config', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def create_upload_dict_from_filepath_string(session_dict):
@@ -187,26 +187,12 @@ def init_callbacks(dash_app, tmpdirname, cache):
             if current_blend_dict is not None:
                 return current_blend_dict, None
             else:
-                raise PreventUpdate
+                current_blend_dict = create_new_blending_dict(uploaded)
+                return current_blend_dict, None
 
         if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
             if current_blend_dict is None and uploaded is not None:
-                current_blend_dict = {}
-                for exp in uploaded.keys():
-                    if "metadata" not in exp:
-                        current_blend_dict[exp] = {}
-                        for slide in uploaded[exp].keys():
-                            current_blend_dict[exp][slide] = {}
-                            for acq in uploaded[exp][slide].keys():
-                                current_blend_dict[exp][slide][acq] = {}
-                                for channel in uploaded[exp][slide][acq].keys():
-                                    current_blend_dict[exp][slide][acq][channel] = {'color': None,
-                                                                                    'x_lower_bound': None,
-                                                                                    'x_upper_bound': None,
-                                                                                    'y_ceiling': None,
-                                                                                    'filter_type': None,
-                                                                                    'filter_val': None}
-                                    current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
+                current_blend_dict = create_new_blending_dict(uploaded)
                 return current_blend_dict, None
             if current_blend_dict is not None and uploaded is not None:
                 for exp in uploaded.keys():
@@ -249,7 +235,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 if elem not in all_layers[exp][slide][acq].keys():
                     # create a nested dict with the image and all of the filters being used for it
                     all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded[exp][slide][acq][elem],
-                                                                                    '#FFFFFF')).astype(np.uint8)
+                                                                                    current_blend_dict[exp][slide][acq][
+                                                                                        elem]['color'])).astype(
+                        np.uint8)
             return current_blend_dict, all_layers
         # if the trigger is the colour wheel, update the specific layer with the colour chosen
         # update the layers with the colour
@@ -266,8 +254,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
             if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                     current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
                 array = filter_by_upper_and_lower_bound(array,
-                                        float(current_blend_dict[exp][slide][acq][layer]['x_lower_bound']),
-                                        float(current_blend_dict[exp][slide][acq][layer]['x_upper_bound']))
+                                                        float(current_blend_dict[exp][slide][acq][layer][
+                                                                  'x_lower_bound']),
+                                                        float(current_blend_dict[exp][slide][acq][layer][
+                                                                  'x_upper_bound']))
 
             # if filters have been selected, apply them before recolouring
 
@@ -287,8 +277,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
             if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                     current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
                 array = filter_by_upper_and_lower_bound(array,
-                                    float(current_blend_dict[exp][slide][acq][layer]['x_lower_bound']),
-                                    float(current_blend_dict[exp][slide][acq][layer]['x_upper_bound']))
+                                                        float(current_blend_dict[exp][slide][acq][layer][
+                                                                  'x_lower_bound']),
+                                                        float(current_blend_dict[exp][slide][acq][layer][
+                                                                  'x_upper_bound']))
 
             if len(filter_chosen) > 0 and filter_name is not None:
                 if filter_name == "median":
@@ -388,11 +380,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('annotation_canvas', 'figure'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('custom-scale-val', 'value'),
-                       # Input('image-analysis', 'value'),
+                       State('images_in_blend', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
-                               cur_graph, cur_graph_layout, custom_scale_val):
+                               cur_graph, cur_graph_layout, custom_scale_val, current_blend):
 
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and ctx.triggered_id not in ["annotation_canvas", "custom-scale-val",
@@ -404,11 +396,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                     label = aliases[image] if aliases is not None and image in aliases.keys() else image
                     legend_text = legend_text + f'<span style="color:' \
-                                                f'{blend_colour_dict[exp][slide][acq][image]["color"]}">{label}</span><br>'
+                                f'{blend_colour_dict[exp][slide][acq][image]["color"]}">{label}</span><br>'
             image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected])
             try:
                 fig = px.imshow(image)
-                x_axis_placement = 0.000008333333 * image.shape[1]
+                # set how far in from the lefthand corner the scale bar and colour legends should be
+                # higher values mean closer to the centre
+                x_axis_placement = 0.00001 * image.shape[1]
+                # make sure the placement is min 0.05 and max 0.1
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
                 # fig = canvas_layers[image_type][currently_selected[0]]
                 if legend_text != '':
@@ -502,27 +497,27 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
                         fig = go.Figure(cur_graph)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                              xaxis=go.XAxis(showticklabels=False),
-                              yaxis=go.YAxis(showticklabels=False),
-                              margin=dict(
-                                  l=25,
-                                  r=10,
-                                  b=25,
-                                  t=35,
-                                  pad=2
-                              ))
+                                          xaxis=go.XAxis(showticklabels=False),
+                                          yaxis=go.YAxis(showticklabels=False),
+                                          margin=dict(
+                                              l=25,
+                                              r=10,
+                                              b=25,
+                                              t=35,
+                                              pad=2
+                                          ))
                     else:
                         fig = go.Figure(cur_graph)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                      xaxis=go.XAxis(showticklabels=False, autorange=True),
-                                      yaxis=go.YAxis(showticklabels=False, autorange=True),
-                                      margin=dict(
-                                          l=25,
-                                          r=10,
-                                          b=25,
-                                          t=35,
-                                          pad=2
-                                      ))
+                                          xaxis=go.XAxis(showticklabels=False, autorange=True),
+                                          yaxis=go.YAxis(showticklabels=False, autorange=True),
+                                          margin=dict(
+                                              l=25,
+                                              r=10,
+                                              b=25,
+                                              t=35,
+                                              pad=2
+                                          ))
             return fig, None
             # else:
             #     raise PreventUpdate
@@ -651,7 +646,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Output('download-link', 'href'),
                        Input('uploaded_dict', 'data'),
-                        Input('imc-metadata-editable', 'data'),
+                       Input('imc-metadata-editable', 'data'),
                        Input('blending_colours', 'data'))
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict):
         if uploaded is not None:
@@ -988,7 +983,8 @@ def init_dashboard(server):
                                                                     id="add-file-by-path",
                                                                     className="mb-3",
                                                                     color="primary", n_clicks=0,
-                                                                    style={"margin-left": "20px", "margin-top": "10px"}),
+                                                                    style={"margin-left": "20px",
+                                                                           "margin-top": "10px"}),
                                                          html.Div([html.H5(
                                                              "Choose data collection",
                                                              style={'width': '35%',
@@ -1088,6 +1084,7 @@ def init_dashboard(server):
                                                                                         ['Channel', 'Mean', 'Max',
                                                                                          'Min']],
                                                                                data=None)], style={"width": "85%"}),
+                                                                           html.Br(),
                                                                            html.Br(),
                                                                            dbc.Button("Show download links",
                                                                                       id="open-download-collapse",
