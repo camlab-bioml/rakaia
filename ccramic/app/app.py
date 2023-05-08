@@ -433,7 +433,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 scale_text = f'<span style="color: white">{scale_annot}</span><br>'
                 fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
-                                   x=x_axis_placement + (0.05 / len(scale_annot)),
+                                   x=x_axis_placement + (0.075 / len(scale_annot)),
                                    # xanchor='right',
                                    y=0.06,
                                    # yanchor='bottom',
@@ -444,10 +444,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                   yaxis=go.YAxis(showticklabels=False),
                                   margin=dict(
                                       l=10,
-                                      r=5,
+                                      r=0,
                                       b=25,
                                       t=35,
-                                      pad=2
+                                      pad=0
                                   ))
 
                 dest_file = os.path.join(tmpdirname, 'downloads', "canvas.tiff")
@@ -501,10 +501,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                           yaxis=go.YAxis(showticklabels=False),
                                           margin=dict(
                                               l=25,
-                                              r=10,
+                                              r=0,
                                               b=25,
                                               t=35,
-                                              pad=2
+                                              pad=0
                                           ))
                     else:
                         fig = go.Figure(cur_graph)
@@ -513,39 +513,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                           yaxis=go.YAxis(showticklabels=False, autorange=True),
                                           margin=dict(
                                               l=25,
-                                              r=10,
+                                              r=0,
                                               b=25,
                                               t=35,
-                                              pad=2
+                                              pad=0
                                           ))
             return fig, None
-            # else:
-            #     raise PreventUpdate
-        # elif ctx.triggered_id in ["image-analysis"] and cur_graph is not None and cur_tab == "tab-1":
-        #     fig = go.Figure(cur_graph)
-        #     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-        #                       xaxis=go.XAxis(showticklabels=False, autorange=True),
-        #                       yaxis=go.YAxis(showticklabels=False, autorange=True),
-        #                       margin=dict(
-        #                           l=25,
-        #                           r=10,
-        #                           b=25,
-        #                           t=35,
-        #                           pad=2
-        #                       ))
-        #     return fig, None
         else:
             raise PreventUpdate
-
-    # @dash_app.callback(Input('image-analysis', 'value'),
-    #                    Output('annotation_canvas', 'relayoutData'),
-    #                    prevent_initial_call=True)
-    # def reset_canvas_on_tab_change(cur_tab):
-    #
-    #     if cur_tab == "tab=1":
-    #         return {'xaxis.autorange': True, 'yaxis.autorange': True}
-    #     else:
-    #         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'config'),
                        Input('annotation_canvas', 'figure'),
@@ -561,9 +536,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
             config = {
                 "modeBarButtonsToAdd": [
                     "drawline",
-                    "drawopenpath",
+                    # "drawopenpath",
                     "drawclosedpath",
-                    "drawcircle",
+                    # "drawcircle",
                     "drawrect",
                     "eraseshape"],
                 'toImageButtonOptions': {
@@ -745,6 +720,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                         shapes_max = []
                         shapes_min = []
                         for shape in graph_layout['shapes']:
+                            # option 1: if the shape is drawn with a rectangle
                             if shape['type'] == 'rect':
                                 x_range_low = math.ceil(int(shape['x0']))
                                 x_range_high = math.ceil(int(shape['x1']))
@@ -754,10 +730,17 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                 assert x_range_high >= x_range_low
                                 assert y_range_high >= y_range_low
 
-                                mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer],
+                                mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[exp][slide][acq][layer],
                                                                                  x_range_low,
                                                                                  x_range_high,
                                                                                  y_range_low, y_range_high)
+                                shapes_mean.append(round(float(mean_exp), 2))
+                                shapes_max.append(round(float(max_xep), 2))
+                                shapes_min.append(round(float(min_exp), 2))
+                            # option 2: if a closed form shape is drawn
+                            elif shape['type'] == 'path' and 'path' in shape:
+                                mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
+                                    upload[exp][slide][acq][layer], shape['path'])
                                 shapes_mean.append(round(float(mean_exp), 2))
                                 shapes_max.append(round(float(max_xep), 2))
                                 shapes_min.append(round(float(min_exp), 2))
@@ -790,7 +773,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     min_panel = []
                     aliases = []
                     for layer in layers:
-                        mean_exp, max_xep, min_exp = get_area_statistics(upload[exp][slide][acq][layer], x_range_low,
+                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[exp][slide][acq][layer], x_range_low,
                                                                          x_range_high,
                                                                          y_range_low, y_range_high)
                         mean_panel.append(round(float(mean_exp), 2))
@@ -858,6 +841,12 @@ def init_callbacks(dash_app, tmpdirname, cache):
             return html.Div(children=children)
         else:
             raise PreventUpdate
+    #
+    # @dash_app.callback(Input('annotation_canvas', 'relayoutData'),
+    #                    Output('get-polygon-coords', 'children'))
+    # def print_polygon_coords(layout):
+    #     if layout is not None:
+    #         print(layout)
 
     @dash_app.callback(
         Output("download-collapse", "is_open"),
@@ -879,11 +868,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             # binwidth = 10
-            converted = Image.fromarray(uploaded[exp][slide][acq][selected_channel]).convert('L')
-            converted = np.array(converted, dtype=int)
-            data = np.hstack(converted)
-            hist = np.random.choice(data, int(data.shape[0] / 100)) if data.shape[0] > 20000000 else data
-            fig = go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
+            # converted = Image.fromarray(uploaded[exp][slide][acq][selected_channel])
+            # converted = np.array(converted, dtype=int)
+            fig = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
             fig.update_layout(dragmode='drawrect')
 
             # if the current selection has already had a histogram bound on it, update the histogram with it
@@ -1008,10 +995,10 @@ def init_dashboard(server):
                                                                    ],
                                                                   style={"display": "flex", "width": "100%"}),
                                                          dcc.Graph(config={"modeBarButtonsToAdd": [
-                                                             "drawline",
-                                                             "drawopenpath",
+                                                             # "drawline",
+                                                             # "drawopenpath",
                                                              "drawclosedpath",
-                                                             "drawcircle",
+                                                             # "drawcircle",
                                                              "drawrect",
                                                              "eraseshape"],
                                                              'toImageButtonOptions': {

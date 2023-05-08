@@ -7,6 +7,11 @@ from PIL import Image
 from PIL import ImageColor
 import io
 import base64
+import plotly.graph_objects as go
+import plotly.express as px
+from skimage import data, draw
+from scipy import ndimage
+import numpy.ma as ma
 
 
 def get_luma(rbg):
@@ -135,11 +140,42 @@ def df_to_sarray(df):
     return z, dtype
 
 
-def get_area_statistics(array, x_range_low, x_range_high, y_range_low, y_range_high):
+def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
     subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-    return 100 * np.average(subset) / np.max(array), 100 * np.amax(subset) / np.max(array), \
-           100 * np.amin(subset) / np.max(array)
+    return np.average(subset), np.amax(subset), np.amin(subset)
+
+
+def path_to_indices(path):
+    """From SVG path to numpy array of coordinates, each row being a (row, col) point
+    """
+    indices_str = [
+        el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")
+    ]
+    return np.rint(np.array(indices_str, dtype=float)).astype(np.int)
+
+
+def path_to_mask(path, shape):
+    """From SVG path to a boolean array where all pixels enclosed by the path
+    are True, and the other pixels are False.
+    """
+    cols, rows = path_to_indices(path).T
+    rr, cc = draw.polygon(rows, cols)
+    mask = np.zeros(shape, dtype=np.bool)
+    mask[rr, cc] = True
+    mask = ndimage.binary_fill_holes(mask)
+    return mask
+
+
+def get_area_statistics_from_closed_path(array, svgpath):
+    """
+    Subset an array based on coordinates contained within a svg path drawn on the canvas
+    """
+    # https://dash.plotly.com/annotations?_gl=1*9dqxqk*_ga*ODM0NzUyNzQ3LjE2NjQyODUyNDc.*_ga_6G7EE0JNSC*MTY4MzU2MDY0My4xMDUuMS4xNjgzNTYyNDM3LjAuMC4w
+
+    masked_array = path_to_mask(svgpath, array.shape)
+    # masked_subset_data = ma.array(array, mask=masked_array)
+    return np.average(array[masked_array]), np.amax(array[masked_array]), np.amin(array[masked_array])
 
 
 def convert_to_below_255(array):
@@ -166,10 +202,18 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Example: original max intensity 255, new upper bound = 100. Scaling will be done to each pixel retained
     by multiplying by 255/100
     """
-    array = np.array(Image.fromarray(array).convert('L'))
+    # array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
     scale_factor = original_max / upper_bound
     array = np.where(array < lower_bound, 0, array)
     array = array * scale_factor
     return array
 
+
+def pixel_hist_from_array(array):
+    try:
+        data = np.hstack(array)
+        hist = np.random.choice(data, int(data.shape[0] / 100)) if data.shape[0] > 20000000 else data
+        return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
+    except ValueError:
+        return pixel_hist_from_array(np.array(Image.fromarray(array).convert('L')))
