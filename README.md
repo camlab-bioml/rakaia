@@ -6,7 +6,7 @@ Cell-type Classification (using) Rapid Analysis (of) Multiplexed Imaging (mass) 
 
 ccramic can be cloned and installed locally using access to the Github repository
 
-````
+```
 git clone https://github.com/camlab-bioml/ccramic.git && cd ccramic
 ```
 
@@ -34,14 +34,14 @@ pip install -r requirements.txt
 
 ## Running ccramic
 
- After installation, ccramic can be run through conda: 
+After installation, ccramic can be run through conda: 
 
- ```
- conda activate ccramic
- ccramic
- ```
+```
+conda activate ccramic
+ccramic
+```
 
- The user should then navigate to `http://127.0.0.1:5000/` to access ccramic.
+The user should then navigate to `http://127.0.0.1:5000/` to access ccramic.
 
 ## Basic authentication
 
