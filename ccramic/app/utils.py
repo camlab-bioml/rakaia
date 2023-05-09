@@ -179,7 +179,7 @@ def get_area_statistics_from_closed_path(array, svgpath):
 
 
 def convert_to_below_255(array):
-    return array if np.max(array) <= 255 else (array // 256).astype(np.uint8)
+    return array if np.max(array) < 65000 else (array // 256).astype(np.uint8)
 
 
 def resize_for_canvas(image, basewidth=400):

@@ -70,7 +70,7 @@ def populate_upload_dict(uploaded_files):
                         basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
                         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][
                             basename] = \
-                            tifffile.imread(upload)
+                            convert_to_below_255(tifffile.imread(upload))
                         metadata_channels.append(basename)
                         metadata_labels.append(basename)
                     else:
@@ -83,7 +83,7 @@ def populate_upload_dict(uploaded_files):
                                 identifier = str(basename) + str("_channel_" + f"{multi_channel_index}")
                                 upload_dict["experiment" + str(experiment_index)]["slide" +
                                                                                   str(0)]["acq" + str(0)][
-                                    identifier] = page.asarray()
+                                    identifier] = convert_to_below_255(page.asarray())
                                 multi_channel_index += 1
                                 metadata_channels.append(identifier)
                                 metadata_labels.append(identifier)
@@ -119,7 +119,7 @@ def populate_upload_dict(uploaded_files):
                                     upload_dict["experiment" + str(experiment_index)]["slide" +
                                                                                       str(slide_index)]["acq" +
                                                                                                         str(acq_index)][
-                                        channel_names[channel_index]] = channel
+                                        channel_names[channel_index]] = convert_to_below_255(channel)
                                     print(channel_names[channel_index])
                                     print(np.max(channel))
                                     channel_index += 1
