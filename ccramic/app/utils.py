@@ -66,9 +66,9 @@ def recolour_greyscale(array, colour):
         return converted.astype(np.uint8)
 
     else:
-        image = Image.fromarray(array)
+        image = Image.fromarray(array.astype(np.uint8))
         image = image.convert('RGB')
-        return np.array(image)
+        return np.array(image).astype(np.uint8)
 
 
 def convert_image_to_bytes(image):
@@ -212,8 +212,9 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
 
 def pixel_hist_from_array(array):
     try:
-        data = np.hstack(array)
-        hist = np.random.choice(data, int(data.shape[0] / 100)) if data.shape[0] > 20000000 else data
+        hist_data = np.hstack(array)
+        hist = np.random.choice(hist_data, int(hist_data.shape[0] / 100)) if \
+            hist_data.shape[0] > 20000000 else hist_data
         return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
     except ValueError:
-        return pixel_hist_from_array(np.array(Image.fromarray(array).convert('L')))
+        return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))

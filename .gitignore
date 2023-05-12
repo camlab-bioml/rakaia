@@ -1,6 +1,10 @@
 
 file_system_store/
 
+*tutorials/
+
+*tutorial*
+
 .idea
 
 *.json

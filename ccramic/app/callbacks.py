@@ -28,9 +28,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
         Input('metadata_options', 'value'))
     def display_metadata_distribution(anndata_obj, metadata_selection):
         if anndata_obj is not None and metadata_selection is not None:
-            data = anndata_obj['metadata'][metadata_selection]
-            fig = px.histogram(data, range_x=[min(data), max(data)])
-            # fig = go.Figure(fig, layout=dict(dragmode='rect'))
+            ann_data = anndata_obj['metadata'][metadata_selection]
+            fig = px.histogram(ann_data, range_x=[min(ann_data), max(ann_data)])
             return fig
         else:
             raise PreventUpdate
@@ -141,12 +140,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('images_in_blend', 'options'),
-                       Input('image_layers', 'value'))
+                       Input('image_layers', 'value'),
+                       prevent_initial_call=True)
     def create_dropdown_blend(chosen_for_blend):
-        if chosen_for_blend:
+        if chosen_for_blend is not None and len(chosen_for_blend) > 0:
             return [{'label': i, 'value': i} for i in chosen_for_blend]
         else:
-            raise PreventUpdate
+            return []
 
     @dash_app.callback(Input("annotation-color-picker", 'value'),
                        State('images_in_blend', 'value'),
@@ -338,10 +338,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 else:
                     array = gaussian_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
 
+            print("checking array")
+            print(array)
+
             # array = array * scale_factor
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                              current_blend_dict[exp][slide][acq][layer][
-                                                                                 'color'])).astype(np.uint8)
+                                                                                 'color']))
 
             return current_blend_dict, all_layers
 
@@ -376,7 +379,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and ctx.triggered_id not in ["annotation_canvas", "custom-scale-val",
-                                                                        "image-analysis"]:
+                                                                        "image-analysis"] and \
+                len(currently_selected) > 0:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
@@ -420,7 +424,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 scale_annot = str(scale_val) + "um"
                 scale_text = f'<span style="color: white">{scale_annot}</span><br>'
                 # this is the middle point of the scale bar
-                midpoint = (x_axis_placement + 0.075) / 2
+                # add shift based on the image shape
+                shift = math.log10(image.shape[1]) - 3
+                midpoint = (x_axis_placement + (0.075/(2.5*len(str(scale_val)) + shift)))
+                print(x_axis_placement)
+                print(midpoint)
                 fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
                                    # set the placement of where the text goes relative to the scale bar
@@ -997,15 +1005,16 @@ def init_callbacks(dash_app, tmpdirname, cache):
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
-            if current_blend_dict[exp][slide][acq][selected_channel]['filter_type'] is not None and \
-                    current_blend_dict[exp][slide][acq][selected_channel]['filter_val'] is not None and \
-                    current_blend_dict[exp][slide][acq][selected_channel]['color'] is not None:
-                return [' apply/refresh filter'], \
-                       current_blend_dict[exp][slide][acq][selected_channel]['filter_type'], \
-                       current_blend_dict[exp][slide][acq][selected_channel]['filter_val'], \
-                       dict(hex=current_blend_dict[exp][slide][acq][selected_channel]['color'])
-            else:
-                return [], "median", 3, dict(hex="#1978B6")
+            filter_type = current_blend_dict[exp][slide][acq][selected_channel]['filter_type']
+            filter_val = current_blend_dict[exp][slide][acq][selected_channel]['filter_val']
+            color = current_blend_dict[exp][slide][acq][selected_channel]['color']
+            to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
+            filter_type_return = filter_type if filter_type is not None else "median"
+            filter_val_return = filter_val if filter_val is not None else 3
+            color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
+                else dict(hex="#1978B6")
+            print(color_return)
+            return to_apply_filter, filter_type_return, filter_val_return, color_return
         else:
             raise PreventUpdate
 

@@ -69,8 +69,7 @@ def populate_upload_dict(uploaded_files):
                         file__name, file_extension = os.path.splitext(tiff_path)
                         basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
                         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][
-                            basename] = \
-                            convert_to_below_255(tifffile.imread(upload))
+                            basename] = convert_to_below_255(tifffile.imread(upload))
                         metadata_channels.append(basename)
                         metadata_labels.append(basename)
                     else:
