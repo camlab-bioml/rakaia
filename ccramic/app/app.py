@@ -118,7 +118,9 @@ def init_dashboard(server):
                         'margin': dict(l=10, r=5, b=25, t=35, pad=2)}},
                         style={'width': '60vh', 'height': '30vh'},
                         config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
-                        'modeBarButtonsToRemove': ['zoom', 'pan']}),
+                        # keep zoom and pan bars to be able to modify the histogram view
+                        # 'modeBarButtonsToRemove': ['zoom', 'pan']
+                                }),
                         html.Br(),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),

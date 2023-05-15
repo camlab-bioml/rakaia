@@ -40,8 +40,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
     def get_session_uploads_from_drag_and_drop(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
         session_config = {'uploads': []}
-        for file in filenames:
-            session_config['uploads'].append(file)
+        if filenames:
+            for file in filenames:
+                session_config['uploads'].append(file)
             return session_config
         else:
             raise PreventUpdate
@@ -49,13 +50,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        State('read-filepath', 'value'),
                        Input('add-file-by-path', 'n_clicks'),
-                       State('session_config', 'data'),
+                       # State('session_config', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize()
-    def get_session_uploads_from_filepath(filepath, clicks, cur_session):
+    def get_session_uploads_from_filepath(filepath, clicks):
         if filepath is not None and clicks > 0:
-            session_config = cur_session if cur_session is not None and \
-                                            len(cur_session['uploads']) > 0 else {'uploads': []}
+            # session_config = cur_session if cur_session is not None and \
+            #                                 len(cur_session['uploads']) > 0 else {'uploads': []}
+            session_config = {'uploads': []}
             if os.path.exists(filepath):
                 session_config['uploads'].append(filepath)
                 return session_config
@@ -170,14 +172,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # if data is uploaded, initialize the colour dict with white
         # do not update the layers if none have been selected
 
+
         # populate the blend dict from an h5 upload from a previous session
         if ctx.triggered_id == "session_config" and uploaded is not None:
             upload_dict, current_blend_dict = populate_upload_dict(session_dict['uploads'])
-            if current_blend_dict is not None:
-                return current_blend_dict, None
-            else:
+            if current_blend_dict is None:
                 current_blend_dict = create_new_blending_dict(uploaded)
-                return current_blend_dict, None
+
+            return current_blend_dict, None
 
         if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
             if current_blend_dict is None and uploaded is not None:
@@ -248,6 +250,12 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                                         float(current_blend_dict[exp][slide][acq][layer][
                                                                   'x_upper_bound']))
 
+            if len(filter_chosen) > 0 and filter_name is not None:
+                if filter_name == "median":
+                    array = median_filter(array, int(filter_value))
+                else:
+                    array = gaussian_filter(array, int(filter_value))
+
             # if filters have been selected, apply them before recolouring
 
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
@@ -290,11 +298,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
             return current_blend_dict, all_layers
 
+        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         # imp: the histogram will reset on a tab change, so ensure that a tab change won't reset the canvas
         if ctx.triggered_id in ["pixel-hist"] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None and ctx.triggered_id not in ['image-analysis'] and \
-                hist_layout != {'autosize': True}:
+                hist_layout not in [{'autosize': True}, {'dragmode': 'zoom'}, {'dragmode': 'pan'}] and \
+                all([elem not in hist_layout for elem in zoom_keys]):
 
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
@@ -337,9 +347,6 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     array = median_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
                 else:
                     array = gaussian_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
-
-            print("checking array")
-            print(array)
 
             # array = array * scale_factor
             all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
@@ -388,7 +395,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                     label = aliases[image] if aliases is not None and image in aliases.keys() else image
                     legend_text = legend_text + f'<span style="color:' \
-                                                f'{blend_colour_dict[exp][slide][acq][image]["color"]}">{label}</span><br>'
+                                                f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
+                                                f'>{label}</span><br>'
             image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected])
             try:
                 fig = px.imshow(Image.fromarray(image))
@@ -405,6 +413,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                        # xanchor='right',
                                        y=0.05,
                                        # yanchor='bottom',
+                                       bgcolor="black",
                                        showarrow=False)
 
                 # set the x-axis scale placement based on the size of the image
@@ -426,9 +435,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 # this is the middle point of the scale bar
                 # add shift based on the image shape
                 shift = math.log10(image.shape[1]) - 3
-                midpoint = (x_axis_placement + (0.075/(2.5*len(str(scale_val)) + shift)))
-                print(x_axis_placement)
-                print(midpoint)
+                midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
                 fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
                                    # set the placement of where the text goes relative to the scale bar
@@ -468,7 +475,6 @@ def init_callbacks(dash_app, tmpdirname, cache):
         elif ctx.triggered_id in ["annotation_canvas", "custom-scale-val"] and \
                 cur_graph is not None and \
                 'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"]:
-            print(cur_graph_layout)
             try:
                 # find the text annotation that has um in the text and the correct location
                 for annotations in cur_graph['layout']['annotations']:
@@ -673,13 +679,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                 hf[exp][slide][acq].create_group(key)
                                 if 'image' not in hf[exp][slide][acq][key]:
                                     hf[exp][slide][acq][key].create_dataset('image', data=value)
-                                if blend_dict is not None:
+                                if blend_dict is not None and key in blend_dict[exp][slide][acq].keys():
                                     for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
                                         data_write = blend_val if blend_val is not None else "None"
                                         hf[exp][slide][acq][key].create_dataset(blend_key, data=data_write)
 
             hf.close()
             return str(relative_filename)
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(
         Output('annotation_canvas', 'style'),
@@ -946,13 +954,6 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
-    #
-    # @dash_app.callback(Input('annotation_canvas', 'relayoutData'),
-    #                    Output('get-polygon-coords', 'children'))
-    # def print_polygon_coords(layout):
-    #     if layout is not None:
-    #         print(layout)
-
     @dash_app.callback(
         Output("download-collapse", "is_open"),
         [Input("open-download-collapse", "n_clicks")],
@@ -1013,8 +1014,6 @@ def init_callbacks(dash_app, tmpdirname, cache):
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
                 else dict(hex="#1978B6")
-            print(color_return)
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         else:
             raise PreventUpdate
-

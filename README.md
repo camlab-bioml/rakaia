@@ -41,14 +41,25 @@ conda activate ccramic
 ccramic
 ```
 
-The user should then navigate to `http://127.0.0.1:5000/` to access ccramic.
+The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access ccramic.
 
 ## Basic authentication
 
 ccramic uses basic authentication upon a new session. The credentials are as follows:
 
-username: ccramic_user
-password: ccramic-1
+* username: ccramic_user
+* password: ccramic-1
 
 **Note** that the basic authentication credentials are likely to change with as development builds update. 
 
+## Docker
+
+ccramic can be run using Docker with the following commands (requires an installation of Docker):
+
+
+```
+docker build -t ccramic . 
+docker run -d -p 5000:5000 ccramic:latest ccramic
+```
+
+Navigate to the local address `http://0.0.0.0:5000/`

@@ -31,7 +31,9 @@ RUN apt-get update && apt-get install -y python3.9 python3-pip python3-opencv gi
 
 COPY . app/ 
 
-RUN cd app/ && pip install .
+RUN cd app/ && pip install -r requirements.txt && pip install .
+
+EXPOSE 5000
 
 # RUN python3 -m pip install cellprofiler
 

@@ -6,12 +6,10 @@ appdirs==1.4.4
 asttokens==2.2.1
 async-generator==1.10
 attrs==22.2.0
-awscli==1.16.312
 Babel==2.12.1
 backcall==0.2.0
 bandit==1.7.5
 beautifulsoup4==4.12.0
-botocore==1.13.48
 build==0.10.0
 cachelib==0.9.0
 cachey==0.2.1
@@ -43,7 +41,7 @@ decorator==5.1.1
 dill==0.3.6
 diskcache==5.4.0
 docstring-parser==0.15
-docutils==0.17.1
+docutils==0.15
 EditorConfig==0.12.3
 exceptiongroup==1.1.1
 executing==1.2.0
@@ -81,6 +79,7 @@ ipython-genutils==0.2.0
 itsdangerous==2.1.2
 jedi==0.18.2
 Jinja2==3.1.2
+jmespath==1.0.1
 joblib==1.2.0
 jsbeautifier==1.14.7
 jsonschema==4.17.3
@@ -138,6 +137,7 @@ psutil==5.9.4
 psygnal==0.8.1
 ptyprocess==0.7.0
 pure-eval==0.2.2
+pyasn1==0.5.0
 pycparser==2.21
 pydantic==1.10.7
 Pygments==2.14.0
