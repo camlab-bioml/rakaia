@@ -119,8 +119,6 @@ def populate_upload_dict(uploaded_files):
                                                                                       str(slide_index)]["acq" +
                                                                                                         str(acq_index)][
                                         channel_names[channel_index]] = convert_to_below_255(channel)
-                                    print(channel_names[channel_index])
-                                    print(np.max(channel))
                                     channel_index += 1
                                 acq_index += 1
                             slide_index += 1

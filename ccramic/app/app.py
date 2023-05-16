@@ -1,13 +1,5 @@
-import anndata
-import imageio.plugins.freeimage
-import tifffile
-import plotly.express as px
-import pandas as pd
+
 from dash import dash_table
-import os
-# from io import BytesIO
-from dash.exceptions import PreventUpdate
-import flask
 import tempfile
 import dash_uploader as du
 from flask_caching import Cache
@@ -16,18 +8,8 @@ from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOu
 import dash_daq as daq
 import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager
-from tifffile import TiffFile, imwrite
-# from matplotlib import pyplot as plt
-from .utils import *
 import diskcache
-import h5py
 from sqlite3 import DatabaseError
-from readimc import MCDFile
-import math
-import plotly.graph_objects as go
-from pathlib import Path
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 from .callbacks import init_callbacks
 import shutil
@@ -75,7 +57,6 @@ def init_dashboard(server):
                 'CACHE_TYPE': 'filesystem',
                 'CACHE_DIR': 'cache-directory'
             })
-
 
     dash_app.layout = html.Div([
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
