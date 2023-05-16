@@ -173,188 +173,195 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # do not update the layers if none have been selected
 
 
-        # populate the blend dict from an h5 upload from a previous session
-        if ctx.triggered_id == "session_config" and uploaded is not None:
-            upload_dict, current_blend_dict = populate_upload_dict(session_dict['uploads'])
-            if current_blend_dict is None:
-                current_blend_dict = create_new_blending_dict(uploaded)
+        # conditions where the callback should not occur
+        # if the pixel hist is modified and the dragmode is either pan or zoom
+        pixel_drag_changed = ctx.triggered_id in ["pixel-hist"] and hist_layout is not None and \
+                             hist_layout in [{'dragmode': 'zoom'}, {'dragmode': 'pan'}]
 
-            return current_blend_dict, None
+        if not pixel_drag_changed:
+            # populate the blend dict from an h5 upload from a previous session
+            if ctx.triggered_id == "session_config" and uploaded is not None:
+                upload_dict, current_blend_dict = populate_upload_dict(session_dict['uploads'])
+                if current_blend_dict is None:
+                    current_blend_dict = create_new_blending_dict(uploaded)
 
-        if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
-            if current_blend_dict is None and uploaded is not None:
-                current_blend_dict = create_new_blending_dict(uploaded)
                 return current_blend_dict, None
-            if current_blend_dict is not None and uploaded is not None:
-                for exp in uploaded.keys():
-                    if "metadata" not in exp:
-                        for slide in uploaded[exp].keys():
-                            for acq in uploaded[exp][slide].keys():
-                                for channel in uploaded[exp][slide][acq].keys():
-                                    current_blend_dict[exp][slide][acq][channel] = {'color': None,
+
+            if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
+                if current_blend_dict is None and uploaded is not None:
+                    current_blend_dict = create_new_blending_dict(uploaded)
+                    return current_blend_dict, None
+                if current_blend_dict is not None and uploaded is not None:
+                    for exp in uploaded.keys():
+                        if "metadata" not in exp:
+                            for slide in uploaded[exp].keys():
+                                for acq in uploaded[exp][slide].keys():
+                                    for channel in uploaded[exp][slide][acq].keys():
+                                        current_blend_dict[exp][slide][acq][channel] = {'color': None,
                                                                                     'x_lower_bound': None,
                                                                                     'x_upper_bound': None,
                                                                                     'y_ceiling': None,
                                                                                     'filter_type': None,
                                                                                     'filter_val': None}
-                                    current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
+                                        current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
+                    return current_blend_dict, None
                 return current_blend_dict, None
-            return current_blend_dict, None
-        # if a new image is added to the layer, update the colour to white by default
-        # update the layers with the colour
-        if ctx.triggered_id in ["image_layers"] and add_to_layer is not None and \
-                current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
-            split = data_selection.split("_")
-            exp, slide, acq = split[0], split[1], split[2]
-            if all_layers is None:
-                all_layers = {}
-            if exp not in all_layers.keys():
-                all_layers[exp] = {}
-            if slide not in all_layers[exp].keys():
-                all_layers[exp][slide] = {}
-            if acq not in all_layers[exp][slide].keys():
-                all_layers[exp][slide][acq] = {}
-            for elem in add_to_layer:
-                if elem not in current_blend_dict[exp][slide][acq].keys():
-                    current_blend_dict[exp][slide][acq][elem] = {'color': None,
+            # if a new image is added to the layer, update the colour to white by default
+            # update the layers with the colour
+            if ctx.triggered_id in ["image_layers"] and add_to_layer is not None and \
+                    current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
+                split = data_selection.split("_")
+                exp, slide, acq = split[0], split[1], split[2]
+                if all_layers is None:
+                    all_layers = {}
+                if exp not in all_layers.keys():
+                    all_layers[exp] = {}
+                if slide not in all_layers[exp].keys():
+                    all_layers[exp][slide] = {}
+                if acq not in all_layers[exp][slide].keys():
+                    all_layers[exp][slide][acq] = {}
+                for elem in add_to_layer:
+                    if elem not in current_blend_dict[exp][slide][acq].keys():
+                        current_blend_dict[exp][slide][acq][elem] = {'color': None,
                                                                  'x_lower_bound': None,
                                                                  'x_upper_bound': None,
                                                                  'y_ceiling': None,
                                                                  'filter_type': None,
                                                                  'filter_val': None}
-                    current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
-                if elem not in all_layers[exp][slide][acq].keys():
-                    # create a nested dict with the image and all of the filters being used for it
-                    all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded[exp][slide][acq][elem],
+                        current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
+                    if elem not in all_layers[exp][slide][acq].keys():
+                        # create a nested dict with the image and all of the filters being used for it
+                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded[exp][slide][acq][elem],
                                                                                     current_blend_dict[exp][slide][acq][
                                                                                         elem]['color'])).astype(
                         np.uint8)
-            return current_blend_dict, all_layers
-        # if the trigger is the colour wheel, update the specific layer with the colour chosen
-        # update the layers with the colour
-        if ctx.triggered_id in ['annotation-color-picker'] and \
+                return current_blend_dict, all_layers
+            # if the trigger is the colour wheel, update the specific layer with the colour chosen
+            # update the layers with the colour
+            if ctx.triggered_id in ['annotation-color-picker'] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
-            split = data_selection.split("_")
-            exp, slide, acq = split[0], split[1], split[2]
-            current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
-            array = uploaded[exp][slide][acq][layer]
+                split = data_selection.split("_")
+                exp, slide, acq = split[0], split[1], split[2]
+                current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
+                array = uploaded[exp][slide][acq][layer]
 
-            # if upper and lower bounds have been set before for this layer, use them before recolouring
+                # if upper and lower bounds have been set before for this layer, use them before recolouring
 
-            if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
+                if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                     current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
-                array = filter_by_upper_and_lower_bound(array,
+                    array = filter_by_upper_and_lower_bound(array,
                                                         float(current_blend_dict[exp][slide][acq][layer][
                                                                   'x_lower_bound']),
                                                         float(current_blend_dict[exp][slide][acq][layer][
                                                                   'x_upper_bound']))
 
-            if len(filter_chosen) > 0 and filter_name is not None:
-                if filter_name == "median":
-                    array = median_filter(array, int(filter_value))
-                else:
-                    array = gaussian_filter(array, int(filter_value))
+                if len(filter_chosen) > 0 and filter_name is not None:
+                    if filter_name == "median":
+                        array = median_filter(array, int(filter_value))
+                    else:
+                        array = gaussian_filter(array, int(filter_value))
 
-            # if filters have been selected, apply them before recolouring
+                # if filters have been selected, apply them before recolouring
 
-            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                              colour['hex'])).astype(np.uint8)
-            return current_blend_dict, all_layers
+                return current_blend_dict, all_layers
 
-        if ctx.triggered_id in ["bool-apply-filter"] and layer is not None and \
-                current_blend_dict is not None and data_selection is not None and \
-                current_blend_dict is not None and filter_value is not None and \
-                ctx.triggered_id not in ['image-analysis']:
+            if ctx.triggered_id in ["bool-apply-filter"] and layer is not None and \
+                    current_blend_dict is not None and data_selection is not None and \
+                    current_blend_dict is not None and filter_value is not None and \
+                    ctx.triggered_id not in ['image-analysis']:
 
-            split = data_selection.split("_")
-            exp, slide, acq = split[0], split[1], split[2]
-            array = uploaded[exp][slide][acq][layer]
+                split = data_selection.split("_")
+                exp, slide, acq = split[0], split[1], split[2]
+                array = uploaded[exp][slide][acq][layer]
 
-            if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
-                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
-                array = filter_by_upper_and_lower_bound(array,
+                if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
+                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
+                    array = filter_by_upper_and_lower_bound(array,
                                                         float(current_blend_dict[exp][slide][acq][layer][
                                                                   'x_lower_bound']),
                                                         float(current_blend_dict[exp][slide][acq][layer][
                                                                   'x_upper_bound']))
 
-            if len(filter_chosen) > 0 and filter_name is not None:
-                if filter_name == "median":
-                    array = median_filter(array, int(filter_value))
+                if len(filter_chosen) > 0 and filter_name is not None:
+                    if filter_name == "median":
+                        array = median_filter(array, int(filter_value))
+                    else:
+                        array = gaussian_filter(array, int(filter_value))
+
+                    current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
+                    current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
+
                 else:
-                    array = gaussian_filter(array, int(filter_value))
+                    current_blend_dict[exp][slide][acq][layer]['filter_type'] = None
+                    current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
 
-                current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
-                current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
-
-            else:
-                current_blend_dict[exp][slide][acq][layer]['filter_type'] = None
-                current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
-
-            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                              current_blend_dict[exp][slide][acq][layer][
                                                                                  'color'])).astype(np.uint8)
 
-            return current_blend_dict, all_layers
+                return current_blend_dict, all_layers
 
-        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-        # imp: the histogram will reset on a tab change, so ensure that a tab change won't reset the canvas
-        if ctx.triggered_id in ["pixel-hist"] and \
+            zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+            # imp: the histogram will reset on a tab change, so ensure that a tab change won't reset the canvas
+            if ctx.triggered_id in ["pixel-hist"] and \
                 layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None and ctx.triggered_id not in ['image-analysis'] and \
                 hist_layout not in [{'autosize': True}, {'dragmode': 'zoom'}, {'dragmode': 'pan'}] and \
                 all([elem not in hist_layout for elem in zoom_keys]):
 
-            split = data_selection.split("_")
-            exp, slide, acq = split[0], split[1], split[2]
-            array = uploaded[exp][slide][acq][layer]
+                split = data_selection.split("_")
+                exp, slide, acq = split[0], split[1], split[2]
+                array = uploaded[exp][slide][acq][layer]
 
-            # when shape is first added, these are the keys
-            if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) > 0:
-                lower_bound = hist_layout['shapes'][0]['x0']
-                upper_bound = hist_layout['shapes'][0]['x1']
-                y_ceiling = hist_layout['shapes'][0]['y0']
-                array = filter_by_upper_and_lower_bound(array, lower_bound, upper_bound)
+                # when shape is first added, these are the keys
+                if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) > 0:
+                    lower_bound = hist_layout['shapes'][0]['x0']
+                    upper_bound = hist_layout['shapes'][0]['x1']
+                    y_ceiling = hist_layout['shapes'][0]['y0']
+                    array = filter_by_upper_and_lower_bound(array, lower_bound, upper_bound)
 
-                current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
-                current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
-                current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
+                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
+                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
+                    current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
 
-            # when an existing shape is moved, the keys change to this format
-            elif 'shapes[0].x0' and 'shapes[0].x1' in hist_layout:
-                lower_bound = hist_layout['shapes[0].x0']
-                upper_bound = hist_layout['shapes[0].x1']
-                y_ceiling = hist_layout['shapes[0].y0']
-                array = filter_by_upper_and_lower_bound(array, lower_bound,
+                # when an existing shape is moved, the keys change to this format
+                elif 'shapes[0].x0' and 'shapes[0].x1' in hist_layout:
+                    lower_bound = hist_layout['shapes[0].x0']
+                    upper_bound = hist_layout['shapes[0].x1']
+                    y_ceiling = hist_layout['shapes[0].y0']
+                    array = filter_by_upper_and_lower_bound(array, lower_bound,
                                                         upper_bound)
 
-                current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
-                current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
-                current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
+                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
+                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
+                    current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
 
-            # if there is no shape, reset the bounds to None
-            else:
-                current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = None
-                current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = None
-                current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = None
-
-            # if filters have been selected, apply them as well
-
-            if current_blend_dict[exp][slide][acq][layer]['filter_type'] is not None and \
-                    current_blend_dict[exp][slide][acq][layer]['filter_val'] is not None:
-                if current_blend_dict[exp][slide][acq][layer]['filter_type'] == "median":
-                    array = median_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
+                # if there is no shape, reset the bounds to None
                 else:
-                    array = gaussian_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
+                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = None
+                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = None
+                    current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = None
+
+                # if filters have been selected, apply them as well
+
+                if current_blend_dict[exp][slide][acq][layer]['filter_type'] is not None and \
+                        current_blend_dict[exp][slide][acq][layer]['filter_val'] is not None:
+                    if current_blend_dict[exp][slide][acq][layer]['filter_type'] == "median":
+                        array = median_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
+                    else:
+                        array = gaussian_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
 
             # array = array * scale_factor
-            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                              current_blend_dict[exp][slide][acq][layer][
                                                                                  'color']))
 
-            return current_blend_dict, all_layers
-
+                return current_blend_dict, all_layers
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 

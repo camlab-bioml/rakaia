@@ -12,7 +12,7 @@ import tempfile
 import dash_uploader as du
 from flask_caching import Cache
 from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOutput, html, dcc, \
-    ServersideOutputTransform
+    ServersideOutputTransform, FileSystemStore
 import dash_daq as daq
 import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager
@@ -30,15 +30,27 @@ import matplotlib.pyplot as plt
 from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 from .callbacks import init_callbacks
+import shutil
+
 
 def init_dashboard(server):
-    dash_app = DashProxy(__name__,
-                         transforms=[ServersideOutputTransform()],
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # set the serveroutput cache dir and clean it every time a new app session is started
+        cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
+        if os.path.exists(cache_dest):
+            shutil.rmtree(cache_dest)
+        backend_dir = FileSystemStore(cache_dir=cache_dest)
+        dash_app = DashProxy(__name__,
+                        transforms=[ServersideOutputTransform(
+                            backend=backend_dir)],
                          external_stylesheets=[dbc.themes.BOOTSTRAP],
                          server=server,
                          routes_pathname_prefix="/ccramic/")
-    dash_app.title = "ccramic"
-    server.config['APPLICATION_ROOT'] = "/ccramic"
+        dash_app.title = "ccramic"
+        server.config['APPLICATION_ROOT'] = "/ccramic"
+
+        du.configure_upload(dash_app, tmpdirname)
 
     # VALID_USERNAME_PASSWORD_PAIRS = {
     #     'ccramic_user': 'ccramic'
@@ -48,6 +60,7 @@ def init_dashboard(server):
     #     dash_app,
     #     VALID_USERNAME_PASSWORD_PAIRS
     # )
+
     try:
         cache = Cache(dash_app.server, config={
             'CACHE_TYPE': 'redis',
@@ -63,8 +76,6 @@ def init_dashboard(server):
                 'CACHE_DIR': 'cache-directory'
             })
 
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        du.configure_upload(dash_app, tmpdirname)
 
     dash_app.layout = html.Div([
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
@@ -103,7 +114,10 @@ def init_dashboard(server):
                         "eraseshape"],
                         'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
                         'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
-                        id='annotation_canvas', style={"margin-top": "-30px"})]),
+                        id='annotation_canvas', style={"margin-top": "-30px"},
+                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                              xaxis=go.XAxis(showticklabels=False),
+                                              yaxis=go.YAxis(showticklabels=False))})]),
                         width=8),
                         dbc.Col(html.Div([html.H5("Select channel to modify",
                                 style={'width': '50%', 'display': 'inline-block'}),
@@ -114,13 +128,16 @@ def init_dashboard(server):
                         daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
                         value=dict(hex="#1978B6")),
                         html.Br(),
-                        dcc.Graph(id="pixel-hist", figure={'layout': {
-                        'margin': dict(l=10, r=5, b=25, t=35, pad=2)}},
+                        dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                                         xaxis=go.XAxis(showticklabels=False),
+                                                         yaxis=go.YAxis(showticklabels=False),
+                                                        margin= dict(l=10, r=5, b=25, t=35, pad=2))},
                         style={'width': '60vh', 'height': '30vh'},
                         config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
                         # keep zoom and pan bars to be able to modify the histogram view
                         # 'modeBarButtonsToRemove': ['zoom', 'pan']
-                                }),
+                                },
+                                  ),
                         html.Br(),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),

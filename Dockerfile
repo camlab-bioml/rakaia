@@ -9,7 +9,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 #     rm -rf /var/lib/apt/lists/*
 #
 RUN apt-get update && apt-get install -y python3.9 python3-pip python3-opencv git libmysqlclient-dev pkg-config
-#
+
 # RUN apt-get -y install build-essential libgtk-3-dev
 #
 # RUN apt update
@@ -29,13 +29,15 @@ RUN apt-get update && apt-get install -y python3.9 python3-pip python3-opencv gi
 
   # RUN git clone https://github.com/camlab-bioml/ccramic.git && cd ccramic && pip install .
 
-COPY . app/ 
+COPY . app/
 
-RUN cd app/ && pip install -r requirements.txt && pip install .
+WORKDIR /app/
+
+RUN pip install -r requirements.txt && pip install .
 
 EXPOSE 5000
 
 # RUN python3 -m pip install cellprofiler
 
-# ENTRYPOINT [ "ccramic" ]
+# ENTRYPOINT [ "chmod", "+x", "bash", "/scripts/run_ccramic.sh" ]
 
