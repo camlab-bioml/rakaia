@@ -12,6 +12,7 @@ import plotly.express as px
 from skimage import data, draw
 from scipy import ndimage
 import numpy.ma as ma
+from scipy.ndimage import gaussian_filter, median_filter
 
 
 def get_luma(rbg):
@@ -204,7 +205,8 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     """
     # array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
-    scale_factor = original_max / upper_bound
+    scale_factor = original_max / upper_bound if None not in (original_max, upper_bound) else 1
+    lower_bound = 0 if lower_bound is None else lower_bound
     array = np.where(array < lower_bound, 0, array)
     array = array * scale_factor
     return array
@@ -218,3 +220,14 @@ def pixel_hist_from_array(array):
         return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
     except ValueError:
         return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
+
+
+def apply_preset_to_array(array, preset):
+    preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
+    if isinstance(preset, dict) and all([elem in preset.keys() for elem in preset_keys]):
+        array = filter_by_upper_and_lower_bound(array, preset['x_lower_bound'], preset['x_upper_bound'])
+        if preset['filter_type'] == "median" and preset['filter_val'] is not None:
+            array = median_filter(array, int(preset['filter_val']))
+        elif preset['filter_val'] is not None:
+            array = gaussian_filter(array, int(preset['filter_val']))
+        return array

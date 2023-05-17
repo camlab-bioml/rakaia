@@ -919,19 +919,26 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('data-collection', 'value'),
                        State('canvas-layers', 'data'),
                        Input('annotation_canvas', 'relayoutData'),
-                       Input('toggle-gallery-zoom', 'value'))
+                       Input('toggle-gallery-zoom', 'value'),
+                       Input('toggle-preset-use', 'value'),
+                       State('preset-options', 'value'),
+                       State('image_presets', 'data'))
     # @cache.memoize()
-    def create_image_grid(gallery_data, data_selection, canvas_layers, canvas_layout, toggle_gallery_zoom):
+    def create_image_grid(gallery_data, data_selection, canvas_layers, canvas_layout, toggle_gallery_zoom,
+                          toggle_preset_use, preset_selection, preset_dict):
         if gallery_data is not None and gallery_data is not None and data_selection is not None:
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             row_children = []
             for chosen in list(gallery_data[exp][slide][acq].keys()):
-                try:
-                    image_render = canvas_layers[exp][slide][acq][chosen]
-                except (KeyError, TypeError):
-                    image_render = gallery_data[exp][slide][acq][chosen]
+                # try:
+                #     image_render = canvas_layers[exp][slide][acq][chosen]
+                # except (KeyError, TypeError):
+                image_render = gallery_data[exp][slide][acq][chosen]
+
+                if toggle_preset_use and None not in (preset_selection, preset_dict):
+                    image_render = apply_preset_to_array(image_render, preset_dict[preset_selection])
 
                 if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
                     x_range_low = math.ceil(int(canvas_layout['xaxis.range[0]']))
@@ -1008,15 +1015,16 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
                 # if the current selection has already had a histogram bound on it, update the histogram with it
                 if current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound'] is not None and \
-                    current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'] is not None:
+                        current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'] is not None:
                     lower_bound = current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound']
                     upper_bound = current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound']
                     y_ceiling = current_blend_dict[exp][slide][acq][selected_channel]['y_ceiling']
 
                     fig.add_shape(editable=True, type="rect", xref="x", yref="y", x0=lower_bound, y0=y_ceiling,
-                              x1=upper_bound, y1=0,
-                              line=dict(color='#444', width=4, dash='solid'),
-                              fillcolor='rgba(0,0,0,0)', opacity=1)
+                                  x1=upper_bound, y1=0,
+                                  line=dict(color='#444', width=4, dash='solid'),
+                                  fillcolor='rgba(0,0,0,0)', opacity=1)
+                    fig.update_layout(showlegend=False)
                 return fig
             except KeyError:
                 return {}
@@ -1046,3 +1054,30 @@ def init_callbacks(dash_app, tmpdirname, cache):
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Input('preset-button', 'n_clicks'),
+                       State('set-preset', 'value'),
+                       State('preset-options', 'options'),
+                       State('data-collection', 'value'),
+                       State('images_in_blend', 'value'),
+                       State('blending_colours', 'data'),
+                       State('image_presets', 'data'),
+                       Output('preset-options', 'options'),
+                       Output('image_presets', 'data'))
+    def generate_preset_options(selected_click, preset_name, current_preset_options, data_selection, layer,
+                                current_blend_dict, current_presets):
+        if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer,
+                                                                              current_blend_dict):
+            split = data_selection.split("_")
+            exp, slide, acq = split[0], split[1], split[2]
+            if preset_name not in current_preset_options:
+                current_preset_options.append(preset_name)
+
+            current_presets = {} if current_presets is None else current_presets
+
+            current_presets[preset_name] = current_blend_dict[exp][slide][acq][layer]
+
+            return current_preset_options, current_presets
+        else:
+            raise PreventUpdate
+
