@@ -150,11 +150,15 @@ def init_dashboard(server):
                                          id='toggle-preset-use', labelPosition='bottom'),
                         html.Br(),
                         dcc.Dropdown(options=[], value=None, id='preset-options'),
+                        dbc.Tooltip(children="",
+                                                      target="preset-options",
+                                    id="hover-preset-information", trigger="hover"),
                         html.Br(),
                         html.Br(),
+
                         dbc.Button("Show download links", id="open-download-collapse", className="mb-3",
                         color="primary", n_clicks=0),
-                        dbc.Tooltip("Open up the panel to get the download links.",
+                        dbc.Tooltip(children="Open up the panel to get the download links.",
                                     target="open-download-collapse"),
                         html.Div(dbc.Collapse(
                         html.Div([html.A(id='download-link', children='Download File'),
@@ -164,10 +168,18 @@ def init_dashboard(server):
                         width=3)])])]),
 
             dcc.Tab(label="Image Gallery", id='gallery-tab',
-                        children=[daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
-                        id='toggle-gallery-zoom', labelPosition='bottom'),
+                        children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
+                        id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px"}),
+                                  daq.ToggleSwitch(label='View gallery by channel',
+                                                   id='toggle-gallery-view', labelPosition='bottom', color="blue"),
+                                            dcc.Dropdown(id='unique-channel-list', multi=False, options=[],
+                                                         style={'width': '60%', 'display': 'inline-block',
+                                                                'margin-right': '-30', 'margin-left': '15px'})
+                                            ],
+                                           style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
-                        dbc.Row(id="image-gallery-row")])]),
+                        dbc.Row(id="image-gallery-row")]),
+                                  ]),
 
             dcc.Tab(label="Panel Metadata", children=
                         [html.Div([dbc.Row([

@@ -18,7 +18,6 @@ import math
 from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 
-
 def init_callbacks(dash_app, tmpdirname, cache):
     dash_app.config.suppress_callback_exceptions = True
 
@@ -66,13 +65,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 raise PreventUpdate
 
     @dash_app.callback(ServersideOutput('uploaded_dict', 'data'),
+                       Output('session_config', 'data', allow_duplicate=True),
                        Input('session_config', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def create_upload_dict_from_filepath_string(session_dict):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-            upload_dict, blend_dict = populate_upload_dict(session_dict['uploads'])
-            return upload_dict
+            upload_dict, blend_dict, unique_images = populate_upload_dict(session_dict['uploads'])
+            session_dict['unique_images'] = unique_images
+            return upload_dict, session_dict
         else:
             raise PreventUpdate
 
@@ -180,10 +181,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
                        Input('session_config', 'data'),
+                       Input('toggle-preset-use', 'value'),
+                       Input('preset-options', 'value'),
+                       State('image_presets', 'data'),
                        prevent_initial_call=True)
     def set_blend_options_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
                                     all_layers, hist_layout, filter_chosen, filter_name, filter_value,
-                                    session_dict):
+                                    session_dict, toggle_preset_use, preset_selection, preset_dict):
+
         # if data is uploaded, initialize the colour dict with white
         # do not update the layers if none have been selected
 
@@ -192,10 +197,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
         pixel_drag_changed = ctx.triggered_id in ["pixel-hist"] and hist_layout is not None and \
                              hist_layout in [{'dragmode': 'zoom'}, {'dragmode': 'pan'}]
 
+        # if the callback is from the toggle preset and the current channel has the same parameters
+        preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
+        use_preset_condition = None not in (preset_selection, preset_dict) and toggle_preset_use
+
         if not pixel_drag_changed:
             # populate the blend dict from an h5 upload from a previous session
             if ctx.triggered_id == "session_config" and uploaded is not None:
-                upload_dict, current_blend_dict = populate_upload_dict(session_dict['uploads'])
+                upload_dict, current_blend_dict, unique_images = populate_upload_dict(session_dict['uploads'])
                 if current_blend_dict is None:
                     current_blend_dict = create_new_blending_dict(uploaded)
 
@@ -235,6 +244,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 if acq not in all_layers[exp][slide].keys():
                     all_layers[exp][slide][acq] = {}
                 for elem in add_to_layer:
+                    # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                     if elem not in current_blend_dict[exp][slide][acq].keys():
                         current_blend_dict[exp][slide][acq][elem] = {'color': None,
                                                                      'x_lower_bound': None,
@@ -243,6 +253,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                                                      'filter_type': None,
                                                                      'filter_val': None}
                         current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
+                        if use_preset_condition:
+                            current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
+                                current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
+                    # if the selected channel is in the current blend, check if a preset is used to override
+                    elif elem in current_blend_dict[exp][slide][acq].keys() and use_preset_condition:
+                        # do not override the colour of the curreht channel
+                        current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
+                            current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
                     if elem not in all_layers[exp][slide][acq].keys():
                         # create a nested dict with the image and all of the filters being used for it
                         all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded[exp][slide][acq][elem],
@@ -377,6 +395,24 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                                                                      'color']))
 
                 return current_blend_dict, all_layers
+            # if a preset is selected, apply it to the current blend dict and array
+            if ctx.triggered_id in ['toggle-preset-use', 'preset-options'] and None not in \
+                    (preset_selection, preset_dict, data_selection, current_blend_dict, layer) and toggle_preset_use:
+                split = data_selection.split("_")
+                exp, slide, acq = split[0], split[1], split[2]
+                array = uploaded[exp][slide][acq][layer]
+
+                # preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
+                for preset_val in preset_keys:
+                    current_blend_dict[exp][slide][acq][layer][preset_val] = preset_dict[preset_selection][preset_val]
+
+                array = apply_preset_to_array(array, preset_dict[preset_selection])
+                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                                                                                 current_blend_dict[exp][slide][acq][
+                                                                                     layer][
+                                                                                     'color']))
+                return current_blend_dict, all_layers
+
             else:
                 raise PreventUpdate
         else:
@@ -921,43 +957,52 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
                        Input('toggle-preset-use', 'value'),
-                       State('preset-options', 'value'),
-                       State('image_presets', 'data'))
+                       Input('preset-options', 'value'),
+                       State('image_presets', 'data'),
+                       Input('toggle-gallery-view', 'value'),
+                       Input('unique-channel-list', 'value'))
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layers, canvas_layout, toggle_gallery_zoom,
-                          toggle_preset_use, preset_selection, preset_dict):
-        if gallery_data is not None and gallery_data is not None and data_selection is not None:
-            zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-            split = data_selection.split("_")
-            exp, slide, acq = split[0], split[1], split[2]
+                          toggle_preset_use, preset_selection, preset_dict, view_by_channel, channel_selected):
+        if gallery_data is not None and gallery_data is not None:
             row_children = []
-            for chosen in list(gallery_data[exp][slide][acq].keys()):
-                # try:
-                #     image_render = canvas_layers[exp][slide][acq][chosen]
-                # except (KeyError, TypeError):
-                image_render = gallery_data[exp][slide][acq][chosen]
+            zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
-                if toggle_preset_use and None not in (preset_selection, preset_dict):
-                    image_render = apply_preset_to_array(image_render, preset_dict[preset_selection])
+            # decide if channel view or ROI view is selected
+            # channel view
+            if view_by_channel and channel_selected is not None:
+                views = get_all_images_by_channel_name(gallery_data, channel_selected)
+            elif data_selection is not None:
+                split = data_selection.split("_")
+                exp, slide, acq = split[0], split[1], split[2]
+                views = gallery_data[exp][slide][acq]
+            else:
+                views = None
 
-                if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
-                    x_range_low = math.ceil(int(canvas_layout['xaxis.range[0]']))
-                    x_range_high = math.ceil(int(canvas_layout['xaxis.range[1]']))
-                    y_range_low = math.ceil(int(canvas_layout['yaxis.range[1]']))
-                    y_range_high = math.ceil(int(canvas_layout['yaxis.range[0]']))
-                    assert x_range_high >= x_range_low
-                    assert y_range_high >= y_range_low
-                    image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+            if views is not None:
+                for key, value in views.items():
+                    image_render = value
+
+                    if toggle_preset_use and None not in (preset_selection, preset_dict):
+                        image_render = apply_preset_to_array(value, preset_dict[preset_selection])
+
+                    if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
+                        x_range_low = math.ceil(int(canvas_layout['xaxis.range[0]']))
+                        x_range_high = math.ceil(int(canvas_layout['xaxis.range[1]']))
+                        y_range_low = math.ceil(int(canvas_layout['yaxis.range[1]']))
+                        y_range_high = math.ceil(int(canvas_layout['yaxis.range[0]']))
+                        assert x_range_high >= x_range_low
+                        assert y_range_high >= y_range_low
+                        image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                                        range(int(x_range_low), int(x_range_high), 1))]
 
-                row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(chosen, className="card-text")),
+                    row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(key, className="card-text")),
                                                       dbc.CardImg(
                                                           src=resize_for_canvas(
                                                               Image.fromarray(
                                                                   image_render).
                                                               convert('RGB')),
                                                           bottom=True)]), width=3))
-
             return row_children
         else:
             raise PreventUpdate
@@ -1038,13 +1083,35 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       State('blending_colours', 'data'))
-    def update_channel_filter_inputs(selected_channel, uploaded, data_selection, current_blend_dict):
-        if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
+                       State('blending_colours', 'data'),
+                       Input('toggle-preset-use', 'value'),
+                       Input('preset-options', 'value'),
+                       State('image_presets', 'data'))
+    def update_channel_filter_inputs(selected_channel, uploaded, data_selection, current_blend_dict,
+                                     toggle_preset_use, preset_selection, preset_dict):
+        """
+        Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used
+        """
+        if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
+                ctx.triggered_id == "images_in_blend":
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             filter_type = current_blend_dict[exp][slide][acq][selected_channel]['filter_type']
             filter_val = current_blend_dict[exp][slide][acq][selected_channel]['filter_val']
+            color = current_blend_dict[exp][slide][acq][selected_channel]['color']
+            to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
+            filter_type_return = filter_type if filter_type is not None else "median"
+            filter_val_return = filter_val if filter_val is not None else 3
+            color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
+                else dict(hex="#1978B6")
+            return to_apply_filter, filter_type_return, filter_val_return, color_return
+        elif ctx.triggered_id in ['toggle-preset-use', 'preset-options'] and None not in \
+                (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict) and \
+                toggle_preset_use:
+            split = data_selection.split("_")
+            exp, slide, acq = split[0], split[1], split[2]
+            filter_type = preset_dict[preset_selection]['filter_type']
+            filter_val = preset_dict[preset_selection]['filter_val']
             color = current_blend_dict[exp][slide][acq][selected_channel]['color']
             to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
             filter_type_return = filter_type if filter_type is not None else "median"
@@ -1081,3 +1148,33 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Input('image_presets', 'data'),
+                       Output('hover-preset-information', 'children'))
+    def update_hover_preset_information(preset_dict):
+        """
+        Update the hover information on the list of presets so that the user can preview the parameters before selecting
+        """
+        if preset_dict is not None and len(preset_dict) > 0:
+            text = ''
+            for stud, val in preset_dict.items():
+                text = text + f"{stud}: \r\n l_bound: {round(float(val['x_lower_bound']), 1)}, " \
+                              f"y_bound: {round(float(val['x_upper_bound']), 1)}, filter type: {val['filter_type']}, " \
+                              f"filter val: {val['filter_val']} \r\n"
+
+            return html.Textarea(text, style={"width": "200px", "height": f"{100*len(preset_dict)}px"})
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Input('session_config', 'data'),
+                       Output('unique-channel-list', 'options'))
+    def populate_gallery_channel_list(session_config):
+        """
+        Populate a list of all unique channel names for the gallery view
+        """
+        if session_config is not None:
+            try:
+                return session_config['unique_images']
+            except KeyError:
+                return None
+        else:
+            raise PreventUpdate

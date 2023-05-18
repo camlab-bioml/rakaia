@@ -205,8 +205,14 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     """
     # array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
-    scale_factor = original_max / upper_bound if None not in (original_max, upper_bound) else 1
-    lower_bound = 0 if lower_bound is None else lower_bound
+    if None not in (original_max, upper_bound):
+        scale_factor = float(original_max) / float(upper_bound)
+    else:
+        scale_factor = 1
+    if lower_bound is None:
+        lower_bound = 0
+    else:
+        lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
     array = array * scale_factor
     return array
@@ -231,3 +237,32 @@ def apply_preset_to_array(array, preset):
         elif preset['filter_val'] is not None:
             array = gaussian_filter(array, int(preset['filter_val']))
         return array
+
+
+def apply_preset_to_blend_dict(blend_dict, preset_dict):
+    """
+    Populate the blend dict from a preset dict
+    """
+    assert all([key in blend_dict.keys() for key in preset_dict.keys()])
+    for key, value in preset_dict.items():
+        # do not change the color from a preset
+        if key != "color":
+            blend_dict[key] = value
+    return blend_dict
+
+
+def get_all_images_by_channel_name(upload_dict, channel_name):
+    """
+    Get all the images in a session dictionary from a channel name for the gallery view
+    """
+    images = {}
+    for exp in list(upload_dict.keys()):
+        if 'metadata' not in exp:
+            for slide in upload_dict[exp].keys():
+                for acq in upload_dict[exp][slide].keys():
+                    for channel in upload_dict[exp][slide][acq].keys():
+                        if channel == channel_name:
+                            string = f"{exp}_{slide}_{acq}"
+                            images[string] = upload_dict[exp][slide][acq][channel]
+    return images
+
