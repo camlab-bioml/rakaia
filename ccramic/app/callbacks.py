@@ -417,6 +417,23 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
+                                                 Input('preset-options', 'value'),
+                                                 Input('image_presets', 'data'),
+                                                 State('blending_colours', 'data'),
+                                                 State('data-collection', 'value'),
+                                                 prevent_initial_call = True)
+    def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
+        if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
+            split = data_selection.split("_")
+            exp, slide, acq = split[0], split[1], split[2]
+            for key, value in current_blend_dict[exp][slide][acq].items():
+                current_blend_dict[exp][slide][acq][key] = apply_preset_to_blend_dict(value,
+                                                                            preset_dict[preset_selection])
+            return current_blend_dict
+        else:
+            raise PreventUpdate
+
     @dash_app.callback(Output('image_layers', 'value'),
                        Input('data-collection', 'value'),
                        State('image_layers', 'value'),
@@ -1046,18 +1063,21 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
                        Input('preset-options', 'value'),
-                       State('image_presets', 'data'))
+                       State('image_presets', 'data'),
+                       prevent_initial_call=True)
     def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict,
                                preset_selection, preset_dict):
 
-        if None not in (selected_channel, uploaded, data_selection) and ctx.triggered_id not in ["preset-options"]:
+        if None not in (selected_channel, uploaded, data_selection) and \
+                ctx.triggered_id in ["images_in_blend"]:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             try:
                 fig = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
             except ValueError:
                 fig = go.Figure()
-            if ctx.triggered_id not in ["image-analysis"]:
+            # if the hist is triggered by the changing of a
+            if ctx.triggered_id == "images_in_blend":
                 try:
                     # binwidth = 10
                     # converted = Image.fromarray(uploaded[exp][slide][acq][selected_channel])
@@ -1079,25 +1099,24 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     return fig
                 except (KeyError, ValueError):
                     return {}
-            elif ctx.triggered_id in ["preset-options"] and \
-                    None not in (preset_selection, preset_dict):
-                if preset_dict[preset_selection]['x_lower_bound'] is not None and \
-                        preset_dict[preset_selection]['x_upper_bound'] is not None:
-                    lower_bound = preset_dict[preset_selection]['x_lower_bound']
-                    upper_bound = preset_dict[preset_selection]['x_upper_bound']
-                    y_ceiling = preset_dict[preset_selection]['y_ceiling']
-
-                    try:
-                        fig.update_layout(dragmode='drawrect')
-
-                        fig.add_shape(editable=True, type="rect", xref="x", yref="y", x0=lower_bound, y0=y_ceiling,
-                                  x1=upper_bound, y1=0,
-                                  line=dict(color='#444', width=4, dash='solid'),
-                                  fillcolor='rgba(0,0,0,0)', opacity=1)
-                        fig.update_layout(showlegend=False)
-                        return fig
-                    except (KeyError, ValueError):
-                        return {}
+            # if ctx.triggered_id in ["preset-options"] and None not in (preset_selection, preset_dict):
+            #     if preset_dict[preset_selection]['x_lower_bound'] is not None and \
+            #             preset_dict[preset_selection]['x_upper_bound'] is not None:
+            #         lower_bound = preset_dict[preset_selection]['x_lower_bound']
+            #         upper_bound = preset_dict[preset_selection]['x_upper_bound']
+            #         y_ceiling = preset_dict[preset_selection]['y_ceiling']
+            #
+            #         try:
+            #             fig.update_layout(dragmode='drawrect')
+            #
+            #             fig.add_shape(editable=True, type="rect", xref="x", yref="y", x0=lower_bound, y0=y_ceiling,
+            #                       x1=upper_bound, y1=0,
+            #                       line=dict(color='#444', width=4, dash='solid'),
+            #                       fillcolor='rgba(0,0,0,0)', opacity=1)
+            #             fig.update_layout(showlegend=False)
+            #             return fig
+            #         except (KeyError, ValueError):
+            #             return {}
         else:
             raise PreventUpdate
 
