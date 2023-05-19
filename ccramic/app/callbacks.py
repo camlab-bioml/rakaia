@@ -25,6 +25,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
         Output("metadata-distribution", "figure"),
         Input('anndata', 'data'),
         Input('metadata_options', 'value'))
+    # @cache.memoize())
     def display_metadata_distribution(anndata_obj, metadata_selection):
         if anndata_obj is not None and metadata_selection is not None:
             ann_data = anndata_obj['metadata'][metadata_selection]
@@ -35,7 +36,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @du.callback(Output('session_config', 'data'),
                  id='upload-image')
-    # @cache.memoize()
+    # @cache.memoize())
     def get_session_uploads_from_drag_and_drop(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
         session_config = {'uploads': []}
@@ -49,10 +50,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        State('read-filepath', 'value'),
                        Input('add-file-by-path', 'n_clicks'),
-                       State('session_config', 'data'),
                        prevent_initial_call=True)
-    # @cache.memoize()
-    def get_session_uploads_from_filepath(filepath, clicks, cur_session):
+    def get_session_uploads_from_filepath(filepath, clicks):
         if filepath is not None and clicks > 0:
             # TODO: fix ability to read in multiple files at different times
             # session_config = cur_session if cur_session is not None and \
@@ -68,9 +67,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Output('session_config', 'data', allow_duplicate=True),
                        Input('session_config', 'data'),
                        prevent_initial_call=True)
-    # @cache.memoize()
     def create_upload_dict_from_filepath_string(session_dict):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
+            print("making upload dict")
             upload_dict, blend_dict, unique_images = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
             return upload_dict, session_dict
@@ -82,6 +81,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Output('image_layers', 'value', allow_duplicate=True),
                        Input('uploaded_dict', 'data'),
                        prevent_initial_call=True)
+    # @cache.memoize())
     def populate_dataset_options(uploaded):
         # important: ensure that the selected value is reset to none when a new upload is made
         if uploaded is not None:
@@ -99,6 +99,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('uploaded_dict', 'data'),
                        State('annotation_canvas', 'figure'),
                        prevent_initial_call=True)
+    # @cache.memoize())
     def reset_canvas_on_new_upload(uploaded, cur_fig):
         if None not in (uploaded, cur_fig) and 'data' in cur_fig:
             return {}
@@ -107,7 +108,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @du.callback(ServersideOutput('anndata', 'data'),
                  id='upload-quantification')
-    # @cache.memoize()
+    # @cache.memoize())
     def create_layered_dict(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
         anndata_files = {}
@@ -132,6 +133,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Output('dimension-reduction_options', 'options'),
                        Input('anndata', 'data'))
+    # @cache.memoize())
     def create_anndata_dimension_options(anndata_dict):
         if anndata_dict and "assays" in anndata_dict.keys():
             return [{'label': i, 'value': i} for i in anndata_dict["assays"].keys()]
@@ -140,6 +142,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Output('metadata_options', 'options'),
                        Input('anndata', 'data'))
+    # @cache.memoize())
     def create_anndata_dimension_options(anndata_dict):
         if anndata_dict and "metadata" in anndata_dict.keys():
             return [{'label': i, 'value': i} for i in anndata_dict["metadata"].columns]
@@ -160,6 +163,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Input('image_layers', 'value'),
                        prevent_initial_call=True)
+    # @cache.memoize())
     def create_dropdown_blend(chosen_for_blend):
         if chosen_for_blend is not None and len(chosen_for_blend) > 0:
             return [{'label': i, 'value': i} for i in chosen_for_blend]
@@ -184,6 +188,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        prevent_initial_call=True)
+    # @cache.memoize())
     def set_blend_options_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
                                     all_layers, hist_layout, filter_chosen, filter_name, filter_value,
                                     session_dict, preset_selection, preset_dict):
@@ -199,8 +204,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
         # if the callback is from the toggle preset and the current channel has the same parameters
         preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
         use_preset_condition = None not in (preset_selection, preset_dict)
+        change_on_tab = ctx.triggered[0]['prop_id'] == 'pixel-hist.relayoutData' and \
+                        ctx.triggered[0]['value'] == {'autosize': True}
 
-        if not pixel_drag_changed:
+        if not pixel_drag_changed and not change_on_tab:
             # populate the blend dict from an h5 upload from a previous session
             if ctx.triggered_id == "session_config" and uploaded is not None:
                 upload_dict, current_blend_dict, unique_images = populate_upload_dict(session_dict['uploads'])
@@ -423,6 +430,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                                  State('blending_colours', 'data'),
                                                  State('data-collection', 'value'),
                                                  prevent_initial_call = True)
+    # @cache.memoize())
     def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
         if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
             split = data_selection.split("_")
@@ -436,8 +444,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Output('image_layers', 'value'),
                        Input('data-collection', 'value'),
-                       State('image_layers', 'value'),
-                       prevent_initial_call=True)
+                       State('image_layers', 'value'))
+    # @cache.memoize())
     def reset_image_layers_selected(current_layers, new_selection):
         if new_selection is not None and current_layers is not None:
             if len(current_layers) > 0:
@@ -454,9 +462,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('alias-dict', 'data'),
                        State('annotation_canvas', 'figure'),
                        Input('annotation_canvas', 'relayoutData'),
-                       Input('custom-scale-val', 'value'),
-                       prevent_initial_call=True)
-    # @cache.memoize()
+                       Input('custom-scale-val', 'value'))
+    # @cache.memoize())
     def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
                                cur_graph, cur_graph_layout, custom_scale_val):
 
@@ -544,7 +551,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 # pio.write_image(fig, 'test_back.png', width=im.width, height=im.height)
                 return fig, str(dest_file)
             except ValueError:
-                raise PreventUpdate
+                return {}, None
 
         # update the scale bar with and without zooming
         elif ctx.triggered_id in ["annotation_canvas", "custom-scale-val"] and \
@@ -626,8 +633,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Output('annotation_canvas', 'config'),
                        Input('annotation_canvas', 'figure'),
-                       State('annotation_canvas', 'relayoutData'),
-                       prevent_initial_call=True)
+                       State('annotation_canvas', 'relayoutData'))
+    # @cache.memoize())
     def set_graph_config(current_canvas, cur_canvas_layout):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -663,6 +670,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('anndata', 'data'),
                        Input('metadata_options', 'value'),
                        Input('dimension-reduction_options', 'value'))
+    # @cache.memoize())
     def render_umap_plot(anndata_obj, metadata_selection, assay_selection):
         if anndata_obj and "assays" in anndata_obj.keys() and metadata_selection and assay_selection:
             data = anndata_obj["full_obj"]
@@ -673,7 +681,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @du.callback(ServersideOutput('image-metadata', 'data'),
                  id='upload-metadata')
-    # @cache.memoize()
+    # @cache.memoize())
     def create_imc_meta_dict(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
         imaging_metadata = {}
@@ -692,6 +700,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
         Output("imc-metadata-editable", "data"),
         Input('uploaded_dict', 'data'),
         Input('image-metadata', 'data'))
+    # @cache.memoize())
     def populate_datatable_columns(uploaded, column_dict):
         if uploaded is not None and uploaded['metadata'] is not None:
             return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
@@ -705,6 +714,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(
         Input("imc-metadata-editable", "data"),
         Output('alias-dict', 'data'))
+    # @cache.memoize())
     def create_channel_label_dict(metadata):
         if metadata is not None:
             alias_dict = {}
@@ -715,8 +725,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(
         Output("download-edited-table", "data"),
         Input("btn-download-metadata", "n_clicks"),
-        Input("imc-metadata-editable", "data"),
-        prevent_initial_call=True)
+        Input("imc-metadata-editable", "data"))
+    # @cache.memoize())
     def download_edited_metadata(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-metadata":
@@ -728,6 +738,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('uploaded_dict', 'data'),
                        Input('imc-metadata-editable', 'data'),
                        Input('blending_colours', 'data'))
+    # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict):
         if uploaded is not None:
             relative_filename = os.path.join(tmpdirname,
@@ -771,6 +782,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
         Input('annotation-canvas-size', 'value'),
         Input('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'))
+    # @cache.memoize())
     def update_canvas_size(value, current_canvas, cur_graph_layout):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -804,16 +816,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
         State('uploaded_dict', 'data'),
         State('image_layers', 'value'),
         State('data-collection', 'value'),
-        State('image-analysis', 'value'),
-        State('alias-dict', 'data'),
-        prevent_initial_call=True)
-    def update_area_information(graph, graph_layout, upload, layers, data_selection, cur_tab, aliases_dict):
+        State('alias-dict', 'data'))
+    # @cache.memoize())
+    def update_area_information(graph, graph_layout, upload, layers, data_selection, aliases_dict):
         # these range keys correspond to the zoom feature
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         # these keys are used if a shape has been created, then modified
         modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
 
-        if graph is not None and graph_layout is not None and data_selection is not None and cur_tab == "tab-1":
+        if graph is not None and graph_layout is not None and data_selection is not None:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             # option 1: if shapes are drawn on the canvas
@@ -969,16 +980,18 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        # Input('image-analysis', 'value'),
                        State('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
-                       State('canvas-layers', 'data'),
+                       # State('canvas-layers', 'data'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
-                       Input('unique-channel-list', 'value'))
-    # @cache.memoize()
-    def create_image_grid(gallery_data, data_selection, canvas_layers, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel, channel_selected):
+                       # Input('unique-channel-list', 'value')
+                       )
+    # @cache.memoize())
+    def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
+                          preset_selection, preset_dict, view_by_channel):
+        channel_selected=None
         if gallery_data is not None and gallery_data is not None:
             row_children = []
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
@@ -1023,6 +1036,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
             raise PreventUpdate
 
     @dash_app.server.route(os.path.join(tmpdirname) + '/downloads/<path:path>')
+    # @cache.memoize())
     def serve_static(path):
         return flask.send_from_directory(
             os.path.join(tmpdirname, 'downloads'), path)
@@ -1032,6 +1046,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('images_in_blend', 'options'),
                        State('data-collection', 'value'),
                        Input('alias-dict', 'data'))
+    # @cache.memoize())
     def create_legend(blend_colours, current_blend, data_selection, aliases):
         current_blend = [elem['label'] for elem in current_blend] if current_blend is not None else None
         children = []
@@ -1050,8 +1065,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
     @dash_app.callback(
         Output("download-collapse", "is_open"),
         [Input("open-download-collapse", "n_clicks")],
-        [State("download-collapse", "is_open")],
-    )
+        [State("download-collapse", "is_open")])
+    # @cache.memoize())
     def toggle_collapse(n, is_open):
         if n:
             return not is_open
@@ -1061,12 +1076,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       State('blending_colours', 'data'),
-                       Input('preset-options', 'value'),
-                       State('image_presets', 'data'),
-                       prevent_initial_call=True)
-    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict,
-                               preset_selection, preset_dict):
+                       State('blending_colours', 'data'))
+    # @cache.memoize())
+    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
 
         if None not in (selected_channel, uploaded, data_selection) and \
                 ctx.triggered_id in ["images_in_blend"]:
@@ -1099,24 +1111,6 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     return fig
                 except (KeyError, ValueError):
                     return {}
-            # if ctx.triggered_id in ["preset-options"] and None not in (preset_selection, preset_dict):
-            #     if preset_dict[preset_selection]['x_lower_bound'] is not None and \
-            #             preset_dict[preset_selection]['x_upper_bound'] is not None:
-            #         lower_bound = preset_dict[preset_selection]['x_lower_bound']
-            #         upper_bound = preset_dict[preset_selection]['x_upper_bound']
-            #         y_ceiling = preset_dict[preset_selection]['y_ceiling']
-            #
-            #         try:
-            #             fig.update_layout(dragmode='drawrect')
-            #
-            #             fig.add_shape(editable=True, type="rect", xref="x", yref="y", x0=lower_bound, y0=y_ceiling,
-            #                       x1=upper_bound, y1=0,
-            #                       line=dict(color='#444', width=4, dash='solid'),
-            #                       fillcolor='rgba(0,0,0,0)', opacity=1)
-            #             fig.update_layout(showlegend=False)
-            #             return fig
-            #         except (KeyError, ValueError):
-            #             return {}
         else:
             raise PreventUpdate
 
@@ -1124,12 +1118,14 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Output('filter-type', 'value'),
                        Output('kernel-val-filter', 'value'),
                        Output("annotation-color-picker", 'value'),
+                       Output('images_in_blend', 'value'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'))
+    # @cache.memoize())
     def update_channel_filter_inputs(selected_channel, uploaded, data_selection, current_blend_dict,
                                      preset_selection, preset_dict):
         """
@@ -1148,7 +1144,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
                 else dict(hex="#1978B6")
-            return to_apply_filter, filter_type_return, filter_val_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         elif ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
             split = data_selection.split("_")
@@ -1161,7 +1157,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
                 else dict(hex="#1978B6")
-            return to_apply_filter, filter_type_return, filter_val_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         else:
             raise PreventUpdate
 
@@ -1174,6 +1170,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        State('image_presets', 'data'),
                        Output('preset-options', 'options'),
                        Output('image_presets', 'data'))
+    # @cache.memoize())
     def generate_preset_options(selected_click, preset_name, current_preset_options, data_selection, layer,
                                 current_blend_dict, current_presets):
         if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer,
@@ -1193,6 +1190,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Input('image_presets', 'data'),
                        Output('hover-preset-information', 'children'))
+    # @cache.memoize())
     def update_hover_preset_information(preset_dict):
         """
         Update the hover information on the list of presets so that the user can preview the parameters before selecting
@@ -1210,10 +1208,13 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Input('session_config', 'data'),
                        Output('unique-channel-list', 'options'))
+    # @cache.memoize())
     def populate_gallery_channel_list(session_config):
         """
         Populate a list of all unique channel names for the gallery view
         """
+        print("checking")
+        print(session_config)
         if session_config is not None:
             try:
                 return session_config['unique_images']

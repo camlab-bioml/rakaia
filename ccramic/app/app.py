@@ -58,13 +58,156 @@ def init_dashboard(server):
                 'CACHE_DIR': 'cache-directory'
             })
 
+    # dash_app.layout = html.Div([
+    #     html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
+    #     dbc.Tabs(id="all-tabs", children=[
+    #         dbc.Tab(label='Image Annotation', tab_id='image-annotation', children=[
+    #             html.Div([dbc.Tabs(id='pixel-level-analysis',
+    #             children=[dbc.Tab(label='Pixel Analysis',
+    #             tab_id='pixel-analysis',
+    #             children=[html.Div([dbc.Row([dbc.Col(html.Div([
+    #             du.Upload(id='upload-image', max_file_size=10000,
+    #                     max_total_size=10000, max_files=200,
+    #                     filetypes=['png', 'tif', 'tiff', 'h5', 'mcd']),
+    #                                                      dcc.Input(id="read-filepath", type="text",
+    #                                                                placeholder="Add upload by file path (local runs only)",
+    #                                                                value=None),
+    #                                                      dbc.Button("Add file by path", id="add-file-by-path",
+    #                                                                           className="mb-3", color="primary", n_clicks=0,
+    #                                                                           style={"margin-left": "20px", "margin-top": "10px"}),
+    #                                                      html.Div([
+    #                                             html.H5("Choose data collection", style={'width': '35%',
+    #                                                                                                'display': 'inline-block'}),
+    #                                                                                html.H5("Choose channel image", style={'width': '65%', 'display': 'inline-block'}),
+    #                                                                                dcc.Dropdown(id='data-collection', multi=False, options=[],
+    #                                                                               style={'width': '30%', 'display': 'inline-block', 'margin-right': '-30'}),
+    #                                                          dcc.Dropdown(id='image_layers', multi=True,
+    #                                                                               style={'width': '70%', 'height': '100px', 'display': 'inline-block'}),
+    #                                                          dcc.Slider(50, 100, 5, value=75,
+    #                                                                     id='annotation-canvas-size'),
+    #                                                          html.Div([html.H3("Image/Channel Blending",
+    #                                                                            style={"margin-right": "50px",
+    #                                                                           "margin-left": "30px"}),
+    #                                                                                         html.Br()]),
+    #                     dcc.Graph(config={"modeBarButtonsToAdd": [
+    #                     # "drawline",
+    #                     # "drawopenpath",
+    #                     "drawclosedpath",
+    #                     # "drawcircle",
+    #                     "drawrect",
+    #                     "eraseshape"],
+    #                     'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
+    #                     'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
+    #                     id='annotation_canvas', style={"margin-top": "-30px"},
+    #                     figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+    #                                           xaxis=go.XAxis(showticklabels=False),
+    #                                           yaxis=go.YAxis(showticklabels=False))}),
+    #
+    #
+    #                                                      ]),
+    #                 html.H6("Current canvas blend", style={'width': '75%'}),
+    #                                  html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
+    #                                  html.H6("Selection information", style={'width': '75%'}),
+    #                                  html.Div([dash_table.DataTable(id='selected-area-table',
+    #                                                                 columns=[{'id': p, 'name': p} for p in
+    #                                                                          ['Channel', 'Mean', 'Max', 'Min']],
+    #                                                                 data=None)])
+    #                                                  ])
+    #                 , width=9),
+    #                 dbc.Col(html.Div([html.H5("Select channel to modify",
+    #                                                               style={'width': '50%', 'display': 'inline-block'}),
+    #                                                       html.Abbr("\u2753", title="Select a channel image to change colour or pixel intensity.",
+    #                                                       style={'width': '5%', 'display': 'inline-block'}),
+    #                                                       dcc.Dropdown(id='images_in_blend', multi=False),
+    #                                                       html.Br(),
+    #                                                       daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
+    #                                                       value=dict(hex="#1978B6")),
+    #                                                       dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+    #                                                                                        xaxis=go.XAxis(showticklabels=False),
+    #                                                                                        yaxis=go.YAxis(showticklabels=False),
+    #                                                                                       margin=dict(l=5, r=5, b=15, t=20, pad=0)),
+    #                                                                                          },
+    #                                                       style={'width': '60vh', 'height': '30vh', 'margin-left': '-30px'},
+    #                                                       config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
+    #                                                       # keep zoom and pan bars to be able to modify the histogram view
+    #                                                       # 'modeBarButtonsToRemove': ['zoom', 'pan']
+    #                                                               },
+    #                                                                 ),
+    #                                                       html.Br(),
+    #                                                       dcc.Checklist(options=[' apply/refresh filter'], value=[],
+    #                                                       id="bool-apply-filter"),
+    #                                                       dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),
+    #                                                       dcc.Input(id="kernel-val-filter", type="number", value=3),
+    #                                                       html.Br(),
+    #                                                       html.Br(),
+    #                                                       html.H6("Add custom scale value", style={'width': '75%'}),
+    #                                                       dcc.Input(id="custom-scale-val", type="number", value=None),
+    #                                                       html.Br(),
+    #                                                       html.Br(),
+    #                                                       dbc.Button("Create preset", id="preset-button", className="me-1",
+    #                                                                         ),
+    #                                                       dbc.Popover(dcc.Input(id="set-preset", type="text",
+    #                                                       placeholder="Create a preset from the current channel", value=None),
+    #                                                                   target="preset-button",
+    #                                                                   trigger="hover",
+    #                                                                   ),
+    #                                                       html.Br(),
+    #                                                       # daq.ToggleSwitch(label='use current preset',
+    #                                                       #                  id='toggle-preset-use', labelPosition='bottom', persistence=True),
+    #                                                       html.Br(),
+    #                                                       dcc.Dropdown(options=[], value=None, id='preset-options'),
+    #                                                       dbc.Tooltip(children="",
+    #                                                                                     target="preset-options",
+    #                                                                   id="hover-preset-information", trigger="hover"),
+    #                                                       html.Br(),
+    #                                                       html.Br(),
+    #
+    #                                                       dbc.Button("Show download links", id="open-download-collapse", className="mb-3",
+    #                                                       color="primary", n_clicks=0),
+    #                                                       dbc.Tooltip(children="Open up the panel to get the download links.",
+    #                                                                   target="open-download-collapse"),
+    #                                                       html.Div(dbc.Collapse(
+    #                                                       html.Div([html.A(id='download-link', children='Download File'),
+    #                                                       html.Br(),
+    #                                                       html.A(id='download-link-canvas-tiff', children='Download Canvas as tiff')]),
+    #                                                       id="download-collapse", is_open=False), style={"minHeight": "100px"})]),
+    #                                                       width=3)
+    #
+    #
+    #             ])])]),
+    #                               dbc.Tab(label="Image Gallery", tab_id='gallery-tab',
+    #                                           children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
+    #                                           id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px"}),
+    #                                                     daq.ToggleSwitch(label='View gallery by channel',
+    #                                                                      id='toggle-gallery-view', labelPosition='bottom', color="blue"),
+    #                                                               # dcc.Dropdown(id='unique-channel-list', multi=False, options=['Placeholder'],
+    #                                                               #              style={'width': '60%', 'display': 'inline-block',
+    #                                                               #                     'margin-right': '-30', 'margin-left': '15px'})
+    #                                                               ],
+    #                                                              style={"display": "flex"}),
+    #                                           html.Div(children=[
+    #                                           dbc.Row(id="image-gallery-row")]),
+    #                                                     ]
+    #                                       ),
+    #                       ])])])]),
+    #         dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="session_config"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="image_presets"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
+    #         dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot")
+    # ])
+
     dash_app.layout = html.Div([
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
-        dcc.Tabs([
-            dcc.Tab(label='Image Annotation', children=[
-                html.Div([dcc.Tabs(id='image-analysis',
-                children=[dcc.Tab(label='Pixel Analysis',
-                id='pixel-analysis',
+        dbc.Tabs(id="all-tabs", children=[
+            dbc.Tab(label='Image Annotation', tab_id='image-annotation', children=[
+                html.Div([dbc.Tabs(id='pixel-level-analysis',
+                children=[dbc.Tab(label='Pixel Analysis',
+                tab_id='pixel-analysis',
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=10000,
                         max_total_size=10000, max_files=200,
@@ -167,21 +310,21 @@ def init_dashboard(server):
                         id="download-collapse", is_open=False), style={"minHeight": "100px"})]),
                         width=3)])])]),
 
-            dcc.Tab(label="Image Gallery", id='gallery-tab',
+            dbc.Tab(label="Image Gallery", tab_id='gallery-tab',
                         children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px"}),
                                   daq.ToggleSwitch(label='View gallery by channel',
                                                    id='toggle-gallery-view', labelPosition='bottom', color="blue"),
-                                            dcc.Dropdown(id='unique-channel-list', multi=False, options=[],
-                                                         style={'width': '60%', 'display': 'inline-block',
-                                                                'margin-right': '-30', 'margin-left': '15px'})
+                                            # dcc.Dropdown(id='unique-channel-list', multi=False, options=[],
+                                            #              style={'width': '60%', 'display': 'inline-block',
+                                            #                     'margin-right': '-30', 'margin-left': '15px'})
                                             ],
                                            style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
                         dbc.Row(id="image-gallery-row")]),
                                   ]),
 
-            dcc.Tab(label="Panel Metadata", children=
+            dbc.Tab(label="Panel Metadata", tab_id='metadata-tab', children=
                         [html.Div([dbc.Row([
                         dbc.Col(html.Div([
                         dash_table.DataTable(id='imc-metadata-editable', columns=[], data=None,
@@ -190,9 +333,10 @@ def init_dashboard(server):
                                             filetypes=['csv'], upload_id="upload-image"),
                         html.Button("Download Edited metadata", id="btn-download-metadata"),
                         dcc.Download(id="download-edited-table")]),
-                            width=3)])])])])])], id='tab-annotation'),
-            dcc.Tab(label='Quantification/Clustering', children=[
-                du.Upload( id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5'],
+                            width=3)])])])])
+                          ])], id='tab-annotation'),
+            dbc.Tab(tab_id='quantification-tab', label='Quantification/Clustering', children=[
+                du.Upload(id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5'],
                     upload_id="upload-quantification"),
                 html.Div([dbc.Row([
                     dbc.Col(html.Div(["Dimension Reduction/Clustering",
