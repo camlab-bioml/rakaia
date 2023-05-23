@@ -782,7 +782,6 @@ def init_callbacks(dash_app, tmpdirname, cache):
         Input('annotation-canvas-size', 'value'),
         Input('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'))
-    # @cache.memoize())
     def update_canvas_size(value, current_canvas, cur_graph_layout):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -790,24 +789,23 @@ def init_callbacks(dash_app, tmpdirname, cache):
         if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]):
             # if the current canvas is not None, update using the aspect ratio
             # otherwise, use aspect of 1
-            try:
-                if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
-                        'range' in current_canvas['layout']['yaxis']:
-                    # aspect ratio is width divided by height
-                    aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
-                                   int(current_canvas['layout']['yaxis']['range'][0])
-                else:
-                    aspect_ratio = 1
-                if value is not None:
-                    return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
-                else:
-                    return {'width': f'100vh', 'height': f'100vh'}
-            except KeyError:
-                return {'width': f'100vh', 'height': f'100vh'}
+            if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
+                    'range' in current_canvas['layout']['yaxis']:
+                # aspect ratio is width divided by height
+                aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                               int(current_canvas['layout']['yaxis']['range'][0])
+            else:
+                aspect_ratio = 1
+
+            if value is not None:
+                return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
+            else:
+                raise PreventUpdate
+
         elif value is not None and current_canvas is None:
             return {'width': f'{value}vh', 'height': f'{value}vh'}
         else:
-            return {'width': f'100vh', 'height': f'100vh'}
+            raise PreventUpdate
 
     @dash_app.callback(
         Output("selected-area-table", "data"),
