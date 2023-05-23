@@ -35,7 +35,9 @@ jobs:
 #          singularity build --fakeroot ccramic.sif Singularity
 #          singularity exec ccramic.sif which ccramic && python3 --version
         # shell: bash -l {0} 
-      - name: Install ccramic
+      - name: Install ccramic dependencies from requirements
+        run: pip install -r requirements.txt
+      - name: Install ccramic through pip after dependencies
         run: pip install .
       - name: Run pytest for ccramic
         shell: bash -l {0}

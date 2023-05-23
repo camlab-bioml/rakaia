@@ -12,6 +12,7 @@ import plotly.express as px
 from skimage import data, draw
 from scipy import ndimage
 import numpy.ma as ma
+from scipy.ndimage import gaussian_filter, median_filter
 
 
 def get_luma(rbg):
@@ -66,9 +67,9 @@ def recolour_greyscale(array, colour):
         return converted.astype(np.uint8)
 
     else:
-        image = Image.fromarray(array)
+        image = Image.fromarray(array.astype(np.uint8))
         image = image.convert('RGB')
-        return np.array(image)
+        return np.array(image).astype(np.uint8)
 
 
 def convert_image_to_bytes(image):
@@ -204,7 +205,14 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     """
     # array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
-    scale_factor = original_max / upper_bound
+    if None not in (original_max, upper_bound):
+        scale_factor = float(original_max) / float(upper_bound)
+    else:
+        scale_factor = 1
+    if lower_bound is None:
+        lower_bound = 0
+    else:
+        lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
     array = array * scale_factor
     return array
@@ -212,8 +220,49 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
 
 def pixel_hist_from_array(array):
     try:
-        data = np.hstack(array)
-        hist = np.random.choice(data, int(data.shape[0] / 100)) if data.shape[0] > 20000000 else data
+        hist_data = np.hstack(array)
+        hist = np.random.choice(hist_data, int(hist_data.shape[0] / 100)) if \
+            hist_data.shape[0] > 20000000 else hist_data
         return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
     except ValueError:
-        return pixel_hist_from_array(np.array(Image.fromarray(array).convert('L')))
+        return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
+
+
+def apply_preset_to_array(array, preset):
+    preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
+    if isinstance(preset, dict) and all([elem in preset.keys() for elem in preset_keys]):
+        array = filter_by_upper_and_lower_bound(array, preset['x_lower_bound'], preset['x_upper_bound'])
+        if preset['filter_type'] == "median" and preset['filter_val'] is not None:
+            array = median_filter(array, int(preset['filter_val']))
+        elif preset['filter_val'] is not None:
+            array = gaussian_filter(array, int(preset['filter_val']))
+        return array
+
+
+def apply_preset_to_blend_dict(blend_dict, preset_dict):
+    """
+    Populate the blend dict from a preset dict
+    """
+    assert all([key in blend_dict.keys() for key in preset_dict.keys()])
+    for key, value in preset_dict.items():
+        # do not change the color from a preset
+        if key != "color":
+            blend_dict[key] = value
+    return blend_dict
+
+
+def get_all_images_by_channel_name(upload_dict, channel_name):
+    """
+    Get all the images in a session dictionary from a channel name for the gallery view
+    """
+    images = {}
+    for exp in list(upload_dict.keys()):
+        if 'metadata' not in exp:
+            for slide in upload_dict[exp].keys():
+                for acq in upload_dict[exp][slide].keys():
+                    for channel in upload_dict[exp][slide][acq].keys():
+                        if channel == channel_name:
+                            string = f"{exp}_{slide}_{acq}"
+                            images[string] = upload_dict[exp][slide][acq][channel]
+    return images
+

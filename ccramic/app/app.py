@@ -1,44 +1,38 @@
-import anndata
-import imageio.plugins.freeimage
-import tifffile
-import plotly.express as px
-import pandas as pd
+
 from dash import dash_table
-import os
-# from io import BytesIO
-from dash.exceptions import PreventUpdate
-import flask
 import tempfile
 import dash_uploader as du
 from flask_caching import Cache
 from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOutput, html, dcc, \
-    ServersideOutputTransform
+    ServersideOutputTransform, FileSystemStore
 import dash_daq as daq
 import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager
-from tifffile import TiffFile, imwrite
-# from matplotlib import pyplot as plt
-from .utils import *
 import diskcache
-import h5py
 from sqlite3 import DatabaseError
-from readimc import MCDFile
-import math
-import plotly.graph_objects as go
-from pathlib import Path
-import matplotlib.pyplot as plt
-from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 from .callbacks import init_callbacks
+import shutil
+
 
 def init_dashboard(server):
-    dash_app = DashProxy(__name__,
-                         transforms=[ServersideOutputTransform()],
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # set the serveroutput cache dir and clean it every time a new app session is started
+        cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
+        if os.path.exists(cache_dest):
+            shutil.rmtree(cache_dest)
+        backend_dir = FileSystemStore(cache_dir=cache_dest)
+        dash_app = DashProxy(__name__,
+                        transforms=[ServersideOutputTransform(
+                            backend=backend_dir)],
                          external_stylesheets=[dbc.themes.BOOTSTRAP],
                          server=server,
                          routes_pathname_prefix="/ccramic/")
-    dash_app.title = "ccramic"
-    server.config['APPLICATION_ROOT'] = "/ccramic"
+        dash_app.title = "ccramic"
+        server.config['APPLICATION_ROOT'] = "/ccramic"
+
+        du.configure_upload(dash_app, tmpdirname)
 
     # VALID_USERNAME_PASSWORD_PAIRS = {
     #     'ccramic_user': 'ccramic'
@@ -48,6 +42,7 @@ def init_dashboard(server):
     #     dash_app,
     #     VALID_USERNAME_PASSWORD_PAIRS
     # )
+
     try:
         cache = Cache(dash_app.server, config={
             'CACHE_TYPE': 'redis',
@@ -62,9 +57,6 @@ def init_dashboard(server):
                 'CACHE_TYPE': 'filesystem',
                 'CACHE_DIR': 'cache-directory'
             })
-
-    with tempfile.TemporaryDirectory() as tmpdirname:
-        du.configure_upload(dash_app, tmpdirname)
 
     dash_app.layout = html.Div([
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
@@ -91,7 +83,8 @@ def init_dashboard(server):
                         style={'width': '70%', 'height': '100px', 'display': 'inline-block'})],
                         style={'width': '125%', 'height': '100%', 'display': 'inline-block', 'margin-left': '-30'}),
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
-                        html.Div([html.H3("Image/Channel Blending", style={ "margin-right": "50px"}),
+                        html.Div([html.H3("Image/Channel Blending", style={"margin-right": "50px",
+                                                                           "margin-left": "30px"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%"}),
                         dcc.Graph(config={"modeBarButtonsToAdd": [
@@ -103,8 +96,18 @@ def init_dashboard(server):
                         "eraseshape"],
                         'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
                         'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
-                        id='annotation_canvas', style={"margin-top": "-30px"})]),
-                        width=8),
+                        id='annotation_canvas', style={"margin-top": "-30px"},
+                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                              xaxis=go.XAxis(showticklabels=False),
+                                              yaxis=go.YAxis(showticklabels=False))}),
+                    html.H6("Current canvas blend", style={'width': '75%'}),
+                    html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
+                    html.H6("Selection information", style={'width': '75%'}),
+                    html.Div([dash_table.DataTable(id='selected-area-table',
+                                                   columns=[{'id': p, 'name': p} for p in
+                                                            ['Channel', 'Mean', 'Max', 'Min']],
+                                                   data=None)], style={"width": "85%"})]),
+                        width=9),
                         dbc.Col(html.Div([html.H5("Select channel to modify",
                                 style={'width': '50%', 'display': 'inline-block'}),
                         html.Abbr("\u2753", title="Select a channel image to change colour or pixel intensity.",
@@ -113,12 +116,17 @@ def init_dashboard(server):
                         html.Br(),
                         daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
                         value=dict(hex="#1978B6")),
-                        html.Br(),
-                        dcc.Graph(id="pixel-hist", figure={'layout': {
-                        'margin': dict(l=10, r=5, b=25, t=35, pad=2)}},
-                        style={'width': '60vh', 'height': '30vh'},
+                        dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                                         xaxis=go.XAxis(showticklabels=False),
+                                                         yaxis=go.YAxis(showticklabels=False),
+                                                        margin=dict(l=5, r=5, b=15, t=20, pad=0)),
+                                                           },
+                        style={'width': '60vh', 'height': '30vh', 'margin-left': '-30px'},
                         config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
-                        'modeBarButtonsToRemove': ['zoom', 'pan']}),
+                        # keep zoom and pan bars to be able to modify the histogram view
+                        # 'modeBarButtonsToRemove': ['zoom', 'pan']
+                                },
+                                  ),
                         html.Br(),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),
@@ -126,36 +134,52 @@ def init_dashboard(server):
                         dcc.Input(id="kernel-val-filter", type="number", value=3),
                         html.Br(),
                         html.Br(),
-                        html.H6("Current canvas blend", style={'width': '75%'}),
-                        html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
-                        html.Br(),
-                        html.Br(),
                         html.H6("Add custom scale value", style={'width': '75%'}),
                         dcc.Input(id="custom-scale-val", type="number", value=None),
                         html.Br(),
                         html.Br(),
-                        html.H6("Selection information",style={'width': '75%'}),
-                        html.Div([dash_table.DataTable(id='selected-area-table',
-                        columns=[{'id': p, 'name': p} for p in ['Channel', 'Mean', 'Max', 'Min']],
-                        data=None)], style={"width": "85%"}),
+                        dbc.Button("Create preset", id="preset-button", className="me-1",
+                                          ),
+                        dbc.Popover(dcc.Input(id="set-preset", type="text",
+                        placeholder="Create a preset from the current channel", value=None),
+                                    target="preset-button",
+                                    trigger="hover",
+                                    ),
+                        html.Br(),
+                        # daq.ToggleSwitch(label='use current preset',
+                        #                  id='toggle-preset-use', labelPosition='bottom', persistence=True),
+                        html.Br(),
+                        dcc.Dropdown(options=[], value=None, id='preset-options'),
+                        dbc.Tooltip(children="",
+                                                      target="preset-options",
+                                    id="hover-preset-information", trigger="hover"),
                         html.Br(),
                         html.Br(),
+
                         dbc.Button("Show download links", id="open-download-collapse", className="mb-3",
                         color="primary", n_clicks=0),
-                        dbc.Tooltip("Open up the panel to get the download links.",
+                        dbc.Tooltip(children="Open up the panel to get the download links.",
                                     target="open-download-collapse"),
                         html.Div(dbc.Collapse(
                         html.Div([html.A(id='download-link', children='Download File'),
                         html.Br(),
                         html.A(id='download-link-canvas-tiff', children='Download Canvas as tiff')]),
                         id="download-collapse", is_open=False), style={"minHeight": "100px"})]),
-                        width=4)])])]),
+                        width=3)])])]),
 
             dcc.Tab(label="Image Gallery", id='gallery-tab',
-                        children=[daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
-                        id='toggle-gallery-zoom', labelPosition='bottom'),
+                        children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
+                        id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px"}),
+                                  daq.ToggleSwitch(label='View gallery by channel',
+                                                   id='toggle-gallery-view', labelPosition='bottom', color="blue"),
+                                            dcc.Dropdown(id='unique-channel-list', multi=False, options=[],
+                                                         style={'width': '60%', 'display': 'inline-block',
+                                                                'margin-right': '-30', 'margin-left': '15px'})
+                                            ],
+                                           style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
-                        dbc.Row(id="image-gallery-row")])]),
+                        dbc.Row(id="image-gallery-row")]),
+                                  ]),
 
             dcc.Tab(label="Panel Metadata", children=
                         [html.Div([dbc.Row([
@@ -186,6 +210,7 @@ def init_dashboard(server):
         dcc.Loading(dcc.Store(id="session_config"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
+        dcc.Loading(dcc.Store(id="image_presets"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),

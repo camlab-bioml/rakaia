@@ -14,6 +14,7 @@ def populate_upload_dict(uploaded_files):
     """
     filenames = [str(x) for x in uploaded_files]
     upload_dict = {}
+    unique_image_names = []
     if len(filenames) > 0:
         upload_dict['metadata'] = {}
         metadata_channels = []
@@ -39,6 +40,8 @@ def populate_upload_dict(uploaded_files):
                             blend_dict[exp][slide][acq] = {}
                             for channel in data_h5[exp][slide][acq]:
                                 upload_dict[exp][slide][acq][channel] = data_h5[exp][slide][acq][channel]['image'][()]
+                                if channel not in unique_image_names:
+                                    unique_image_names.append(channel)
                                 blend_dict[exp][slide][acq][channel] = {}
                                 for blend_key, blend_val in data_h5[exp][slide][acq][channel].items():
                                     if 'image' not in blend_key:
@@ -69,10 +72,11 @@ def populate_upload_dict(uploaded_files):
                         file__name, file_extension = os.path.splitext(tiff_path)
                         basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
                         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][
-                            basename] = \
-                            convert_to_below_255(tifffile.imread(upload))
+                            basename] = convert_to_below_255(tifffile.imread(upload))
                         metadata_channels.append(basename)
                         metadata_labels.append(basename)
+                        if basename not in unique_image_names:
+                            unique_image_names.append(basename)
                     else:
                         with TiffFile(upload) as tif:
                             tiff_path = Path(upload)
@@ -87,6 +91,8 @@ def populate_upload_dict(uploaded_files):
                                 multi_channel_index += 1
                                 metadata_channels.append(identifier)
                                 metadata_labels.append(identifier)
+                                if identifier not in unique_image_names:
+                                    unique_image_names.append(identifier)
 
                     upload_dict['metadata'] = {'Cycle': range(1, len(metadata_channels) + 1, 1),
                                                'Channel Name': metadata_channels,
@@ -120,13 +126,13 @@ def populate_upload_dict(uploaded_files):
                                                                                       str(slide_index)]["acq" +
                                                                                                         str(acq_index)][
                                         channel_names[channel_index]] = convert_to_below_255(channel)
-                                    print(channel_names[channel_index])
-                                    print(np.max(channel))
+                                    if channel_names[channel_index] not in unique_image_names:
+                                        unique_image_names.append(channel_names[channel_index])
                                     channel_index += 1
                                 acq_index += 1
                             slide_index += 1
                     experiment_index += 1
-        return upload_dict, blend_dict
+        return upload_dict, blend_dict, unique_image_names
     else:
         return None
 
