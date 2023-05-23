@@ -183,10 +183,15 @@ def convert_to_below_255(array):
     return array if np.max(array) < 65000 else (array // 256).astype(np.uint8)
 
 
-def resize_for_canvas(image, basewidth=400):
+def resize_for_canvas(image, basewidth=400, return_array=True):
+    image = Image.fromarray(image) if isinstance(image, np.ndarray) else image
     wpercent = (basewidth / float(image.size[0]))
     hsize = int((float(image.size[1]) * float(wpercent)))
-    return image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    if return_array:
+        to_return = np.array(image.resize((basewidth, hsize), Image.Resampling.LANCZOS))
+    else:
+        to_return = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    return to_return
 
 
 def make_metadata_column_editable(column_name):

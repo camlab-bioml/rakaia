@@ -980,18 +980,16 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        # Input('image-analysis', 'value'),
                        State('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
-                       # State('canvas-layers', 'data'),
+                       State('canvas-layers', 'data'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
-                       # Input('unique-channel-list', 'value')
-                       )
-    # @cache.memoize())
-    def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel):
-        channel_selected=None
+                       Input('unique-channel-list', 'value'))
+    # @cache.memoize()
+    def create_image_grid(gallery_data, data_selection, canvas_layers, canvas_layout, toggle_gallery_zoom,
+                          preset_selection, preset_dict, view_by_channel, channel_selected):
         if gallery_data is not None and gallery_data is not None:
             row_children = []
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
@@ -1009,7 +1007,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
             if views is not None:
                 for key, value in views.items():
-                    image_render = value
+                    image_render = resize_for_canvas(value)
 
                     if None not in (preset_selection, preset_dict):
                         image_render = apply_preset_to_array(value, preset_dict[preset_selection])
@@ -1022,15 +1020,12 @@ def init_callbacks(dash_app, tmpdirname, cache):
                         assert x_range_high >= x_range_low
                         assert y_range_high >= y_range_low
                         image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
-                                                       range(int(x_range_low), int(x_range_high), 1))]
+                                                           range(int(x_range_low), int(x_range_high), 1))]
 
                     row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(key, className="card-text")),
-                                                      dbc.CardImg(
-                                                          src=resize_for_canvas(
-                                                              Image.fromarray(
-                                                                  image_render).
-                                                              convert('RGB')),
-                                                          bottom=True)]), width=3))
+                                                          dbc.CardImg(
+                                                              src=Image.fromarray(image_render).convert('RGB'),
+                                                              bottom=True)]), width=3))
             return row_children
         else:
             raise PreventUpdate
@@ -1207,18 +1202,19 @@ def init_callbacks(dash_app, tmpdirname, cache):
             raise PreventUpdate
 
     @dash_app.callback(Input('session_config', 'data'),
-                       Output('unique-channel-list', 'options'))
+                       Output('unique-channel-list', 'options'),
+                       prevent_initial_call=True)
     # @cache.memoize())
     def populate_gallery_channel_list(session_config):
         """
         Populate a list of all unique channel names for the gallery view
         """
-        print("checking")
-        print(session_config)
         if session_config is not None:
             try:
+                print("checking")
+                print(session_config['unique_images'])
                 return session_config['unique_images']
             except KeyError:
-                return None
+                return []
         else:
-            raise PreventUpdate
+            return []
