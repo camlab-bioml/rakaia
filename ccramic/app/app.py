@@ -3,8 +3,8 @@ from dash import dash_table
 import tempfile
 import dash_uploader as du
 from flask_caching import Cache
-from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOutput, html, dcc, \
-    ServersideOutputTransform, FileSystemStore
+from dash_extensions.enrich import DashProxy, html, dcc, \
+    ServersideOutputTransform, FileSystemCache, ServersideBackend, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager
@@ -22,10 +22,9 @@ def init_dashboard(server):
         cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
-        backend_dir = FileSystemStore(cache_dir=cache_dest)
+        backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
-                        transforms=[ServersideOutputTransform(
-                            backend=backend_dir)],
+                        transforms=[ServersideOutputTransform(backends=[backend_dir])],
                          external_stylesheets=[dbc.themes.BOOTSTRAP],
                          server=server,
                          routes_pathname_prefix="/ccramic/")
