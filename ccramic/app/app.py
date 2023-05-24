@@ -214,7 +214,8 @@ def init_dashboard(server):
         dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot")
+        dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot"),
+        dcc.Loading(dcc.Store(id="static-session-var"), fullscreen=True, type="dot")
     ])
 
     dash_app.enable_dev_tools(debug=True)
