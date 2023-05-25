@@ -19,7 +19,8 @@ def init_dashboard(server):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
-        cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
+        # cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
+        cache_dest = os.path.join("tmp", "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
@@ -58,6 +59,24 @@ def init_dashboard(server):
             })
 
     dash_app.layout = html.Div([
+        dbc.Modal(children=dbc.ModalBody([dcc.Graph(config={"modeBarButtonsToAdd": [
+                        # "drawline",
+                        # "drawopenpath",
+                        "drawclosedpath",
+                        # "drawcircle",
+                        "drawrect",
+                        "eraseshape"],
+                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
+                        'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
+                        id='annotation_canvas-fullscreen',
+            style={"margin": "auto", "width": "100vw", "height": "100vh",
+                   "max-width": "none", "max-height": "none"},
+                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                              xaxis=go.XAxis(showticklabels=False),
+                                              yaxis=go.YAxis(showticklabels=False))})]),
+            id="fullscreen-canvas", fullscreen=True, size='xl',
+        centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
+                              "max-width": "none", "max-height": "none"}),
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
         dbc.Tabs(id="all-tabs", children=[
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', children=[
@@ -84,6 +103,9 @@ def init_dashboard(server):
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
                         html.Div([html.H3("Image/Channel Blending", style={"margin-right": "50px",
                                                                            "margin-left": "30px"}),
+                                  dbc.Button("Full screen", id="make-canvas-fullscreen",
+                                            className="mb-3", color="primary", n_clicks=0,
+                                            style={"margin-left": "10px", "margin-top": "5px"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%"}),
                         dcc.Graph(config={"modeBarButtonsToAdd": [
@@ -95,7 +117,9 @@ def init_dashboard(server):
                         "eraseshape"],
                         'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
                         'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
-                        id='annotation_canvas', style={"margin-top": "-30px"},
+                        id='annotation_canvas',
+                            style={"margin-top": "-30px"},
+                            # style={"width": "100vw", "height": "100vh"},
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False))}),
@@ -216,7 +240,7 @@ def init_dashboard(server):
         dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="static-session-var"), fullscreen=True, type="dot")
-    ])
+    ], style={"margin": "auto"})
 
     dash_app.enable_dev_tools(debug=True)
 

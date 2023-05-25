@@ -294,10 +294,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                             current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
                         array = filter_by_upper_and_lower_bound(array,
-                                                            float(current_blend_dict[exp][slide][acq][layer][
-                                                                      'x_lower_bound']),
-                                                            float(current_blend_dict[exp][slide][acq][layer][
-                                                                      'x_upper_bound']))
+                                                                float(current_blend_dict[exp][slide][acq][layer][
+                                                                          'x_lower_bound']),
+                                                                float(current_blend_dict[exp][slide][acq][layer][
+                                                                          'x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
                         if filter_name == "median":
@@ -308,7 +308,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     # if filters have been selected, apply them before recolouring
 
                     all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                                 colour['hex'])).astype(np.uint8)
+                                                                                     colour['hex'])).astype(np.uint8)
                     return current_blend_dict, Serverside(all_layers)
                 else:
                     raise PreventUpdate
@@ -447,7 +447,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        prevent_initial_call=True)
     # @cache.memoize())
     def set_blend_options_for_layer_with_bool_filter(layer, uploaded, current_blend_dict, data_selection,
-                                    all_layers, filter_chosen, filter_name, filter_value, cur_layers,
+                                                     all_layers, filter_chosen, filter_name, filter_value, cur_layers,
                                                      blend_options, session_vars):
 
         only_options_changed = False
@@ -471,10 +471,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                         current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
                     array = filter_by_upper_and_lower_bound(array,
-                                                        float(current_blend_dict[exp][slide][acq][layer][
-                                                                  'x_lower_bound']),
-                                                        float(current_blend_dict[exp][slide][acq][layer][
-                                                                  'x_upper_bound']))
+                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                                      'x_lower_bound']),
+                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                                      'x_upper_bound']))
 
                 if len(filter_chosen) > 0 and filter_name is not None:
                     if filter_name == "median":
@@ -490,9 +490,9 @@ def init_callbacks(dash_app, tmpdirname, cache):
                     current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
 
                 all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                             current_blend_dict[exp][slide][acq][
-                                                                                 layer][
-                                                                                 'color'])).astype(np.uint8)
+                                                                                 current_blend_dict[exp][slide][acq][
+                                                                                     layer][
+                                                                                     'color'])).astype(np.uint8)
 
                 return current_blend_dict, Serverside(all_layers)
             else:
@@ -501,11 +501,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
-                                                 Input('preset-options', 'value'),
-                                                 Input('image_presets', 'data'),
-                                                 State('blending_colours', 'data'),
-                                                 State('data-collection', 'value'),
-                                                 prevent_initial_call = True)
+                       Input('preset-options', 'value'),
+                       Input('image_presets', 'data'),
+                       State('blending_colours', 'data'),
+                       State('data-collection', 'value'),
+                       prevent_initial_call=True)
     # @cache.memoize())
     def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
         if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
@@ -513,7 +513,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
             exp, slide, acq = split[0], split[1], split[2]
             for key, value in current_blend_dict[exp][slide][acq].items():
                 current_blend_dict[exp][slide][acq][key] = apply_preset_to_blend_dict(value,
-                                                                            preset_dict[preset_selection])
+                                                                                      preset_dict[preset_selection])
             return current_blend_dict
         else:
             raise PreventUpdate
@@ -1169,20 +1169,20 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 try:
                     # binwidth = 10
                     # converted = Image.fromarray(uploaded[exp][slide][acq][selected_channel])
-                    #converted = np.array(converted, dtype=int)
+                    # converted = np.array(converted, dtype=int)
                     fig.update_layout(dragmode='drawrect')
 
                     # if the current selection has already had a histogram bound on it, update the histogram with it
                     if current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound'] is not None and \
-                        current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'] is not None:
+                            current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'] is not None:
                         lower_bound = current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound']
                         upper_bound = current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound']
                         y_ceiling = current_blend_dict[exp][slide][acq][selected_channel]['y_ceiling']
 
                         fig.add_shape(editable=True, type="rect", xref="x", yref="y", x0=lower_bound, y0=y_ceiling,
-                                  x1=upper_bound, y1=0,
-                                  line=dict(color='#444', width=4, dash='solid'),
-                                  fillcolor='rgba(0,0,0,0)', opacity=1)
+                                      x1=upper_bound, y1=0,
+                                      line=dict(color='#444', width=4, dash='solid'),
+                                      fillcolor='rgba(0,0,0,0)', opacity=1)
                         fig.update_layout(showlegend=False)
                     return fig
                 except (KeyError, ValueError):
@@ -1208,7 +1208,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
         """
         Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used
         """
-        
+
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
             # do not update if the trigger is the channel options and the current selection hasn't changed
@@ -1285,7 +1285,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                               f"y_bound: {round(float(val['x_upper_bound']), 1)}, filter type: {val['filter_type']}, " \
                               f"filter val: {val['filter_val']} \r\n"
 
-            return html.Textarea(text, style={"width": "200px", "height": f"{100*len(preset_dict)}px"})
+            return html.Textarea(text, style={"width": "200px", "height": f"{100 * len(preset_dict)}px"})
         else:
             raise PreventUpdate
 
@@ -1323,3 +1323,45 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(
+        Output("fullscreen-canvas", "is_open"),
+        Input('make-canvas-fullscreen', 'n_clicks'),
+        [State("fullscreen-canvas", "is_open")])
+    def toggle_modal(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(Output('annotation_canvas-fullscreen', 'figure'),
+                       Output('annotation_canvas-fullscreen', 'relayoutData'),
+                       Input('make-canvas-fullscreen', 'n_clicks'),
+                       State('annotation_canvas', 'figure'),
+                       State('annotation_canvas-fullscreen', 'relayoutData'),
+                       prevent_initial_call=True)
+    def render_canvas_fullscreen(clicks, cur_canvas, cur_layout):
+        if clicks > 0 and None not in (cur_layout, cur_canvas):
+            if 'layout' in cur_layout.keys() and 'annotations' in cur_layout['layout'].keys() and \
+                    len(cur_layout['layout']['annotations']) > 0:
+                cur_layout['layout']['annotations'] = None
+            if 'shapes' in cur_layout.keys():
+                cur_layout['shapes'] = {}
+            if 'layout' in cur_canvas.keys() and 'annotations' in cur_canvas['layout'].keys() and \
+                    len(cur_canvas['layout']['annotations']) > 0:
+                cur_canvas['layout']['annotations'] = None
+            if 'layout' in cur_canvas.keys() and 'shapes' in cur_canvas['layout'].keys():
+                cur_canvas['layout']['shapes'] = None
+
+            fig = go.Figure(cur_canvas)
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                  xaxis=go.XAxis(showticklabels=False),
+                                  yaxis=go.YAxis(showticklabels=False),
+                                  margin=dict(
+                                      l=25,
+                                      r=0,
+                                      b=25,
+                                      t=35,
+                                      pad=0
+                                  ))
+            return fig, cur_layout
+        else:
+            return {}, None
