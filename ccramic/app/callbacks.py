@@ -151,22 +151,33 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Output('image_layers', 'options'),
                        Input('uploaded_dict', 'data'),
-                       Input('data-collection', 'value'))
-    def create_dropdown_options(image_dict, data_selection):
+                       Input('data-collection', 'value'),
+                       Input('alias-dict', 'data'))
+    def create_dropdown_options(image_dict, data_selection, names):
         if image_dict and data_selection:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
-            return [{'label': i, 'value': i} for i in image_dict[exp][slide][acq].keys()]
+            # imp: use the channel label for the dropdown view and the name in the background to retrieve
+            try:
+                assert all([elem in names.keys() for elem in image_dict[exp][slide][acq].keys()])
+                return [{'label': names[i], 'value': i} for i in image_dict[exp][slide][acq].keys()]
+            except AssertionError:
+                return []
         else:
             raise PreventUpdate
-
+    
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Input('image_layers', 'value'),
+                       Input('alias-dict', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def create_dropdown_blend(chosen_for_blend):
+    def create_dropdown_blend(chosen_for_blend, names):
         if chosen_for_blend is not None and len(chosen_for_blend) > 0:
-            return [{'label': i, 'value': i} for i in chosen_for_blend]
+            try:
+                assert all([elem in names.keys() for elem in chosen_for_blend])
+                return [{'label': names[i], 'value': i} for i in chosen_for_blend]
+            except AssertionError:
+                return []
         else:
             return []
 
@@ -596,6 +607,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 # add shift based on the image shape
                 shift = math.log10(image.shape[1]) - 3
                 midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
+                # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
+                midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
                 fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
                                    # set the placement of where the text goes relative to the scale bar
@@ -750,8 +763,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
     # @cache.memoize())
     def render_umap_plot(anndata_obj, metadata_selection, assay_selection):
         if anndata_obj and "assays" in anndata_obj.keys() and metadata_selection and assay_selection:
-            data = anndata_obj["full_obj"]
-            return px.scatter(data.obsm[assay_selection], x=0, y=1, color=data.obs[metadata_selection],
+            umap_data = anndata_obj["full_obj"]
+            return px.scatter(umap_data.obsm[assay_selection], x=0, y=1, color=umap_data.obs[metadata_selection],
                               labels={'color': metadata_selection})
         else:
             raise PreventUpdate
@@ -1164,7 +1177,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 fig = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
             except ValueError:
                 fig = go.Figure()
-            # if the hist is triggered by the changing of a
+
+            # if the hist is triggered by the changing of a channel to modify
             if ctx.triggered_id == "images_in_blend":
                 try:
                     # binwidth = 10
@@ -1183,7 +1197,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                       x1=upper_bound, y1=0,
                                       line=dict(color='#444', width=4, dash='solid'),
                                       fillcolor='rgba(0,0,0,0)', opacity=1)
-                        fig.update_layout(showlegend=False)
+                    fig.update_layout(showlegend=False)
                     return fig
                 except (KeyError, ValueError):
                     return {}
@@ -1356,10 +1370,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                   xaxis=go.XAxis(showticklabels=False),
                                   yaxis=go.YAxis(showticklabels=False),
                                   margin=dict(
-                                      l=25,
+                                      l=0,
                                       r=0,
-                                      b=25,
-                                      t=35,
+                                      b=0,
+                                      t=0,
                                       pad=0
                                   ))
             return fig, cur_layout

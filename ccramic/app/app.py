@@ -19,8 +19,11 @@ def init_dashboard(server):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
-        # cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
-        cache_dest = os.path.join("tmp", "ccramic_cache")
+        # if whatever reason, the tmp is not writable, use a new directory as a backup
+        if os.access("tmp", os.R_OK):
+            cache_dest = os.path.join("tmp", "ccramic_cache")
+        else:
+            cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
@@ -59,6 +62,7 @@ def init_dashboard(server):
             })
 
     dash_app.layout = html.Div([
+        # this modal is for the fullscreen view and does not belong in a nested tab
         dbc.Modal(children=dbc.ModalBody([dcc.Graph(config={"modeBarButtonsToAdd": [
                         # "drawline",
                         # "drawopenpath",

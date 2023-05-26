@@ -226,8 +226,11 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
 def pixel_hist_from_array(array):
     try:
         hist_data = np.hstack(array)
+        max_hist = np.amax(array)
         hist = np.random.choice(hist_data, int(hist_data.shape[0] / 100)) if \
-            hist_data.shape[0] > 20000000 else hist_data
+            hist_data.shape[0] > 2000000 else hist_data
+        # add the largest pixel to ensure that hottest pixel is included in the distribution
+        hist = np.concatenate(hist, int(max_hist))
         return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
     except ValueError:
         return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))

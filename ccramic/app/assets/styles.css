@@ -16,7 +16,7 @@
 }
 
 .full-screen {
-            position: fixed;
+            position: relative;
             height: 98vh !important;
             width: 98vw !important;
             left: 0;
