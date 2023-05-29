@@ -196,7 +196,8 @@ def resize_for_canvas(image, basewidth=400, return_array=True):
 
 def make_metadata_column_editable(column_name):
     # only allow the channel label column to be edited
-    return "Label" in column_name or column_name == "Channel Label"
+    # return "Label" in column_name or column_name == "Channel Label"
+    return column_name == "ccramic Label"
 
 
 def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
@@ -273,4 +274,3 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
                             string = f"{exp}_{slide}_{acq}"
                             images[string] = upload_dict[exp][slide][acq][channel]
     return images
-

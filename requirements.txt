@@ -11,7 +11,6 @@ Babel==2.12.1
 backcall==0.2.0
 bandit==1.7.5
 beautifulsoup4==4.12.0
-botocore==1.29.133
 build==0.10.0
 cachelib==0.9.0
 cachey==0.2.1
@@ -24,7 +23,7 @@ contourpy==1.0.7
 cryptography==40.0.1
 cycler==0.11.0
 Cython==0.29.34
-dash==2.9.3
+dash==2.10.0
 dash-auth==2.0.0
 dash-bootstrap-components==1.4.1
 dash-canvas==0.1.0
@@ -39,11 +38,10 @@ dash-uploader==0.7.0a1
 dask==2023.3.2
 debugpy==1.6.6
 decorator==5.1.1
-Deprecated==1.2.13
 dill==0.3.6
 diskcache==5.4.0
 docstring-parser==0.15
-docutils==0.15
+docutils==0.17.1
 EditorConfig==0.12.3
 exceptiongroup==1.1.1
 executing==1.2.0
@@ -80,17 +78,13 @@ ipython==8.11.0
 ipython-genutils==0.2.0
 itsdangerous==2.1.2
 jedi==0.18.2
-jeepney==0.8.0
 Jinja2==3.1.2
-jmespath==1.0.1
 joblib==1.2.0
 jsbeautifier==1.14.7
 jsonschema==4.17.3
 jupyter_client==8.1.0
 jupyter_core==5.3.0
 kaleido==0.2.1
-keyring==23.4.1
-keyrings.alt==3.1
 kiwisolver==1.4.4
 lazy_loader==0.2
 leidenalg==0.9.1
@@ -142,7 +136,6 @@ psutil==5.9.4
 psygnal==0.8.1
 ptyprocess==0.7.0
 pure-eval==0.2.2
-pyasn1==0.5.0
 pycparser==2.21
 pydantic==1.10.7
 Pygments==2.14.0
@@ -174,7 +167,6 @@ scikit-image==0.20.0
 scikit-learn==1.2.2
 scipy==1.9.1
 seaborn==0.12.2
-SecretStorage==3.3.3
 selenium==4.2.0
 session-info==1.0.0
 shapely==2.0.1
@@ -197,7 +189,6 @@ stdlib-list==0.8.0
 stevedore==5.0.0
 superqt==0.4.1
 svgpath2mpl==1.0.0
-synapseclient==2.7.1
 tenacity==8.2.2
 texttable==1.6.7
 threadpoolctl==3.1.0

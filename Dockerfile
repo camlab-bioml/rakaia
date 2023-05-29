@@ -25,7 +25,7 @@ RUN apt-get update && apt-get install -y python3.9 python3-pip python3-opencv gi
 #
 # RUN pip install -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04 wxPython==4.1.0
 
-# RUN python3 -m pip install attrdict cellprofiler 
+# RUN python3 -m pip install attrdict cellprofiler
 
   # RUN git clone https://github.com/camlab-bioml/ccramic.git && cd ccramic && pip install .
 
@@ -40,4 +40,3 @@ EXPOSE 5000
 # RUN python3 -m pip install cellprofiler
 
 # ENTRYPOINT [ "chmod", "+x", "bash", "/scripts/run_ccramic.sh" ]
-

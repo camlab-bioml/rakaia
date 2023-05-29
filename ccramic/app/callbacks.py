@@ -165,7 +165,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 return []
         else:
             raise PreventUpdate
-    
+
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Input('image_layers', 'value'),
                        Input('alias-dict', 'data'),
@@ -809,7 +809,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
         if metadata is not None:
             alias_dict = {}
             for elem in metadata:
-                alias_dict[elem['Channel Name']] = elem['Channel Label']
+                alias_dict[elem['Channel Name']] = elem['ccramic Label']
             return alias_dict
 
     @dash_app.callback(
@@ -1074,16 +1074,16 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        # Input('image-analysis', 'value'),
                        State('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
-                       State('canvas-layers', 'data'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
-                       Input('unique-channel-list', 'value'))
+                       Input('unique-channel-list', 'value'),
+                       Input('alias-dict', 'data'))
     # @cache.memoize()
-    def create_image_grid(gallery_data, data_selection, canvas_layers, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel, channel_selected):
+    def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
+                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases):
         if gallery_data is not None and gallery_data is not None:
             row_children = []
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
@@ -1116,7 +1116,8 @@ def init_callbacks(dash_app, tmpdirname, cache):
                         image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                                            range(int(x_range_low), int(x_range_high), 1))]
 
-                    row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(key, className="card-text")),
+                    label = aliases[key] if aliases is not None and key in aliases.keys() else key
+                    row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(label, className="card-text")),
                                                           dbc.CardImg(
                                                               src=Image.fromarray(image_render).convert('RGB'),
                                                               bottom=True)]), width=3))
@@ -1137,7 +1138,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
                        Input('alias-dict', 'data'))
     # @cache.memoize())
     def create_legend(blend_colours, current_blend, data_selection, aliases):
-        current_blend = [elem['label'] for elem in current_blend] if current_blend is not None else None
+        current_blend = [elem['value'] for elem in current_blend] if current_blend is not None else None
         children = []
         if blend_colours is not None and current_blend is not None and data_selection is not None:
             split = data_selection.split("_")
@@ -1305,16 +1306,18 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
     @dash_app.callback(Input('session_config', 'data'),
                        Output('unique-channel-list', 'options'),
+                       Input('alias-dict', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def populate_gallery_channel_list(session_config):
+    def populate_gallery_channel_list(session_config, aliases):
         """
         Populate a list of all unique channel names for the gallery view
         """
         if session_config is not None:
             try:
-                return session_config['unique_images']
-            except KeyError:
+                assert all([elem in aliases.keys() for elem in session_config['unique_images']])
+                return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
+            except (KeyError, AssertionError):
                 return []
         else:
             return []

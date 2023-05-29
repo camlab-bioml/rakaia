@@ -23,7 +23,7 @@ def client(ccramic_flask_test_app):
 # @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
 #                     reason="Only test the connection in a GA workflow due to passwordless sudo")
 # def test_for_connection():
-# 
+#
 #     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 #     sock.settimeout(2)
 #     Popen(["echo yes| freeport 5000"], stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
