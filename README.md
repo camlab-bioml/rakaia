@@ -2,6 +2,8 @@
 
 Cell-type Classification (using) Rapid Analysis (of) Multiplexed Imaging (mass) Cytometry using Flask and Dash.
 
+ccramic provides in-browser interactive analysis of IMC imaging datasets.
+
 ## Installation
 
 ccramic can be cloned and installed locally using access to the Github repository
@@ -14,27 +16,38 @@ From there, the user may either install with or without a conda environment:
 
 ### Without conda (not recommended)
 
+ccramic can be installed locally without an environment or container,
+but this is not recommended for dependency management:
+
 ```
-pip install . 
+pip install .
 ```
 
 ### With conda
 
+conda is the recommended installation manager for ccramic. To install conda locally,
+visit [this link](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and
+select the relevant operating system.
+
+Once conda is installed:
+
 ```
 conda env create -f environment.yml
 conda activate ccramic
-pip install . 
+pip install .
 ```
 
-The `requirements.txt` file can also be used to install the required dependencies via pip: 
+The `requirements.txt` file can also be used to install the required dependencies via pip:
 
 ```
 pip install -r requirements.txt
 ```
 
+Note that with the conda installation as above, installing from the `requirements.txt` should not be necessary.
+
 ## Running ccramic
 
-After installation, ccramic can be run through conda: 
+After installation, ccramic can be run through conda:
 
 ```
 conda activate ccramic
@@ -50,7 +63,7 @@ ccramic uses basic authentication upon a new session. The credentials are as fol
 * username: ccramic_user
 * password: ccramic-1
 
-**Note** that the basic authentication credentials are likely to change with as development builds update. 
+**Note** that the basic authentication credentials are likely to change with as development builds update.
 
 ## Docker
 
@@ -58,7 +71,7 @@ ccramic can be run using Docker with the following commands (requires an install
 
 
 ```
-docker build -t ccramic . 
+docker build -t ccramic .
 docker run -d -p 5000:5000 ccramic:latest ccramic
 ```
 

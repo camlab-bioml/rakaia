@@ -183,15 +183,21 @@ def convert_to_below_255(array):
     return array if np.max(array) < 65000 else (array // 256).astype(np.uint8)
 
 
-def resize_for_canvas(image, basewidth=400):
+def resize_for_canvas(image, basewidth=400, return_array=True):
+    image = Image.fromarray(image) if isinstance(image, np.ndarray) else image
     wpercent = (basewidth / float(image.size[0]))
     hsize = int((float(image.size[1]) * float(wpercent)))
-    return image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    if return_array:
+        to_return = np.array(image.resize((basewidth, hsize), Image.Resampling.LANCZOS))
+    else:
+        to_return = image.resize((basewidth, hsize), Image.Resampling.LANCZOS)
+    return to_return
 
 
 def make_metadata_column_editable(column_name):
     # only allow the channel label column to be edited
-    return "Label" in column_name or column_name == "Channel Label"
+    # return "Label" in column_name or column_name == "Channel Label"
+    return column_name == "ccramic Label"
 
 
 def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
@@ -221,8 +227,11 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
 def pixel_hist_from_array(array):
     try:
         hist_data = np.hstack(array)
+        max_hist = np.amax(array)
         hist = np.random.choice(hist_data, int(hist_data.shape[0] / 100)) if \
-            hist_data.shape[0] > 20000000 else hist_data
+            hist_data.shape[0] > 2000000 else hist_data
+        # add the largest pixel to ensure that hottest pixel is included in the distribution
+        hist = np.concatenate(hist, int(max_hist))
         return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
     except ValueError:
         return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
@@ -265,4 +274,3 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
                             string = f"{exp}_{slide}_{acq}"
                             images[string] = upload_dict[exp][slide][acq][channel]
     return images
-

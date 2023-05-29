@@ -8,3 +8,23 @@
     font-size: 100px;
     padding-left: 5px;
 }
+
+#annotation_canvas-fullscreen .modebar {
+    position: fixed;
+    top: 5%;
+    left: 50%;
+}
+
+.full-screen {
+            position: relative;
+            height: 98vh !important;
+            width: 98vw !important;
+            left: 0;
+            top: 0;
+            z-index: 9999;
+            overflow: hidden;
+        }
+
+.modal {
+  margin: 0 auto;
+}

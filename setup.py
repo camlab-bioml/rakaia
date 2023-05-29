@@ -32,7 +32,7 @@ setup(
                       "phenograph", "seaborn", "httpx-oauth", "plotly", "napari",
                       "opencv-python-headless", 'scanpy', "anndata", "dash", "Flask>=2.2.2", "jinja2",
                       'dash-uploader==0.7.0a1', "dash-canvas", "packaging==21.3.0", "Flask-Caching",
-                      "multiprocess", "dash-extensions", "dash_daq", "dash-google-auth", "dash-bootstrap-components",
+                      "multiprocess", "dash-extensions==1.0.1", "dash_daq", "dash-google-auth", "dash-bootstrap-components",
                       "pyvips", "imctools", "tifffile", "dash[testing]", "selenium", "diskcache", "h5py",
                       "orjson", "dash>=2.9.0", "readimc", "Cython", "dash-auth", "Flask-HTTPAuth",
                       "kaleido", "scipy", "shapely", "svgpath2mpl", "redis"],

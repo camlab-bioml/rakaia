@@ -32,7 +32,3 @@ pip install wheel cython numpy
 # export PATH="$VIRTUAL_export/bin:$PATH"
 
 python3 -m pip install .
-
-
-
-

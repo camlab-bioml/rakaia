@@ -65,4 +65,3 @@ def init_app():
         # init_callbacks(app)
 
         return app
-

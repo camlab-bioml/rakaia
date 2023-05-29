@@ -3,8 +3,8 @@ from dash import dash_table
 import tempfile
 import dash_uploader as du
 from flask_caching import Cache
-from dash_extensions.enrich import DashProxy, Output, Input, State, ServersideOutput, html, dcc, \
-    ServersideOutputTransform, FileSystemStore
+from dash_extensions.enrich import DashProxy, html, dcc, \
+    ServersideOutputTransform, FileSystemCache, ServersideBackend, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
 from dash import ctx, DiskcacheManager
@@ -19,13 +19,16 @@ def init_dashboard(server):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
-        cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
+        # if whatever reason, the tmp is not writable, use a new directory as a backup
+        if os.access("tmp", os.R_OK):
+            cache_dest = os.path.join("tmp", "ccramic_cache")
+        else:
+            cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
-        backend_dir = FileSystemStore(cache_dir=cache_dest)
+        backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
-                        transforms=[ServersideOutputTransform(
-                            backend=backend_dir)],
+                        transforms=[ServersideOutputTransform(backends=[backend_dir])],
                          external_stylesheets=[dbc.themes.BOOTSTRAP],
                          server=server,
                          routes_pathname_prefix="/ccramic/")
@@ -59,12 +62,31 @@ def init_dashboard(server):
             })
 
     dash_app.layout = html.Div([
+        # this modal is for the fullscreen view and does not belong in a nested tab
+        dbc.Modal(children=dbc.ModalBody([dcc.Graph(config={"modeBarButtonsToAdd": [
+                        # "drawline",
+                        # "drawopenpath",
+                        "drawclosedpath",
+                        # "drawcircle",
+                        "drawrect",
+                        "eraseshape"],
+                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
+                        'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
+                        id='annotation_canvas-fullscreen',
+            style={"margin": "auto", "width": "100vw", "height": "100vh",
+                   "max-width": "none", "max-height": "none"},
+                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                              xaxis=go.XAxis(showticklabels=False),
+                                              yaxis=go.YAxis(showticklabels=False))})]),
+            id="fullscreen-canvas", fullscreen=True, size='xl',
+        centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
+                              "max-width": "none", "max-height": "none"}),
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
-        dcc.Tabs([
-            dcc.Tab(label='Image Annotation', children=[
-                html.Div([dcc.Tabs(id='image-analysis',
-                children=[dcc.Tab(label='Pixel Analysis',
-                id='pixel-analysis',
+        dbc.Tabs(id="all-tabs", children=[
+            dbc.Tab(label='Image Annotation', tab_id='image-annotation', children=[
+                html.Div([dbc.Tabs(id='pixel-level-analysis',
+                children=[dbc.Tab(label='Pixel Analysis',
+                tab_id='pixel-analysis',
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=10000,
                         max_total_size=10000, max_files=200,
@@ -85,6 +107,9 @@ def init_dashboard(server):
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
                         html.Div([html.H3("Image/Channel Blending", style={"margin-right": "50px",
                                                                            "margin-left": "30px"}),
+                                  dbc.Button("Full screen", id="make-canvas-fullscreen",
+                                            className="mb-3", color="primary", n_clicks=0,
+                                            style={"margin-left": "10px", "margin-top": "5px"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%"}),
                         dcc.Graph(config={"modeBarButtonsToAdd": [
@@ -96,7 +121,9 @@ def init_dashboard(server):
                         "eraseshape"],
                         'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
                         'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
-                        id='annotation_canvas', style={"margin-top": "-30px"},
+                        id='annotation_canvas',
+                            style={"margin-top": "-30px"},
+                            # style={"width": "100vw", "height": "100vh"},
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False))}),
@@ -167,7 +194,7 @@ def init_dashboard(server):
                         id="download-collapse", is_open=False), style={"minHeight": "100px"})]),
                         width=3)])])]),
 
-            dcc.Tab(label="Image Gallery", id='gallery-tab',
+            dbc.Tab(label="Image Gallery", tab_id='gallery-tab',
                         children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px"}),
                                   daq.ToggleSwitch(label='View gallery by channel',
@@ -181,7 +208,7 @@ def init_dashboard(server):
                         dbc.Row(id="image-gallery-row")]),
                                   ]),
 
-            dcc.Tab(label="Panel Metadata", children=
+            dbc.Tab(label="Panel Metadata", tab_id='metadata-tab', children=
                         [html.Div([dbc.Row([
                         dbc.Col(html.Div([
                         dash_table.DataTable(id='imc-metadata-editable', columns=[], data=None,
@@ -190,9 +217,10 @@ def init_dashboard(server):
                                             filetypes=['csv'], upload_id="upload-image"),
                         html.Button("Download Edited metadata", id="btn-download-metadata"),
                         dcc.Download(id="download-edited-table")]),
-                            width=3)])])])])])], id='tab-annotation'),
-            dcc.Tab(label='Quantification/Clustering', children=[
-                du.Upload( id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5'],
+                            width=3)])])])])
+                          ])], id='tab-annotation'),
+            dbc.Tab(tab_id='quantification-tab', label='Quantification/Clustering', children=[
+                du.Upload(id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5'],
                     upload_id="upload-quantification"),
                 html.Div([dbc.Row([
                     dbc.Col(html.Div(["Dimension Reduction/Clustering",
@@ -214,8 +242,9 @@ def init_dashboard(server):
         dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot")
-    ])
+        dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot"),
+        dcc.Loading(dcc.Store(id="static-session-var"), fullscreen=True, type="dot")
+    ], style={"margin": "auto"})
 
     dash_app.enable_dev_tools(debug=True)
 
