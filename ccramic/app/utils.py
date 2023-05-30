@@ -32,29 +32,6 @@ def recolour_greyscale(array, colour):
         image = image.convert('RGB')
         red, green, blue = ImageColor.getcolor(colour, "RGB")
 
-        # # array = np.array(image)
-        # # print(array.shape)
-        # # for i in range(3, 256):
-        # #     array[(array[:, :, 0] == i) & (array[:, :, 1] == i) &
-        # #             (array[:, :, 2] == i)] = [red*(i/255), green *(i/255), blue*(i/255)]
-        #
-        # pixels = image.load()
-        #
-        # for i in range(image.width):
-        #     for j in range(image.height):
-        #         if sum(pixels[i, j]) > 10 and pixels[i, j] is not None:
-        #             # luma = get_luma(pixels[i, j])
-        #         # transform = []
-        #         # for col in [red, green, blue]:
-        #         #     try:
-        #         #         transform.append(int(col * (luma / 255)))
-        #         #     except ZeroDivisionError:
-        #         #         transform.append(0)
-        #             val = pixels[i, j][0]
-        #             pixels[i, j] = (int(red * (val / 255)), int(green * (val / 255)), int(blue * (val / 255)))
-        #
-        # return np.array(image)
-
         array = np.array(image)
 
         new_array = np.empty((array.shape[0], array.shape[1], 3))
@@ -209,7 +186,8 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Example: original max intensity 255, new upper bound = 100. Scaling will be done to each pixel retained
     by multiplying by 255/100
     """
-    # array = np.array(Image.fromarray(array).convert('L'))
+    # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
+    array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
     if None not in (original_max, upper_bound):
         scale_factor = float(original_max) / float(upper_bound)
@@ -221,6 +199,13 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
         lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
     array = array * scale_factor
+    # TODO: update here if the upper bound is below 255, make 255 the upper bound to avoid reducing image intensity
+    if scale_factor > 1:
+        # # if pixels are more intense than the upper bound, reset them to the upper bound
+        array = np.where(array > upper_bound, upper_bound, array)
+        # re-scale pixels lastly based on the max possible intensity of 255
+        second_scaling = 255 / upper_bound
+        array = array * second_scaling
     return array
 
 

@@ -16,10 +16,10 @@ def get_current_dir():
 
 def init_app():
     """Construct core Flask application with embedded Dash app."""
+    # STATIC_DIR = os.path.dirname(os.path.join(get_current_dir(), "templates", "static"))
     app = Flask(__name__, instance_relative_config=False,
-                template_folder="templates")
-
-    # app.config.from_object('config.Config')
+                static_url_path="", static_folder="static",
+            template_folder="templates")
 
     app.cache = Cache(app, config={'CACHE_TYPE': 'simple'})
 
@@ -29,6 +29,8 @@ def init_app():
         "ccramic_user": generate_password_hash("ccramic-1")
     }
 
+    app.config["APPLICATION_ROOT"] = "/"
+
     @auth.verify_password
     def verify_password(username, password):
         if username in users and \
@@ -36,7 +38,7 @@ def init_app():
             return username
 
     @app.route('/')
-    # @app.route('/ccramic')
+    @app.route('/ccramic')
     @auth.login_required
     def home():
         """Landing page."""

@@ -45,6 +45,18 @@ pip install -r requirements.txt
 
 Note that with the conda installation as above, installing from the `requirements.txt` should not be necessary.
 
+## Updating local installations
+
+From source, ccramic can be updated locally using the following commands:
+
+```
+# navigate to the directory where you cloned ccramic from github
+cd ccramic
+git switch main
+git pull --all
+pip install .
+```
+
 ## Running ccramic
 
 After installation, ccramic can be run through conda:
