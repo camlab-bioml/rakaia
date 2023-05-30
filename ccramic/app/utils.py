@@ -49,15 +49,15 @@ def recolour_greyscale(array, colour):
         return np.array(image).astype(np.uint8)
 
 
-def convert_image_to_bytes(image):
-    buffered = io.BytesIO()
-    image.save(buffered, format="PNG")
-    return base64.b64encode(buffered.getvalue()).decode()
-
-
-def read_back_base64_to_image(string):
-    image_back = base64.b64decode(string)
-    return Image.open(io.BytesIO(image_back))
+# def convert_image_to_bytes(image):
+#     buffered = io.BytesIO()
+#     image.save(buffered, format="PNG")
+#     return base64.b64encode(buffered.getvalue()).decode()
+#
+#
+# def read_back_base64_to_image(string):
+#     image_back = base64.b64decode(string)
+#     return Image.open(io.BytesIO(image_back))
 
 
 # def fig_to_uri(in_fig, close_all=True, **save_args):
@@ -199,10 +199,10 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
         lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
     array = array * scale_factor
+    array = np.where(array > upper_bound, upper_bound, array)
     # TODO: update here if the upper bound is below 255, make 255 the upper bound to avoid reducing image intensity
     if scale_factor > 1:
         # # if pixels are more intense than the upper bound, reset them to the upper bound
-        array = np.where(array > upper_bound, upper_bound, array)
         # re-scale pixels lastly based on the max possible intensity of 255
         second_scaling = 255 / upper_bound
         array = array * second_scaling
