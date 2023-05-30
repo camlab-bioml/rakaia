@@ -1125,7 +1125,7 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
-    @dash_app.server.route(os.path.join(tmpdirname) + '/downloads/<path:path>')
+    @dash_app.server.route("/" + os.path.join(tmpdirname) + '/downloads/<path:path>')
     # @cache.memoize())
     def serve_static(path):
         return flask.send_from_directory(
