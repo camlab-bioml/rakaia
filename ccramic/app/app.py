@@ -29,7 +29,7 @@ def init_dashboard(server):
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
-                         external_stylesheets=[dbc.themes.BOOTSTRAP],
+                         external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                          server=server,
                          routes_pathname_prefix="/ccramic/")
         dash_app.title = "ccramic"
@@ -107,9 +107,13 @@ def init_dashboard(server):
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
                         html.Div([html.H3("Image/Channel Blending", style={"margin-right": "50px",
                                                                            "margin-left": "30px"}),
-                                  dbc.Button("Full screen", id="make-canvas-fullscreen",
-                                            className="mb-3", color="primary", n_clicks=0,
-                                            style={"margin-left": "10px", "margin-top": "5px"}),
+                                  dbc.Button(children=html.Span([html.Div("Fullscreen"),
+                                                                 html.I(className="fas fa-expand-arrows-alt",
+                                                                        style={"display": "inline-block"}),
+                                  ], style={"width": "100vw"}),
+                                             id="make-canvas-fullscreen",
+                                            color=None, n_clicks=0,
+                                            style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%"}),
                         dcc.Graph(config={"modeBarButtonsToAdd": [
