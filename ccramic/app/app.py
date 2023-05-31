@@ -15,15 +15,16 @@ from .callbacks import init_callbacks
 import shutil
 
 
-def init_dashboard(server):
+def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
         if os.access("tmp", os.R_OK):
-            cache_dest = os.path.join("tmp", "ccramic_cache")
+            cache_dest = os.path.join("tmp", authentic_id, "ccramic_cache")
         else:
-            cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
+            cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), authentic_id,
+                                      "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
@@ -252,6 +253,6 @@ def init_dashboard(server):
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname, cache)
+    init_callbacks(dash_app, tmpdirname, cache, authentic_id)
 
     return dash_app.server

@@ -19,7 +19,7 @@ from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 
 
-def init_callbacks(dash_app, tmpdirname, cache):
+def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     dash_app.config.suppress_callback_exceptions = True
 
     @dash_app.callback(
@@ -629,9 +629,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                       pad=0
                                   ))
 
-                dest_file = os.path.join(tmpdirname, 'downloads', "canvas.tiff")
-                if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
-                    os.makedirs(os.path.join(tmpdirname, 'downloads'))
+                dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
+                dest_file = os.path.join(dest_path, "canvas.tiff")
+                if not os.path.exists(dest_path):
+                    os.makedirs(dest_path)
 
                 # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
                 # buf = io.BytesIO(fig_bytes)
@@ -831,11 +832,12 @@ def init_callbacks(dash_app, tmpdirname, cache):
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict):
         if uploaded is not None:
-            relative_filename = os.path.join(tmpdirname,
-                                             'downloads',
-                                             'data.h5')
-            if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
-                os.makedirs(os.path.join(tmpdirname, 'downloads'))
+            download_dir = os.path.join(tmpdirname,
+                                             authentic_id,
+                                             'downloads')
+            relative_filename = os.path.join(download_dir, 'data.h5')
+            if not os.path.exists(download_dir):
+                os.makedirs(download_dir)
             hf = None
             try:
                 hf = h5py.File(relative_filename, 'w')
@@ -1125,11 +1127,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
-    @dash_app.server.route("/" + os.path.join(tmpdirname) + '/downloads/<path:path>')
+    @dash_app.server.route("/" + os.path.join(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
     # @cache.memoize())
     def serve_static(path):
         return flask.send_from_directory(
-            os.path.join(tmpdirname, 'downloads'), path)
+            os.path.join(tmpdirname, str(authentic_id), 'downloads'), path)
 
     @dash_app.callback(Output('blend-color-legend', 'children'),
                        Input('blending_colours', 'data'),

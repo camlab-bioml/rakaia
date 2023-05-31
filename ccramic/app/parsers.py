@@ -67,32 +67,26 @@ def populate_upload_dict(uploaded_files):
                 # acquisition_index = 0
                 # if tiffs are uploaded, treat as one slide and one acquisition
                 if upload.endswith('.tiff') or upload.endswith('.tif'):
-                    if 'ome' not in upload:
+                    with TiffFile(upload) as tif:
                         tiff_path = Path(upload)
                         file__name, file_extension = os.path.splitext(tiff_path)
-                        basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
-                        upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)][
-                            basename] = convert_to_below_255(tifffile.imread(upload))
-                        metadata_channels.append(basename)
-                        metadata_labels.append(basename)
-                        if basename not in unique_image_names:
-                            unique_image_names.append(basename)
-                    else:
-                        with TiffFile(upload) as tif:
-                            tiff_path = Path(upload)
-                            file__name, file_extension = os.path.splitext(tiff_path)
+                        # set different image labels based on the basename of the file (ome.tiff vs .tiff)
+                        if "ome" in upload:
                             basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
-                            multi_channel_index = 0
-                            for page in tif.pages:
-                                identifier = str(basename) + str("_channel_" + f"{multi_channel_index}")
-                                upload_dict["experiment" + str(experiment_index)]["slide" +
+                        else:
+                            basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
+                        multi_channel_index = 0
+                        for page in tif.pages:
+                            identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
+                                len(tif.pages) > 1 else str(basename)
+                            upload_dict["experiment" + str(experiment_index)]["slide" +
                                                                                   str(0)]["acq" + str(0)][
                                     identifier] = convert_to_below_255(page.asarray())
-                                multi_channel_index += 1
-                                metadata_channels.append(identifier)
-                                metadata_labels.append(identifier)
-                                if identifier not in unique_image_names:
-                                    unique_image_names.append(identifier)
+                            multi_channel_index += 1
+                            metadata_channels.append(identifier)
+                            metadata_labels.append(identifier)
+                            if identifier not in unique_image_names:
+                                unique_image_names.append(identifier)
 
                     upload_dict['metadata'] = {'Cycle': range(1, len(metadata_channels) + 1, 1),
                                                'Channel Name': metadata_channels,
