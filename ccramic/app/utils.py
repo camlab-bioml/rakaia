@@ -203,13 +203,15 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     else:
         lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
-    array = array * scale_factor
+    if scale_factor >= 0:
+        array = array * scale_factor
     try:
-        array = np.where(array > upper_bound, upper_bound, array)
+        if upper_bound >= 0:
+            array = np.where(array > upper_bound, upper_bound, array)
     except TypeError:
         pass
     # TODO: update here if the upper bound is below 255, make 255 the upper bound to avoid reducing image intensity
-    if scale_factor > 1:
+    if scale_factor > 1 and upper_bound >= 0:
         # # if pixels are more intense than the upper bound, reset them to the upper bound
         # re-scale pixels lastly based on the max possible intensity of 255
         second_scaling = 255 / upper_bound
@@ -225,7 +227,7 @@ def pixel_hist_from_array(array):
             hist_data.shape[0] > 2000000 else hist_data
         # add the largest pixel to ensure that hottest pixel is included in the distribution
         hist = np.concatenate(hist, int(max_hist))
-        return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
+        return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)])
     except ValueError:
         return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
 

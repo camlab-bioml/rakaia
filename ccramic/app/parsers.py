@@ -2,7 +2,6 @@ import pandas as pd
 import h5py
 from pathlib import Path
 from tifffile import TiffFile
-import tifffile
 import os
 from .utils import *
 from readimc import MCDFile

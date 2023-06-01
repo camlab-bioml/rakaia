@@ -451,7 +451,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        # Input('pixel-hist', 'figure'),
                        Input('bool-apply-filter', 'value'),
-                       State('filter-type', 'value'),
+                       Input('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
                        State('image_layers', 'value'),
                        State('images_in_blend', 'options'),
