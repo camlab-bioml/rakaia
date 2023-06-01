@@ -19,6 +19,8 @@ def populate_upload_dict(uploaded_files):
         metadata_channels = []
         metadata_labels = []
         experiment_index = 0
+        slide_index = 0
+        acq_index = 0
         upload_dict["experiment" + str(experiment_index)] = {}
         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)] = {}
@@ -63,8 +65,6 @@ def populate_upload_dict(uploaded_files):
                             pass
                         upload_dict[exp] = meta_back
             else:
-                # slide_index = 0
-                # acquisition_index = 0
                 # if tiffs are uploaded, treat as one slide and one acquisition
                 if upload.endswith('.tiff') or upload.endswith('.tif'):
                     with TiffFile(upload) as tif:
@@ -76,12 +76,17 @@ def populate_upload_dict(uploaded_files):
                         else:
                             basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
                         multi_channel_index = 0
+                        # treat each tiff as a its own ROI and increment the acq index for each one
+                        upload_dict["experiment" + str(experiment_index)]["slide" + \
+                                                                          str(slide_index)]["acq" + \
+                                                                                            str(acq_index)] = {}
                         for page in tif.pages:
                             identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
                                 len(tif.pages) > 1 else str(basename)
-                            upload_dict["experiment" + str(experiment_index)]["slide" +
-                                                                                  str(0)]["acq" + str(0)][
-                                    identifier] = convert_to_below_255(page.asarray())
+                            upload_dict["experiment" + str(experiment_index)]["slide" + \
+                                                                              str(slide_index)]["acq" + \
+                                                                                                str(acq_index)][
+                                identifier] = convert_to_below_255(page.asarray())
                             multi_channel_index += 1
                             metadata_channels.append(identifier)
                             metadata_labels.append(identifier)
@@ -93,12 +98,14 @@ def populate_upload_dict(uploaded_files):
                                                'Channel Label': metadata_labels,
                                                'ccramic Label': metadata_labels}
                     upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label', 'ccramic Label']
+                    acq_index += 1
                 elif upload.endswith('.mcd'):
                     upload_dict["experiment" + str(experiment_index)] = {}
                     with MCDFile(upload) as mcd_file:
                         channel_names = None
                         channel_labels = None
                         slide_index = 0
+                        acq_index = 0
                         for slide in mcd_file.slides:
                             upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)] = {}
                             acq_index = 0

@@ -166,7 +166,7 @@ def init_dashboard(server, authentic_id):
                         dcc.Input(id="kernel-val-filter", type="number", value=3),
                         html.Br(),
                         html.Br(),
-                        html.H6("Add custom scale value", style={'width': '75%'}),
+                        html.H6("Set custom scalebar value", style={'width': '75%'}),
                         dcc.Input(id="custom-scale-val", type="number", value=None),
                         html.Br(),
                         html.Br(),

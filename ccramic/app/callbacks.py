@@ -51,13 +51,14 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        State('read-filepath', 'value'),
                        Input('add-file-by-path', 'n_clicks'),
+                       State('session_config', 'data'),
                        prevent_initial_call=True)
-    def get_session_uploads_from_filepath(filepath, clicks):
+    def get_session_uploads_from_filepath(filepath, clicks, cur_session):
         if filepath is not None and clicks > 0:
             # TODO: fix ability to read in multiple files at different times
-            # session_config = cur_session if cur_session is not None and \
-            #                                 len(cur_session['uploads']) > 0 else {'uploads': []}
-            session_config = {'uploads': []}
+            session_config = cur_session if cur_session is not None and \
+                                            len(cur_session['uploads']) > 0 else {'uploads': []}
+            # session_config = {'uploads': []}
             if os.path.exists(filepath):
                 session_config['uploads'].append(filepath)
                 return session_config
@@ -720,6 +721,19 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 return fig, None
             except ValueError:
                 raise PreventUpdate
+        elif currently_selected is not None:
+            fig = go.Figure()
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                              xaxis=go.XAxis(showticklabels=False),
+                              yaxis=go.YAxis(showticklabels=False),
+                              margin=dict(
+                                  l=0,
+                                  r=0,
+                                  b=0,
+                                  t=0,
+                                  pad=0
+                              ))
+            return fig, None
         else:
             raise PreventUpdate
 
@@ -1191,8 +1205,6 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                     graph_layout['shapes'] = [graph_layout['shapes'][0]]
             if 'layout' in hist_fig.keys():
                 if 'shapes' in hist_fig['layout'].keys() and len(hist_fig['layout']['shapes']) > 1:
-                    print("too many shapes")
-                    print(hist_fig['layout']['shapes'])
                     hist_fig['layout']['shapes'] = [hist_fig['layout']['shapes'][0]]
             return graph_layout, hist_fig
         else:
