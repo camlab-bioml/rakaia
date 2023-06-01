@@ -189,8 +189,13 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
     array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
+    lower_bound = float(lower_bound)
+    upper_bound = float(upper_bound)
     if None not in (original_max, upper_bound):
-        scale_factor = float(original_max) / float(upper_bound)
+        try:
+            scale_factor = float(original_max) / float(upper_bound)
+        except ZeroDivisionError:
+            scale_factor = 1
     else:
         scale_factor = 1
     if lower_bound is None:
@@ -199,7 +204,10 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
         lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
     array = array * scale_factor
-    array = np.where(array > upper_bound, upper_bound, array)
+    try:
+        array = np.where(array > upper_bound, upper_bound, array)
+    except TypeError:
+        pass
     # TODO: update here if the upper bound is below 255, make 255 the upper bound to avoid reducing image intensity
     if scale_factor > 1:
         # # if pixels are more intense than the upper bound, reset them to the upper bound

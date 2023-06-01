@@ -366,6 +366,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             if ctx.triggered_id in ["pixel-hist"] and \
                     layer is not None and current_blend_dict is not None and data_selection is not None and \
                     current_blend_dict is not None and ctx.triggered_id not in ['image-analysis'] and \
+                    hist_layout is not None and \
                     hist_layout not in [{'autosize': True}, {'dragmode': 'zoom'}, {'dragmode': 'pan'}] and \
                     all([elem not in hist_layout for elem in zoom_keys]):
 
@@ -374,7 +375,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 array = uploaded[exp][slide][acq][layer]
 
                 # when shape is first added, these are the keys
-                if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) > 0:
+                if 'shapes' in hist_layout.keys() and 0 < len(hist_layout['shapes']) < 2:
                     lower_bound = hist_layout['shapes'][0]['x0']
                     upper_bound = hist_layout['shapes'][0]['x1']
                     y_ceiling = hist_layout['shapes'][0]['y0']
@@ -1177,6 +1178,25 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         if n:
             return not is_open
         return is_open
+
+    @dash_app.callback(Output("pixel-hist", 'relayoutData', allow_duplicate=True),
+                       Output("pixel-hist", 'figure', allow_duplicate=True),
+                      Input('pixel-hist', 'relayoutData'),
+                       State('pixel-hist', 'figure'),
+                       prevent_initial_call=True)
+    def limit_histogram_shapes(graph_layout, hist_fig):
+        if graph_layout is not None:
+            if 'shapes' in graph_layout:
+                if len(graph_layout['shapes']) > 1:
+                    graph_layout['shapes'] = [graph_layout['shapes'][0]]
+            if 'layout' in hist_fig.keys():
+                if 'shapes' in hist_fig['layout'].keys() and len(hist_fig['layout']['shapes']) > 1:
+                    print("too many shapes")
+                    print(hist_fig['layout']['shapes'])
+                    hist_fig['layout']['shapes'] = [hist_fig['layout']['shapes'][0]]
+            return graph_layout, hist_fig
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure'),
                        Input('images_in_blend', 'value'),
