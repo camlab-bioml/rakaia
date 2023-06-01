@@ -31,6 +31,7 @@ def populate_upload_dict(uploaded_files):
                 data_h5 = h5py.File(upload, "r")
                 for exp in list(data_h5.keys()):
                     upload_dict[exp] = {}
+                    blend_dict[exp] = {}
                     if 'metadata' not in exp:
                         for slide in data_h5[exp].keys():
                             upload_dict[exp][slide] = {}
@@ -94,6 +95,7 @@ def populate_upload_dict(uploaded_files):
                                                'ccramic Label': metadata_labels}
                     upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label', 'ccramic Label']
                 elif upload.endswith('.mcd'):
+                    upload_dict["experiment" + str(experiment_index)] = {}
                     with MCDFile(upload) as mcd_file:
                         channel_names = None
                         channel_labels = None
@@ -154,5 +156,4 @@ def create_new_blending_dict(uploaded):
                                                                         'filter_type': None,
                                                                         'filter_val': None}
                         current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
-
     return current_blend_dict
