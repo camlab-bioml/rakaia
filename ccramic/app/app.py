@@ -15,21 +15,22 @@ from .callbacks import init_callbacks
 import shutil
 
 
-def init_dashboard(server):
+def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
         if os.access("tmp", os.R_OK):
-            cache_dest = os.path.join("tmp", "ccramic_cache")
+            cache_dest = os.path.join("tmp", authentic_id, "ccramic_cache")
         else:
-            cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), "ccramic_cache")
+            cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), authentic_id,
+                                      "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
-                         external_stylesheets=[dbc.themes.BOOTSTRAP],
+                         external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                          server=server,
                          routes_pathname_prefix="/ccramic/")
         dash_app.title = "ccramic"
@@ -107,9 +108,13 @@ def init_dashboard(server):
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
                         html.Div([html.H3("Image/Channel Blending", style={"margin-right": "50px",
                                                                            "margin-left": "30px"}),
-                                  dbc.Button("Full screen", id="make-canvas-fullscreen",
-                                            className="mb-3", color="primary", n_clicks=0,
-                                            style={"margin-left": "10px", "margin-top": "5px"}),
+                                  dbc.Button(children=html.Span([html.Div("Fullscreen"),
+                                                                 html.I(className="fas fa-expand-arrows-alt",
+                                                                        style={"display": "inline-block"}),
+                                  ], style={"width": "100vw"}),
+                                             id="make-canvas-fullscreen",
+                                            color=None, n_clicks=0,
+                                            style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%"}),
                         dcc.Graph(config={"modeBarButtonsToAdd": [
@@ -248,6 +253,6 @@ def init_dashboard(server):
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname, cache)
+    init_callbacks(dash_app, tmpdirname, cache, authentic_id)
 
     return dash_app.server

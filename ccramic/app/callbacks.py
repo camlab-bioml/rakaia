@@ -19,7 +19,7 @@ from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 
 
-def init_callbacks(dash_app, tmpdirname, cache):
+def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     dash_app.config.suppress_callback_exceptions = True
 
     @dash_app.callback(
@@ -629,9 +629,10 @@ def init_callbacks(dash_app, tmpdirname, cache):
                                       pad=0
                                   ))
 
-                dest_file = os.path.join(tmpdirname, 'downloads', "canvas.tiff")
-                if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
-                    os.makedirs(os.path.join(tmpdirname, 'downloads'))
+                dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
+                dest_file = os.path.join(dest_path, "canvas.tiff")
+                if not os.path.exists(dest_path):
+                    os.makedirs(dest_path)
 
                 # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
                 # buf = io.BytesIO(fig_bytes)
@@ -825,17 +826,22 @@ def init_callbacks(dash_app, tmpdirname, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('download-link', 'href'),
-                       Input('uploaded_dict', 'data'),
-                       Input('imc-metadata-editable', 'data'),
-                       Input('blending_colours', 'data'))
+                       State('uploaded_dict', 'data'),
+                       State('imc-metadata-editable', 'data'),
+                       State('blending_colours', 'data'),
+                       Input("open-download-collapse", "n_clicks"),
+                       Input("download-collapse", "is_open"))
     # @cache.memoize())
-    def update_download_href_h5(uploaded, metadata_sheet, blend_dict):
-        if uploaded is not None:
-            relative_filename = os.path.join(tmpdirname,
-                                             'downloads',
-                                             'data.h5')
-            if not os.path.exists(os.path.join(tmpdirname, 'downloads')):
-                os.makedirs(os.path.join(tmpdirname, 'downloads'))
+    def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open):
+        # TODO: change when the download is populated so that it is not being overwritten on every change of markers
+        if uploaded is not None and blend_dict is not None and \
+                all(elem in uploaded.keys() for elem in blend_dict.keys()) and nclicks > 0 and download_open:
+            download_dir = os.path.join(tmpdirname,
+                                        authentic_id,
+                                        'downloads')
+            relative_filename = os.path.join(download_dir, 'data.h5')
+            if not os.path.exists(download_dir):
+                os.makedirs(download_dir)
             hf = None
             try:
                 hf = h5py.File(relative_filename, 'w')
@@ -843,33 +849,43 @@ def init_callbacks(dash_app, tmpdirname, cache):
                 os.remove(relative_filename)
             if hf is None:
                 hf = h5py.File(relative_filename, 'w')
-            for exp in list(uploaded.keys()):
-                if 'metadata' in exp:
-                    meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
-                        pd.DataFrame(uploaded['metadata'])
-                    if 'columns' not in exp:
-                        for col in meta_to_write:
-                            meta_to_write[col] = meta_to_write[col].astype(str)
-                        hf.create_dataset('metadata', data=meta_to_write.to_numpy())
+            try:
+                for exp in list(uploaded.keys()):
+                    if 'metadata' in exp:
+                        meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
+                            pd.DataFrame(uploaded['metadata'])
+                        if 'columns' not in exp:
+                            for col in meta_to_write:
+                                meta_to_write[col] = meta_to_write[col].astype(str)
+                            hf.create_dataset('metadata', data=meta_to_write.to_numpy())
+                        else:
+                            hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
                     else:
-                        hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
-                else:
-                    hf.create_group(exp)
-                    for slide in uploaded[exp].keys():
-                        hf[exp].create_group(slide)
-                        for acq in uploaded[exp][slide].keys():
-                            hf[exp][slide].create_group(acq)
-                            for key, value in uploaded[exp][slide][acq].items():
-                                hf[exp][slide][acq].create_group(key)
-                                if 'image' not in hf[exp][slide][acq][key]:
-                                    hf[exp][slide][acq][key].create_dataset('image', data=value)
-                                if blend_dict is not None and key in blend_dict[exp][slide][acq].keys():
-                                    for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
-                                        data_write = blend_val if blend_val is not None else "None"
-                                        hf[exp][slide][acq][key].create_dataset(blend_key, data=data_write)
-
-            hf.close()
-            return str(relative_filename)
+                        if exp not in hf:
+                            hf.create_group(exp)
+                        for slide in uploaded[exp].keys():
+                            if slide not in hf[exp]:
+                                hf[exp].create_group(slide)
+                            for acq in uploaded[exp][slide].keys():
+                                if acq not in hf[exp][slide]:
+                                    hf[exp][slide].create_group(acq)
+                                for key, value in uploaded[exp][slide][acq].items():
+                                    if key not in hf[exp][slide][acq]:
+                                        hf[exp][slide][acq].create_group(key)
+                                    if 'image' not in hf[exp][slide][acq][key]:
+                                        hf[exp][slide][acq][key].create_dataset('image', data=value)
+                                    if blend_dict is not None and key in blend_dict[exp][slide][acq].keys():
+                                        for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
+                                            data_write = blend_val if blend_val is not None else "None"
+                                            hf[exp][slide][acq][key].create_dataset(blend_key, data=data_write)
+                try:
+                    hf.close()
+                except:
+                    pass
+                return str(relative_filename)
+            # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
+            except KeyError:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -1125,11 +1141,11 @@ def init_callbacks(dash_app, tmpdirname, cache):
         else:
             raise PreventUpdate
 
-    @dash_app.server.route("/" + os.path.join(tmpdirname) + '/downloads/<path:path>')
+    @dash_app.server.route("/" + os.path.join(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
     # @cache.memoize())
     def serve_static(path):
         return flask.send_from_directory(
-            os.path.join(tmpdirname, 'downloads'), path)
+            os.path.join(tmpdirname, str(authentic_id), 'downloads'), path)
 
     @dash_app.callback(Output('blend-color-legend', 'children'),
                        Input('blending_colours', 'data'),
@@ -1370,15 +1386,15 @@ def init_callbacks(dash_app, tmpdirname, cache):
 
             fig = go.Figure(cur_canvas)
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                  xaxis=go.XAxis(showticklabels=False),
-                                  yaxis=go.YAxis(showticklabels=False),
-                                  margin=dict(
-                                      l=0,
-                                      r=0,
-                                      b=0,
-                                      t=0,
-                                      pad=0
-                                  ))
+                              xaxis=go.XAxis(showticklabels=False),
+                              yaxis=go.YAxis(showticklabels=False),
+                              margin=dict(
+                                  l=0,
+                                  r=0,
+                                  b=0,
+                                  t=0,
+                                  pad=0
+                              ))
             return fig, cur_layout
         else:
             return {}, None

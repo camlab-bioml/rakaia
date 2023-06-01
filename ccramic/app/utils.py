@@ -161,7 +161,7 @@ def convert_to_below_255(array):
 
 
 def resize_for_canvas(image, basewidth=400, return_array=True):
-    image = Image.fromarray(image) if isinstance(image, np.ndarray) else image
+    image = Image.fromarray(image.astype(np.uint8)) if isinstance(image, np.ndarray) else image
     wpercent = (basewidth / float(image.size[0]))
     hsize = int((float(image.size[1]) * float(wpercent)))
     if return_array:

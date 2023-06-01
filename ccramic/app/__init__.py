@@ -5,6 +5,7 @@ from flask import render_template
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
+import uuid
 
 _program = "ccramic"
 __version__ = "0.1.0"
@@ -63,7 +64,9 @@ def init_app():
 
         # Import Dash application
         from .app import init_dashboard, init_callbacks
-        app = init_dashboard(app)
+        # use a unique uuid for the session id I/O
+        authentic_user = str(uuid.uuid1())
+        app = init_dashboard(app, authentic_user)
         # init_callbacks(app)
 
         return app
