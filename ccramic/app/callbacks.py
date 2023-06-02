@@ -1252,6 +1252,21 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         else:
             return fig
 
+    @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
+                       Input('images_in_blend', 'value'),
+                       Input('image_layers', 'value'),
+                       prevent_initial_call=True)
+    def reset_hist_on_empty_modification_menu(current_selection, blend):
+        if current_selection is None or len(current_selection) == 0 or blend is None or len(blend) == 0:
+            fig = go.Figure()
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                          xaxis=go.XAxis(showticklabels=False),
+                          yaxis=go.YAxis(showticklabels=False),
+                          margin=dict(l=5, r=5, b=15, t=20, pad=0))
+            return fig
+        else:
+            raise PreventUpdate
+
     @dash_app.callback(Output("pixel-hist", 'figure'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
