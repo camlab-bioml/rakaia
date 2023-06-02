@@ -559,7 +559,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and ctx.triggered_id not in ["annotation_canvas", "custom-scale-val",
                                                                         "image-analysis"] and \
-                len(currently_selected) > 0:
+                len(currently_selected) > 0 and cur_graph_layout not in [{'dragmode': 'pan'}]:
             split = data_selection.split("_")
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
@@ -655,7 +655,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 for annotations in cur_graph['layout']['annotations']:
                     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
                     if annotations['y'] == 0.06:
-                        if cur_graph_layout not in [{'autosize': True}, {'dragmode': 'pan'}]:
+                        if cur_graph_layout not in [{'autosize': True}]:
                             x_range_high = 0
                             x_range_low = 0
                             # use different variables depending on how the ranges are written in the dict
@@ -1459,6 +1459,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 cur_canvas['layout']['shapes'] = None
 
             fig = go.Figure(cur_canvas)
+            fig.update_layout(dragmode='pan')
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                               xaxis=go.XAxis(showticklabels=False),
                               yaxis=go.YAxis(showticklabels=False),

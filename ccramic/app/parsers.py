@@ -75,7 +75,7 @@ def populate_upload_dict(uploaded_files):
                             # pass if this is the case
 
                             if len(upload_dict['metadata']) > 0:
-                                assert all(len(tif.pages) == len(value) for value in \
+                                assert all(len(value) == len(tif.pages) for value in \
                                            list(upload_dict['metadata'].values()))
 
                             file__name, file_extension = os.path.splitext(tiff_path)
@@ -98,8 +98,10 @@ def populate_upload_dict(uploaded_files):
                                                                                                 str(acq_index)][
                                     identifier] = convert_to_below_255(page.asarray())
                                 multi_channel_index += 1
-                                metadata_channels.append(identifier)
-                                metadata_labels.append(identifier)
+                                if identifier not in metadata_channels:
+                                    metadata_channels.append(identifier)
+                                if identifier not in metadata_labels:
+                                    metadata_labels.append(identifier)
                                 if identifier not in unique_image_names:
                                     unique_image_names.append(identifier)
 
