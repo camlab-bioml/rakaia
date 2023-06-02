@@ -84,7 +84,7 @@ def populate_upload_dict(uploaded_files):
                             #     basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
                             # else:
                             #     basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
-                            multi_channel_index = 0
+                            multi_channel_index = 1
                             # treat each tiff as a its own ROI and increment the acq index for each one
                             upload_dict["experiment" + str(experiment_index)]["slide" + \
                                                                           str(slide_index)]["acq" + \

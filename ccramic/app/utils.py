@@ -3,6 +3,7 @@
 # from imctools.converters import mcdfolder2imcfolder
 # from imctools.converters import exportacquisitioncsv
 import numpy as np
+import pandas as pd
 from PIL import Image
 from PIL import ImageColor
 import io
@@ -272,3 +273,25 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
                             string = f"{exp}_{slide}_{acq}"
                             images[string] = upload_dict[exp][slide][acq][channel]
     return images
+
+
+def validate_incoming_metadata_table(metadata, upload_dict):
+    """
+    Validate the incoming metadata sheet on custom upload against the data dictionary.
+    The incoming metadata sheet must have the following characteristics:
+        - be on the same length as every ROI in the dataset
+        - have a column named "Column Label" that can be copied for editing
+    """
+    try:
+        assert isinstance(metadata, pd.DataFrame)
+        assert "Channel Label" in metadata.columns
+        assert "Channel Name" in metadata.columns
+        for exp in list(upload_dict.keys()):
+            if 'metadata' not in exp:
+                for slide in upload_dict[exp].keys():
+                    for acq in upload_dict[exp][slide].keys():
+                        # assert that for each ROI, the length is the same as the number of rows in the metadata
+                        assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
+        return metadata
+    except AssertionError:
+        return None

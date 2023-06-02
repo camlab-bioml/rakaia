@@ -655,7 +655,6 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 for annotations in cur_graph['layout']['annotations']:
                     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
                     if annotations['y'] == 0.06:
-                        print(cur_graph_layout)
                         if cur_graph_layout not in [{'autosize': True}, {'dragmode': 'pan'}]:
                             x_range_high = 0
                             x_range_low = 0
@@ -787,19 +786,41 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         else:
             raise PreventUpdate
 
-    @du.callback(Output('image-metadata', 'data'),
+    @du.callback(Output('metadata_config', 'data'),
                  id='upload-metadata')
     # @cache.memoize())
-    def create_imc_meta_dict(status: du.UploadStatus):
+    def upload_custom_metadata_panel(status: du.UploadStatus):
+        """
+        Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
+        datasets to ensure that it matches the number of channels
+        """
         filenames = [str(x) for x in status.uploaded_files]
-        imaging_metadata = {}
+        metadata_config = {'uploads': []}
         if filenames:
-            imc_frame = pd.read_csv(filenames[0])
-            imaging_metadata["columns"] = [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
-                                           p in imc_frame.columns]
-            imaging_metadata["data"] = imc_frame.to_dict(orient='records')
+            for file in filenames:
+                metadata_config['uploads'].append(file)
+            return metadata_config
+        else:
+            raise PreventUpdate
 
-            return Serverside(imaging_metadata)
+    @dash_app.callback(
+        Output("imc-metadata-editable", "columns", allow_duplicate=True),
+        Output("imc-metadata-editable", "data", allow_duplicate=True),
+        Input('metadata_config', 'data'),
+        State('uploaded_dict', 'data'),
+        prevent_initial_call=True)
+    # @cache.memoize())
+    def populate_datatable_columns(metadata_config, uploaded):
+        if metadata_config is not None and len(metadata_config['uploads']) > 0:
+            metadata_read = pd.read_csv(metadata_config['uploads'][0])
+            metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
+            if metadata_validated is not None:
+                metadata_validated['ccramic Label'] = metadata_validated["Channel Label"]
+                return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
+                        p in metadata_validated.keys()], \
+                    pd.DataFrame(metadata_validated).to_dict(orient='records')
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
