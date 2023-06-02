@@ -603,7 +603,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 # add annotation for the scaling
                 # scale_val = int(custom_scale_val) if custom_scale_val is not None else
                 scale_val = int(0.075 * image.shape[1])
-                scale_annot = str(scale_val) + "um"
+                scale_annot = str(scale_val) + "μm"
                 scale_text = f'<span style="color: white">{scale_annot}</span><br>'
                 # this is the middle point of the scale bar
                 # add shift based on the image shape
@@ -653,8 +653,10 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             try:
                 # find the text annotation that has um in the text and the correct location
                 for annotations in cur_graph['layout']['annotations']:
-                    if 'um' in annotations['text'] and annotations['y'] == 0.06:
-                        if cur_graph_layout != {'autosize': True}:
+                    # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
+                    if annotations['y'] == 0.06:
+                        print(cur_graph_layout)
+                        if cur_graph_layout not in [{'autosize': True}, {'dragmode': 'pan'}]:
                             x_range_high = 0
                             x_range_low = 0
                             # use different variables depending on how the ranges are written in the dict
@@ -670,7 +672,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                             scale_val = int(custom_scale_val) if custom_scale_val is not None else \
                                 int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
                             scale_val = scale_val if scale_val > 0 else 1
-                            scale_annot = str(scale_val) + "um"
+                            scale_annot = str(scale_val) + "μm"
                             scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
                             # get the index of thre list element corresponding to this text annotation
                             index = cur_graph['layout']['annotations'].index(annotations)
@@ -689,8 +691,8 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                               ))
 
                         elif ctx.triggered_id == "custom-scale-val" and custom_scale_val is not None and \
-                                cur_graph is not None:
-                            scale_annot = str(custom_scale_val) + "um"
+                                cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}]:
+                            scale_annot = str(custom_scale_val) + "μm"
                             scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
                             # get the index of the list element corresponding to this text annotation
                             index = cur_graph['layout']['annotations'].index(annotations)
@@ -719,7 +721,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                                   pad=0
                                               ))
                 return fig, None
-            except ValueError:
+            except (ValueError, KeyError):
                 raise PreventUpdate
         elif currently_selected is not None:
             fig = go.Figure()
@@ -809,9 +811,12 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     # @cache.memoize())
     def populate_datatable_columns(uploaded, column_dict):
         if uploaded is not None and uploaded['metadata'] is not None:
-            return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
+            try:
+                return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                     p in uploaded['metadata'].keys()], \
-                pd.DataFrame(uploaded['metadata']).to_dict(orient='records')
+                    pd.DataFrame(uploaded['metadata']).to_dict(orient='records')
+            except ValueError:
+                raise PreventUpdate
         elif column_dict is not None:
             return column_dict["columns"], column_dict["data"]
         else:
@@ -997,7 +1002,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                         min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
                         aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
 
-                    except (AssertionError, ValueError, ZeroDivisionError):
+                    except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError):
                         pass
 
                 layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
@@ -1008,6 +1013,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                     all([elem in graph_layout for elem in zoom_keys]):
 
                 try:
+                    assert all([elem >= 0 for elem in graph_layout.keys() if isinstance(elem, float)])
                     x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
                     x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
                     y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
@@ -1033,7 +1039,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
 
                     return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-                except (AssertionError, ValueError, ZeroDivisionError):
+                except (AssertionError, ValueError, ZeroDivisionError, TypeError):
                     return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                          'Min': []}).to_dict(orient='records')
 
@@ -1041,6 +1047,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
                     all([elem in graph_layout for elem in modified_rect_keys]):
                 try:
+                    assert all([elem >= 0 for elem in graph_layout.keys() if isinstance(elem, float)])
                     x_range_low = math.ceil(int(graph_layout['shapes[1].x0']))
                     x_range_high = math.ceil(int(graph_layout['shapes[1].x1']))
                     y_range_low = math.ceil(int(graph_layout['shapes[1].y0']))
@@ -1091,7 +1098,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
 
                     return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-                except (AssertionError, ValueError, ZeroDivisionError):
+                except (AssertionError, ValueError, ZeroDivisionError, TypeError):
                     return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                          'Min': []}).to_dict(orient='records')
             else:
@@ -1209,6 +1216,20 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             return graph_layout, hist_fig
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
+                       Input('data-collection', 'value'),
+                       prevent_initial_call=True)
+    def reset_hist_on_new_dataset(new_selection):
+        fig = go.Figure()
+        fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                          xaxis=go.XAxis(showticklabels=False),
+                          yaxis=go.YAxis(showticklabels=False),
+                          margin=dict(l=5, r=5, b=15, t=20, pad=0))
+        if new_selection is not None:
+            return fig
+        else:
+            return fig
 
     @dash_app.callback(Output("pixel-hist", 'figure'),
                        Input('images_in_blend', 'value'),

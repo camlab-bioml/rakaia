@@ -119,9 +119,12 @@ def df_to_sarray(df):
 
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
-    subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+    try:
+        subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-    return np.average(subset), np.amax(subset), np.amin(subset)
+        return np.average(subset), np.amax(subset), np.amin(subset)
+    except IndexError:
+        return None, None, None
 
 
 def path_to_indices(path):
