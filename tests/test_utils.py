@@ -99,6 +99,5 @@ def test_generate_histogram(get_current_dir):
     assert histogram["data"] is not None
     assert histogram["layout"] is not None
     values = histogram["data"][0]['x']
-    assert len(values) == 360000
-    # TODO: see if we want to add back in the max value to the hist to keep hot pixels
-    # assert max(values) == np.max(greyscale)
+    assert len(values) == 360001
+    assert max(values) == np.max(greyscale)
