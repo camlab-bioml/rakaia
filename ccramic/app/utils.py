@@ -224,16 +224,20 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
 
 
 def pixel_hist_from_array(array):
+    # try:
+    array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
+    hist_data = np.hstack(array)
+    max_hist = np.array(np.amax(array))
+    hist = np.random.choice(hist_data, 2000000) if hist_data.shape[0] > 2000000 else hist_data
+    # add the largest pixel to ensure that hottest pixel is included in the distribution
     try:
-        hist_data = np.hstack(array)
-        max_hist = np.amax(array)
-        hist = np.random.choice(hist_data, int(hist_data.shape[0] / 100)) if \
-            hist_data.shape[0] > 2000000 else hist_data
-        # add the largest pixel to ensure that hottest pixel is included in the distribution
-        hist = np.concatenate(hist, int(max_hist))
-        return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)])
+        hist = np.concatenate((hist, max_hist), axis=0)
     except ValueError:
-        return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
+        pass
+    return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)])
+    # except ValueError:
+    #     print("error")
+    #     return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
 
 
 def apply_preset_to_array(array, preset):

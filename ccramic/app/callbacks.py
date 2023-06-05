@@ -642,6 +642,16 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 imwrite(dest_file, image, photometric='rgb')
                 # plotly.offline.plot(fig, filename='tiff.html')
                 # pio.write_image(fig, 'test_back.png', width=im.width, height=im.height)
+                fig.update_layout(hovermode="x")
+                # TODO: can use update traces to set a custom hover tip
+                # fig.update_traces(
+                #     hovertemplate="<br>".join([
+                #         "<extra>",
+                #         "ColX: %{x}",
+                #         "ColY: %{y}"
+                #         "</extra>"
+                #     ]))
+
                 return fig, str(dest_file)
             except ValueError:
                 return {}, None
@@ -1251,6 +1261,21 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             return fig
         else:
             return fig
+
+    @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
+                       Input('images_in_blend', 'value'),
+                       Input('image_layers', 'value'),
+                       prevent_initial_call=True)
+    def reset_hist_on_empty_modification_menu(current_selection, blend):
+        if current_selection is None or len(current_selection) == 0 or blend is None or len(blend) == 0:
+            fig = go.Figure()
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                          xaxis=go.XAxis(showticklabels=False),
+                          yaxis=go.YAxis(showticklabels=False),
+                          margin=dict(l=5, r=5, b=15, t=20, pad=0))
+            return fig
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure'),
                        Input('images_in_blend', 'value'),
