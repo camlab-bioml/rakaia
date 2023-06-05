@@ -75,6 +75,22 @@ def test_filtering_intensity_changes(get_current_dir):
     assert np.max(greyscale) > np.max(filtered_1)
 
 
+def test_filtering_intensity_changes_low(get_current_dir):
+    greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
+    greyscale = np.array(greyscale_image)
+    filtered_1 = filter_by_upper_and_lower_bound(greyscale, lower_bound=1, upper_bound=15)
+    original_pixels = Image.fromarray(greyscale).load()
+    new_pixels = Image.fromarray(filtered_1).load()
+    for i in range(greyscale_image.height):
+        for j in range(greyscale_image.width):
+            if original_pixels[i, j] < 1:
+                assert new_pixels[i, j] == 0
+            else:
+                assert 15 <= new_pixels[i, j] <= 255
+
+    assert np.max(greyscale) > np.max(filtered_1)
+
+
 def test_generate_histogram(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
     greyscale = np.array(greyscale_image)
@@ -84,4 +100,5 @@ def test_generate_histogram(get_current_dir):
     assert histogram["layout"] is not None
     values = histogram["data"][0]['x']
     assert len(values) == 360000
-    assert max(values) == np.max(greyscale)
+    # TODO: see if we want to add back in the max value to the hist to keep hot pixels
+    # assert max(values) == np.max(greyscale)

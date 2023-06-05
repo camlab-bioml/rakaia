@@ -20,8 +20,8 @@ def init_dashboard(server, authentic_id):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
-        if os.access("tmp", os.R_OK):
-            cache_dest = os.path.join("tmp", authentic_id, "ccramic_cache")
+        if os.access("/tmp/", os.R_OK):
+            cache_dest = os.path.join("/tmp/", authentic_id, "ccramic_cache")
         else:
             cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), authentic_id,
                                       "ccramic_cache")
@@ -89,8 +89,8 @@ def init_dashboard(server, authentic_id):
                 children=[dbc.Tab(label='Pixel Analysis',
                 tab_id='pixel-analysis',
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
-                        du.Upload(id='upload-image', max_file_size=10000,
-                        max_total_size=10000, max_files=200,
+                        du.Upload(id='upload-image', max_file_size=30000,
+                        max_total_size=30000, max_files=200,
                         filetypes=['png', 'tif', 'tiff', 'h5', 'mcd']),
                         dcc.Input(id="read-filepath", type="text",
                         placeholder="Add upload by file path (local runs only)", value=None),

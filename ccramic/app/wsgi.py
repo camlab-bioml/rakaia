@@ -1,4 +1,4 @@
-from ccramic.app import init_app
+from .entrypoint import init_app
 
 
 def main():
