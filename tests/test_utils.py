@@ -75,6 +75,19 @@ def test_filtering_intensity_changes(get_current_dir):
     assert np.max(greyscale) > np.max(filtered_1)
 
 
+def test_filtering_intensity_changes_none(get_current_dir):
+    greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
+    greyscale = np.array(greyscale_image)
+    filtered_1 = filter_by_upper_and_lower_bound(greyscale, lower_bound=None, upper_bound=None)
+    original_pixels = Image.fromarray(greyscale).load()
+    new_pixels = Image.fromarray(filtered_1).load()
+    for i in range(greyscale_image.height):
+        for j in range(greyscale_image.width):
+            assert int(original_pixels[i, j]) == int(new_pixels[i, j])
+
+    assert int(np.max(greyscale)) == int(np.max(filtered_1))
+
+
 def test_filtering_intensity_changes_low(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
     greyscale = np.array(greyscale_image)

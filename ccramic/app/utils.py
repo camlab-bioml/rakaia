@@ -191,23 +191,21 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     by multiplying by 255/100
     """
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
-    array = np.array(Image.fromarray(array).convert('L'))
+    # array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
-    lower_bound = float(lower_bound)
-    upper_bound = float(upper_bound)
+    lower_bound = float(lower_bound) if lower_bound is not None else None
+    upper_bound = float(upper_bound) if upper_bound is not None else None
     if None not in (original_max, upper_bound):
         try:
-            scale_factor = float(original_max) / float(upper_bound)
+            scale_factor = float(original_max) / upper_bound
         except ZeroDivisionError:
             scale_factor = 1
     else:
         scale_factor = 1
     if lower_bound is None:
         lower_bound = 0
-    else:
-        lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
-    if scale_factor >= 0:
+    if scale_factor >= 0 and scale_factor != 1:
         array = array * scale_factor
     try:
         if upper_bound >= 0:
@@ -215,7 +213,7 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     except TypeError:
         pass
     # TODO: update here if the upper bound is below 255, make 255 the upper bound to avoid reducing image intensity
-    if scale_factor > 1 and upper_bound >= 0:
+    if None not in (lower_bound, upper_bound) and scale_factor > 1 and upper_bound >= 0:
         # # if pixels are more intense than the upper bound, reset them to the upper bound
         # re-scale pixels lastly based on the max possible intensity of 255
         second_scaling = 255 / upper_bound

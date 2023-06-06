@@ -1149,10 +1149,11 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
                        Input('unique-channel-list', 'value'),
-                       Input('alias-dict', 'data'))
+                       Input('alias-dict', 'data'),
+                       Input('preset-button', 'n_clicks'))
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases):
+                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks):
         if gallery_data is not None and gallery_data is not None:
             row_children = []
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
@@ -1172,7 +1173,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 for key, value in views.items():
                     image_render = resize_for_canvas(value)
 
-                    if None not in (preset_selection, preset_dict):
+                    if None not in (preset_selection, preset_dict) and nclicks > 0:
                         image_render = apply_preset_to_array(value, preset_dict[preset_selection])
 
                     if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
@@ -1381,11 +1382,13 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                        State('images_in_blend', 'value'),
                        State('blending_colours', 'data'),
                        State('image_presets', 'data'),
+                       State('preset-options', 'value'),
                        Output('preset-options', 'options'),
-                       Output('image_presets', 'data'))
+                       Output('image_presets', 'data'),
+                       Output('preset-options', 'value'))
     # @cache.memoize())
     def generate_preset_options(selected_click, preset_name, current_preset_options, data_selection, layer,
-                                current_blend_dict, current_presets):
+                                current_blend_dict, current_presets, cur_preset_chosen):
         if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer,
                                                                               current_blend_dict):
             split = data_selection.split("_")
@@ -1397,7 +1400,12 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
 
             current_presets[preset_name] = current_blend_dict[exp][slide][acq][layer]
 
-            return current_preset_options, current_presets
+            if cur_preset_chosen in current_preset_options:
+                set_preset = cur_preset_chosen
+            else:
+                set_preset = None
+
+            return current_preset_options, current_presets, set_preset
         else:
             raise PreventUpdate
 
@@ -1411,8 +1419,16 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         if preset_dict is not None and len(preset_dict) > 0:
             text = ''
             for stud, val in preset_dict.items():
-                text = text + f"{stud}: \r\n l_bound: {round(float(val['x_lower_bound']), 1)}, " \
-                              f"y_bound: {round(float(val['x_upper_bound']), 1)}, filter type: {val['filter_type']}, " \
+                try:
+                    low_bound = round(float(val['x_lower_bound']))
+                except TypeError:
+                    low_bound = None
+                try:
+                    up_bound = round(float(val['x_upper_bound']))
+                except TypeError:
+                    up_bound = None
+                text = text + f"{stud}: \r\n l_bound: {low_bound}, " \
+                              f"y_bound: {up_bound}, filter type: {val['filter_type']}, " \
                               f"filter val: {val['filter_val']} \r\n"
 
             return html.Textarea(text, style={"width": "200px", "height": f"{100 * len(preset_dict)}px"})
