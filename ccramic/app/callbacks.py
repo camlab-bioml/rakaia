@@ -552,13 +552,27 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(Output('image_layers', 'value'),
+                       Output('image_layers', 'options', allow_duplicate=True),
                        Input('data-collection', 'value'),
-                       State('image_layers', 'value'))
+                       State('image_layers', 'value'),
+                       prevent_initial_call=True)
     # @cache.memoize())
     def reset_image_layers_selected(current_layers, new_selection):
         if new_selection is not None and current_layers is not None:
             if len(current_layers) > 0:
-                return []
+                return None, []
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('images_in_blend', 'value', allow_duplicate=True),
+                       Output('images_in_blend', 'options', allow_duplicate=True),
+                       Input('data-collection', 'value'),
+                       # State('image_layers', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def reset_blend_layers_selected(new_selection):
+        if new_selection is not None:
+            return None, []
         else:
             raise PreventUpdate
 
@@ -972,13 +986,16 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]):
             # if the current canvas is not None, update using the aspect ratio
             # otherwise, use aspect of 1
-            if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
+            try:
+                if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
                     'range' in current_canvas['layout']['yaxis']:
-                # aspect ratio is width divided by height
-                aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                    # aspect ratio is width divided by height
+                    aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
                                int(current_canvas['layout']['yaxis']['range'][0])
-            else:
-                aspect_ratio = 1
+                else:
+                    aspect_ratio = 1
+            except KeyError:
+                raise PreventUpdate
 
             if value is not None:
                 return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
