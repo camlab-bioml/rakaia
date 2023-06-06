@@ -375,13 +375,22 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 exp, slide, acq = split[0], split[1], split[2]
                 array = uploaded[exp][slide][acq][layer]
 
-                print(hist_layout)
                 # when shape is first added, these are the keys
                 if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) == 1:
                     if hist_layout['shapes'][0]['type'] == "rect":
-                        lower_bound = hist_layout['shapes'][0]['x0']
-                        upper_bound = hist_layout['shapes'][0]['x1']
-                        y_ceiling = hist_layout['shapes'][0]['y0']
+                        # IMP: figure out which is higher to set the proper upper and lower bounds
+                        # based on which direction the user draws from
+                        if float(hist_layout['shapes'][0]['x0']) < \
+                                float(hist_layout['shapes'][0]['x1']):
+                            lower_bound = hist_layout['shapes'][0]['x0']
+                            upper_bound = hist_layout['shapes'][0]['x1']
+                        else:
+                            lower_bound = hist_layout['shapes'][0]['x1']
+                            upper_bound = hist_layout['shapes'][0]['x0']
+                        if hist_layout['shapes'][0]['y0'] > hist_layout['shapes'][0]['y1']:
+                            y_ceiling = hist_layout['shapes'][0]['y0']
+                        else:
+                            y_ceiling = hist_layout['shapes'][0]['y1']
                         array = filter_by_upper_and_lower_bound(array, lower_bound, upper_bound)
 
                         current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
@@ -390,9 +399,17 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
 
                 # when an existing shape is moved, the keys change to this format
                 elif 'shapes[0].x0' and 'shapes[0].x1' in hist_layout:
-                    lower_bound = hist_layout['shapes[0].x0']
-                    upper_bound = hist_layout['shapes[0].x1']
-                    y_ceiling = hist_layout['shapes[0].y0']
+                    if float(hist_layout['shapes[0].x0']) < float(hist_layout['shapes[0].x1']):
+                        lower_bound = hist_layout['shapes[0].x0']
+                        upper_bound = hist_layout['shapes[0].x1']
+                    else:
+                        lower_bound = hist_layout['shapes[0].x1']
+                        upper_bound = hist_layout['shapes[0].x0']
+                    if hist_layout['shapes[0].y0'] > hist_layout['shapes[0].y1']:
+                        y_ceiling = hist_layout['shapes[0].y0']
+                    else:
+                        y_ceiling = hist_layout['shapes[0].y1']
+
                     array = filter_by_upper_and_lower_bound(array, lower_bound,
                                                             upper_bound)
 
