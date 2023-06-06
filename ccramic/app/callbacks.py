@@ -375,16 +375,18 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 exp, slide, acq = split[0], split[1], split[2]
                 array = uploaded[exp][slide][acq][layer]
 
+                print(hist_layout)
                 # when shape is first added, these are the keys
-                if 'shapes' in hist_layout.keys() and 0 < len(hist_layout['shapes']) < 2:
-                    lower_bound = hist_layout['shapes'][0]['x0']
-                    upper_bound = hist_layout['shapes'][0]['x1']
-                    y_ceiling = hist_layout['shapes'][0]['y0']
-                    array = filter_by_upper_and_lower_bound(array, lower_bound, upper_bound)
+                if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) == 1:
+                    if hist_layout['shapes'][0]['type'] == "rect":
+                        lower_bound = hist_layout['shapes'][0]['x0']
+                        upper_bound = hist_layout['shapes'][0]['x1']
+                        y_ceiling = hist_layout['shapes'][0]['y0']
+                        array = filter_by_upper_and_lower_bound(array, lower_bound, upper_bound)
 
-                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
-                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
-                    current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
+                        current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
+                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
+                        current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
 
                 # when an existing shape is moved, the keys change to this format
                 elif 'shapes[0].x0' and 'shapes[0].x1' in hist_layout:
