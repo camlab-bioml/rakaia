@@ -212,12 +212,11 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
             array = np.where(array > upper_bound, upper_bound, array)
     except TypeError:
         pass
-    # TODO: update here if the upper bound is below 255, make 255 the upper bound to avoid reducing image intensity
-    if None not in (lower_bound, upper_bound) and scale_factor > 1 and upper_bound >= 0:
-        # # if pixels are more intense than the upper bound, reset them to the upper bound
-        # re-scale pixels lastly based on the max possible intensity of 255
-        second_scaling = 255 / upper_bound
-        array = array * second_scaling
+    # if None not in (lower_bound, upper_bound) and scale_factor > 1 and upper_bound >= 0:
+    #     # # if pixels are more intense than the upper bound, reset them to the upper bound
+    #     # re-scale pixels lastly based on the max possible intensity of 255
+    #     second_scaling = 255 / upper_bound
+    #     array = array * second_scaling
     return array
 
 
