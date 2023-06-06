@@ -106,11 +106,11 @@ def populate_upload_dict(uploaded_files):
                                     unique_image_names.append(identifier)
 
                             if len(upload_dict['metadata']) < 1:
-                                upload_dict['metadata'] = {'Cycle': range(1, len(metadata_channels) + 1, 1),
+                                upload_dict['metadata'] = {'Channel Order': range(1, len(metadata_channels) + 1, 1),
                                                'Channel Name': metadata_channels,
                                                'Channel Label': metadata_labels,
                                                'ccramic Label': metadata_labels}
-                                upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label', 'ccramic Label']
+                                upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label', 'ccramic Label']
                         acq_index += 1
                     except AssertionError:
                         pass
@@ -130,11 +130,11 @@ def populate_upload_dict(uploaded_files):
                                 if channel_labels is None:
                                     channel_labels = acq.channel_labels
                                     channel_names = acq.channel_names
-                                    upload_dict['metadata'] = {'Cycle': range(1, len(channel_names) + 1, 1),
+                                    upload_dict['metadata'] = {'Channel Order': range(1, len(channel_names) + 1, 1),
                                                                'Channel Name': channel_names,
                                                                'Channel Label': channel_labels,
                                                                'ccramic Label': channel_labels}
-                                    upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label',
+                                    upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                                        'ccramic Label']
                                 else:
                                     assert all(label in acq.channel_labels for label in channel_labels)

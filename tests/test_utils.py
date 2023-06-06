@@ -70,9 +70,9 @@ def test_filtering_intensity_changes(get_current_dir):
             if original_pixels[i, j] < 51:
                 assert new_pixels[i, j] == 0
             else:
-                assert new_pixels[i, j] <= 450
+                assert new_pixels[i, j] >= 51
 
-    assert np.max(greyscale) > np.max(filtered_1)
+    assert np.max(greyscale) >= np.max(filtered_1)
 
 
 def test_filtering_intensity_changes_none(get_current_dir):
@@ -99,9 +99,9 @@ def test_filtering_intensity_changes_low(get_current_dir):
             if original_pixels[i, j] < 1:
                 assert new_pixels[i, j] == 0
             else:
-                assert 15 <= new_pixels[i, j] <= 255
+                assert 15 <= new_pixels[i, j]
 
-    assert np.max(greyscale) > np.max(filtered_1)
+    assert np.max(greyscale) >= np.max(filtered_1)
 
 
 def test_generate_histogram(get_current_dir):

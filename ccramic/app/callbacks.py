@@ -161,7 +161,8 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             # imp: use the channel label for the dropdown view and the name in the background to retrieve
             try:
                 assert all([elem in names.keys() for elem in image_dict[exp][slide][acq].keys()])
-                return [{'label': names[i], 'value': i} for i in image_dict[exp][slide][acq].keys()]
+                assert len(names.keys()) == len(image_dict[exp][slide][acq].keys())
+                return [{'label': names[i], 'value': i} for i in names.keys()]
             except AssertionError:
                 return []
         else:
@@ -843,7 +844,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         if metadata_config is not None and len(metadata_config['uploads']) > 0:
             metadata_read = pd.read_csv(metadata_config['uploads'][0])
             metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
-            if metadata_validated is not None:
+            if metadata_validated is not None and 'ccramic Label' not in metadata_validated.keys():
                 metadata_validated['ccramic Label'] = metadata_validated["Channel Label"]
                 return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                         p in metadata_validated.keys()], \
@@ -1184,7 +1185,8 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             elif data_selection is not None:
                 split = data_selection.split("_")
                 exp, slide, acq = split[0], split[1], split[2]
-                views = gallery_data[exp][slide][acq]
+                # maintain the original order of channels that is dictated by the metadata
+                views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
             else:
                 views = None
 
