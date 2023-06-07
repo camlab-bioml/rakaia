@@ -20,8 +20,8 @@ def init_dashboard(server, authentic_id):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
-        if os.access("tmp", os.R_OK):
-            cache_dest = os.path.join("tmp", authentic_id, "ccramic_cache")
+        if os.access("/tmp/", os.R_OK):
+            cache_dest = os.path.join("/tmp/", authentic_id, "ccramic_cache")
         else:
             cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), authentic_id,
                                       "ccramic_cache")
@@ -72,7 +72,7 @@ def init_dashboard(server, authentic_id):
                         "drawrect",
                         "eraseshape"],
                         'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
-                        'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
+                        'edits': {'shapePosition': False}, 'scrollZoom': True}, relayoutData={'autosize': True},
                         id='annotation_canvas-fullscreen',
             style={"margin": "auto", "width": "100vw", "height": "100vh",
                    "max-width": "none", "max-height": "none"},
@@ -89,8 +89,8 @@ def init_dashboard(server, authentic_id):
                 children=[dbc.Tab(label='Pixel Analysis',
                 tab_id='pixel-analysis',
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
-                        du.Upload(id='upload-image', max_file_size=10000,
-                        max_total_size=10000, max_files=200,
+                        du.Upload(id='upload-image', max_file_size=30000,
+                        max_total_size=30000, max_files=200,
                         filetypes=['png', 'tif', 'tiff', 'h5', 'mcd']),
                         dcc.Input(id="read-filepath", type="text",
                         placeholder="Add upload by file path (local runs only)", value=None),
@@ -125,6 +125,7 @@ def init_dashboard(server, authentic_id):
                         "drawrect",
                         "eraseshape"],
                         'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
+                            # disable scrollable zoom for now to control the scale bar
                         'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
                         id='annotation_canvas',
                             style={"margin-top": "-30px"},
@@ -147,7 +148,7 @@ def init_dashboard(server, authentic_id):
                         dcc.Dropdown(id='images_in_blend', multi=False),
                         html.Br(),
                         daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
-                        value=dict(hex="#1978B6")),
+                        value=dict(hex="#00ABFC")),
                         dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                          xaxis=go.XAxis(showticklabels=False),
                                                          yaxis=go.YAxis(showticklabels=False),
@@ -166,7 +167,7 @@ def init_dashboard(server, authentic_id):
                         dcc.Input(id="kernel-val-filter", type="number", value=3),
                         html.Br(),
                         html.Br(),
-                        html.H6("Add custom scale value", style={'width': '75%'}),
+                        html.H6("Set custom scalebar value", style={'width': '75%'}),
                         dcc.Input(id="custom-scale-val", type="number", value=None),
                         html.Br(),
                         html.Br(),
@@ -244,12 +245,13 @@ def init_dashboard(server, authentic_id):
         dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="image_presets"), fullscreen=True, type="dot"),
+        dcc.Loading(dcc.Store(id="metadata_config"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="static-session-var"), fullscreen=True, type="dot")
-    ], style={"margin": "auto"})
+    ], style={"margin": "12px"})
 
     dash_app.enable_dev_tools(debug=True)
 

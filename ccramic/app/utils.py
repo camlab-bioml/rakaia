@@ -3,6 +3,7 @@
 # from imctools.converters import mcdfolder2imcfolder
 # from imctools.converters import exportacquisitioncsv
 import numpy as np
+import pandas as pd
 from PIL import Image
 from PIL import ImageColor
 import io
@@ -119,9 +120,12 @@ def df_to_sarray(df):
 
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
-    subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+    try:
+        subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-    return np.average(subset), np.amax(subset), np.amin(subset)
+        return np.average(subset), np.amax(subset), np.amin(subset)
+    except IndexError:
+        return None, None, None
 
 
 def path_to_indices(path):
@@ -187,39 +191,51 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     by multiplying by 255/100
     """
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
-    array = np.array(Image.fromarray(array).convert('L'))
+    # array = np.array(Image.fromarray(array).convert('L'))
     original_max = np.max(array)
+    lower_bound = float(lower_bound) if lower_bound is not None else None
+    upper_bound = float(upper_bound) if upper_bound is not None else None
     if None not in (original_max, upper_bound):
-        scale_factor = float(original_max) / float(upper_bound)
+        try:
+            scale_factor = float(original_max) / upper_bound
+        except ZeroDivisionError:
+            scale_factor = 1
     else:
         scale_factor = 1
     if lower_bound is None:
         lower_bound = 0
-    else:
-        lower_bound = float(lower_bound)
     array = np.where(array < lower_bound, 0, array)
-    array = array * scale_factor
-    array = np.where(array > upper_bound, upper_bound, array)
-    # TODO: update here if the upper bound is below 255, make 255 the upper bound to avoid reducing image intensity
-    if scale_factor > 1:
-        # # if pixels are more intense than the upper bound, reset them to the upper bound
-        # re-scale pixels lastly based on the max possible intensity of 255
-        second_scaling = 255 / upper_bound
-        array = array * second_scaling
+    try:
+        if upper_bound >= 0:
+            array = np.where(array > upper_bound, upper_bound, array)
+    except TypeError:
+        pass
+    if scale_factor >= 0 and scale_factor != 1:
+        array = array * scale_factor
+    # if upper_bound is not None and upper_bound < 255:
+    #     # # if pixels are more intense than the upper bound, reset them to the upper bound
+    #     # re-scale pixels lastly based on the max possible intensity of 255
+    #     second_scaling = 255 / upper_bound
+    #     array = array * second_scaling
     return array
 
 
 def pixel_hist_from_array(array):
+    # try:
+    # IMP: do not use the conversion to L as it will automatically set the max to 255
+    # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
+    hist_data = np.hstack(array)
+    max_hist = np.max(array)
+    hist = np.random.choice(hist_data, 2000000) if hist_data.shape[0] > 2000000 else hist_data
+    # add the largest pixel to ensure that hottest pixel is included in the distribution
     try:
-        hist_data = np.hstack(array)
-        max_hist = np.amax(array)
-        hist = np.random.choice(hist_data, int(hist_data.shape[0] / 100)) if \
-            hist_data.shape[0] > 2000000 else hist_data
-        # add the largest pixel to ensure that hottest pixel is included in the distribution
-        hist = np.concatenate(hist, int(max_hist))
-        return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]))
+        hist = np.concatenate([np.array(hist), np.array([max_hist])])
     except ValueError:
-        return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
+        pass
+    return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)])
+    # except ValueError:
+    #     print("error")
+    #     return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
 
 
 def apply_preset_to_array(array, preset):
@@ -259,3 +275,25 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
                             string = f"{exp}_{slide}_{acq}"
                             images[string] = upload_dict[exp][slide][acq][channel]
     return images
+
+
+def validate_incoming_metadata_table(metadata, upload_dict):
+    """
+    Validate the incoming metadata sheet on custom upload against the data dictionary.
+    The incoming metadata sheet must have the following characteristics:
+        - be on the same length as every ROI in the dataset
+        - have a column named "Column Label" that can be copied for editing
+    """
+    try:
+        assert isinstance(metadata, pd.DataFrame)
+        assert "Channel Label" in metadata.columns
+        assert "Channel Name" in metadata.columns
+        for exp in list(upload_dict.keys()):
+            if 'metadata' not in exp:
+                for slide in upload_dict[exp].keys():
+                    for acq in upload_dict[exp][slide].keys():
+                        # assert that for each ROI, the length is the same as the number of rows in the metadata
+                        assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
+        return metadata
+    except AssertionError:
+        return None

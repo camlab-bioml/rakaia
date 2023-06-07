@@ -2,7 +2,6 @@ import pandas as pd
 import h5py
 from pathlib import Path
 from tifffile import TiffFile
-import tifffile
 import os
 from .utils import *
 from readimc import MCDFile
@@ -20,6 +19,8 @@ def populate_upload_dict(uploaded_files):
         metadata_channels = []
         metadata_labels = []
         experiment_index = 0
+        slide_index = 0
+        acq_index = 0
         upload_dict["experiment" + str(experiment_index)] = {}
         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)] = {}
         upload_dict["experiment" + str(experiment_index)]["slide" + str(0)]["acq" + str(0)] = {}
@@ -64,42 +65,62 @@ def populate_upload_dict(uploaded_files):
                             pass
                         upload_dict[exp] = meta_back
             else:
-                # slide_index = 0
-                # acquisition_index = 0
                 # if tiffs are uploaded, treat as one slide and one acquisition
                 if upload.endswith('.tiff') or upload.endswith('.tif'):
-                    with TiffFile(upload) as tif:
-                        tiff_path = Path(upload)
-                        file__name, file_extension = os.path.splitext(tiff_path)
-                        # set different image labels based on the basename of the file (ome.tiff vs .tiff)
-                        if "ome" in upload:
-                            basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
-                        else:
-                            basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
-                        multi_channel_index = 0
-                        for page in tif.pages:
-                            identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
-                                len(tif.pages) > 1 else str(basename)
-                            upload_dict["experiment" + str(experiment_index)]["slide" +
-                                                                                  str(0)]["acq" + str(0)][
-                                    identifier] = convert_to_below_255(page.asarray())
-                            multi_channel_index += 1
-                            metadata_channels.append(identifier)
-                            metadata_labels.append(identifier)
-                            if identifier not in unique_image_names:
-                                unique_image_names.append(identifier)
+                    try:
+                        with TiffFile(upload) as tif:
+                            tiff_path = Path(upload)
+                            # IMP: if the length of this tiff is not the same as the current metadata, implies that
+                            # the files have different channels/panels
+                            # pass if this is the case
 
-                    upload_dict['metadata'] = {'Cycle': range(1, len(metadata_channels) + 1, 1),
+                            if len(upload_dict['metadata']) > 0:
+                                assert all(len(value) == len(tif.pages) for value in \
+                                           list(upload_dict['metadata'].values()))
+
+                            file__name, file_extension = os.path.splitext(tiff_path)
+                            # set different image labels based on the basename of the file (ome.tiff vs .tiff)
+                            # if "ome" in upload:
+                            #     basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
+                            # else:
+                            #     basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
+                            multi_channel_index = 1
+                            # treat each tiff as a its own ROI and increment the acq index for each one
+                            upload_dict["experiment" + str(experiment_index)]["slide" + \
+                                                                          str(slide_index)]["acq" + \
+                                                                                            str(acq_index)] = {}
+                            for page in tif.pages:
+                                # identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
+                                #     len(tif.pages) > 1 else str(basename)
+                                identifier = str("channel_" + str(multi_channel_index))
+                                upload_dict["experiment" + str(experiment_index)]["slide" + \
+                                                                              str(slide_index)]["acq" + \
+                                                                                                str(acq_index)][
+                                    identifier] = convert_to_below_255(page.asarray())
+                                multi_channel_index += 1
+                                if identifier not in metadata_channels:
+                                    metadata_channels.append(identifier)
+                                if identifier not in metadata_labels:
+                                    metadata_labels.append(identifier)
+                                if identifier not in unique_image_names:
+                                    unique_image_names.append(identifier)
+
+                            if len(upload_dict['metadata']) < 1:
+                                upload_dict['metadata'] = {'Channel Order': range(1, len(metadata_channels) + 1, 1),
                                                'Channel Name': metadata_channels,
                                                'Channel Label': metadata_labels,
                                                'ccramic Label': metadata_labels}
-                    upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label', 'ccramic Label']
+                                upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label', 'ccramic Label']
+                        acq_index += 1
+                    except AssertionError:
+                        pass
                 elif upload.endswith('.mcd'):
                     upload_dict["experiment" + str(experiment_index)] = {}
                     with MCDFile(upload) as mcd_file:
                         channel_names = None
                         channel_labels = None
                         slide_index = 0
+                        acq_index = 0
                         for slide in mcd_file.slides:
                             upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)] = {}
                             acq_index = 0
@@ -109,11 +130,11 @@ def populate_upload_dict(uploaded_files):
                                 if channel_labels is None:
                                     channel_labels = acq.channel_labels
                                     channel_names = acq.channel_names
-                                    upload_dict['metadata'] = {'Cycle': range(1, len(channel_names) + 1, 1),
+                                    upload_dict['metadata'] = {'Channel Order': range(1, len(channel_names) + 1, 1),
                                                                'Channel Name': channel_names,
                                                                'Channel Label': channel_labels,
                                                                'ccramic Label': channel_labels}
-                                    upload_dict['metadata_columns'] = ['Cycle', 'Channel Name', 'Channel Label',
+                                    upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                                        'ccramic Label']
                                 else:
                                     assert all(label in acq.channel_labels for label in channel_labels)

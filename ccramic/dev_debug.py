@@ -1,4 +1,4 @@
-from app import init_app
+from app.entrypoint import init_app
 
 
 def main():
