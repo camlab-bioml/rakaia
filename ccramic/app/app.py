@@ -91,7 +91,7 @@ def init_dashboard(server, authentic_id):
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=30000,
                         max_total_size=30000, max_files=200,
-                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd']),
+                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt']),
                         dcc.Input(id="read-filepath", type="text",
                         placeholder="Add upload by file path (local runs only)", value=None),
                         dbc.Button("Add file by path", id="add-file-by-path",

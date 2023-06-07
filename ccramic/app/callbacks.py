@@ -41,7 +41,8 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     def get_session_uploads_from_drag_and_drop(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
         session_config = {'uploads': []}
-        if filenames:
+        # IMP: ensure that the progress is up to 100% in the float before beginning to process
+        if filenames and float(status.progress) == 1.0:
             for file in filenames:
                 session_config['uploads'].append(file)
             return session_config

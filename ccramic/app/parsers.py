@@ -4,7 +4,7 @@ from pathlib import Path
 from tifffile import TiffFile
 import os
 from .utils import *
-from readimc import MCDFile
+from readimc import MCDFile, TXTFile
 
 
 def populate_upload_dict(uploaded_files):
@@ -110,11 +110,12 @@ def populate_upload_dict(uploaded_files):
                                                'Channel Name': metadata_channels,
                                                'Channel Label': metadata_labels,
                                                'ccramic Label': metadata_labels}
-                                upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label', 'ccramic Label']
+                                upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
+                                                                   'ccramic Label']
                         acq_index += 1
                     except AssertionError:
                         pass
-                elif upload.endswith('.mcd'):
+                if upload.endswith('.mcd'):
                     upload_dict["experiment" + str(experiment_index)] = {}
                     with MCDFile(upload) as mcd_file:
                         channel_names = None
@@ -152,6 +153,48 @@ def populate_upload_dict(uploaded_files):
                                 acq_index += 1
                             slide_index += 1
                     experiment_index += 1
+                if upload.endswith('.txt'):
+                    try:
+                        with TXTFile(upload) as acq_text_read:
+                            acq = acq_text_read.read_acquisition()
+                            image_index = 1
+                            txt_channel_names = acq_text_read.channel_names
+                            txt_channel_labels = acq_text_read.channel_labels
+                            # assert that the channel names and labels are the same if an upload has already passed
+                            if len(metadata_channels) > 0:
+                                assert len(metadata_channels) == len(txt_channel_names)
+                                assert all([elem in txt_channel_names for elem in metadata_channels])
+                            if len(metadata_labels) > 0:
+                                assert len(metadata_labels) == len(txt_channel_labels)
+                                assert all([elem in txt_channel_labels for elem in metadata_labels])
+                            upload_dict["experiment" + str(experiment_index)]["slide" + \
+                                                                              str(slide_index)]["acq" + \
+                                                                                                str(acq_index)] = {}
+                            for image in acq:
+                                image_label = txt_channel_labels[image_index - 1]
+                                identifier = txt_channel_names[image_index - 1]
+                                upload_dict["experiment" + str(experiment_index)]["slide" + \
+                                                                                  str(slide_index)]["acq" + \
+                                                                                                    str(acq_index)][
+                                    identifier] = convert_to_below_255(image)
+                                image_index += 1
+                                if identifier not in metadata_channels:
+                                    metadata_channels.append(identifier)
+                                if image_label not in metadata_labels:
+                                    metadata_labels.append(image_label)
+                                if identifier not in unique_image_names:
+                                    unique_image_names.append(identifier)
+                            if len(upload_dict['metadata']) < 1:
+                                upload_dict['metadata'] = {'Channel Order': range(1, len(metadata_channels) + 1, 1),
+                                                           'Channel Name': metadata_channels,
+                                                           'Channel Label': metadata_labels,
+                                                           'ccramic Label': metadata_labels}
+                                upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
+                                                                   'ccramic Label']
+                        acq_index += 1
+                    except (OSError, AssertionError):
+                        pass
+
         return upload_dict, blend_dict, unique_image_names
     else:
         return None
