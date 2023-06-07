@@ -1395,7 +1395,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
-                else dict(hex="#1978B6")
+                else dict(hex="#00ABFC")
             return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
@@ -1408,7 +1408,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
-                else dict(hex="#1978B6")
+                else dict(hex="#00ABFC")
             return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         else:
             raise PreventUpdate

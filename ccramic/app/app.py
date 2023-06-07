@@ -148,7 +148,7 @@ def init_dashboard(server, authentic_id):
                         dcc.Dropdown(id='images_in_blend', multi=False),
                         html.Br(),
                         daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
-                        value=dict(hex="#1978B6")),
+                        value=dict(hex="#00ABFC")),
                         dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                          xaxis=go.XAxis(showticklabels=False),
                                                          yaxis=go.YAxis(showticklabels=False),
@@ -251,7 +251,7 @@ def init_dashboard(server, authentic_id):
         dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="static-session-var"), fullscreen=True, type="dot")
-    ], style={"margin": "auto"})
+    ], style={"margin": "12px"})
 
     dash_app.enable_dev_tools(debug=True)
 
