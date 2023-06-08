@@ -116,6 +116,18 @@ def init_dashboard(server, authentic_id):
                                              id="make-canvas-fullscreen",
                                             color=None, n_clicks=0,
                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
+                                  html.H6("Current Bounds:", style={"margin-left": "120px",
+                                                                    "margin-top": "10px", "height": "100%"}),
+                                  dcc.Input(id="set-x-auto-bound", type="number", value=None,
+                                            placeholder="Set x-coord",
+                                            style={"margin-left": "120px",
+                                                   "margin-top": "10px", "height": "100%", "width": "15vh"}
+                                            ),
+                                  dcc.Input(id="set-y-auto-bound", type="number", value=None,
+                                            placeholder="Set y-coord",
+                                            style={"margin-left": "120px",
+                                                   "margin-top": "10px", "height": "100%", "width": "15vh"}
+                                            ),
                         html.Br()],
                         style={"display": "flex", "width": "100%"}),
                         dcc.Graph(config={"modeBarButtonsToAdd": [
