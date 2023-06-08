@@ -713,6 +713,8 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                 x_range_low = math.ceil(int(abs(cur_graph_layout['xaxis.range[1]'])))
 
                             assert x_range_high >= x_range_low
+                            # assert that all values must be above 0 for the scale value to render during panning
+                            assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
                             scale_val = int(custom_scale_val) if custom_scale_val is not None else \
                                 int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
                             scale_val = scale_val if scale_val > 0 else 1
@@ -765,7 +767,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                                   pad=0
                                               ))
                 return fig, None
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, AssertionError):
                 raise PreventUpdate
         elif currently_selected is not None:
             fig = go.Figure()
@@ -983,8 +985,9 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     def update_canvas_size(value, current_canvas, cur_graph_layout):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
-        # only update the resolution if the zoom is not used
-        if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]):
+        # only update the resolution if not using zoom or panning
+        if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]) and \
+                cur_graph_layout not in [{'dragmode': 'pan'}]:
             # if the current canvas is not None, update using the aspect ratio
             # otherwise, use aspect of 1
             try:
