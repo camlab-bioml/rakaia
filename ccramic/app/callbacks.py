@@ -614,13 +614,47 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 # if the current graph already has an image, take the existing layout and apply it to the new figure
                 # otherwise, set the uirevision for the first time
                 if 'data' in cur_graph:
-                    # fig['layout'] = cur_graph['layout']
-                    cur_graph['data'] = fig['data']
-                    # if taking the old layout, remove the current legend and remake with the new layers
-                    # imp: do not remove the current scale bar value if its there
-                    cur_graph['layout']['annotations'] = [annotation for annotation in \
+                    try:
+                        # fig['layout'] = cur_graph['layout']
+                        cur_graph['data'] = fig['data']
+                        # if taking the old layout, remove the current legend and remake with the new layers
+                        # imp: do not remove the current scale bar value if its there
+                        cur_graph['layout']['annotations'] = [annotation for annotation in \
                                                           cur_graph['layout']['annotations'] if annotation['y'] == 0.06]
-                    fig = cur_graph
+                        fig = cur_graph
+                    # keywrror could happen if the canvas is reset with no layers, so rebuild from scratch
+                    except KeyError:
+                        fig['layout']['uirevision'] = True
+
+                        scale_val = int(0.075 * image.shape[1])
+                        scale_annot = str(scale_val) + "μm"
+                        scale_text = f'<span style="color: white">{scale_annot}</span><br>'
+                        # this is the middle point of the scale bar
+                        # add shift based on the image shape
+                        shift = math.log10(image.shape[1]) - 3
+                        midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
+                        # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
+                        midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
+                        fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
+                                           yref='paper',
+                                           # set the placement of where the text goes relative to the scale bar
+                                           x=midpoint,
+                                           # xanchor='right',
+                                           y=0.06,
+                                           # yanchor='bottom',
+                                           showarrow=False)
+
+                        fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                          xaxis=go.XAxis(showticklabels=False),
+                                          yaxis=go.YAxis(showticklabels=False),
+                                          margin=dict(
+                                              l=10,
+                                              r=0,
+                                              b=25,
+                                              t=35,
+                                              pad=0
+                                          ))
+                        fig.update_layout(hovermode="x")
                 else:
                     # if making the fig for the firs time, set the uirevision
                     fig['layout']['uirevision'] = True
@@ -1002,7 +1036,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
 
         # only update the resolution if not using zoom or panning
         if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]) and \
-                cur_graph_layout not in [{'dragmode': 'pan'}]:
+                cur_graph_layout not in [{'dragmode': 'pan'}, {'dragmode': 'zoom'}]:
             # if the current canvas is not None, update using the aspect ratio
             # otherwise, use aspect of 1
             try:
