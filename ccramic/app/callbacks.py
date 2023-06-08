@@ -616,9 +616,10 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 if 'data' in cur_graph:
                     # fig['layout'] = cur_graph['layout']
                     cur_graph['data'] = fig['data']
-                    # if taking the old layout, remove the current annotations and remake them with the
-                    # updated layers
-                    cur_graph['layout']['annotations'] = []
+                    # if taking the old layout, remove the current legend and remake with the new layers
+                    # imp: do not remove the current scale bar value if its there
+                    cur_graph['layout']['annotations'] = [annotation for annotation in \
+                                                          cur_graph['layout']['annotations'] if annotation['y'] == 0.06]
                     fig = cur_graph
                 else:
                     # if making the fig for the firs time, set the uirevision
