@@ -608,45 +608,32 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                          elem in canvas_layers[exp][slide][acq].keys()])
             try:
                 fig = px.imshow(Image.fromarray(image))
-                # set how far in from the lefthand corner the scale bar and colour legends should be
-                # higher values mean closer to the centre
                 x_axis_placement = 0.00001 * image.shape[1]
                 # make sure the placement is min 0.05 and max 0.1
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
-                # fig = canvas_layers[image_type][currently_selected[0]]
-                if legend_text != '':
-                    fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
-                                       yref='paper',
-                                       x=(1 - x_axis_placement),
-                                       # xanchor='right',
-                                       y=0.05,
-                                       # yanchor='bottom',
-                                       bgcolor="black",
-                                       showarrow=False)
+                # if the current graph already has an image, take the existing layout and apply it to the new figure
+                # otherwise, set the uirevision for the first time
+                if 'data' in cur_graph:
+                    # fig['layout'] = cur_graph['layout']
+                    cur_graph['data'] = fig['data']
+                    # if taking the old layout, remove the current annotations and remake them with the
+                    # updated layers
+                    cur_graph['layout']['annotations'] = []
+                    fig = cur_graph
+                else:
+                    # if making the fig for the firs time, set the uirevision
+                    fig['layout']['uirevision'] = True
 
-                # set the x-axis scale placement based on the size of the image
-                # for adding a scale bar
-                fig.add_shape(type="line",
-                              xref="paper", yref="paper",
-                              x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
-                              y1=0.05,
-                              line=dict(
-                                  color="white",
-                                  width=2,
-                              ),
-                              )
-                # add annotation for the scaling
-                # scale_val = int(custom_scale_val) if custom_scale_val is not None else
-                scale_val = int(0.075 * image.shape[1])
-                scale_annot = str(scale_val) + "μm"
-                scale_text = f'<span style="color: white">{scale_annot}</span><br>'
-                # this is the middle point of the scale bar
-                # add shift based on the image shape
-                shift = math.log10(image.shape[1]) - 3
-                midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
-                # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
-                midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
-                fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
+                    scale_val = int(0.075 * image.shape[1])
+                    scale_annot = str(scale_val) + "μm"
+                    scale_text = f'<span style="color: white">{scale_annot}</span><br>'
+                    # this is the middle point of the scale bar
+                    # add shift based on the image shape
+                    shift = math.log10(image.shape[1]) - 3
+                    midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
+                    # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
+                    midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
+                    fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
                                    # set the placement of where the text goes relative to the scale bar
                                    x=midpoint,
@@ -655,7 +642,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                    # yanchor='bottom',
                                    showarrow=False)
 
-                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                    fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                                   xaxis=go.XAxis(showticklabels=False),
                                   yaxis=go.YAxis(showticklabels=False),
                                   margin=dict(
@@ -665,6 +652,34 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                       t=35,
                                       pad=0
                                   ))
+                    fig.update_layout(hovermode="x")
+
+                fig = go.Figure(fig)
+
+                # set how far in from the lefthand corner the scale bar and colour legends should be
+                # higher values mean closer to the centre
+                # fig = canvas_layers[image_type][currently_selected[0]]
+                if legend_text != '':
+                    fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                                           yref='paper',
+                                           x=(1 - x_axis_placement),
+                                           # xanchor='right',
+                                           y=0.05,
+                                           # yanchor='bottom',
+                                           bgcolor="black",
+                                           showarrow=False)
+
+                # set the x-axis scale placement based on the size of the image
+                # for adding a scale bar
+                fig.add_shape(type="line",
+                                  xref="paper", yref="paper",
+                                  x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
+                                  y1=0.05,
+                                  line=dict(
+                                      color="white",
+                                      width=2,
+                                  ),
+                                  )
 
                 dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
                 dest_file = os.path.join(dest_path, "canvas.tiff")
@@ -677,7 +692,6 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 imwrite(dest_file, image, photometric='rgb')
                 # plotly.offline.plot(fig, filename='tiff.html')
                 # pio.write_image(fig, 'test_back.png', width=im.width, height=im.height)
-                fig.update_layout(hovermode="x")
                 # TODO: can use update traces to set a custom hover tip
                 # fig.update_traces(
                 #     hovertemplate="<br>".join([
@@ -686,7 +700,6 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 #         "ColY: %{y}"
                 #         "</extra>"
                 #     ]))
-
                 return fig, str(dest_file)
             except ValueError:
                 return {}, None
@@ -696,6 +709,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 cur_graph is not None and \
                 'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"]:
             try:
+                fig = go.Figure(cur_graph)
                 # find the text annotation that has um in the text and the correct location
                 for annotations in cur_graph['layout']['annotations']:
                     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
@@ -998,7 +1012,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                int(current_canvas['layout']['yaxis']['range'][0])
                 else:
                     aspect_ratio = 1
-            except KeyError:
+            except (KeyError, ZeroDivisionError):
                 raise PreventUpdate
 
             if value is not None:
