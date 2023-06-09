@@ -577,6 +577,17 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       Input('data-collection', 'value'),
+                       # State('image_layers', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def clear_canvas_on_new_dataset(new_selection):
+        if new_selection is not None:
+            return go.Figure()
+        else:
+            raise PreventUpdate
+
     @dash_app.callback(Output('annotation_canvas', 'figure'),
                        Output('download-link-canvas-tiff', 'href'),
                        Input('canvas-layers', 'data'),
@@ -613,14 +624,17 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
                 # if the current graph already has an image, take the existing layout and apply it to the new figure
                 # otherwise, set the uirevision for the first time
-                if 'data' in cur_graph:
+                if 'uirevision' in cur_graph['layout'] and cur_graph['layout']['uirevision']:
                     try:
                         # fig['layout'] = cur_graph['layout']
                         cur_graph['data'] = fig['data']
                         # if taking the old layout, remove the current legend and remake with the new layers
                         # imp: do not remove the current scale bar value if its there
-                        cur_graph['layout']['annotations'] = [annotation for annotation in \
+                        if 'annotations' in cur_graph['layout'] and len(cur_graph['layout']['annotations']) > 0:
+                            cur_graph['layout']['annotations'] = [annotation for annotation in \
                                                           cur_graph['layout']['annotations'] if annotation['y'] == 0.06]
+                        if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']) > 0:
+                            cur_graph['layout']['shapes'] = []
                         fig = cur_graph
                     # keywrror could happen if the canvas is reset with no layers, so rebuild from scratch
                     except KeyError:
@@ -735,9 +749,14 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 #         "ColY: %{y}"
                 #         "</extra>"
                 #     ]))
+                fig.update_layout(dragmode = "zoom")
                 return fig, str(dest_file)
             except ValueError:
-                return {}, None
+                try:
+                    fig = go.Figure(fig)
+                except ValueError:
+                    fig = {}
+                return fig, None
 
         # update the scale bar with and without zooming
         elif ctx.triggered_id in ["annotation_canvas", "custom-scale-val"] and \
@@ -815,11 +834,18 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                                   t=35,
                                                   pad=0
                                               ))
+                fig.update_layout(dragmode="zoom")
                 return fig, None
             except (ValueError, KeyError, AssertionError):
                 raise PreventUpdate
-        elif currently_selected is not None:
-            fig = go.Figure()
+        elif currently_selected is not None and 'shapes' not in cur_graph_layout:
+            fig = cur_graph if cur_graph is not None else go.Figure()
+            if 'data' in fig:
+                fig['data'] = []
+                fig['layout']['shapes'] = []
+                fig['layout']['annotations'] = [annotation for annotation in \
+                                                fig['layout']['annotations'] if annotation['y'] == 0.06]
+            fig = go.Figure(fig)
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                               xaxis=go.XAxis(showticklabels=False),
                               yaxis=go.YAxis(showticklabels=False),
@@ -829,7 +855,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                   b=0,
                                   t=0,
                                   pad=0
-                              ))
+                              ), dragmode="zoom")
             return fig, None
         else:
             raise PreventUpdate
@@ -1030,13 +1056,16 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         Output('annotation_canvas', 'style'),
         Input('annotation-canvas-size', 'value'),
         Input('annotation_canvas', 'figure'),
-        State('annotation_canvas', 'relayoutData'))
+        State('annotation_canvas', 'relayoutData'),
+        prevent_initial_call=True)
     def update_canvas_size(value, current_canvas, cur_graph_layout):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
         # only update the resolution if not using zoom or panning
         if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]) and \
-                cur_graph_layout not in [{'dragmode': 'pan'}, {'dragmode': 'zoom'}]:
+                'dragmode' not in cur_graph_layout.keys() and 'shapes' not in cur_graph_layout.keys() and \
+                'data' in current_canvas:
+
             # if the current canvas is not None, update using the aspect ratio
             # otherwise, use aspect of 1
             try:

@@ -134,7 +134,7 @@ def path_to_indices(path):
     indices_str = [
         el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")
     ]
-    return np.rint(np.array(indices_str, dtype=float)).astype(np.int)
+    return np.rint(np.array(indices_str, dtype=float)).astype(int)
 
 
 def path_to_mask(path, shape):
@@ -143,7 +143,7 @@ def path_to_mask(path, shape):
     """
     cols, rows = path_to_indices(path).T
     rr, cc = draw.polygon(rows, cols)
-    mask = np.zeros(shape, dtype=np.bool)
+    mask = np.zeros(shape, dtype=bool)
     mask[rr, cc] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask

@@ -107,7 +107,7 @@ def init_dashboard(server, authentic_id):
                         style={'width': '70%', 'height': '100px', 'display': 'inline-block'})],
                         style={'width': '125%', 'height': '100%', 'display': 'inline-block', 'margin-left': '-30'}),
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
-                        html.Div([html.H3("Image/Channel Blending", style={"margin-right": "50px",
+                        html.Div([html.H3("Blending Canvas", style={"margin-right": "50px",
                                                                            "margin-left": "30px"}),
                                   dbc.Button(children=html.Span([html.Div("Fullscreen"),
                                                                  html.I(className="fas fa-expand-arrows-alt",
@@ -129,7 +129,7 @@ def init_dashboard(server, authentic_id):
                                                    "margin-top": "10px", "height": "100%", "width": "15vh"}
                                             ),
                         html.Br()],
-                        style={"display": "flex", "width": "100%"}),
+                        style={"display": "flex", "width": "100%", "margin-bottom": "15px"}),
                         dcc.Graph(config={"modeBarButtonsToAdd": [
                         # "drawline",
                         # "drawopenpath",
