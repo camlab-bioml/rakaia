@@ -15,7 +15,6 @@ from scipy import ndimage
 import numpy.ma as ma
 from scipy.ndimage import gaussian_filter, median_filter
 
-
 def get_luma(rbg):
     return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
 
@@ -134,7 +133,7 @@ def path_to_indices(path):
     indices_str = [
         el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")
     ]
-    return np.rint(np.array(indices_str, dtype=float)).astype(np.int)
+    return np.rint(np.array(indices_str, dtype=float)).astype(int)
 
 
 def path_to_mask(path, shape):
@@ -143,7 +142,7 @@ def path_to_mask(path, shape):
     """
     cols, rows = path_to_indices(path).T
     rr, cc = draw.polygon(rows, cols)
-    mask = np.zeros(shape, dtype=np.bool)
+    mask = np.zeros(shape, dtype=bool)
     mask[rr, cc] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask
@@ -296,4 +295,30 @@ def validate_incoming_metadata_table(metadata, upload_dict):
                         assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
         return metadata
     except AssertionError:
+        return None
+
+
+def create_new_coord_bounds(window_dict, x_request, y_request):
+    """
+    Create a new window based on an xy coordinate request. The current zoom level is maintained
+    and the requested coordinate is approximately the middle of the new window
+    """
+    try:
+        assert all([value is not None for value in window_dict.values()])
+        # first cast the bounds as int, then cast as floats and add significant digits
+        # 634.5215773809524
+        x_low = float(min(float(window_dict['x_high']), float(window_dict['x_low'])))
+        x_high = float(max(float(window_dict['x_high']), float(window_dict['x_low'])))
+        y_low = float(min(float(window_dict['y_high']), float(window_dict['y_low'])))
+        y_high = float(max(float(window_dict['y_high']), float(window_dict['y_low'])))
+        midway_x = float((x_high - x_low) / 2)
+        midway_y = float((y_high - y_low) / 2)
+        print("midway")
+        print(midway_x, midway_y)
+        new_x_low = float(float(x_request - midway_x) + 0.000000000000)
+        new_x_high = float(float(x_request + midway_x) + 0.000000000000)
+        new_y_low = float(float(y_request - midway_y) + 0.000000000000)
+        new_y_high = float(float(y_request + midway_y) + 0.000000000000)
+        return new_x_low, new_x_high, new_y_low, new_y_high
+    except (AssertionError, KeyError):
         return None
