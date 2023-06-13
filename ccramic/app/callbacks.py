@@ -154,10 +154,13 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('image_layers', 'options'),
+                       Output('image_layers', 'value', allow_duplicate=True),
                        State('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
-                       Input('alias-dict', 'data'))
-    def create_dropdown_options(image_dict, data_selection, names):
+                       Input('alias-dict', 'data'),
+                       State('image_layers', 'value'),
+                       prevent_initial_call=True)
+    def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels):
         if image_dict and data_selection:
             split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
@@ -165,9 +168,15 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             try:
                 assert all([elem in names.keys() for elem in image_dict[exp][slide][acq].keys()])
                 assert len(names.keys()) == len(image_dict[exp][slide][acq].keys())
-                return [{'label': names[i], 'value': i} for i in names.keys()]
+                # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
+                if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
+                    all([elem in image_dict[exp][slide][acq].keys() for elem in currently_selected_channels]):
+                    channels_return = list(currently_selected_channels)
+                else:
+                    channels_return = []
+                return [{'label': names[i], 'value': i} for i in names.keys()], channels_return
             except AssertionError:
-                return []
+                return [], []
         else:
             raise PreventUpdate
 
@@ -552,7 +561,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('image_layers', 'value'),
-                       Output('image_layers', 'options', allow_duplicate=True),
                        Input('data-collection', 'value'),
                        State('image_layers', 'value'),
                        prevent_initial_call=True)
@@ -560,7 +568,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     def reset_image_layers_selected(current_layers, new_selection):
         if new_selection is not None and current_layers is not None:
             if len(current_layers) > 0:
-                return None, []
+                return None
         else:
             raise PreventUpdate
 
@@ -773,15 +781,23 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                             # use different variables depending on how the ranges are written in the dict
                             # IMP: the variables will be written differently after a tab change
                             if 'xaxis' in cur_graph['layout']:
-                                x_range_high = math.ceil(int(abs(cur_graph['layout']['xaxis']['range'][1])))
-                                x_range_low = math.floor(int(abs(cur_graph['layout']['xaxis']['range'][0])))
+                                high = max(cur_graph['layout']['xaxis']['range'][1],
+                                           cur_graph['layout']['xaxis']['range'][0])
+                                low = min(cur_graph['layout']['xaxis']['range'][1],
+                                           cur_graph['layout']['xaxis']['range'][0])
+                                x_range_high = math.ceil(int(high))
+                                x_range_low = math.floor(int(low))
                             elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
-                                x_range_high = math.ceil(int(abs(cur_graph_layout['xaxis.range[1]'])))
-                                x_range_low = math.ceil(int(abs(cur_graph_layout['xaxis.range[1]'])))
+                                high = max(cur_graph_layout['xaxis.range[1]'],
+                                           cur_graph_layout['xaxis.range[0]'])
+                                low = min(cur_graph_layout['xaxis.range[1]'],
+                                           cur_graph_layout['xaxis.range[0]'])
+                                x_range_high = math.ceil(int(high))
+                                x_range_low = math.ceil(int(low))
 
                             assert x_range_high >= x_range_low
                             # assert that all values must be above 0 for the scale value to render during panning
-                            assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
+                            # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
                             scale_val = int(custom_scale_val) if custom_scale_val is not None else \
                                 int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
                             scale_val = scale_val if scale_val > 0 else 1
