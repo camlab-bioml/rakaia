@@ -1,3 +1,4 @@
+import os
 
 from dash import dash_table
 import tempfile
@@ -54,13 +55,16 @@ def init_dashboard(server, authentic_id):
         })
     except (ModuleNotFoundError, RuntimeError) as no_redis:
         try:
-            cache = diskcache.Cache("./cache")
+            cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
             background_callback_manager = DiskcacheManager(cache)
         except DatabaseError:
             cache = Cache(dash_app.server, config={
                 'CACHE_TYPE': 'filesystem',
                 'CACHE_DIR': 'cache-directory'
             })
+
+    cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
+    background_callback_manager = DiskcacheManager(cache)
 
     dash_app.layout = html.Div([
         # this modal is for the fullscreen view and does not belong in a nested tab
@@ -94,7 +98,8 @@ def init_dashboard(server, authentic_id):
                         max_total_size=30000, max_files=200,
                         filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt']),
                         dcc.Input(id="read-filepath", type="text",
-                        placeholder="Add upload by file path (local runs only)", value=None),
+                        placeholder="Upload file using file path (local runs only)", value=None,
+                                  style={"width": "85%"}),
                         dbc.Button("Add file by path", id="add-file-by-path",
                         className="mb-3", color="primary", n_clicks=0,
                         style={"margin-left": "20px", "margin-top": "10px"}),
@@ -269,6 +274,6 @@ def init_dashboard(server, authentic_id):
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname, cache, authentic_id)
+    init_callbacks(dash_app, tmpdirname, background_callback_manager, authentic_id, cache)
 
     return dash_app.server

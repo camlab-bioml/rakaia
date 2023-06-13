@@ -124,10 +124,10 @@ def populate_upload_dict(uploaded_files):
                         acq_index = 0
                         for slide in mcd_file.slides:
                             upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)] = {}
-                            acq_index = 0
+                            # acq_index = 0
                             for acq in slide.acquisitions:
                                 upload_dict["experiment" + str(experiment_index)]["slide" + str(slide_index)][
-                                    "acq" + str(acq_index)] = {}
+                                    str(acq.description)] = {}
                                 if channel_labels is None:
                                     channel_labels = acq.channel_labels
                                     channel_names = acq.channel_names
@@ -144,8 +144,8 @@ def populate_upload_dict(uploaded_files):
                                 channel_index = 0
                                 for channel in img:
                                     upload_dict["experiment" + str(experiment_index)]["slide" +
-                                                                                      str(slide_index)]["acq" +
-                                                                                                        str(acq_index)][
+                                                                                      str(slide_index)][
+                                                                                      str(acq.description)][
                                         channel_names[channel_index]] = convert_to_below_255(channel)
                                     if channel_names[channel_index] not in unique_image_names:
                                         unique_image_names.append(channel_names[channel_index])

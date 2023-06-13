@@ -19,7 +19,7 @@ from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 
 
-def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
+def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     dash_app.config.suppress_callback_exceptions = True
 
     @dash_app.callback(
@@ -69,7 +69,9 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     @dash_app.callback(Output('uploaded_dict', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
                        Input('session_config', 'data'),
-                       prevent_initial_call=True)
+                       prevent_initial_call=True,
+                       background=True,
+                       manager=cache_manager)
     def create_upload_dict_from_filepath_string(session_dict):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             upload_dict, blend_dict, unique_images = populate_upload_dict(session_dict['uploads'])
@@ -92,7 +94,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 if "metadata" not in exp:
                     for slide in uploaded[exp].keys():
                         for acq in uploaded[exp][slide].keys():
-                            datasets.append(f"{exp}_{slide}_{acq}")
+                            datasets.append(f"{exp}+{slide}+{acq}")
             return datasets, None, None
         else:
             raise PreventUpdate
@@ -152,12 +154,12 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(Output('image_layers', 'options'),
-                       Input('uploaded_dict', 'data'),
+                       State('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'))
     def create_dropdown_options(image_dict, data_selection, names):
         if image_dict and data_selection:
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             # imp: use the channel label for the dropdown view and the name in the background to retrieve
             try:
@@ -214,7 +216,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         # conditions where the callback should not occur
         # if the pixel hist is modified and the dragmode is either pan or zoom
         pixel_drag_changed = ctx.triggered_id in ["pixel-hist"] and hist_layout is not None and \
-                             hist_layout in [{'dragmode': 'zoom'}, {'dragmode': 'pan'}]
+                             hist_layout in [{'dragmode': 'zoom'}, {'dragmode': 'pan'}, {'autosize': True}]
 
         # if the callback is from the toggle preset and the current channel has the same parameters
         preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
@@ -225,10 +227,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         if not pixel_drag_changed and not change_on_tab and ctx.triggered_id not in ["bool-apply-filter"]:
             # populate the blend dict from an h5 upload from a previous session
             if ctx.triggered_id == "session_config" and uploaded is not None:
-                upload_dict, current_blend_dict, unique_images = populate_upload_dict(session_dict['uploads'])
-                if current_blend_dict is None:
-                    current_blend_dict = create_new_blending_dict(uploaded)
-
+                current_blend_dict = create_new_blending_dict(uploaded)
                 return current_blend_dict, None
 
             if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
@@ -254,7 +253,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             # update the layers with the colour
             if ctx.triggered_id in ["image_layers"] and add_to_layer is not None and \
                     current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
-                split = data_selection.split("_")
+                split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
                 if all_layers is None:
                     all_layers = {}
@@ -295,7 +294,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             if ctx.triggered_id in ['annotation-color-picker'] and \
                     layer is not None and current_blend_dict is not None and data_selection is not None and \
                     current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
-                split = data_selection.split("_")
+                split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
                 current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
                 array = uploaded[exp][slide][acq][layer]
@@ -332,7 +331,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             #         current_blend_dict is not None and filter_value is not None and \
             #         ctx.triggered_id not in ['image-analysis']:
             #
-            #     split = data_selection.split("_")
+            #     split = data_selection.split("+")
             #     exp, slide, acq = split[0], split[1], split[2]
             #     array = uploaded[exp][slide][acq][layer]
             #
@@ -373,7 +372,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                     hist_layout not in [{'autosize': True}, {'dragmode': 'zoom'}, {'dragmode': 'pan'}] and \
                     all([elem not in hist_layout for elem in zoom_keys]):
 
-                split = data_selection.split("_")
+                split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
                 array = uploaded[exp][slide][acq][layer]
 
@@ -444,7 +443,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             # if a preset is selected, apply it to the current blend dict and array
             if ctx.triggered_id in ['preset-options'] and None not in \
                     (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
-                split = data_selection.split("_")
+                split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
                 array = uploaded[exp][slide][acq][layer]
 
@@ -462,7 +461,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             else:
                 return current_blend_dict, Serverside(all_layers)
         else:
-            return current_blend_dict, Serverside(all_layers)
+            raise PreventUpdate
 
     @dash_app.callback(State('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
@@ -493,7 +492,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers) and \
                 not only_options_changed:
 
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded[exp][slide][acq][layer]
 
@@ -543,7 +542,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
     # @cache.memoize())
     def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
         if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             for key, value in current_blend_dict[exp][slide][acq].items():
                 current_blend_dict[exp][slide][acq][key] = apply_preset_to_blend_dict(value,
@@ -606,7 +605,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                 data_selection is not None and ctx.triggered_id not in ["annotation_canvas", "custom-scale-val",
                                                                         "image-analysis"] and \
                 len(currently_selected) > 0 and cur_graph_layout not in [{'dragmode': 'pan'}]:
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
             for image in currently_selected:
@@ -842,8 +841,10 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             fig = cur_graph if cur_graph is not None else go.Figure()
             if 'data' in fig:
                 fig['data'] = []
-                fig['layout']['shapes'] = []
-                fig['layout']['annotations'] = [annotation for annotation in \
+                if 'shapes' in fig['layout']:
+                    fig['layout']['shapes'] = []
+                if 'annotations' in fig['layout']:
+                    fig['layout']['annotations'] = [annotation for annotation in \
                                                 fig['layout']['annotations'] if annotation['y'] == 0.06]
             fig = go.Figure(fig)
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -1105,7 +1106,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
 
         if graph is not None and graph_layout is not None and data_selection is not None:
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             # option 1: if shapes are drawn on the canvas
             if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
@@ -1269,11 +1270,14 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                        Input('toggle-gallery-view', 'value'),
                        Input('unique-channel-list', 'value'),
                        Input('alias-dict', 'data'),
-                       Input('preset-button', 'n_clicks'))
+                       Input('preset-button', 'n_clicks'),
+                       prevent_initial_call=True,
+                       background=True,
+                       manager=cache_manager)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks):
-        if gallery_data is not None and gallery_data is not None:
+        if gallery_data is not None:
             row_children = []
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -1282,7 +1286,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             if view_by_channel and channel_selected is not None:
                 views = get_all_images_by_channel_name(gallery_data, channel_selected)
             elif data_selection is not None:
-                split = data_selection.split("_")
+                split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
                 # maintain the original order of channels that is dictated by the metadata
                 views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
@@ -1331,7 +1335,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
         current_blend = [elem['value'] for elem in current_blend] if current_blend is not None else None
         children = []
         if blend_colours is not None and current_blend is not None and data_selection is not None:
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             for key, value in blend_colours[exp][slide][acq].items():
                 if blend_colours[exp][slide][acq][key]['color'] != '#FFFFFF' and key in current_blend:
@@ -1358,7 +1362,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                        State('pixel-hist', 'figure'),
                        prevent_initial_call=True)
     def limit_histogram_shapes(graph_layout, hist_fig):
-        if graph_layout is not None:
+        if graph_layout is not None and graph_layout not in [{"autosize": True}]:
             if 'shapes' in graph_layout:
                 if len(graph_layout['shapes']) > 1:
                     graph_layout['shapes'] = [graph_layout['shapes'][0]]
@@ -1402,13 +1406,16 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       State('blending_colours', 'data'))
+                       State('blending_colours', 'data'),
+                       prevent_initial_call=True,
+                       background=True,
+                       manager=cache_manager)
     # @cache.memoize())
     def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
 
         if None not in (selected_channel, uploaded, data_selection) and \
                 ctx.triggered_id in ["images_in_blend"]:
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             try:
                 fig = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
@@ -1468,7 +1475,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
 
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id == "images_in_blend" and not only_options_changed:
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             filter_type = current_blend_dict[exp][slide][acq][selected_channel]['filter_type']
             filter_val = current_blend_dict[exp][slide][acq][selected_channel]['filter_val']
@@ -1481,7 +1488,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
             return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             filter_type = preset_dict[preset_selection]['filter_type']
             filter_val = preset_dict[preset_selection]['filter_val']
@@ -1511,7 +1518,7 @@ def init_callbacks(dash_app, tmpdirname, cache, authentic_id):
                                 current_blend_dict, current_presets, cur_preset_chosen):
         if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer,
                                                                               current_blend_dict):
-            split = data_selection.split("_")
+            split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             if preset_name not in current_preset_options:
                 current_preset_options.append(preset_name)
