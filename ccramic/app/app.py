@@ -87,6 +87,9 @@ def init_dashboard(server, authentic_id):
             id="fullscreen-canvas", fullscreen=True, size='xl',
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
                               "max-width": "none", "max-height": "none"}),
+        # modal for the dataset information
+        dbc.Modal(children=dbc.ModalBody([html.Div(id='data-preview-children', style={'whiteSpace': 'pre-line'})]),
+                  id="dataset-preview", size='l'),
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
         dbc.Tabs(id="all-tabs", children=[
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', children=[
@@ -103,8 +106,12 @@ def init_dashboard(server, authentic_id):
                         dbc.Button("Add file by path", id="add-file-by-path",
                         className="mb-3", color="primary", n_clicks=0,
                         style={"margin-left": "20px", "margin-top": "10px"}),
-                        html.Div([html.H5("Choose data collection", style={'width': '35%',
+                        html.Div([html.Span([html.H5("Choose data collection", style={'width': '35%',
                                         'display': 'inline-block'}),
+                                             dbc.Button("Dataset info", id="show-dataset-info",
+                        className="mb-3", color="primary", n_clicks=0,
+                        style={"margin-left": "-225px", "margin-top": "10px"})], style={"width": "50%",
+                                                                                        "margin-right": "25px"}),
                         html.H5("Choose channel image", style={'width': '65%', 'display': 'inline-block'}),
                         dcc.Dropdown(id='data-collection', multi=False, options=[],
                         style={'width': '30%', 'display': 'inline-block', 'margin-right': '-30'}),

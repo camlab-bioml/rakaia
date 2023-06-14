@@ -68,15 +68,21 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
     @dash_app.callback(Output('uploaded_dict', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
+                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('data-preview-children', 'children'),
                        Input('session_config', 'data'),
                        prevent_initial_call=True,
                        background=True,
                        manager=cache_manager)
     def create_upload_dict_from_filepath_string(session_dict):
+        print(session_dict)
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-            upload_dict, blend_dict, unique_images = populate_upload_dict(session_dict['uploads'])
+            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
-            return Serverside(upload_dict), session_dict
+            children = [html.H6("Dataset preview: ")]
+            for elem in dataset_information:
+                children.append(html.H6(elem))
+            return Serverside(upload_dict), session_dict, blend_dict, html.Div(children=children)
         else:
             raise PreventUpdate
 
@@ -236,7 +242,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if not pixel_drag_changed and not change_on_tab and ctx.triggered_id not in ["bool-apply-filter"]:
             # populate the blend dict from an h5 upload from a previous session
             if ctx.triggered_id == "session_config" and uploaded is not None:
-                current_blend_dict = create_new_blending_dict(uploaded)
+                if current_blend_dict is None:
+                    current_blend_dict = create_new_blending_dict(uploaded)
                 return current_blend_dict, None
 
             if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
@@ -1618,7 +1625,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         Output("fullscreen-canvas", "is_open"),
         Input('make-canvas-fullscreen', 'n_clicks'),
         [State("fullscreen-canvas", "is_open")])
-    def toggle_modal(n1, is_open):
+    def toggle_fullscreen_modal(n1, is_open):
         if n1:
             return not is_open
         return is_open
@@ -1657,3 +1664,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             return fig, cur_layout
         else:
             return {}, None
+
+    @dash_app.callback(
+        Output("dataset-preview", "is_open"),
+        Input('show-dataset-info', 'n_clicks'),
+        [State("dataset-preview", "is_open")])
+    def toggle_dataset_info_modal(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open

@@ -14,6 +14,7 @@ def populate_upload_dict(uploaded_files):
     filenames = [str(x) for x in uploaded_files]
     upload_dict = {}
     unique_image_names = []
+    dataset_information = []
     if len(filenames) > 0:
         upload_dict['metadata'] = {}
         metadata_channels = []
@@ -40,11 +41,18 @@ def populate_upload_dict(uploaded_files):
                         for acq in data_h5[exp][slide].keys():
                             upload_dict[exp][slide][acq] = {}
                             blend_dict[exp][slide][acq] = {}
+                            channel_index = 1
                             for channel in data_h5[exp][slide][acq]:
                                 upload_dict[exp][slide][acq][channel] = data_h5[exp][slide][acq][channel]['image'][()]
                                 if channel not in unique_image_names:
                                     unique_image_names.append(channel)
                                 blend_dict[exp][slide][acq][channel] = {}
+                                if channel_index == 1:
+                                    description = f"{acq}, Dimensions: {upload_dict[exp][slide][acq][channel].shape[1]}x" \
+                                                  f"{upload_dict[exp][slide][acq][channel].shape[0]}, " \
+                                                  f"Panel: {len(data_h5[exp][slide][acq].keys())} markers"
+                                    dataset_information.append(description)
+                                channel_index += 1
                                 for blend_key, blend_val in data_h5[exp][slide][acq][channel].items():
                                     if 'image' not in blend_key:
                                         if blend_val[()] != b'None':
@@ -97,6 +105,11 @@ def populate_upload_dict(uploaded_files):
                                                                               str(slide_index)]["acq" + \
                                                                                                 str(acq_index)][
                                     identifier] = convert_to_below_255(page.asarray())
+                                # add in a generic description for the ROI per tiff file
+                                if multi_channel_index == 1:
+                                    description = f"{'acq' + str(acq_index)}, Dimensions: {page.asarray().shape[1]}x" \
+                                                  f"{page.asarray().shape[0]}, Panel: {len(tif.pages)} markers"
+                                    dataset_information.append(description)
                                 multi_channel_index += 1
                                 if identifier not in metadata_channels:
                                     metadata_channels.append(identifier)
@@ -149,6 +162,11 @@ def populate_upload_dict(uploaded_files):
                                         channel_names[channel_index]] = convert_to_below_255(channel)
                                     if channel_names[channel_index] not in unique_image_names:
                                         unique_image_names.append(channel_names[channel_index])
+                                    # add information about the ROI into the description list
+                                    if channel_index == 0:
+                                        description = f"{acq.description}, Dimensions: {channel.shape[1]}x" \
+                                                      f"{channel.shape[0]}, Panel: {len(acq.channel_names)} markers"
+                                        dataset_information.append(description)
                                     channel_index += 1
                                 acq_index += 1
                             slide_index += 1
@@ -177,6 +195,10 @@ def populate_upload_dict(uploaded_files):
                                                                                   str(slide_index)]["acq" + \
                                                                                                     str(acq_index)][
                                     identifier] = convert_to_below_255(image)
+                                if image_index == 1:
+                                    description = f"{'acq' + str(acq_index)}, Dimensions: {image.shape[1]}x" \
+                                                  f"{image.shape[0]}, Panel: {len(acq_text_read.channel_names)} markers"
+                                    dataset_information.append(description)
                                 image_index += 1
                                 if identifier not in metadata_channels:
                                     metadata_channels.append(identifier)
@@ -195,7 +217,7 @@ def populate_upload_dict(uploaded_files):
                     except (OSError, AssertionError):
                         pass
 
-        return upload_dict, blend_dict, unique_image_names
+        return upload_dict, blend_dict, unique_image_names, dataset_information
     else:
         return None
 
