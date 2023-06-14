@@ -156,21 +156,23 @@ def populate_upload_dict(uploaded_files):
                                 else:
                                     assert all(label in acq.channel_labels for label in channel_labels)
                                     assert all(name in acq.channel_names for name in channel_names)
-                                img = mcd_file.read_acquisition(acq)
+                                # img = mcd_file.read_acquisition(acq)
                                 channel_index = 0
-                                for channel in img:
+                                for channel in acq.channel_names:
                                     # TODO: implement lazy loading (only read in images in
                                     #  ROI selection from the dropdown)
                                     upload_dict["experiment" + str(experiment_index)]["slide" +
                                                                                       str(slide_index)][
                                                                                       str(acq.description)][
-                                        channel_names[channel_index]] = None
+                                        channel] = None
                                     if channel_names[channel_index] not in unique_image_names:
                                         unique_image_names.append(channel_names[channel_index])
                                     # add information about the ROI into the description list
                                     if channel_index == 0:
-                                        description = f"{acq.description}, Dimensions: {channel.shape[1]}x" \
-                                                      f"{channel.shape[0]}, Panel: {len(acq.channel_names)} markers"
+                                        dim_width = acq.metadata['MaxX'] if 'MaxX' in acq.metadata else "NA"
+                                        dim_height = acq.metadata['MaxY'] if 'MaxY' in acq.metadata else "NA"
+                                        description = f"{acq.description}, Dimensions: {dim_width}x" \
+                                                      f"{dim_height}, Panel: {len(acq.channel_names)} markers"
                                         dataset_information.append(description)
                                     channel_index += 1
                                 acq_index += 1

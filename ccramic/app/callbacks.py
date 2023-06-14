@@ -1027,12 +1027,16 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('imc-metadata-editable', 'data'),
                        State('blending_colours', 'data'),
                        Input("open-download-collapse", "n_clicks"),
-                       Input("download-collapse", "is_open"))
+                       Input("download-collapse", "is_open"),
+                       State('data-collection', 'value'))
     # @cache.memoize())
-    def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open):
+    def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection):
         # TODO: change when the download is populated so that it is not being overwritten on every change of markers
         if uploaded is not None and blend_dict is not None and \
                 all(elem in uploaded.keys() for elem in blend_dict.keys()) and nclicks > 0 and download_open:
+
+            split = data_selection.split("+")
+            acq_selected = split[2]
             download_dir = os.path.join(tmpdirname,
                                         authentic_id,
                                         'downloads')
@@ -1058,23 +1062,27 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                         else:
                             hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
                     else:
+                        # with lay loading, if there is no image to write, pass
                         if exp not in hf:
                             hf.create_group(exp)
                         for slide in uploaded[exp].keys():
                             if slide not in hf[exp]:
                                 hf[exp].create_group(slide)
                             for acq in uploaded[exp][slide].keys():
-                                if acq not in hf[exp][slide]:
-                                    hf[exp][slide].create_group(acq)
-                                for key, value in uploaded[exp][slide][acq].items():
-                                    if key not in hf[exp][slide][acq]:
-                                        hf[exp][slide][acq].create_group(key)
-                                    if 'image' not in hf[exp][slide][acq][key] and value is not None:
-                                        hf[exp][slide][acq][key].create_dataset('image', data=value)
-                                    if blend_dict is not None and key in blend_dict[exp][slide][acq].keys():
-                                        for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
-                                            data_write = blend_val if blend_val is not None else "None"
-                                            hf[exp][slide][acq][key].create_dataset(blend_key, data=data_write)
+                                if acq == acq_selected:
+                                    if acq not in hf[exp][slide]:
+                                        hf[exp][slide].create_group(acq)
+                                    for key, value in uploaded[exp][slide][acq].items():
+                                        if key not in hf[exp][slide][acq]:
+                                            hf[exp][slide][acq].create_group(key)
+                                        if 'image' not in hf[exp][slide][acq][key]:
+                                            hf[exp][slide][acq][key].create_dataset('image', data=value)
+                                        if blend_dict is not None and key in blend_dict[exp][slide][acq].keys():
+                                            for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
+                                                data_write = blend_val if blend_val is not None else "None"
+                                                hf[exp][slide][acq][key].create_dataset(blend_key, data=data_write)
+                                else:
+                                    pass
                 try:
                     hf.close()
                 except:

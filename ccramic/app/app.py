@@ -220,7 +220,7 @@ def init_dashboard(server, authentic_id):
                         dbc.Tooltip(children="Open up the panel to get the download links.",
                                     target="open-download-collapse"),
                         html.Div(dbc.Collapse(
-                        html.Div([html.A(id='download-link', children='Download File'),
+                        html.Div([html.A(id='download-link', children='Download current session'),
                         html.Br(),
                         html.A(id='download-link-canvas-tiff', children='Download Canvas as tiff')]),
                         id="download-collapse", is_open=False), style={"minHeight": "100px"})]),
