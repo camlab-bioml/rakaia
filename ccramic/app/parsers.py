@@ -43,15 +43,18 @@ def populate_upload_dict(uploaded_files):
                             blend_dict[exp][slide][acq] = {}
                             channel_index = 1
                             for channel in data_h5[exp][slide][acq]:
-                                upload_dict[exp][slide][acq][channel] = data_h5[exp][slide][acq][channel]['image'][()]
+                                try:
+                                    upload_dict[exp][slide][acq][channel] = data_h5[exp][slide][acq][channel]['image'][()]
+                                    if channel_index == 1:
+                                        description = f"{acq}, Dimensions: {upload_dict[exp][slide][acq][channel].shape[1]}x" \
+                                                      f"{upload_dict[exp][slide][acq][channel].shape[0]}, " \
+                                                      f"Panel: {len(data_h5[exp][slide][acq].keys())} markers"
+                                        dataset_information.append(description)
+                                except KeyError:
+                                    pass
                                 if channel not in unique_image_names:
                                     unique_image_names.append(channel)
                                 blend_dict[exp][slide][acq][channel] = {}
-                                if channel_index == 1:
-                                    description = f"{acq}, Dimensions: {upload_dict[exp][slide][acq][channel].shape[1]}x" \
-                                                  f"{upload_dict[exp][slide][acq][channel].shape[0]}, " \
-                                                  f"Panel: {len(data_h5[exp][slide][acq].keys())} markers"
-                                    dataset_information.append(description)
                                 channel_index += 1
                                 for blend_key, blend_val in data_h5[exp][slide][acq][channel].items():
                                     if 'image' not in blend_key:
@@ -156,10 +159,12 @@ def populate_upload_dict(uploaded_files):
                                 img = mcd_file.read_acquisition(acq)
                                 channel_index = 0
                                 for channel in img:
+                                    # TODO: implement lazy loading (only read in images in
+                                    #  ROI selection from the dropdown)
                                     upload_dict["experiment" + str(experiment_index)]["slide" +
                                                                                       str(slide_index)][
                                                                                       str(acq.description)][
-                                        channel_names[channel_index]] = convert_to_below_255(channel)
+                                        channel_names[channel_index]] = None
                                     if channel_names[channel_index] not in unique_image_names:
                                         unique_image_names.append(channel_names[channel_index])
                                     # add information about the ROI into the description list
@@ -243,3 +248,29 @@ def create_new_blending_dict(uploaded):
                                                                         'filter_val': None}
                         current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
     return current_blend_dict
+
+
+def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config):
+    """
+    Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
+    """
+    try:
+        split = dataset_selection.split("+")
+        exp, slide, acq_name = split[0], split[1], split[2]
+        # get the index of the file from the experiment number in the event that there are multiple uploads
+        index = int(exp.split("experiment")[1])
+        file_path = session_config['uploads'][index]
+        assert file_path.endswith('.mcd')
+        with MCDFile(file_path) as mcd_file:
+            for slide_inside in mcd_file.slides:
+                for acq in slide_inside.acquisitions:
+                    if acq.description == acq_name:
+                        channel_names = acq.channel_names
+                        channel_index = 0
+                        img = mcd_file.read_acquisition(acq)
+                        for channel in img:
+                            upload_dict[exp][slide][acq_name][channel_names[channel_index]] = channel
+                            channel_index += 1
+        return upload_dict
+    except (KeyError, AssertionError):
+        return upload_dict

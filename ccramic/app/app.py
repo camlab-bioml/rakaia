@@ -267,6 +267,8 @@ def init_dashboard(server, authentic_id):
             ], id='tab-quant')
         ]),
         dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+        # use a blank template for the lazy loading
+        dcc.Loading(dcc.Store(id="uploaded_dict_template"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="session_config"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),

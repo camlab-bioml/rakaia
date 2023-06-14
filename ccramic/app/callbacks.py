@@ -1,4 +1,5 @@
 import anndata
+import dash.exceptions
 import imageio.plugins.freeimage
 import tifffile
 import plotly.express as px
@@ -66,7 +67,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             else:
                 raise PreventUpdate
 
-    @dash_app.callback(Output('uploaded_dict', 'data'),
+    @dash_app.callback(Output('uploaded_dict_template', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('data-preview-children', 'children'),
@@ -75,7 +76,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        background=True,
                        manager=cache_manager)
     def create_upload_dict_from_filepath_string(session_dict):
-        print(session_dict)
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
@@ -89,7 +89,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     @dash_app.callback(Output('data-collection', 'options'),
                        Output('data-collection', 'value'),
                        Output('image_layers', 'value', allow_duplicate=True),
-                       Input('uploaded_dict', 'data'),
+                       Input('uploaded_dict_template', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def populate_dataset_options(uploaded):
@@ -106,7 +106,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
-                       Input('uploaded_dict', 'data'),
+                       Input('uploaded_dict_template', 'data'),
                        State('annotation_canvas', 'figure'),
                        prevent_initial_call=True)
     # @cache.memoize())
@@ -161,16 +161,24 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
     @dash_app.callback(Output('image_layers', 'options'),
                        Output('image_layers', 'value', allow_duplicate=True),
-                       State('uploaded_dict', 'data'),
+                       Output('uploaded_dict', 'data', allow_duplicate=True),
+                       State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'),
                        State('image_layers', 'value'),
+                       State('session_config', 'data'),
                        prevent_initial_call=True)
-    def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels):
+    def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config):
+        """
+        #TODO: update here with lazy loading to read a specific ROI into the upload dict
+        """
         if image_dict and data_selection:
             split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
+            # load the specific ROI requested into the dictionary
             # imp: use the channel label for the dropdown view and the name in the background to retrieve
+            image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
+                                                     session_config=session_config)
             try:
                 assert all([elem in names.keys() for elem in image_dict[exp][slide][acq].keys()])
                 assert len(names.keys()) == len(image_dict[exp][slide][acq].keys())
@@ -180,9 +188,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     channels_return = list(currently_selected_channels)
                 else:
                     channels_return = []
-                return [{'label': names[i], 'value': i} for i in names.keys()], channels_return
+                return [{'label': names[i], 'value': i} for i in names.keys()], channels_return, Serverside(image_dict)
             except AssertionError:
-                return [], []
+                return [], [], Serverside(image_dict)
         else:
             raise PreventUpdate
 
@@ -203,7 +211,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
     @dash_app.callback(Input("annotation-color-picker", 'value'),
                        State('images_in_blend', 'value'),
-                       Input('uploaded_dict', 'data'),
+                       Input('uploaded_dict_template', 'data'),
+                       State('uploaded_dict', 'data'),
                        State('blending_colours', 'data'),
                        State('data-collection', 'value'),
                        Input('image_layers', 'value'),
@@ -221,7 +230,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('images_in_blend', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def set_blend_options_for_layer(colour, layer, uploaded, current_blend_dict, data_selection, add_to_layer,
+    def set_blend_options_for_layer(colour, layer, uploaded, uploaded_w_data,
+                                    current_blend_dict, data_selection, add_to_layer,
                                     all_layers, hist_layout, filter_chosen, filter_name, filter_value,
                                     session_dict, preset_selection, preset_dict, blend_options):
 
@@ -299,7 +309,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                             current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
                     if elem not in all_layers[exp][slide][acq].keys():
                         # create a nested dict with the image and all of the filters being used for it
-                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded[exp][slide][acq][elem],
+                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded_w_data[exp][slide][acq][elem],
                                                                                         current_blend_dict[exp][slide][
                                                                                             acq][
                                                                                             elem]['color'])).astype(
@@ -313,7 +323,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
                 current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
-                array = uploaded[exp][slide][acq][layer]
+                array = uploaded_w_data[exp][slide][acq][layer]
 
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
@@ -390,7 +400,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
                 split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
-                array = uploaded[exp][slide][acq][layer]
+                array = uploaded_w_data[exp][slide][acq][layer]
 
                 # when shape is first added, these are the keys
                 if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) == 1:
@@ -461,7 +471,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
                 split = data_selection.split("+")
                 exp, slide, acq = split[0], split[1], split[2]
-                array = uploaded[exp][slide][acq][layer]
+                array = uploaded_w_data[exp][slide][acq][layer]
 
                 # preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
                 for preset_val in preset_keys:
@@ -953,7 +963,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         Output("imc-metadata-editable", "columns", allow_duplicate=True),
         Output("imc-metadata-editable", "data", allow_duplicate=True),
         Input('metadata_config', 'data'),
-        State('uploaded_dict', 'data'),
+        State('uploaded_dict_template', 'data'),
         prevent_initial_call=True)
     # @cache.memoize())
     def populate_datatable_columns(metadata_config, uploaded):
@@ -973,7 +983,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     @dash_app.callback(
         Output("imc-metadata-editable", "columns"),
         Output("imc-metadata-editable", "data"),
-        Input('uploaded_dict', 'data'),
+        Input('uploaded_dict_template', 'data'),
         Input('image-metadata', 'data'))
     # @cache.memoize())
     def populate_datatable_columns(uploaded, column_dict):
@@ -1059,7 +1069,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                 for key, value in uploaded[exp][slide][acq].items():
                                     if key not in hf[exp][slide][acq]:
                                         hf[exp][slide][acq].create_group(key)
-                                    if 'image' not in hf[exp][slide][acq][key]:
+                                    if 'image' not in hf[exp][slide][acq][key] and value is not None:
                                         hf[exp][slide][acq][key].create_dataset('image', data=value)
                                     if blend_dict is not None and key in blend_dict[exp][slide][acq].keys():
                                         for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
@@ -1284,7 +1294,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
                        # Input('image-analysis', 'value'),
-                       State('uploaded_dict', 'data'),
+                       Input('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
@@ -1294,52 +1304,57 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Input('unique-channel-list', 'value'),
                        Input('alias-dict', 'data'),
                        Input('preset-button', 'n_clicks'),
+                       Input('all-tabs', 'active_tab'),
                        prevent_initial_call=True,
                        background=True,
                        manager=cache_manager)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks):
-        if gallery_data is not None:
-            row_children = []
-            zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
+                          tab_change):
+        try:
+            if gallery_data is not None:
+                row_children = []
+                zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
-            # decide if channel view or ROI view is selected
-            # channel view
-            if view_by_channel and channel_selected is not None:
-                views = get_all_images_by_channel_name(gallery_data, channel_selected)
-            elif data_selection is not None:
-                split = data_selection.split("+")
-                exp, slide, acq = split[0], split[1], split[2]
-                # maintain the original order of channels that is dictated by the metadata
-                views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
-            else:
-                views = None
+                # decide if channel view or ROI view is selected
+                # channel view
+                if view_by_channel and channel_selected is not None:
+                    views = get_all_images_by_channel_name(gallery_data, channel_selected)
+                elif data_selection is not None:
+                    split = data_selection.split("+")
+                    exp, slide, acq = split[0], split[1], split[2]
+                    # maintain the original order of channels that is dictated by the metadata
+                    views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
+                else:
+                    views = None
 
-            if views is not None:
-                for key, value in views.items():
-                    image_render = resize_for_canvas(value)
+                if views is not None:
+                    for key, value in views.items():
+                        image_render = resize_for_canvas(value)
 
-                    if None not in (preset_selection, preset_dict) and nclicks > 0:
-                        image_render = apply_preset_to_array(value, preset_dict[preset_selection])
+                        if None not in (preset_selection, preset_dict) and nclicks > 0:
+                            image_render = apply_preset_to_array(value, preset_dict[preset_selection])
 
-                    if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
-                        x_range_low = math.ceil(int(canvas_layout['xaxis.range[0]']))
-                        x_range_high = math.ceil(int(canvas_layout['xaxis.range[1]']))
-                        y_range_low = math.ceil(int(canvas_layout['yaxis.range[1]']))
-                        y_range_high = math.ceil(int(canvas_layout['yaxis.range[0]']))
-                        assert x_range_high >= x_range_low
-                        assert y_range_high >= y_range_low
-                        image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+                        if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
+                            x_range_low = math.ceil(int(canvas_layout['xaxis.range[0]']))
+                            x_range_high = math.ceil(int(canvas_layout['xaxis.range[1]']))
+                            y_range_low = math.ceil(int(canvas_layout['yaxis.range[1]']))
+                            y_range_high = math.ceil(int(canvas_layout['yaxis.range[0]']))
+                            assert x_range_high >= x_range_low
+                            assert y_range_high >= y_range_low
+                            image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                                            range(int(x_range_low), int(x_range_high), 1))]
 
-                    label = aliases[key] if aliases is not None and key in aliases.keys() else key
-                    row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(label, className="card-text")),
+                        label = aliases[key] if aliases is not None and key in aliases.keys() else key
+                        row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(label, className="card-text")),
                                                           dbc.CardImg(
                                                               src=Image.fromarray(image_render).convert('RGB'),
                                                               bottom=True)]), width=3))
-            return row_children
-        else:
+                return row_children
+            else:
+                raise PreventUpdate
+        except (dash.exceptions.LongCallbackError, AttributeError, KeyError):
             raise PreventUpdate
 
     @dash_app.server.route("/" + os.path.join(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
