@@ -91,8 +91,9 @@ def init_dashboard(server, authentic_id):
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
                               "max-width": "none", "max-height": "none"}),
         # modal for the dataset information
-        dbc.Modal(children=dbc.ModalBody([html.Div(id='data-preview-children', style={'whiteSpace': 'pre-line'})]),
-                  id="dataset-preview", size='l'),
+        dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='dataset-preview-table', columns=[], data=None,
+                                            editable=False, filter_action='native')]),
+                  id="dataset-preview", size='xl'),
         html.H2("ccramic: Cell-type Classification from Rapid Analysis of Multiplexed Imaging (mass) cytometry)"),
         dbc.Tabs(id="all-tabs", children=[
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', children=[

@@ -296,5 +296,5 @@ def validate_incoming_metadata_table(metadata, upload_dict):
                         # assert that for each ROI, the length is the same as the number of rows in the metadata
                         assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
         return metadata
-    except AssertionError:
+    except (AssertionError, AttributeError):
         return None

@@ -18,6 +18,7 @@ from tifffile import TiffFile, imwrite
 import math
 from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
+from numpy.core._exceptions import _ArrayMemoryError
 
 
 def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
@@ -65,7 +66,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             if error_config is None:
                 error_config = {"error": None}
             # session_config = {'uploads': []}
-            if os.path.exists(filepath):
+            if os.path.isfile(filepath):
                 session_config['uploads'].append(filepath)
                 error_config["error"] = None
                 return session_config, error_config
@@ -78,7 +79,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     @dash_app.callback(Output('uploaded_dict_template', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
                        Output('blending_colours', 'data', allow_duplicate=True),
-                       Output('data-preview-children', 'children'),
+                       Output('dataset-preview-table', 'columns'),
+                       Output('dataset-preview-table', 'data'),
                        Input('session_config', 'data'),
                        prevent_initial_call=True,
                        background=True,
@@ -87,10 +89,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
-            children = [html.H6("Dataset preview: ")]
-            for elem in dataset_information:
-                children.append(html.H6(elem))
-            return Serverside(upload_dict), session_dict, blend_dict, html.Div(children=children)
+            columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
+            data = pd.DataFrame(dataset_information).to_dict(orient='records')
+            return Serverside(upload_dict), session_dict, blend_dict, columns, data
         else:
             raise PreventUpdate
 
@@ -988,21 +989,31 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     @dash_app.callback(
         Output("imc-metadata-editable", "columns", allow_duplicate=True),
         Output("imc-metadata-editable", "data", allow_duplicate=True),
+        Output('session_alert_config', 'data', allow_duplicate=True),
         Input('metadata_config', 'data'),
         State('uploaded_dict_template', 'data'),
+        State('session_alert_config', 'data'),
         prevent_initial_call=True)
     # @cache.memoize())
-    def populate_datatable_columns(metadata_config, uploaded):
+    def populate_datatable_columns(metadata_config, uploaded, error_config):
         if metadata_config is not None and len(metadata_config['uploads']) > 0:
+            if error_config is None:
+                error_config = {"error": None}
             metadata_read = pd.read_csv(metadata_config['uploads'][0])
             metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
             if metadata_validated is not None and 'ccramic Label' not in metadata_validated.keys():
                 metadata_validated['ccramic Label'] = metadata_validated["Channel Label"]
                 return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                         p in metadata_validated.keys()], \
-                    pd.DataFrame(metadata_validated).to_dict(orient='records')
+                    pd.DataFrame(metadata_validated).to_dict(orient='records'), dash.no_update
             else:
-                raise PreventUpdate
+                error_config["error"] = "Could not import custom metadata. Ensure that: \n \n- The dataset " \
+                                        "containing the images is " \
+                                        "uploaded first" \
+                                        "\n - the columns `Channel Name` and " \
+                                        "`Channel Label` are present \n - the number of rows matches the number of " \
+                                        "channels in the current dataset. \n"
+                return dash.no_update, dash.no_update, error_config
         else:
             raise PreventUpdate
 
@@ -1220,7 +1231,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                         min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
                         aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
 
-                    except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError):
+                    except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
+                            _ArrayMemoryError):
                         pass
 
                 layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
@@ -1257,7 +1269,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
                     return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-                except (AssertionError, ValueError, ZeroDivisionError, TypeError):
+                except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
                     return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                          'Min': []}).to_dict(orient='records')
 
@@ -1291,7 +1303,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
                     return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-                except (AssertionError, ValueError, ZeroDivisionError):
+                except (AssertionError, ValueError, ZeroDivisionError, _ArrayMemoryError):
                     return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                          'Min': []}).to_dict(orient='records')
 
@@ -1316,7 +1328,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
                     return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-                except (AssertionError, ValueError, ZeroDivisionError, TypeError):
+                except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
                     return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                          'Min': []}).to_dict(orient='records')
             else:
