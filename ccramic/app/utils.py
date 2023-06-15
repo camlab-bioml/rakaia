@@ -226,7 +226,7 @@ def pixel_hist_from_array(array):
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
     hist_data = np.hstack(array)
     max_hist = np.max(array)
-    hist = np.random.choice(hist_data, 2000000) if hist_data.shape[0] > 2000000 else hist_data
+    hist = np.random.choice(hist_data, 1000000) if hist_data.shape[0] > 1000000 else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     try:
         hist = np.concatenate([np.array(hist), np.array([max_hist])])

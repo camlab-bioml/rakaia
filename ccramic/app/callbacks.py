@@ -51,21 +51,29 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
+                       Output('session_alert_config', 'data'),
                        State('read-filepath', 'value'),
                        Input('add-file-by-path', 'n_clicks'),
                        State('session_config', 'data'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
-    def get_session_uploads_from_filepath(filepath, clicks, cur_session):
+    def get_session_uploads_from_filepath(filepath, clicks, cur_session, error_config):
         if filepath is not None and clicks > 0:
             # TODO: fix ability to read in multiple files at different times
             session_config = cur_session if cur_session is not None and \
                                             len(cur_session['uploads']) > 0 else {'uploads': []}
+            if error_config is None:
+                error_config = {"error": None}
             # session_config = {'uploads': []}
             if os.path.exists(filepath):
                 session_config['uploads'].append(filepath)
-                return session_config
+                error_config["error"] = None
+                return session_config, error_config
             else:
-                raise PreventUpdate
+                error_config["error"] = "Invalid filepath provided."
+                return dash.no_update, error_config
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(Output('uploaded_dict_template', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
@@ -177,8 +185,11 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             exp, slide, acq = split[0], split[1], split[2]
             # load the specific ROI requested into the dictionary
             # imp: use the channel label for the dropdown view and the name in the background to retrieve
-            image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
+            try:
+                image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
                                                      session_config=session_config)
+            except IndexError:
+                raise PreventUpdate
             try:
                 assert all([elem in names.keys() for elem in image_dict[exp][slide][acq].keys()])
                 assert len(names.keys()) == len(image_dict[exp][slide][acq].keys())
@@ -249,7 +260,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         change_on_tab = ctx.triggered[0]['prop_id'] == 'pixel-hist.relayoutData' and \
                         ctx.triggered[0]['value'] == {'autosize': True}
 
-        if not pixel_drag_changed and not change_on_tab and ctx.triggered_id not in ["bool-apply-filter"]:
+        if not pixel_drag_changed and not change_on_tab and ctx.triggered_id not in ["bool-apply-filter"] and \
+                session_dict is not None and len(session_dict['uploads']) > 0:
             # populate the blend dict from an h5 upload from a previous session
             if ctx.triggered_id == "session_config" and uploaded is not None:
                 if current_blend_dict is None:
@@ -558,6 +570,20 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 raise PreventUpdate
         else:
             raise PreventUpdate
+
+    @dash_app.callback(
+        Input('data-collection', 'value'),
+        Output('canvas-layers', 'data', allow_duplicate=True))
+    def reset_canvas_layers_on_new_dataset(data_selection):
+        """
+        Reset the canvas layers dictionary containing the cached images for the current canvas in order to
+        retain memory. Should be cleared on a new ROi selection
+        """
+        if data_selection is not None:
+            return None
+        else:
+            raise PreventUpdate
+
 
     @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
                        Input('preset-options', 'value'),
@@ -1453,9 +1479,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
-                       prevent_initial_call=True,
-                       background=True,
-                       manager=cache_manager)
+                       prevent_initial_call=True)
+                       # background=True,
+                       # manager=cache_manager)
     # @cache.memoize())
     def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
 
@@ -1617,7 +1643,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         """
         Populate a list of all unique channel names for the gallery view
         """
-        if session_config is not None:
+        if session_config is not None and 'unique_images' in session_config.keys():
             try:
                 assert all([elem in aliases.keys() for elem in session_config['unique_images']])
                 return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
@@ -1696,3 +1722,21 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if n1:
             return not is_open
         return is_open
+
+    @dash_app.callback(
+        Output("alert-modal", "is_open"),
+        Output("alert-information", "children"),
+        Input('session_alert_config', 'data'),
+        prevent_initial_call=True)
+    def show_alert_modal(alert_dict):
+        """
+        If the alert dict is populated with a warning, show the warning in the modal. Otherwise, do not populate and
+        don't show the modal
+        """
+
+        if alert_dict is not None and len(alert_dict) > 0 and "error" in alert_dict.keys() and \
+                alert_dict["error"] is not None:
+            children = [html.H6("Error: \n"), html.H6(alert_dict["error"])]
+            return True, children
+        else:
+            return False, None

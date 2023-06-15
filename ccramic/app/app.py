@@ -67,6 +67,9 @@ def init_dashboard(server, authentic_id):
     background_callback_manager = DiskcacheManager(cache)
 
     dash_app.layout = html.Div([
+        # this is the generic error modal that will pop up on specific errors return by the alert dict
+        dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})]),
+                  id="alert-modal"),
         # this modal is for the fullscreen view and does not belong in a nested tab
         dbc.Modal(children=dbc.ModalBody([dcc.Graph(config={"modeBarButtonsToAdd": [
                         # "drawline",
@@ -110,7 +113,7 @@ def init_dashboard(server, authentic_id):
                                         'display': 'inline-block'}),
                                              dbc.Button("Dataset info", id="show-dataset-info",
                         className="mb-3", color="primary", n_clicks=0,
-                        style={"margin-left": "-225px", "margin-top": "10px"})], style={"width": "50%",
+                        style={"margin-left": "-235px", "margin-top": "10px"})], style={"width": "50%",
                                                                                         "margin-right": "25px"}),
                         html.H5("Choose channel image", style={'width': '65%', 'display': 'inline-block'}),
                         dcc.Dropdown(id='data-collection', multi=False, options=[],
@@ -119,7 +122,7 @@ def init_dashboard(server, authentic_id):
                         style={'width': '70%', 'height': '100px', 'display': 'inline-block'})],
                         style={'width': '125%', 'height': '100%', 'display': 'inline-block', 'margin-left': '-30'}),
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
-                        html.Div([html.H3("Blending Canvas", style={"margin-right": "50px",
+                        html.Div([html.H3("", style={"margin-right": "50px",
                                                                            "margin-left": "30px"}),
                                   dbc.Button(children=html.Span([html.Div("Fullscreen"),
                                                                  html.I(className="fas fa-expand-arrows-alt",
@@ -270,6 +273,7 @@ def init_dashboard(server, authentic_id):
         # use a blank template for the lazy loading
         dcc.Loading(dcc.Store(id="uploaded_dict_template"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="session_config"), fullscreen=True, type="dot"),
+        dcc.Loading(dcc.Store(id="session_alert_config"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
         dcc.Loading(dcc.Store(id="image_presets"), fullscreen=True, type="dot"),
