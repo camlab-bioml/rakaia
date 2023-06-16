@@ -298,3 +298,17 @@ def validate_incoming_metadata_table(metadata, upload_dict):
         return metadata
     except (AssertionError, AttributeError):
         return None
+
+
+def copy_values_within_nested_dict(dict, current_data_selection, new_data_selection):
+    """
+    Copy the blend dictionary parameters (colour, filtering, scaling) from one acquisition/ROI in a nested
+    dictionary to another
+    """
+
+    cur_exp, cur_slide, cur_acq = current_data_selection.split("+")
+    new_exp, new_slide, new_acq = new_data_selection.split("+")
+
+    for key, value in dict[cur_exp][cur_slide][cur_acq].items():
+        dict[new_exp][new_slide][new_acq][key] = value
+    return dict
