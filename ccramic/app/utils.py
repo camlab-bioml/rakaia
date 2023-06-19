@@ -134,7 +134,7 @@ def path_to_indices(path):
     indices_str = [
         el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")
     ]
-    return np.rint(np.array(indices_str, dtype=float)).astype(np.int)
+    return np.rint(np.array(indices_str, dtype=float)).astype(int)
 
 
 def path_to_mask(path, shape):
@@ -143,7 +143,7 @@ def path_to_mask(path, shape):
     """
     cols, rows = path_to_indices(path).T
     rr, cc = draw.polygon(rows, cols)
-    mask = np.zeros(shape, dtype=np.bool)
+    mask = np.zeros(shape, dtype=bool)
     mask[rr, cc] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask
@@ -226,7 +226,7 @@ def pixel_hist_from_array(array):
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
     hist_data = np.hstack(array)
     max_hist = np.max(array)
-    hist = np.random.choice(hist_data, 2000000) if hist_data.shape[0] > 2000000 else hist_data
+    hist = np.random.choice(hist_data, 1000000) if hist_data.shape[0] > 1000000 else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     try:
         hist = np.concatenate([np.array(hist), np.array([max_hist])])
@@ -273,7 +273,8 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
                     for channel in upload_dict[exp][slide][acq].keys():
                         if channel == channel_name:
                             string = f"{exp}_{slide}_{acq}"
-                            images[string] = upload_dict[exp][slide][acq][channel]
+                            if upload_dict[exp][slide][acq][channel] is not None:
+                                images[string] = upload_dict[exp][slide][acq][channel]
     return images
 
 
@@ -295,5 +296,19 @@ def validate_incoming_metadata_table(metadata, upload_dict):
                         # assert that for each ROI, the length is the same as the number of rows in the metadata
                         assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
         return metadata
-    except AssertionError:
+    except (AssertionError, AttributeError):
         return None
+
+
+def copy_values_within_nested_dict(dict, current_data_selection, new_data_selection):
+    """
+    Copy the blend dictionary parameters (colour, filtering, scaling) from one acquisition/ROI in a nested
+    dictionary to another
+    """
+
+    cur_exp, cur_slide, cur_acq = current_data_selection.split("+")
+    new_exp, new_slide, new_acq = new_data_selection.split("+")
+
+    for key, value in dict[cur_exp][cur_slide][cur_acq].items():
+        dict[new_exp][new_slide][new_acq][key] = value
+    return dict
