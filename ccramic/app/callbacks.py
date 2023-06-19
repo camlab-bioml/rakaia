@@ -332,9 +332,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                         # do not override the colour of the curreht channel
                         current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
                             current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
-                    if elem not in all_layers[exp][slide][acq].keys():
+                    else:
                         # create a nested dict with the image and all of the filters being used for it
-                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(uploaded_w_data[exp][slide][acq][elem],
+                        # if the same blend parameters have been transferred from another ROI, apply them
+                        array_preset = apply_preset_to_array(uploaded_w_data[exp][slide][acq][elem],
+                                                             current_blend_dict[exp][slide][acq][elem])
+                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(array_preset,
                                                                                         current_blend_dict[exp][slide][
                                                                                             acq][
                                                                                             elem]['color'])).astype(
