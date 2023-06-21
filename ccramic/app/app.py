@@ -133,6 +133,8 @@ def init_dashboard(server, authentic_id):
                                              id="make-canvas-fullscreen",
                                             color=None, n_clicks=0,
                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
+                                  dbc.Button("Auto-fit canvas", id="autosize-canvas",
+                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
                                   html.Div(style={"margin-left": "20px", "margin-right": "10px",
                                                                     "margin-top": "10px", "height": "100%",
                                                   "width": "150%"},

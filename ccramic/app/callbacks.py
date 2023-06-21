@@ -220,203 +220,186 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         else:
             return []
 
-    @dash_app.callback(Input("annotation-color-picker", 'value'),
-                       State('images_in_blend', 'value'),
-                       Input('uploaded_dict_template', 'data'),
+    @dash_app.callback(Input('session_config', 'data'),
+                       State('uploaded_dict_template', 'data'),
+                       State('blending_colours', 'data'),
+                       Output('blending_colours', 'data'),
+                       prevent_initial_call=True)
+    def create_new_blend_dict_on_upload(session_config, uploaded, current_blend_dict):
+        """
+        Create a new blending dictionary on a new dataset upload.
+        """
+        if session_config is not None:
+            if current_blend_dict is None and uploaded is not None:
+                current_blend_dict = create_new_blending_dict(uploaded)
+                return current_blend_dict
+            elif current_blend_dict is not None and uploaded is not None:
+                for exp in uploaded.keys():
+                    if "metadata" not in exp:
+                        for slide in uploaded[exp].keys():
+                            for acq in uploaded[exp][slide].keys():
+                                for channel in uploaded[exp][slide][acq].keys():
+                                    current_blend_dict[exp][slide][acq][channel] = {'color': None,
+                                                                                    'x_lower_bound': None,
+                                                                                    'x_upper_bound': None,
+                                                                                    'y_ceiling': None,
+                                                                                    'filter_type': None,
+                                                                                    'filter_val': None}
+                                    current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
+                return current_blend_dict
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Input('image_layers', 'value'),
                        State('uploaded_dict', 'data'),
                        State('blending_colours', 'data'),
                        State('data-collection', 'value'),
-                       Input('image_layers', 'value'),
+                       State('param_config', 'data'),
+                       State('canvas-layers', 'data'),
+                       Input('preset-options', 'value'),
+                       State('image_presets', 'data'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('canvas-layers', 'data', allow_duplicate=True),
+                       Output('param_config', 'data', allow_duplicate=True),
+                       prevent_initial_call=True)
+    def upload_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
+                                               param_dict, all_layers, preset_selection, preset_dict):
+        """
+        update the blend dictionary when a new channel is added to the multi-channel selector
+        """
+        use_preset_condition = None not in (preset_selection, preset_dict)
+        if add_to_layer is not None and current_blend_dict is not None:
+            split = data_selection.split("+")
+            exp, slide, acq = split[0], split[1], split[2]
+            if param_dict is None:
+                param_dict = {"current_roi": data_selection}
+            if data_selection is not None:
+                if current_blend_dict is not None and param_dict["current_roi"] != data_selection:
+                    current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
+                                                                        data_selection)
+                    param_dict["current_roi"] = data_selection
+                else:
+                    param_dict["current_roi"] = data_selection
+            if all_layers is None:
+                all_layers = {}
+            if exp not in all_layers.keys():
+                all_layers[exp] = {}
+            if slide not in all_layers[exp].keys():
+                all_layers[exp][slide] = {}
+            if acq not in all_layers[exp][slide].keys():
+                all_layers[exp][slide][acq] = {}
+            for elem in add_to_layer:
+                # if the selected channel doesn't have a config yet, create one either from scratch or a preset
+                if elem not in current_blend_dict[exp][slide][acq].keys():
+                    current_blend_dict[exp][slide][acq][elem] = {'color': None,
+                                                                 'x_lower_bound': None,
+                                                                 'x_upper_bound': None,
+                                                                 'y_ceiling': None,
+                                                                 'filter_type': None,
+                                                                 'filter_val': None}
+                    current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
+                    if use_preset_condition:
+                        current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
+                            current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
+                # if the selected channel is in the current blend, check if a preset is used to override
+                elif elem in current_blend_dict[exp][slide][acq].keys() and use_preset_condition:
+                    # do not override the colour of the curreht channel
+                    current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
+                        current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
+                else:
+                    # create a nested dict with the image and all of the filters being used for it
+                    # if the same blend parameters have been transferred from another ROI, apply them
+                    array_preset = apply_preset_to_array(uploaded_w_data[exp][slide][acq][elem],
+                                                         current_blend_dict[exp][slide][acq][elem])
+                    all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(array_preset,
+                                                                                    current_blend_dict[exp][slide][
+                                                                                        acq][
+                                                                                        elem]['color'])).astype(
+                        np.uint8)
+            return current_blend_dict, Serverside(all_layers), param_dict
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Input("annotation-color-picker", 'value'),
+                       State('images_in_blend', 'value'),
+                       State('uploaded_dict', 'data'),
+                       State('blending_colours', 'data'),
+                       State('data-collection', 'value'),
+                       State('image_layers', 'value'),
                        State('canvas-layers', 'data'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
-                       Output('param_config', 'data'),
-                       # Input('pixel-hist', 'figure'),
-                       Input('pixel-hist', 'relayoutData'),
-                       # Input('pixel-hist', 'figure'),
                        State('bool-apply-filter', 'value'),
                        State('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
-                       Input('session_config', 'data'),
-                       Input('preset-options', 'value'),
-                       State('image_presets', 'data'),
                        State('images_in_blend', 'options'),
-                       State('param_config', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def set_blend_options_for_layer(colour, layer, uploaded, uploaded_w_data,
+    def upload_blend_dict_on_color_selection(colour, layer, uploaded_w_data,
                                     current_blend_dict, data_selection, add_to_layer,
-                                    all_layers, hist_layout, filter_chosen, filter_name, filter_value,
-                                    session_dict, preset_selection, preset_dict, blend_options, param_dict):
+                                    all_layers, filter_chosen, filter_name, filter_value,
+                                    blend_options):
+        """
+        Update the blend dictionary and layer dictionary when a modification channel changes its colour
+        """
+        if layer is not None and current_blend_dict is not None and data_selection is not None and \
+                current_blend_dict is not None:
+            split = data_selection.split("+")
+            exp, slide, acq = split[0], split[1], split[2]
+            current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
+            array = uploaded_w_data[exp][slide][acq][layer]
 
-        # if data is uploaded, initialize the colour dict with white
-        # do not update the layers if none have been selected
+            blend_options = [elem['value'] for elem in blend_options]
+            if all([elem in add_to_layer for elem in blend_options]):
 
-        # conditions where the callback should not occur
-        # if the pixel hist is modified and the dragmode is either pan or zoom
+                # if upper and lower bounds have been set before for this layer, use them before recolouring
+
+                if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
+                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
+                    array = filter_by_upper_and_lower_bound(array,
+                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                                      'x_lower_bound']),
+                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                                      'x_upper_bound']))
+
+                if len(filter_chosen) > 0 and filter_name is not None:
+                    if filter_name == "median":
+                        array = median_filter(array, int(filter_value))
+                    else:
+                        array = gaussian_filter(array, int(filter_value))
+
+                # if filters have been selected, apply them before recolouring
+
+                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                                                                                 colour['hex'])).astype(np.uint8)
+                return current_blend_dict, Serverside(all_layers)
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(State('images_in_blend', 'value'),
+                       State('uploaded_dict', 'data'),
+                       State('blending_colours', 'data'),
+                       State('data-collection', 'value'),
+                       State('canvas-layers', 'data'),
+                       Input('pixel-hist', 'relayoutData'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('canvas-layers', 'data', allow_duplicate=True),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def set_blend_params_on_pixel_histogram_adjustment(layer, uploaded_w_data,
+                                    current_blend_dict, data_selection,
+                                    all_layers, hist_layout):
+
         pixel_drag_changed = ctx.triggered_id in ["pixel-hist"] and hist_layout is not None and \
                              hist_layout in [{'dragmode': 'zoom'}, {'dragmode': 'pan'}, {'autosize': True}]
 
         # if the callback is from the toggle preset and the current channel has the same parameters
-        preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
-        use_preset_condition = None not in (preset_selection, preset_dict)
         change_on_tab = ctx.triggered[0]['prop_id'] == 'pixel-hist.relayoutData' and \
                         ctx.triggered[0]['value'] == {'autosize': True}
 
-        if not pixel_drag_changed and not change_on_tab and ctx.triggered_id not in ["bool-apply-filter"] and \
-                session_dict is not None and len(session_dict['uploads']) > 0:
-            # populate the blend dict from an h5 upload from a previous session
-            if ctx.triggered_id == "session_config" and uploaded is not None:
-                if current_blend_dict is None:
-                    current_blend_dict = create_new_blending_dict(uploaded)
-                return current_blend_dict, None, dash.no_update
+        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
-            if ctx.triggered_id in ["uploaded_dict"] and ctx.triggered_id not in ['image-analysis']:
-                if current_blend_dict is None and uploaded is not None:
-                    current_blend_dict = create_new_blending_dict(uploaded)
-                    return current_blend_dict, None, dash.no_update
-                if current_blend_dict is not None and uploaded is not None:
-                    for exp in uploaded.keys():
-                        if "metadata" not in exp:
-                            for slide in uploaded[exp].keys():
-                                for acq in uploaded[exp][slide].keys():
-                                    for channel in uploaded[exp][slide][acq].keys():
-                                        current_blend_dict[exp][slide][acq][channel] = {'color': None,
-                                                                                        'x_lower_bound': None,
-                                                                                        'x_upper_bound': None,
-                                                                                        'y_ceiling': None,
-                                                                                        'filter_type': None,
-                                                                                        'filter_val': None}
-                                        current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
-                    return current_blend_dict, None
-                return current_blend_dict, None
-            # if a new image is added to the layer, update the colour to white by default
-            # update the layers with the colour
-            if ctx.triggered_id in ["image_layers"] and add_to_layer is not None and \
-                    current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
-                split = data_selection.split("+")
-                exp, slide, acq = split[0], split[1], split[2]
-                if param_dict is None:
-                    param_dict = {"current_roi": data_selection}
-                if data_selection is not None:
-                    if current_blend_dict is not None and param_dict["current_roi"] != data_selection:
-                        current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
-                                                                    data_selection)
-                        param_dict["current_roi"] = data_selection
-                    else:
-                        param_dict["current_roi"] = data_selection
-                if all_layers is None:
-                    all_layers = {}
-                if exp not in all_layers.keys():
-                    all_layers[exp] = {}
-                if slide not in all_layers[exp].keys():
-                    all_layers[exp][slide] = {}
-                if acq not in all_layers[exp][slide].keys():
-                    all_layers[exp][slide][acq] = {}
-                for elem in add_to_layer:
-                    # if the selected channel doesn't have a config yet, create one either from scratch or a preset
-                    if elem not in current_blend_dict[exp][slide][acq].keys():
-                        current_blend_dict[exp][slide][acq][elem] = {'color': None,
-                                                                     'x_lower_bound': None,
-                                                                     'x_upper_bound': None,
-                                                                     'y_ceiling': None,
-                                                                     'filter_type': None,
-                                                                     'filter_val': None}
-                        current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
-                        if use_preset_condition:
-                            current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
-                                current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
-                    # if the selected channel is in the current blend, check if a preset is used to override
-                    elif elem in current_blend_dict[exp][slide][acq].keys() and use_preset_condition:
-                        # do not override the colour of the curreht channel
-                        current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
-                            current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
-                    else:
-                        # create a nested dict with the image and all of the filters being used for it
-                        # if the same blend parameters have been transferred from another ROI, apply them
-                        array_preset = apply_preset_to_array(uploaded_w_data[exp][slide][acq][elem],
-                                                             current_blend_dict[exp][slide][acq][elem])
-                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(array_preset,
-                                                                                        current_blend_dict[exp][slide][
-                                                                                            acq][
-                                                                                            elem]['color'])).astype(
-                            np.uint8)
-                return current_blend_dict, Serverside(all_layers), param_dict
-            # if the trigger is the colour wheel, update the specific layer with the colour chosen
-            # update the layers with the colour
-            if ctx.triggered_id in ['annotation-color-picker'] and \
-                    layer is not None and current_blend_dict is not None and data_selection is not None and \
-                    current_blend_dict is not None and ctx.triggered_id not in ['image-analysis']:
-                split = data_selection.split("+")
-                exp, slide, acq = split[0], split[1], split[2]
-                current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
-                array = uploaded_w_data[exp][slide][acq][layer]
-
-                blend_options = [elem['value'] for elem in blend_options]
-                if all([elem in add_to_layer for elem in blend_options]):
-
-                    # if upper and lower bounds have been set before for this layer, use them before recolouring
-
-                    if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
-                            current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
-                        array = filter_by_upper_and_lower_bound(array,
-                                                                float(current_blend_dict[exp][slide][acq][layer][
-                                                                          'x_lower_bound']),
-                                                                float(current_blend_dict[exp][slide][acq][layer][
-                                                                          'x_upper_bound']))
-
-                    if len(filter_chosen) > 0 and filter_name is not None:
-                        if filter_name == "median":
-                            array = median_filter(array, int(filter_value))
-                        else:
-                            array = gaussian_filter(array, int(filter_value))
-
-                    # if filters have been selected, apply them before recolouring
-
-                    all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                                     colour['hex'])).astype(np.uint8)
-                    return current_blend_dict, Serverside(all_layers), dash.no_update
-                else:
-                    raise PreventUpdate
-
-            # if ctx.triggered_id in ["bool-apply-filter"] and layer is not None and \
-            #         current_blend_dict is not None and data_selection is not None and \
-            #         current_blend_dict is not None and filter_value is not None and \
-            #         ctx.triggered_id not in ['image-analysis']:
-            #
-            #     split = data_selection.split("+")
-            #     exp, slide, acq = split[0], split[1], split[2]
-            #     array = uploaded[exp][slide][acq][layer]
-            #
-            #     if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
-            #             current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
-            #         array = filter_by_upper_and_lower_bound(array,
-            #                                                 float(current_blend_dict[exp][slide][acq][layer][
-            #                                                           'x_lower_bound']),
-            #                                                 float(current_blend_dict[exp][slide][acq][layer][
-            #                                                           'x_upper_bound']))
-            #
-            #     if len(filter_chosen) > 0 and filter_name is not None:
-            #         if filter_name == "median":
-            #             array = median_filter(array, int(filter_value))
-            #         else:
-            #             array = gaussian_filter(array, int(filter_value))
-            #
-            #         current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
-            #         current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
-            #
-            #     else:
-            #         current_blend_dict[exp][slide][acq][layer]['filter_type'] = None
-            #         current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
-            #
-            #     all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-            #                                                                      current_blend_dict[exp][slide][acq][
-            #                                                                          layer][
-            #                                                                          'color'])).astype(np.uint8)
-            #
-            #     return current_blend_dict, Serverside(all_layers)
-
-            zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+        if not pixel_drag_changed and not change_on_tab:
             # imp: the histogram will reset on a tab change, so ensure that a tab change won't reset the canvas
             if ctx.triggered_id in ["pixel-hist"] and \
                     layer is not None and current_blend_dict is not None and data_selection is not None and \
@@ -492,27 +475,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                                                                      layer][
                                                                                      'color']))
 
-                return current_blend_dict, Serverside(all_layers), dash.no_update
-            # if a preset is selected, apply it to the current blend dict and array
-            if ctx.triggered_id in ['preset-options'] and None not in \
-                    (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
-                split = data_selection.split("+")
-                exp, slide, acq = split[0], split[1], split[2]
-                array = uploaded_w_data[exp][slide][acq][layer]
-
-                # preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
-                for preset_val in preset_keys:
-                    current_blend_dict[exp][slide][acq][layer][preset_val] = preset_dict[preset_selection][preset_val]
-
-                array = apply_preset_to_array(array, preset_dict[preset_selection])
-                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                                 current_blend_dict[exp][slide][acq][
-                                                                                     layer][
-                                                                                     'color']))
-                return current_blend_dict, Serverside(all_layers), dash.no_update
-
-            else:
-                return current_blend_dict, Serverside(all_layers), dash.no_update
+                return current_blend_dict, Serverside(all_layers)
         else:
             raise PreventUpdate
 
@@ -523,7 +486,42 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('canvas-layers', 'data'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
-                       # Input('pixel-hist', 'figure'),
+                       Input('preset-options', 'value'),
+                       State('image_presets', 'data'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def set_blend_params_on_preset_selection(layer, uploaded_w_data,
+                                    current_blend_dict, data_selection,
+                                    all_layers, preset_selection, preset_dict):
+        """
+        Set the blend param dictionary and canvas layer dictionary when a preset is applied to the current ROI.
+        """
+        preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
+        if None not in (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
+            split = data_selection.split("+")
+            exp, slide, acq = split[0], split[1], split[2]
+            array = uploaded_w_data[exp][slide][acq][layer]
+
+            for preset_val in preset_keys:
+                current_blend_dict[exp][slide][acq][layer][preset_val] = preset_dict[preset_selection][preset_val]
+
+            array = apply_preset_to_array(array, preset_dict[preset_selection])
+            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                                                                             current_blend_dict[exp][slide][acq][
+                                                                                 layer][
+                                                                                 'color']))
+            return current_blend_dict, Serverside(all_layers)
+
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(State('images_in_blend', 'value'),
+                       State('uploaded_dict', 'data'),
+                       State('blending_colours', 'data'),
+                       State('data-collection', 'value'),
+                       State('canvas-layers', 'data'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('canvas-layers', 'data', allow_duplicate=True),
                        Input('bool-apply-filter', 'value'),
                        Input('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
@@ -662,22 +660,19 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('blending_colours', 'data'),
                        Input('alias-dict', 'data'),
                        State('annotation_canvas', 'figure'),
-                       Input('annotation_canvas', 'relayoutData'),
-                       Input('custom-scale-val', 'value'),
-                       State('set-x-auto-bound', 'value'),
-                       State('set-y-auto-bound', 'value'),
-                       State('window_config', 'data'),
-                       Input('activate-coord', 'n_clicks'),
+                       State('annotation_canvas', 'relayoutData'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def render_image_on_canvas(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
-                               cur_graph, cur_graph_layout, custom_scale_val, x_request, y_request, current_window,
-                               nclicks_coord):
+    def render_canvas_from_layer_change(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
+                               cur_graph, cur_graph_layout):
+
+        """
+        Update the canvas from a layer dictionary update
+        """
 
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
-                data_selection is not None and ctx.triggered_id not in ["annotation_canvas", "custom-scale-val",
-                                                                        "image-analysis", "activate-coord"] and \
-                len(currently_selected) > 0 and cur_graph_layout not in [{'dragmode': 'pan'}]:
+                data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
+                not in [{'dragmode': 'pan'}]:
             split = data_selection.split("+")
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
@@ -825,12 +820,28 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 return fig, str(dest_file), {'autosize': True}
             except ValueError:
                 return {}, None, None
+        else:
+            raise PreventUpdate
 
+
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
+                       State('annotation_canvas', 'figure'),
+                       Input('annotation_canvas', 'relayoutData'),
+                       Input('custom-scale-val', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def render_canvas_from_zoom_scale_update(cur_graph, cur_graph_layout, custom_scale_val):
+
+        """
+        Update the annotation canvas when the zoom or scalebar is modified.
+        """
+
+        bad_update = ctx.triggered_id == "annotation_canvas" and cur_graph_layout in [{"autosize": True}]
         # update the scale bar with and without zooming
-        elif ctx.triggered_id in ["annotation_canvas", "custom-scale-val"] and \
-                cur_graph is not None and \
-                'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"] and \
-                cur_graph_layout not in [{'dragmode': 'drawclosedpath'}]:
+        if cur_graph is not None and \
+             'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"] and \
+             cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and not bad_update:
             try:
                 fig = go.Figure(cur_graph)
                 # find the text annotation that has um in the text and the correct location
@@ -846,14 +857,14 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                 high = max(cur_graph['layout']['xaxis']['range'][1],
                                            cur_graph['layout']['xaxis']['range'][0])
                                 low = min(cur_graph['layout']['xaxis']['range'][1],
-                                           cur_graph['layout']['xaxis']['range'][0])
+                                          cur_graph['layout']['xaxis']['range'][0])
                                 x_range_high = math.ceil(int(high))
                                 x_range_low = math.floor(int(low))
                             elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
                                 high = max(cur_graph_layout['xaxis.range[1]'],
                                            cur_graph_layout['xaxis.range[0]'])
                                 low = min(cur_graph_layout['xaxis.range[1]'],
-                                           cur_graph_layout['xaxis.range[0]'])
+                                          cur_graph_layout['xaxis.range[0]'])
                                 x_range_high = math.ceil(int(high))
                                 x_range_low = math.ceil(int(low))
 
@@ -912,14 +923,34 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                                   pad=0
                                               ))
 
-                return fig, None, cur_graph_layout
+                return fig, cur_graph_layout
             except (ValueError, KeyError, AssertionError):
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
+                       State('image_layers', 'value'),
+                       State('annotation_canvas', 'figure'),
+                       State('annotation_canvas', 'relayoutData'),
+                       State('set-x-auto-bound', 'value'),
+                       State('set-y-auto-bound', 'value'),
+                       State('window_config', 'data'),
+                       Input('activate-coord', 'n_clicks'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def update_canvas_coords(currently_selected,
+                               cur_graph, cur_graph_layout, x_request, y_request, current_window,
+                               nclicks_coord):
+        """
+        Update the canvas coord range when custom coordinates are selected.
+        """
 
         # TODO: add the change with the coord picker here
-        elif ctx.triggered_id == 'activate-coord' and None not in (x_request, y_request) and \
+        if None not in (x_request, y_request) and \
                 nclicks_coord is not None and nclicks_coord > 0:
-            print(current_window)
             try:
                 # calculate midway distance for each coord. this distance is
                 # added on either side of the x and y requests
@@ -955,7 +986,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                   t=0,
                                   pad=0
                               ), dragmode="zoom")
-            return fig, None, {'autosize': True}
+            return fig, {'autosize': True}
         else:
             raise PreventUpdate
 
@@ -1174,16 +1205,17 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     @dash_app.callback(
         Output('annotation_canvas', 'style'),
         Input('annotation-canvas-size', 'value'),
-        Input('annotation_canvas', 'figure'),
+        State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),
+        Input('autosize-canvas', 'n_clicks'),
         prevent_initial_call=True)
-    def update_canvas_size(value, current_canvas, cur_graph_layout):
+    def update_canvas_size(value, current_canvas, cur_graph_layout, nclicks):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
         # only update the resolution if not using zoom or panning
         if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]) and \
                 'dragmode' not in cur_graph_layout.keys() and 'shapes' not in cur_graph_layout.keys() and \
-                'data' in current_canvas:
+                'data' in current_canvas and nclicks is not None and nclicks > 0:
 
             # if the current canvas is not None, update using the aspect ratio
             # otherwise, use aspect of 1
