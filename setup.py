@@ -1,8 +1,9 @@
 from setuptools import setup, find_packages
+from ccramic.app.entrypoint import __version__, _program
 
 setup(
-    name="ccramic",
-    version="0.1.0",
+    name=_program,
+    version=__version__,
     url='https://github.com/camlab-bioml/ccramic',
     project_urls={
         "Issues": "https://github.com/camlab-bioml/ccramic/issues",
