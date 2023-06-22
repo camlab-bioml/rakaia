@@ -476,6 +476,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                                                                      'color']))
 
                 return current_blend_dict, Serverside(all_layers)
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -652,7 +654,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure'),
-                       Output('download-link-canvas-tiff', 'href'),
                        Output('annotation_canvas', 'relayoutData'),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
@@ -686,7 +687,10 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                          elem in canvas_layers[exp][slide][acq].keys()])
             try:
                 fig = px.imshow(Image.fromarray(image))
-                x_axis_placement = 0.00001 * image.shape[1]
+                image_shape = image.shape
+                del image
+                fig.update_traces(hoverinfo="skip")
+                x_axis_placement = 0.00001 * image_shape[1]
                 # make sure the placement is min 0.05 and max 0.1
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
                 # if the current graph already has an image, take the existing layout and apply it to the new figure
@@ -707,12 +711,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     except KeyError:
                         fig['layout']['uirevision'] = True
 
-                        scale_val = int(0.075 * image.shape[1])
+                        scale_val = int(0.075 * image_shape[1])
                         scale_annot = str(scale_val) + "μm"
                         scale_text = f'<span style="color: white">{scale_annot}</span><br>'
                         # this is the middle point of the scale bar
                         # add shift based on the image shape
-                        shift = math.log10(image.shape[1]) - 3
+                        shift = math.log10(image_shape[1]) - 3
                         midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
                         # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
                         midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
@@ -740,12 +744,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     # if making the fig for the firs time, set the uirevision
                     fig['layout']['uirevision'] = True
 
-                    scale_val = int(0.075 * image.shape[1])
+                    scale_val = int(0.075 * image_shape[1])
                     scale_annot = str(scale_val) + "μm"
                     scale_text = f'<span style="color: white">{scale_annot}</span><br>'
                     # this is the middle point of the scale bar
                     # add shift based on the image shape
-                    shift = math.log10(image.shape[1]) - 3
+                    shift = math.log10(image_shape[1]) - 3
                     midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
                     # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
                     midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
@@ -797,15 +801,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                   ),
                                   )
 
-                dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
-                dest_file = os.path.join(dest_path, "canvas.tiff")
-                if not os.path.exists(dest_path):
-                    os.makedirs(dest_path)
-
-                # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
-                # buf = io.BytesIO(fig_bytes)
-                # img = Image.open(buf)
-                imwrite(dest_file, image, photometric='rgb')
                 # plotly.offline.plot(fig, filename='tiff.html')
                 # pio.write_image(fig, 'test_back.png', width=im.width, height=im.height)
                 # TODO: can use update traces to set a custom hover tip
@@ -816,10 +811,35 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 #         "ColY: %{y}"
                 #         "</extra>"
                 #     ]))
+                fig.update_traces(hovertemplate=None)
                 fig.update_layout(dragmode="zoom")
-                return fig, str(dest_file), {'autosize': True}
+                return fig, {'autosize': True}
             except ValueError:
-                return {}, None, None
+                return {}, None
+        #TODO: this step can be used to keep the current ui revision if a new ROi is selected
+
+        # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
+        #     fig = cur_graph if cur_graph is not None else go.Figure()
+        #     if 'data' in fig:
+        #         fig['data'] = []
+        #         if 'shapes' in fig['layout']:
+        #             fig['layout']['shapes'] = []
+        #         if 'annotations' in fig['layout']:
+        #             fig['layout']['annotations'] = [annotation for annotation in \
+        #                                         fig['layout']['annotations'] if annotation['y'] == 0.06]
+        #     fig = go.Figure(fig)
+        #     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+        #                       xaxis=go.XAxis(showticklabels=False),
+        #                       yaxis=go.YAxis(showticklabels=False),
+        #                       margin=dict(
+        #                           l=0,
+        #                           r=0,
+        #                           b=0,
+        #                           t=0,
+        #                           pad=0
+        #                       ), dragmode="zoom")
+        #     return fig, None, {'autosize': True}
+
         else:
             raise PreventUpdate
 
@@ -876,7 +896,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                             scale_val = scale_val if scale_val > 0 else 1
                             scale_annot = str(scale_val) + "μm"
                             scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                            # get the index of thre list element corresponding to this text annotation
+                            # get the index of the list element corresponding to this text annotation
                             index = cur_graph['layout']['annotations'].index(annotations)
                             cur_graph['layout']['annotations'][index]['text'] = scale_text
 
@@ -963,30 +983,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 cur_graph['layout']['yaxis']['range'] = [int(new_y_high), int(new_y_low)]
                 cur_graph['layout']['xaxis']['domain'] = [0, 1]
                 # cur_graph['layout']['dragmode'] = "zoom"
-                return go.Figure(cur_graph), None, new_layout
+                return go.Figure(cur_graph), new_layout
             except AssertionError:
                 raise PreventUpdate
-        elif currently_selected is not None and 'shapes' not in cur_graph_layout:
-            fig = cur_graph if cur_graph is not None else go.Figure()
-            if 'data' in fig:
-                fig['data'] = []
-                if 'shapes' in fig['layout']:
-                    fig['layout']['shapes'] = []
-                if 'annotations' in fig['layout']:
-                    fig['layout']['annotations'] = [annotation for annotation in \
-                                                fig['layout']['annotations'] if annotation['y'] == 0.06]
-            fig = go.Figure(fig)
-            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                              xaxis=go.XAxis(showticklabels=False),
-                              yaxis=go.YAxis(showticklabels=False),
-                              margin=dict(
-                                  l=0,
-                                  r=0,
-                                  b=0,
-                                  t=0,
-                                  pad=0
-                              ), dragmode="zoom")
-            return fig, {'autosize': True}
         else:
             raise PreventUpdate
 
@@ -1131,20 +1130,43 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('download-link', 'href'),
+                       Output('download-link-canvas-tiff', 'href'),
                        State('uploaded_dict', 'data'),
                        State('imc-metadata-editable', 'data'),
                        State('blending_colours', 'data'),
                        Input("open-download-collapse", "n_clicks"),
                        Input("download-collapse", "is_open"),
-                       State('data-collection', 'value'))
+                       State('data-collection', 'value'),
+                       Input('canvas-layers', 'data'),
+                       State('image_layers', 'value'))
     # @cache.memoize())
-    def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection):
-        # TODO: change when the download is populated so that it is not being overwritten on every change of markers
+    def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
+                                canvas_layers, currently_selected):
+        """
+        Create the download links for the current canvas and the session data.
+        Only update if the download dialog is open to avoid continuous updating on canvas change
+        """
         if uploaded is not None and blend_dict is not None and \
                 all(elem in uploaded.keys() for elem in blend_dict.keys()) and nclicks > 0 and download_open:
 
             split = data_selection.split("+")
-            acq_selected = split[2]
+            exp, slide, acq = split[0], split[1], split[2]
+
+            image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected if \
+                         elem in canvas_layers[exp][slide][acq].keys()])
+
+            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
+            dest_file = os.path.join(dest_path, "canvas.tiff")
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+
+            # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
+            # buf = io.BytesIO(fig_bytes)
+            # img = Image.open(buf)
+            imwrite(dest_file, image, photometric='rgb')
+
+            del image
+
             download_dir = os.path.join(tmpdirname,
                                         authentic_id,
                                         'downloads')
@@ -1176,26 +1198,26 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                         for slide in uploaded[exp].keys():
                             if slide not in hf[exp]:
                                 hf[exp].create_group(slide)
-                            for acq in uploaded[exp][slide].keys():
-                                if acq == acq_selected:
-                                    if acq not in hf[exp][slide]:
-                                        hf[exp][slide].create_group(acq)
-                                    for key, value in uploaded[exp][slide][acq].items():
-                                        if key not in hf[exp][slide][acq]:
-                                            hf[exp][slide][acq].create_group(key)
-                                        if 'image' not in hf[exp][slide][acq][key]:
-                                            hf[exp][slide][acq][key].create_dataset('image', data=value)
-                                        if blend_dict is not None and key in blend_dict[exp][slide][acq].keys():
-                                            for blend_key, blend_val in blend_dict[exp][slide][acq][key].items():
+                            for acq_in in uploaded[exp][slide].keys():
+                                if acq_in == acq:
+                                    if acq_in not in hf[exp][slide]:
+                                        hf[exp][slide].create_group(acq_in)
+                                    for key, value in uploaded[exp][slide][acq_in].items():
+                                        if key not in hf[exp][slide][acq_in]:
+                                            hf[exp][slide][acq_in].create_group(key)
+                                        if 'image' not in hf[exp][slide][acq_in][key]:
+                                            hf[exp][slide][acq_in][key].create_dataset('image', data=value)
+                                        if blend_dict is not None and key in blend_dict[exp][slide][acq_in].keys():
+                                            for blend_key, blend_val in blend_dict[exp][slide][acq_in][key].items():
                                                 data_write = blend_val if blend_val is not None else "None"
-                                                hf[exp][slide][acq][key].create_dataset(blend_key, data=data_write)
+                                                hf[exp][slide][acq_in][key].create_dataset(blend_key, data=data_write)
                                 else:
                                     pass
                 try:
                     hf.close()
                 except:
                     pass
-                return str(relative_filename)
+                return str(relative_filename), str(dest_file)
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
                 raise PreventUpdate
@@ -1657,7 +1679,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
-                else dict(hex="#00ABFC")
+                else dash.no_update
             return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
@@ -1670,7 +1692,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
-                else dict(hex="#00ABFC")
+                else dash.no_update
             return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         else:
             raise PreventUpdate
