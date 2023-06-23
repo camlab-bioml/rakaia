@@ -59,10 +59,9 @@ def init_app():
 
     with app.app_context():
         # Import parts of our core Flask app
-        import ccramic.app.routes
 
         # Import Dash application
-        from .app import init_dashboard, init_callbacks
+        from .app import init_dashboard
         # use a unique uuid for the session id I/O
         authentic_user = str(uuid.uuid1())
         app = init_dashboard(app, authentic_user)

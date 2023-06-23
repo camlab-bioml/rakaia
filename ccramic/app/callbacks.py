@@ -1,22 +1,13 @@
 import anndata
 import dash.exceptions
-import imageio.plugins.freeimage
-import tifffile
-import plotly.express as px
-import pandas as pd
-from dash import dash_table
-import os
-# from io import BytesIO
 from dash.exceptions import PreventUpdate
 import flask
 import dash_uploader as du
-from dash_extensions.enrich import DashProxy, Output, Input, State, Serverside, html, dcc, \
-    ServersideOutputTransform
+from dash_extensions.enrich import Output, Input, State, Serverside, html, dcc
 import dash_bootstrap_components as dbc
-from dash import ctx, DiskcacheManager
-from tifffile import TiffFile, imwrite
+from dash import ctx
+from tifffile import imwrite
 import math
-from scipy.ndimage import gaussian_filter, median_filter
 from .parsers import *
 from numpy.core._exceptions import _ArrayMemoryError
 
@@ -108,7 +99,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 if "metadata" not in exp:
                     for slide in uploaded[exp].keys():
                         for acq in uploaded[exp][slide].keys():
-                            datasets.append(f"{exp}+{slide}+{acq}")
+                            datasets.append(f"{exp}+++{slide}+++{acq}")
             return datasets, None, None
         else:
             raise PreventUpdate
@@ -181,7 +172,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         #TODO: update here with lazy loading to read a specific ROI into the upload dict
         """
         if image_dict and data_selection:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             # load the specific ROI requested into the dictionary
             # imp: use the channel label for the dropdown view and the name in the background to retrieve
@@ -232,21 +223,19 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if session_config is not None:
             if current_blend_dict is None and uploaded is not None:
                 current_blend_dict = create_new_blending_dict(uploaded)
-                return current_blend_dict
-            elif current_blend_dict is not None and uploaded is not None:
-                for exp in uploaded.keys():
-                    if "metadata" not in exp:
-                        for slide in uploaded[exp].keys():
-                            for acq in uploaded[exp][slide].keys():
-                                for channel in uploaded[exp][slide][acq].keys():
-                                    current_blend_dict[exp][slide][acq][channel] = {'color': None,
-                                                                                    'x_lower_bound': None,
-                                                                                    'x_upper_bound': None,
-                                                                                    'y_ceiling': None,
-                                                                                    'filter_type': None,
-                                                                                    'filter_val': None}
-                                    current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
-                return current_blend_dict
+            # elif current_blend_dict is not None and uploaded is not None:
+            #     for exp in uploaded.keys():
+            #         if "metadata" not in exp:
+            #             for slide in uploaded[exp].keys():
+            #                 for acq in uploaded[exp][slide].keys():
+            #                     for channel in uploaded[exp][slide][acq].keys():
+            #                         current_blend_dict[exp][slide][acq][channel] = {'color': None,
+            #                                                                         'x_lower_bound': None,
+            #                                                                         'x_upper_bound': None,
+            #                                                                         'filter_type': None,
+            #                                                                         'filter_val': None}
+            #                         current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
+            return current_blend_dict
         else:
             raise PreventUpdate
 
@@ -269,7 +258,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         """
         use_preset_condition = None not in (preset_selection, preset_dict)
         if add_to_layer is not None and current_blend_dict is not None:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             if param_dict is None:
                 param_dict = {"current_roi": data_selection}
@@ -294,7 +283,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     current_blend_dict[exp][slide][acq][elem] = {'color': None,
                                                                  'x_lower_bound': None,
                                                                  'x_upper_bound': None,
-                                                                 'y_ceiling': None,
                                                                  'filter_type': None,
                                                                  'filter_val': None}
                     current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
@@ -344,7 +332,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         """
         if layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
             array = uploaded_w_data[exp][slide][acq][layer]
@@ -381,102 +369,37 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('blending_colours', 'data'),
                        State('data-collection', 'value'),
                        State('canvas-layers', 'data'),
-                       Input('pixel-hist', 'relayoutData'),
+                       Input('pixel-intensity-slider', 'value'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def set_blend_params_on_pixel_histogram_adjustment(layer, uploaded_w_data,
+    def set_blend_params_on_pixel_range_adjustment(layer, uploaded_w_data,
                                     current_blend_dict, data_selection,
-                                    all_layers, hist_layout):
+                                    all_layers, slider_values):
 
-        pixel_drag_changed = ctx.triggered_id in ["pixel-hist"] and hist_layout is not None and \
-                             hist_layout in [{'dragmode': 'zoom'}, {'dragmode': 'pan'}, {'autosize': True}]
-
-        # if the callback is from the toggle preset and the current channel has the same parameters
-        change_on_tab = ctx.triggered[0]['prop_id'] == 'pixel-hist.relayoutData' and \
-                        ctx.triggered[0]['value'] == {'autosize': True}
-
-        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-
-        if not pixel_drag_changed and not change_on_tab:
-            # imp: the histogram will reset on a tab change, so ensure that a tab change won't reset the canvas
-            if ctx.triggered_id in ["pixel-hist"] and \
-                    layer is not None and current_blend_dict is not None and data_selection is not None and \
-                    current_blend_dict is not None and ctx.triggered_id not in ['image-analysis'] and \
-                    hist_layout is not None and \
-                    hist_layout not in [{'autosize': True}, {'dragmode': 'zoom'}, {'dragmode': 'pan'}] and \
-                    all([elem not in hist_layout for elem in zoom_keys]):
-
-                split = data_selection.split("+")
+        if None not in (slider_values, layer, data_selection, uploaded_w_data) and \
+                all([elem is not None for elem in slider_values]):
+            try:
+                slider_values = [int(elem) for elem in slider_values]
+                lower_bound = min(slider_values)
+                upper_bound = max(slider_values)
+                split = split_string_at_pattern(data_selection)
                 exp, slide, acq = split[0], split[1], split[2]
-                array = uploaded_w_data[exp][slide][acq][layer]
 
-                # when shape is first added, these are the keys
-                if 'shapes' in hist_layout.keys() and len(hist_layout['shapes']) == 1:
-                    if hist_layout['shapes'][0]['type'] == "rect":
-                        # IMP: figure out which is higher to set the proper upper and lower bounds
-                        # based on which direction the user draws from
-                        if float(hist_layout['shapes'][0]['x0']) < \
-                                float(hist_layout['shapes'][0]['x1']):
-                            lower_bound = float(hist_layout['shapes'][0]['x0'])
-                            upper_bound = float(hist_layout['shapes'][0]['x1'])
-                        else:
-                            lower_bound = float(hist_layout['shapes'][0]['x1'])
-                            upper_bound = float(hist_layout['shapes'][0]['x0'])
-                        if float(hist_layout['shapes'][0]['y0']) > float(hist_layout['shapes'][0]['y1']):
-                            y_ceiling = float(hist_layout['shapes'][0]['y0'])
-                        else:
-                            y_ceiling = float(hist_layout['shapes'][0]['y1'])
-                        array = filter_by_upper_and_lower_bound(array, lower_bound, upper_bound)
+                current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = int(lower_bound)
+                current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = int(upper_bound)
 
-                        current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
-                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
-                        current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
-
-                # when an existing shape is moved, the keys change to this format
-                elif 'shapes[0].x0' and 'shapes[0].x1' in hist_layout:
-                    if float(hist_layout['shapes[0].x0']) < float(hist_layout['shapes[0].x1']):
-                        lower_bound = float(hist_layout['shapes[0].x0'])
-                        upper_bound = float(hist_layout['shapes[0].x1'])
-                    else:
-                        lower_bound = float(hist_layout['shapes[0].x1'])
-                        upper_bound = float(hist_layout['shapes[0].x0'])
-                    if hist_layout['shapes[0].y0'] > hist_layout['shapes[0].y1']:
-                        y_ceiling = float(hist_layout['shapes[0].y0'])
-                    else:
-                        y_ceiling = float(hist_layout['shapes[0].y1'])
-
-                    array = filter_by_upper_and_lower_bound(array, lower_bound,
-                                                            upper_bound)
-
-                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = lower_bound
-                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = upper_bound
-                    current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = y_ceiling
-
-                # if there is no shape, reset the bounds to None
-                else:
-                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = None
-                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = None
-                    current_blend_dict[exp][slide][acq][layer]['y_ceiling'] = None
-
-                # if filters have been selected, apply them as well
-
-                if current_blend_dict[exp][slide][acq][layer]['filter_type'] is not None and \
-                        current_blend_dict[exp][slide][acq][layer]['filter_val'] is not None:
-                    if current_blend_dict[exp][slide][acq][layer]['filter_type'] == "median":
-                        array = median_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
-                    else:
-                        array = gaussian_filter(array, int(current_blend_dict[exp][slide][acq][layer]['filter_val']))
+                array = apply_preset_to_array(uploaded_w_data[exp][slide][acq][layer],
+                                  current_blend_dict[exp][slide][acq][layer])
 
                 # array = array * scale_factor
-                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                                 current_blend_dict[exp][slide][acq][
+                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array, current_blend_dict[exp][slide][acq][
                                                                                      layer][
                                                                                      'color']))
 
                 return current_blend_dict, Serverside(all_layers)
-            else:
+            except TypeError:
                 raise PreventUpdate
         else:
             raise PreventUpdate
@@ -500,7 +423,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         """
         preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
         if None not in (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded_w_data[exp][slide][acq][layer]
 
@@ -545,7 +468,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers) and \
                 not only_options_changed:
 
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded[exp][slide][acq][layer]
 
@@ -609,7 +532,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     # @cache.memoize())
     def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
         if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             for key, value in current_blend_dict[exp][slide][acq].items():
                 current_blend_dict[exp][slide][acq][key] = apply_preset_to_blend_dict(value,
@@ -674,7 +597,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
                 not in [{'dragmode': 'pan'}]:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
             for image in currently_selected:
@@ -720,7 +643,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                         midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
                         # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
                         midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
-                        fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
+                        font_size = 0.005*image_shape[1] if image_shape[1] < 1000 else 10
+                        midpoint = midpoint if font_size == 10 else 0.05
+                        fig.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
                                            yref='paper',
                                            # set the placement of where the text goes relative to the scale bar
                                            x=midpoint,
@@ -753,6 +678,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
                     # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
                     midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
+                    font_size = 0.005 * image_shape[1] if image_shape[1] < 1000 else 10
+                    midpoint = midpoint if font_size == 10 else 0.05
                     fig.add_annotation(text=scale_text, font={"size": 10}, xref='paper',
                                    yref='paper',
                                    # set the placement of where the text goes relative to the scale bar
@@ -1149,7 +1076,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if uploaded is not None and blend_dict is not None and \
                 all(elem in uploaded.keys() for elem in blend_dict.keys()) and nclicks > 0 and download_open:
 
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
 
             image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected if \
@@ -1278,7 +1205,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
 
         if graph is not None and graph_layout is not None and data_selection is not None:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             # option 1: if shapes are drawn on the canvas
             if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
@@ -1462,7 +1389,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 if view_by_channel and channel_selected is not None:
                     views = get_all_images_by_channel_name(gallery_data, channel_selected)
                 elif data_selection is not None:
-                    split = data_selection.split("+")
+                    split = split_string_at_pattern(data_selection)
                     exp, slide, acq = split[0], split[1], split[2]
                     # maintain the original order of channels that is dictated by the metadata
                     views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
@@ -1513,7 +1440,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         current_blend = [elem['value'] for elem in current_blend] if current_blend is not None else None
         children = []
         if blend_colours is not None and current_blend is not None and data_selection is not None:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             for key, value in blend_colours[exp][slide][acq].items():
                 if blend_colours[exp][slide][acq][key]['color'] != '#FFFFFF' and key in current_blend:
@@ -1534,25 +1461,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             return not is_open
         return is_open
 
-    @dash_app.callback(Output("pixel-hist", 'relayoutData', allow_duplicate=True),
-                       Output("pixel-hist", 'figure', allow_duplicate=True),
-                      Input('pixel-hist', 'relayoutData'),
-                       State('pixel-hist', 'figure'),
-                       prevent_initial_call=True)
-    def limit_histogram_shapes(graph_layout, hist_fig):
-        if graph_layout is not None and graph_layout not in [{"autosize": True}]:
-            if 'shapes' in graph_layout:
-                if len(graph_layout['shapes']) > 1:
-                    graph_layout['shapes'] = [graph_layout['shapes'][0]]
-            if 'layout' in hist_fig.keys():
-                if 'shapes' in hist_fig['layout'].keys() and len(hist_fig['layout']['shapes']) > 1:
-                    hist_fig['layout']['shapes'] = [hist_fig['layout']['shapes'][0]]
-            return graph_layout, hist_fig
-        else:
-            raise PreventUpdate
-
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
-                       Output("pixel-hist", 'relayoutData', allow_duplicate=True),
                        Input('data-collection', 'value'),
                        State('images_in_blend', 'value'),
                        prevent_initial_call=True)
@@ -1564,9 +1473,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                           yaxis=go.YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
             if new_selection is not None:
-                return fig, {'autosize': True}
+                return fig
             else:
-                return fig, {'autosize': True}
+                return fig
         else:
             raise PreventUpdate
 
@@ -1586,60 +1495,48 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure'),
-                       Output("pixel-hist", 'relayoutData', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'max'),
+                       Output('pixel-intensity-slider', 'value'),
+                       Output('pixel-intensity-slider', 'marks'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
-                       State("pixel-hist", 'relayoutData'),
                        prevent_initial_call=True)
                        # background=True,
                        # manager=cache_manager)
     # @cache.memoize())
-    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict, cur_hist_layout):
+    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
 
         if None not in (selected_channel, uploaded, data_selection) and \
                 ctx.triggered_id in ["images_in_blend"]:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             try:
-                fig = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
+                fig, hist_max = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
             except ValueError:
                 fig = go.Figure()
+
+            fig.update_layout(showlegend=False)
 
             # if the hist is triggered by the changing of a channel to modify
             if ctx.triggered_id == "images_in_blend":
                 try:
-                    # binwidth = 10
-                    # converted = Image.fromarray(uploaded[exp][slide][acq][selected_channel])
-                    # converted = np.array(converted, dtype=int)
-                    fig.update_layout(dragmode='drawrect')
-
                     # if the current selection has already had a histogram bound on it, update the histogram with it
                     if current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound'] is not None and \
                             current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'] is not None:
-                        lower_bound = current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound']
-                        upper_bound = current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound']
-                        y_ceiling = current_blend_dict[exp][slide][acq][selected_channel]['y_ceiling']
-
-                        cur_hist_layout = {'shapes': [{'editable': True,
-                                                       'label': {'text': '', 'texttemplate': ''}, 'xref':
-                                                           'x', 'yref': 'y', 'layer': 'above', 'opacity': 1,
-                                                       'line': {'color': '#444', 'width': 4, 'dash': 'solid'},
-                                                       'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd',
-                                                       'type': 'rect', 'x0': lower_bound,
-                                                       'y0': y_ceiling,
-                                                       'x1': upper_bound, 'y1': 0}]}
-
-                        fig.add_shape(editable=True, type="rect", xref="x", yref="y", x0=lower_bound, y0=y_ceiling,
-                                      x1=upper_bound, y1=0,
-                                      line=dict(color='#444', width=4, dash='solid'),
-                                      fillcolor='rgba(0,0,0,0)', opacity=1)
-                    fig.update_layout(showlegend=False)
-
-                    return fig, cur_hist_layout
+                        lower_bound = int(current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound'])
+                        upper_bound = int(current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'])
+                    else:
+                        lower_bound = None
+                        upper_bound = None
+                    # set tick spacing between marks on the rangeslider
+                    # have 4 tick markers
+                    spacing = int(hist_max/3)
+                    tick_markers = dict([(round(i/10)*10,str(round(i/10)*10)) for i in range(0, hist_max, spacing)])
+                    return fig, hist_max, [lower_bound, upper_bound], tick_markers
                 except (KeyError, ValueError):
-                    return {}, cur_hist_layout
+                    return {}, dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -1670,7 +1567,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id == "images_in_blend" and not only_options_changed:
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             filter_type = current_blend_dict[exp][slide][acq][selected_channel]['filter_type']
             filter_val = current_blend_dict[exp][slide][acq][selected_channel]['filter_val']
@@ -1683,7 +1580,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             filter_type = preset_dict[preset_selection]['filter_type']
             filter_val = preset_dict[preset_selection]['filter_val']
@@ -1713,7 +1610,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                 current_blend_dict, current_presets, cur_preset_chosen):
         if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer,
                                                                               current_blend_dict):
-            split = data_selection.split("+")
+            split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             if preset_name not in current_preset_options:
                 current_preset_options.append(preset_name)

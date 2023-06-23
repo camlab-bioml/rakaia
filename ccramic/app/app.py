@@ -1,14 +1,13 @@
-import os
 
 from dash import dash_table
 import tempfile
 import dash_uploader as du
 from flask_caching import Cache
 from dash_extensions.enrich import DashProxy, html, dcc, \
-    ServersideOutputTransform, FileSystemCache, ServersideBackend, FileSystemBackend
+    ServersideOutputTransform, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-from dash import ctx, DiskcacheManager
+from dash import DiskcacheManager
 import diskcache
 from sqlite3 import DatabaseError
 from .parsers import *
@@ -193,12 +192,17 @@ def init_dashboard(server, authentic_id):
                                                         margin=dict(l=5, r=5, b=15, t=20, pad=0)),
                                                            },
                         style={'width': '60vh', 'height': '30vh', 'margin-left': '-30px'},
-                        config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
+                        # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
                         # keep zoom and pan bars to be able to modify the histogram view
                         # 'modeBarButtonsToRemove': ['zoom', 'pan']
-                                },
+                                #},
                                   ),
                         html.Br(),
+                        html.Div([dcc.RangeSlider(0, 100, 1, value=[None, None], marks=dict([(i,str(i)) for \
+                                                                                        i in range(0, 100, 25)]),
+                                                  id='pixel-intensity-slider',
+                                                  tooltip={"placement": "top", "always_visible": True})],
+                                        style={"width": "90%", "margin-left": "27px", "margin-top": "-35px"}),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),
                         dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),

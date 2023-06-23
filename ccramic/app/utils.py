@@ -6,14 +6,14 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from PIL import ImageColor
-import io
-import base64
 import plotly.graph_objects as go
 import plotly.express as px
-from skimage import data, draw
+from skimage import draw
 from scipy import ndimage
-import numpy.ma as ma
 from scipy.ndimage import gaussian_filter, median_filter
+
+def split_string_at_pattern(string, pattern="+++"):
+    return string.split(pattern)
 
 def get_luma(rbg):
     return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
@@ -231,7 +231,8 @@ def pixel_hist_from_array(array):
         hist = np.concatenate([np.array(hist), np.array([max_hist])])
     except ValueError:
         pass
-    return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)])
+    return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)]), \
+        int(np.max(array))
     # except ValueError:
     #     print("error")
     #     return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
@@ -328,8 +329,9 @@ def copy_values_within_nested_dict(dict, current_data_selection, new_data_select
     dictionary to another
     """
 
-    cur_exp, cur_slide, cur_acq = current_data_selection.split("+")
-    new_exp, new_slide, new_acq = new_data_selection.split("+")
+
+    cur_exp, cur_slide, cur_acq = split_string_at_pattern(current_data_selection)
+    new_exp, new_slide, new_acq = split_string_at_pattern(new_data_selection)
 
     for key, value in dict[cur_exp][cur_slide][cur_acq].items():
         dict[new_exp][new_slide][new_acq][key] = value
