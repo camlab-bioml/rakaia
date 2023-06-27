@@ -207,9 +207,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 assert all([elem in names.keys() for elem in chosen_for_blend])
                 return [{'label': names[i], 'value': i} for i in chosen_for_blend]
             except AssertionError:
-                return []
+                raise PreventUpdate
         else:
-            return []
+            raise PreventUpdate
 
     @dash_app.callback(Input('session_config', 'data'),
                        State('uploaded_dict_template', 'data'),
@@ -1444,10 +1444,14 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         return is_open
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'value', allow_duplicate=True),
                        Input('data-collection', 'value'),
                        State('images_in_blend', 'value'),
                        prevent_initial_call=True)
-    def reset_hist_on_new_dataset(new_selection, currently_in_blend):
+    def reset_pixel_adjustments_on_new_dataset(new_selection, currently_in_blend):
+        """
+        Reset the pixel histogram and range slider on a new dataset selection
+        """
         if currently_in_blend is not None:
             fig = go.Figure()
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -1455,30 +1459,33 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                           yaxis=go.YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
             if new_selection is not None:
-                return fig
+                return fig, [None, None]
             else:
-                return fig
+                return fig, [None, None]
         else:
             raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
                        Output("annotation_canvas", 'figure', allow_duplicate=True),
-                       Input('images_in_blend', 'value'),
+                       Output('pixel-intensity-slider', 'value', allow_duplicate=True),
+                       Output('images_in_blend', 'options', allow_duplicate=True),
+                       Output('images_in_blend', 'value', allow_duplicate=True),
+                       State('images_in_blend', 'options'),
                        Input('image_layers', 'value'),
                        State("annotation_canvas", 'figure'),
                        prevent_initial_call=True)
     def reset_graphs_on_empty_modification_menu(current_selection, blend, cur_canvas):
         """
-        reset both the histogram and annotation canvas when there is no channel currently selected
+        reset all of the relevent input widgets and dropdown menus when there is no channel currently selected
         """
-        if current_selection is None or len(current_selection) == 0 or blend is None or len(blend) == 0:
+        if blend is None or len(blend) == 0 and len(current_selection) > 0:
             fig = go.Figure()
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                           xaxis=go.XAxis(showticklabels=False),
                           yaxis=go.YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
             cur_canvas['data'] = None
-            return fig, go.Figure(cur_canvas)
+            return fig, go.Figure(cur_canvas), [None, None], [], None
         else:
             raise PreventUpdate
 
@@ -1532,7 +1539,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Output('filter-type', 'value'),
                        Output('kernel-val-filter', 'value'),
                        Output("annotation-color-picker", 'value'),
-                       Output('images_in_blend', 'value'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
@@ -1565,7 +1571,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
                 else dash.no_update
-            return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
+            return to_apply_filter, filter_type_return, filter_val_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
             split = split_string_at_pattern(data_selection)
@@ -1578,7 +1584,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             filter_val_return = filter_val if filter_val is not None else 3
             color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
                 else dash.no_update
-            return to_apply_filter, filter_type_return, filter_val_return, color_return, selected_channel
+            return to_apply_filter, filter_type_return, filter_val_return, color_return
         else:
             raise PreventUpdate
 
