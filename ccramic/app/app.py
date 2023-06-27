@@ -202,7 +202,7 @@ def init_dashboard(server, authentic_id):
                                                                                         i in range(0, 100, 25)]),
                                                   id='pixel-intensity-slider',
                                                   tooltip={"placement": "top", "always_visible": True})],
-                                        style={"width": "90%", "margin-left": "27px", "margin-top": "-35px"}),
+                                        style={"width": "92%", "margin-left": "27px", "margin-top": "-45px"}),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),
                         dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),

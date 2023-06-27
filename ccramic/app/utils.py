@@ -309,12 +309,14 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
         assert all([value is not None for value in window_dict.values()])
         # first cast the bounds as int, then cast as floats and add significant digits
         # 634.5215773809524
+        x_request = float(x_request) + 0.000000000000
+        y_request = float(y_request) + 0.000000000000
         x_low = float(min(float(window_dict['x_high']), float(window_dict['x_low'])))
         x_high = float(max(float(window_dict['x_high']), float(window_dict['x_low'])))
         y_low = float(min(float(window_dict['y_high']), float(window_dict['y_low'])))
         y_high = float(max(float(window_dict['y_high']), float(window_dict['y_low'])))
-        midway_x = float((x_high - x_low) / 2)
-        midway_y = float((y_high - y_low) / 2)
+        midway_x = abs(float((x_high - x_low))) / 2
+        midway_y = abs(float((y_high - y_low))) / 2
         new_x_low = float(float(x_request - midway_x) + 0.000000000000)
         new_x_high = float(float(x_request + midway_x) + 0.000000000000)
         new_y_low = float(float(y_request - midway_y) + 0.000000000000)

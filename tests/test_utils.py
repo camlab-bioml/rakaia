@@ -108,13 +108,13 @@ def test_filtering_intensity_changes_low(get_current_dir):
 def test_generate_histogram(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
     greyscale = np.array(greyscale_image)
-    histogram = pixel_hist_from_array(greyscale)
+    histogram, array_max = pixel_hist_from_array(greyscale)
     assert isinstance(histogram, plotly.graph_objs._figure.Figure)
     assert histogram["data"] is not None
     assert histogram["layout"] is not None
     values = histogram["data"][0]['x']
     assert len(values) == 360001
-    assert max(values) == np.max(greyscale)
+    assert array_max == int(np.max(greyscale))
 
 
 def test_basic_blend_dict_params():
@@ -173,7 +173,8 @@ def test_basic_blend_dict_params():
         for blend_param in blend_dict["experiment0"]['slide0']["acq1"][channel].values():
             assert blend_param in possibilities
 
-    blend_dict = copy_values_within_nested_dict(blend_dict, "experiment0+slide0+acq0", "experiment0+slide0+acq1")
+    blend_dict = copy_values_within_nested_dict(blend_dict, "experiment0+++slide0+++acq0",
+                                                "experiment0+++slide0+++acq1")
 
     # assert that the default parameters in the second ROi are overwritten
     for channel in blend_dict["experiment0"]['slide0']["acq1"].keys():

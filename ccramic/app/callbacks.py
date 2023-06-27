@@ -380,25 +380,27 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
         if None not in (slider_values, layer, data_selection, uploaded_w_data) and \
                 all([elem is not None for elem in slider_values]):
+            # do not update if the range values in the slider match the curernt blend params:
             try:
                 slider_values = [int(elem) for elem in slider_values]
                 lower_bound = min(slider_values)
                 upper_bound = max(slider_values)
                 split = split_string_at_pattern(data_selection)
                 exp, slide, acq = split[0], split[1], split[2]
+                if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] == int(lower_bound) and \
+                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] == int(upper_bound):
+                    raise PreventUpdate
+                else:
+                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = int(lower_bound)
+                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = int(upper_bound)
 
-                current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = int(lower_bound)
-                current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = int(upper_bound)
-
-                array = apply_preset_to_array(uploaded_w_data[exp][slide][acq][layer],
+                    array = apply_preset_to_array(uploaded_w_data[exp][slide][acq][layer],
                                   current_blend_dict[exp][slide][acq][layer])
 
-                # array = array * scale_factor
-                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array, current_blend_dict[exp][slide][acq][
-                                                                                     layer][
-                                                                                     'color']))
+                    all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                                                         current_blend_dict[exp][slide][acq][layer]['color']))
 
-                return current_blend_dict, Serverside(all_layers)
+                    return current_blend_dict, Serverside(all_layers)
             except TypeError:
                 raise PreventUpdate
         else:
@@ -738,7 +740,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 #         "ColY: %{y}"
                 #         "</extra>"
                 #     ]))
-                fig.update_traces(hovertemplate=None)
+                # fig.update_traces(hovertemplate=None)
                 fig.update_layout(dragmode="zoom")
                 return fig, {'autosize': True}
             except ValueError:
@@ -775,183 +777,163 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
                        State('annotation_canvas', 'figure'),
                        Input('annotation_canvas', 'relayoutData'),
-                       Input('custom-scale-val', 'value'),
-                       prevent_initial_call=True)
-    # @cache.memoize())
-    def render_canvas_from_zoom_scale_update(cur_graph, cur_graph_layout, custom_scale_val):
-
-        """
-        Update the annotation canvas when the zoom or scalebar is modified.
-        """
-
-        bad_update = ctx.triggered_id == "annotation_canvas" and cur_graph_layout in [{"autosize": True}]
-        # update the scale bar with and without zooming
-        if cur_graph is not None and \
-             'shapes' not in cur_graph_layout and ctx.triggered_id not in ["image-analysis"] and \
-             cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and not bad_update:
-            try:
-                fig = go.Figure(cur_graph)
-                # find the text annotation that has um in the text and the correct location
-                for annotations in cur_graph['layout']['annotations']:
-                    # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
-                    if annotations['y'] == 0.06:
-                        if cur_graph_layout not in [{'autosize': True}]:
-                            x_range_high = 0
-                            x_range_low = 0
-                            # use different variables depending on how the ranges are written in the dict
-                            # IMP: the variables will be written differently after a tab change
-                            if 'xaxis' in cur_graph['layout']:
-                                high = max(cur_graph['layout']['xaxis']['range'][1],
-                                           cur_graph['layout']['xaxis']['range'][0])
-                                low = min(cur_graph['layout']['xaxis']['range'][1],
-                                          cur_graph['layout']['xaxis']['range'][0])
-                                x_range_high = math.ceil(int(high))
-                                x_range_low = math.floor(int(low))
-                            elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
-                                high = max(cur_graph_layout['xaxis.range[1]'],
-                                           cur_graph_layout['xaxis.range[0]'])
-                                low = min(cur_graph_layout['xaxis.range[1]'],
-                                          cur_graph_layout['xaxis.range[0]'])
-                                x_range_high = math.ceil(int(high))
-                                x_range_low = math.ceil(int(low))
-
-                            assert x_range_high >= x_range_low
-                            # assert that all values must be above 0 for the scale value to render during panning
-                            # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
-                            scale_val = int(custom_scale_val) if custom_scale_val is not None else \
-                                int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
-                            scale_val = scale_val if scale_val > 0 else 1
-                            scale_annot = str(scale_val) + "μm"
-                            scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                            # get the index of the list element corresponding to this text annotation
-                            index = cur_graph['layout']['annotations'].index(annotations)
-                            cur_graph['layout']['annotations'][index]['text'] = scale_text
-
-                            fig = go.Figure(cur_graph)
-                            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False),
-                                              margin=dict(
-                                                  l=25,
-                                                  r=0,
-                                                  b=25,
-                                                  t=35,
-                                                  pad=0
-                                              ))
-
-                        elif ctx.triggered_id == "custom-scale-val" and custom_scale_val is not None and \
-                                cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}]:
-                            scale_annot = str(custom_scale_val) + "μm"
-                            scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                            # get the index of the list element corresponding to this text annotation
-                            index = cur_graph['layout']['annotations'].index(annotations)
-                            cur_graph['layout']['annotations'][index]['text'] = scale_text
-                            fig = go.Figure(cur_graph)
-                            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False),
-                                              margin=dict(
-                                                  l=25,
-                                                  r=0,
-                                                  b=25,
-                                                  t=35,
-                                                  pad=0
-                                              ))
-                        else:
-                            fig = go.Figure(cur_graph)
-                            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False, autorange=True),
-                                              yaxis=go.YAxis(showticklabels=False, autorange=True),
-                                              margin=dict(
-                                                  l=25,
-                                                  r=0,
-                                                  b=25,
-                                                  t=35,
-                                                  pad=0
-                                              ))
-
-                return fig, cur_graph_layout
-            except (ValueError, KeyError, AssertionError):
-                raise PreventUpdate
-        else:
-            raise PreventUpdate
-
-
-    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
-                       Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
-                       State('image_layers', 'value'),
-                       State('annotation_canvas', 'figure'),
-                       State('annotation_canvas', 'relayoutData'),
                        State('set-x-auto-bound', 'value'),
                        State('set-y-auto-bound', 'value'),
                        State('window_config', 'data'),
                        Input('activate-coord', 'n_clicks'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def update_canvas_coords(currently_selected,
-                               cur_graph, cur_graph_layout, x_request, y_request, current_window,
-                               nclicks_coord):
+    def render_canvas_from_coord_change(cur_graph, cur_graph_layout, x_request, y_request, current_window,
+                             nclicks_coord):
+
         """
-        Update the canvas coord range when custom coordinates are selected.
+        Update the annotation canvas when the zoom or custom coordinates are requested.
         """
 
-        # TODO: add the change with the coord picker here
-        if None not in (x_request, y_request) and \
-                nclicks_coord is not None and nclicks_coord > 0:
-            try:
-                # calculate midway distance for each coord. this distance is
-                # added on either side of the x and y requests
-                new_x_low, new_x_high, new_y_low, new_y_high = create_new_coord_bounds(current_window, x_request,
-                                                                                       y_request)
-                new_layout = {'xaxis.range[0]': int(new_x_low), 'xaxis.range[1]': int(new_x_high),
-                        'yaxis.range[0]': int(new_y_high), 'yaxis.range[1]':  int(new_y_low)}
-                # IMP: for yaxis, need to set the min and max in the reverse order
-                cur_graph['layout']['xaxis']['range'] = [int(new_x_low), int(new_x_high)]
-                cur_graph['layout']['yaxis']['range'] = [int(new_y_high), int(new_y_low)]
-                cur_graph['layout']['xaxis']['domain'] = [0, 1]
-                # cur_graph['layout']['dragmode'] = "zoom"
-                return go.Figure(cur_graph), new_layout
-            except AssertionError:
+        bad_update = ctx.triggered_id == "annotation_canvas" and cur_graph_layout in [{"autosize": True}]
+        try:
+            coords_match = cur_graph['layout']['xaxis']['range'][0] == cur_graph_layout['xaxis.range[0]'] and \
+                       cur_graph['layout']['xaxis']['range'][1] == cur_graph_layout['xaxis.range[1]'] and \
+                       cur_graph['layout']['yaxis']['range'][0] == cur_graph_layout['yaxis.range[0]'] and \
+                       cur_graph['layout']['yaxis']['range'][1] == cur_graph_layout['yaxis.range[1]']
+        except KeyError:
+            coords_match = True
+
+        # update the scale bar with and without zooming
+        if cur_graph is not None and \
+             'shapes' not in cur_graph_layout and cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and \
+                not bad_update and coords_match:
+            if ctx.triggered_id == "annotation_canvas":
+                try:
+                    fig = go.Figure(cur_graph)
+                    # find the text annotation that has um in the text and the correct location
+                    for annotations in cur_graph['layout']['annotations']:
+                        # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
+                        if annotations['y'] == 0.06:
+                            if cur_graph_layout not in [{'autosize': True}]:
+                                x_range_high = 0
+                                x_range_low = 0
+                                # use different variables depending on how the ranges are written in the dict
+                                # IMP: the variables will be written differently after a tab change
+                                if 'xaxis' in cur_graph['layout']:
+                                    high = max(cur_graph['layout']['xaxis']['range'][1],
+                                           cur_graph['layout']['xaxis']['range'][0])
+                                    low = min(cur_graph['layout']['xaxis']['range'][1],
+                                          cur_graph['layout']['xaxis']['range'][0])
+                                    x_range_high = math.ceil(int(high))
+                                    x_range_low = math.floor(int(low))
+                                elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
+                                    high = max(cur_graph_layout['xaxis.range[1]'],
+                                           cur_graph_layout['xaxis.range[0]'])
+                                    low = min(cur_graph_layout['xaxis.range[1]'],
+                                          cur_graph_layout['xaxis.range[0]'])
+                                    x_range_high = math.ceil(int(high))
+                                    x_range_low = math.ceil(int(low))
+
+                                assert x_range_high >= x_range_low
+                                # assert that all values must be above 0 for the scale value to render during panning
+                                # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
+                                scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                                scale_val = scale_val if scale_val > 0 else 1
+                                scale_annot = str(scale_val) + "μm"
+                                scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                                # get the index of the list element corresponding to this text annotation
+                                index = cur_graph['layout']['annotations'].index(annotations)
+                                cur_graph['layout']['annotations'][index]['text'] = scale_text
+
+                                fig = go.Figure(cur_graph)
+                                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                              xaxis=go.XAxis(showticklabels=False),
+                                              yaxis=go.YAxis(showticklabels=False),
+                                              margin=dict(
+                                                  l=25,
+                                                  r=0,
+                                                  b=25,
+                                                  t=35,
+                                                  pad=0
+                                              ))
+
+                    return fig, cur_graph_layout
+                except (ValueError, KeyError, AssertionError) as e:
+                    raise PreventUpdate
+            if ctx.triggered_id == "activate-coord":
+                if None not in (x_request, y_request, current_window) and \
+                        nclicks_coord is not None and nclicks_coord > 0:
+                    try:
+                        # calculate midway distance for each coord. this distance is
+                        # added on either side of the x and y requests
+                        new_x_low, new_x_high, new_y_low, new_y_high = create_new_coord_bounds(current_window,
+                                                                                               x_request,
+                                                                                               y_request)
+                        new_layout = {'xaxis.range[0]': new_x_low, 'xaxis.range[1]': new_x_high,
+                                      'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
+                        # IMP: for yaxis, need to set the min and max in the reverse order
+                        fig = go.Figure(data=cur_graph['data'], layout=cur_graph['layout'])
+                        fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                          xaxis=go.XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
+                                          yaxis=go.YAxis(showticklabels=False, range=[new_y_high, new_y_low]),
+                                          uirevision=True,
+                                          margin=dict(
+                                              l=25,
+                                              r=0,
+                                              b=25,
+                                              t=35,
+                                              pad=0
+                                          ))
+                        # cur_graph['layout']['xaxis']['domain'] = [0, 1]
+                        # cur_graph['layout']['dragmode'] = "zoom"
+                        return fig, new_layout
+                    except (AssertionError, TypeError):
+                        raise PreventUpdate
+                else:
+                    raise PreventUpdate
+            else:
                 raise PreventUpdate
         else:
             raise PreventUpdate
 
-    # @dash_app.callback(Output('annotation_canvas', 'config'),
-    #                    Input('annotation_canvas', 'figure'),
-    #                    State('annotation_canvas', 'relayoutData'))
-    # # @cache.memoize())
-    # def set_graph_config(current_canvas, cur_canvas_layout):
-    #     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-    #
-    #     print(ctx.triggered_id)
-    #
-    #     # only update the resolution if the zoom is not used
-    #     try:
-    #         if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
-    #                 'range' in current_canvas['layout']['yaxis'] and \
-    #                 all([elem not in cur_canvas_layout for elem in zoom_keys]):
-    #             config = {
-    #                 'edits': {'shapePosition': False},
-    #                 "modeBarButtonsToAdd": [
-    #                     "drawline",
-    #                     # "drawopenpath",
-    #                     "drawclosedpath",
-    #                     # "drawcircle",
-    #                     "drawrect",
-    #                     "eraseshape"],
-    #                 'toImageButtonOptions': {
-    #                     'format': 'png',  # one of png, svg, jpeg, webp
-    #                     'filename': 'canvas',
-    #                     'height': int(current_canvas['layout']['yaxis']['range'][0]),
-    #                     'width': int(current_canvas['layout']['xaxis']['range'][1]),
-    #                     # 'scale': 2  # Multiply title/legend/axis/canvas sizes by this factor
-    #                 }
-    #             }
-    #             return config
-    #         else:
-    #             raise PreventUpdate
-    #     except KeyError:
-    #         raise PreventUpdate
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       State('annotation_canvas', 'figure'),
+                       State('annotation_canvas', 'relayoutData'),
+                       Input('custom-scale-val', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def render_canvas_from_scalebar_change(cur_graph, cur_graph_layout, custom_scale_val):
+        if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}]:
+            try:
+                for annotations in cur_graph['layout']['annotations']:
+                    # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
+                    if annotations['y'] == 0.06:
+                        if custom_scale_val is None:
+                            high = max(cur_graph['layout']['xaxis']['range'][1],
+                                       cur_graph['layout']['xaxis']['range'][0])
+                            low = min(cur_graph['layout']['xaxis']['range'][1],
+                                      cur_graph['layout']['xaxis']['range'][0])
+                            x_range_high = math.ceil(int(high))
+                            x_range_low = math.floor(int(low))
+                            assert x_range_high >= x_range_low
+                            custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                        scale_annot = str(custom_scale_val) + "μm"
+                        scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                        # get the index of the list element corresponding to this text annotation
+                        index = cur_graph['layout']['annotations'].index(annotations)
+                        cur_graph['layout']['annotations'][index]['text'] = scale_text
+                fig = go.Figure(cur_graph)
+                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                  xaxis=go.XAxis(showticklabels=False),
+                                  yaxis=go.YAxis(showticklabels=False),
+                                  margin=dict(
+                                      l=25,
+                                      r=0,
+                                      b=25,
+                                      t=35,
+                                      pad=0
+                                  ))
+            except (KeyError, AssertionError):
+                fig = dash.no_update
+            return fig
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Input('anndata', 'data'),
@@ -1480,17 +1462,23 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
+                       Output("annotation_canvas", 'figure', allow_duplicate=True),
                        Input('images_in_blend', 'value'),
                        Input('image_layers', 'value'),
+                       State("annotation_canvas", 'figure'),
                        prevent_initial_call=True)
-    def reset_hist_on_empty_modification_menu(current_selection, blend):
+    def reset_graphs_on_empty_modification_menu(current_selection, blend, cur_canvas):
+        """
+        reset both the histogram and annotation canvas when there is no channel currently selected
+        """
         if current_selection is None or len(current_selection) == 0 or blend is None or len(blend) == 0:
             fig = go.Figure()
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                           xaxis=go.XAxis(showticklabels=False),
                           yaxis=go.YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
-            return fig
+            cur_canvas['data'] = None
+            return fig, go.Figure(cur_canvas)
         else:
             raise PreventUpdate
 
@@ -1508,8 +1496,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     # @cache.memoize())
     def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
 
-        if None not in (selected_channel, uploaded, data_selection) and \
-                ctx.triggered_id in ["images_in_blend"]:
+        if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             try:
@@ -1517,7 +1504,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             except ValueError:
                 fig = go.Figure()
 
-            fig.update_layout(showlegend=False)
+            fig.update_layout(showlegend=False, yaxis={'title': None},
+                              xaxis={'title': None})
 
             # if the hist is triggered by the changing of a channel to modify
             if ctx.triggered_id == "images_in_blend":
@@ -1756,46 +1744,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
         else:
             return [], {"x_low": None, "x_high": None, "y_low": None, "y_high": None}
-
-    # @dash_app.callback(Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
-    #                    Output('annotation_canvas', 'figure', allow_duplicate=True),
-    #                    State('set-x-auto-bound', 'value'),
-    #                    State('set-y-auto-bound', 'value'),
-    #                    State('window_config', 'data'),
-    #                    Input('activate-coord', 'n_clicks'),
-    #                    State('annotation_canvas', 'figure'),
-    #                    prevent_initial_call=True)
-    # # @cache.memoize())
-    # def navigate_to_coord(x_request, y_request, current_window, nclicks, cur_figure):
-    #     """
-    #     Navigate to a an xy coord from two inputs while keeping the current zoom. If there is no current zoom,
-    #     do not execute the update
-    #     """
-    #     if None not in (x_request, y_request, cur_figure) and nclicks is not None and nclicks  > 0:
-    #         try:
-    #             # calculate midway distance for each coord. this distance is
-    #             # added on either side of the x and y requests
-    #             assert all([value is not None for value in current_window.values()])
-    #             midway_x = abs(float((float(current_window['x_high']) - float(current_window['x_low'])) / 2))
-    #             midway_y = abs(float((float(current_window['y_high']) - float(current_window['y_low'])) / 2))
-    #             new_x_low = float(float(x_request) - midway_x)
-    #             new_x_high = float(float(x_request) + midway_x)
-    #             new_y_low = float(y_request - midway_y)
-    #             new_y_high = float(y_request + midway_y)
-    #             new_layout = {'xaxis.range[0]': new_x_low, 'xaxis.range[1]': new_x_high,
-    #                     'yaxis.range[0]': new_y_high, 'yaxis.range[1]':  new_x_high}
-    #             print(new_layout)
-    #             # IMP: for yaxis, need to set the min and max in the reverse order
-    #             cur_figure['layout']['xaxis']['range'] = [new_x_low, new_x_high]
-    #             cur_figure['layout']['yaxis']['range'] = [new_y_high, new_y_low]
-    #             print(cur_figure['layout'])
-    #             return new_layout, cur_figure
-    #         except AssertionError:
-    #             print("assertion error")
-    #             raise PreventUpdate
-    #     else:
-    #         print("couldn't do it")
-    #         raise PreventUpdate
 
     @dash_app.callback(
         Output("dataset-preview", "is_open"),
