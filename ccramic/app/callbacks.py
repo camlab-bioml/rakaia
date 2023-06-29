@@ -10,6 +10,7 @@ from tifffile import imwrite
 import math
 from .parsers import *
 from numpy.core._exceptions import _ArrayMemoryError
+from plotly.graph_objs.layout import XAxis, YAxis
 
 def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     dash_app.config.suppress_callback_exceptions = True
@@ -513,14 +514,15 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
     @dash_app.callback(
         Input('data-collection', 'value'),
-        Output('canvas-layers', 'data', allow_duplicate=True))
+        Output('canvas-layers', 'data', allow_duplicate=True),
+        Output("download-collapse", "is_open"))
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
         retain memory. Should be cleared on a new ROi selection
         """
         if data_selection is not None:
-            return None
+            return None, False
         else:
             raise PreventUpdate
 
@@ -657,8 +659,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                            showarrow=False)
 
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                          xaxis=go.XAxis(showticklabels=False),
-                                          yaxis=go.YAxis(showticklabels=False),
+                                          xaxis=XAxis(showticklabels=False, domain=[0, 1]),
+                                          yaxis=YAxis(showticklabels=False),
                                           margin=dict(
                                               l=10,
                                               r=0,
@@ -692,8 +694,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                    showarrow=False)
 
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                  xaxis=go.XAxis(showticklabels=False),
-                                  yaxis=go.YAxis(showticklabels=False),
+                                  xaxis=XAxis(showticklabels=False),
+                                  yaxis=YAxis(showticklabels=False),
                                   margin=dict(
                                       l=10,
                                       r=0,
@@ -758,8 +760,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         #                                         fig['layout']['annotations'] if annotation['y'] == 0.06]
         #     fig = go.Figure(fig)
         #     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-        #                       xaxis=go.XAxis(showticklabels=False),
-        #                       yaxis=go.YAxis(showticklabels=False),
+        #                       xaxis=XAxis(showticklabels=False),
+        #                       yaxis=YAxis(showticklabels=False),
         #                       margin=dict(
         #                           l=0,
         #                           r=0,
@@ -791,18 +793,11 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         """
 
         bad_update = ctx.triggered_id == "annotation_canvas" and cur_graph_layout in [{"autosize": True}]
-        try:
-            coords_match = cur_graph['layout']['xaxis']['range'][0] == cur_graph_layout['xaxis.range[0]'] and \
-                       cur_graph['layout']['xaxis']['range'][1] == cur_graph_layout['xaxis.range[1]'] and \
-                       cur_graph['layout']['yaxis']['range'][0] == cur_graph_layout['yaxis.range[0]'] and \
-                       cur_graph['layout']['yaxis']['range'][1] == cur_graph_layout['yaxis.range[1]']
-        except KeyError:
-            coords_match = True
 
         # update the scale bar with and without zooming
         if cur_graph is not None and \
              'shapes' not in cur_graph_layout and cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and \
-                not bad_update and coords_match:
+                not bad_update:
             if ctx.triggered_id == "annotation_canvas":
                 try:
                     fig = go.Figure(cur_graph)
@@ -843,8 +838,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
                                 fig = go.Figure(cur_graph)
                                 fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False),
+                                              xaxis=XAxis(showticklabels=False),
+                                              yaxis=YAxis(showticklabels=False),
                                               margin=dict(
                                                   l=25,
                                                   r=0,
@@ -869,19 +864,16 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                       'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
                         # IMP: for yaxis, need to set the min and max in the reverse order
                         fig = go.Figure(data=cur_graph['data'], layout=cur_graph['layout'])
-                        fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                          xaxis=go.XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
-                                          yaxis=go.YAxis(showticklabels=False, range=[new_y_high, new_y_low]),
-                                          uirevision=True,
-                                          margin=dict(
-                                              l=25,
-                                              r=0,
-                                              b=25,
-                                              t=35,
-                                              pad=0
-                                          ))
+                        shapes = cur_graph['layout']['shapes']
+                        annotations = cur_graph['layout']['annotations']
+                        fig['layout']['shapes'] = None
+                        fig['layout']['annotations'] = None
+                        fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
+                                          yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
                         # cur_graph['layout']['xaxis']['domain'] = [0, 1]
                         # cur_graph['layout']['dragmode'] = "zoom"
+                        fig['layout']['shapes'] = shapes
+                        fig['layout']['annotations'] = annotations
                         return fig, new_layout
                     except (AssertionError, TypeError):
                         raise PreventUpdate
@@ -891,6 +883,29 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 raise PreventUpdate
         else:
             raise PreventUpdate
+
+    # @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+    #                    State('annotation_canvas', 'figure'),
+    #                    Input('annotation_canvas', 'relayoutData'),
+    #                    prevent_initial_call=True)
+    # # @cache.memoize())
+    # def fix_x_coords(canvas, layout):
+    #     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+    #     if all([elem in layout for elem in zoom_keys]) and canvas is not None and 'layout' in canvas:
+    #         if canvas['layout']['xaxis']['range'][0] != layout['xaxis.range[0]'] and \
+    #                 canvas['layout']['xaxis']['range'][1] != layout['xaxis.range[1]']:
+    #             print("fixing")
+    #             fig = go.Figure(canvas)
+    #             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+    #                               yaxis=YAxis(showticklabels=False,
+    #                                           range=[layout['yaxis.range[1]'], layout['yaxis.range[0]']]),
+    #                               xaxis=XAxis(showticklabels=False,
+    #                                           range=[layout['xaxis.range[0]'], layout['xaxis.range[1]']]))
+    #             return fig
+    #         else:
+    #             raise PreventUpdate
+    #     else:
+    #         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
                        State('annotation_canvas', 'figure'),
@@ -920,8 +935,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                         cur_graph['layout']['annotations'][index]['text'] = scale_text
                 fig = go.Figure(cur_graph)
                 fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                  xaxis=go.XAxis(showticklabels=False),
-                                  yaxis=go.YAxis(showticklabels=False),
+                                  xaxis=XAxis(showticklabels=False),
+                                  yaxis=YAxis(showticklabels=False),
                                   margin=dict(
                                       l=25,
                                       r=0,
@@ -1061,8 +1076,11 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
 
-            image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected if \
+            try:
+                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected if \
                          elem in canvas_layers[exp][slide][acq].keys()])
+            except TypeError:
+                image = None
 
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
             dest_file = os.path.join(dest_path, "canvas.tiff")
@@ -1072,7 +1090,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
             # buf = io.BytesIO(fig_bytes)
             # img = Image.open(buf)
-            imwrite(dest_file, image, photometric='rgb')
+            if image is not None:
+                imwrite(dest_file, image, photometric='rgb')
 
             del image
 
@@ -1434,7 +1453,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(
-        Output("download-collapse", "is_open"),
+        Output("download-collapse", "is_open", allow_duplicate=True),
         [Input("open-download-collapse", "n_clicks")],
         [State("download-collapse", "is_open")])
     # @cache.memoize())
@@ -1455,8 +1474,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if currently_in_blend is not None:
             fig = go.Figure()
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                          xaxis=go.XAxis(showticklabels=False),
-                          yaxis=go.YAxis(showticklabels=False),
+                          xaxis=XAxis(showticklabels=False),
+                          yaxis=YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
             if new_selection is not None:
                 return fig, [None, None]
@@ -1481,8 +1500,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if blend is None or len(blend) == 0 and len(current_selection) > 0:
             fig = go.Figure()
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                          xaxis=go.XAxis(showticklabels=False),
-                          yaxis=go.YAxis(showticklabels=False),
+                          xaxis=XAxis(showticklabels=False),
+                          yaxis=YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
             cur_canvas['data'] = None
             return fig, go.Figure(cur_canvas), [None, None], [], None
@@ -1715,8 +1734,8 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             fig = go.Figure(cur_canvas)
             fig.update_layout(dragmode='pan')
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                              xaxis=go.XAxis(showticklabels=False),
-                              yaxis=go.YAxis(showticklabels=False),
+                              xaxis=XAxis(showticklabels=False),
+                              yaxis=YAxis(showticklabels=False),
                               margin=dict(
                                   l=0,
                                   r=0,
