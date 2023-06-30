@@ -589,10 +589,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Input('alias-dict', 'data'),
                        State('annotation_canvas', 'figure'),
                        State('annotation_canvas', 'relayoutData'),
+                       State('uploaded_dict', 'data'),
+                       State('channel-intensity-hover', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_change(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
-                               cur_graph, cur_graph_layout):
+                               cur_graph, cur_graph_layout, raw_data_dict, show_each_channel_intensity):
 
         """
         Update the canvas from a layer dictionary update
@@ -614,6 +616,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                          elem in canvas_layers[exp][slide][acq].keys()])
             try:
                 fig = px.imshow(Image.fromarray(image))
+                # fig.update(data=[{'customdata': )
                 image_shape = image.shape
                 del image
                 fig.update_traces(hoverinfo="skip")
@@ -735,6 +738,16 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 # plotly.offline.plot(fig, filename='tiff.html')
                 # pio.write_image(fig, 'test_back.png', width=im.width, height=im.height)
                 # TODO: can use update traces to set a custom hover tip
+
+                if " show channel intensities on hover" in show_each_channel_intensity:
+                    hover_stack = np.stack((raw_data_dict[exp][slide][acq][elem] for elem in currently_selected),
+                                           axis=-1)
+                    fig.update(data=[{'customdata': hover_stack}])
+                    new_hover = per_channel_intensity_hovertext(currently_selected)
+                    fig.update_traces(hovertemplate=new_hover)
+                else:
+                    default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
+                    fig.update_traces(hovertemplate=default_hover)
                 # fig.update_traces(
                 #     hovertemplate="<br>".join([
                 #         "<extra>",
@@ -747,7 +760,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 return fig, {'autosize': True}
             except ValueError:
                 return {}, None
-        #TODO: this step can be used to keep the current ui revision if a new ROi is selected
+        #TODO: this step can be used to keep the current ui revision if a new ROI is selected
 
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
         #     fig = cur_graph if cur_graph is not None else go.Figure()
@@ -1796,3 +1809,37 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             return True, children
         else:
             return False, None
+
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       State('image_layers', 'value'),
+                       State('data-collection', 'value'),
+                       State('annotation_canvas', 'figure'),
+                       State('uploaded_dict', 'data'),
+                       Input('channel-intensity-hover', 'value'),
+                       prevent_initial_call=True)
+    def toggle_channel_intensities_on_hover(currently_selected, data_selection, cur_graph,
+                                            raw_data_dict, show_each_channel_intensity):
+        """
+        toggle showing the individual pixel intensities on the canvas. Note that the space complexity and performance
+        of the canvas is significantly compromised if the individual channel intensity is used
+        """
+        if None not in (currently_selected, data_selection, cur_graph):
+            split = split_string_at_pattern(data_selection)
+            exp, slide, acq = split[0], split[1], split[2]
+            if " show channel intensities on hover" in show_each_channel_intensity and \
+                    len(show_each_channel_intensity) > 0:
+                fig = go.Figure(cur_graph)
+                hover_stack = np.stack((raw_data_dict[exp][slide][acq][elem] for elem in currently_selected),
+                                   axis=-1)
+                fig.update(data=[{'customdata': hover_stack}])
+                new_hover = per_channel_intensity_hovertext(currently_selected)
+                fig.update_traces(hovertemplate=new_hover)
+            else:
+                cur_graph['data'][0]['customdata'] = None
+                default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
+                cur_graph['data'][0]['hovertemplate'] = default_hover
+                fig = go.Figure(cur_graph)
+            return fig
+
+        else:
+            raise PreventUpdate

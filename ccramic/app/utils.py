@@ -338,3 +338,22 @@ def copy_values_within_nested_dict(dict, current_data_selection, new_data_select
     for key, value in dict[cur_exp][cur_slide][cur_acq].items():
         dict[new_exp][new_slide][new_acq][key] = value
     return dict
+
+def per_channel_intensity_hovertext(channel_list):
+    """
+    generate custom hovertext for the annotation canvas that shows the individual pixel intensities of ll
+    channels selected in the hover template. Assumes that the data has been added as customdata through
+    np.stack((channels), axis=-1)
+    """
+    data_index = 0
+    hover_template = "x: %{x}, y: %{y} <br>"
+    try:
+        assert isinstance(channel_list, list)
+        for elem in channel_list:
+            assert channel_list.index(elem) == data_index
+            hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
+            data_index += 1
+    except AssertionError:
+        pass
+    hover_template = hover_template + "<extra></extra>"
+    return hover_template
