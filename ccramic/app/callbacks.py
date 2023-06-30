@@ -1839,6 +1839,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
                 cur_graph['data'][0]['hovertemplate'] = default_hover
                 fig = go.Figure(cur_graph)
+                # fig.update_traces(hovertemplate=default_hover)
             return fig
 
         else:

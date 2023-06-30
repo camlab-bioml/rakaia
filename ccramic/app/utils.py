@@ -191,7 +191,7 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     """
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
     # array = np.array(Image.fromarray(array).convert('L'))
-    original_max = np.max(array)
+    original_max = np.max(array) if np.max(array) >= 255 else 255
     lower_bound = float(lower_bound) if lower_bound is not None else None
     upper_bound = float(upper_bound) if upper_bound is not None else None
     if None not in (original_max, upper_bound):
