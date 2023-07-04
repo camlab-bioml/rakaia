@@ -186,24 +186,28 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Filter on the lower bound: removes any pixels less than the lower bound
     Filter on the upper bound: sets the upper bound as the new max intensity and scales all pixels
     relative to the new max.
-    Example: original max intensity 255, new upper bound = 100. Scaling will be done to each pixel retained
-    by multiplying by 255/100
+    Uses linear scaling instead of 0 to max upper bound scaling: pixels close to the boundary of the lower bound
+    are scaled relative to their intensity to the lower bound instead of the full scale factor
     """
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
     # array = np.array(Image.fromarray(array).convert('L'))
-    original_max = np.max(array) if np.max(array) > 255 else 255
+    # original_max = np.max(array) if np.max(array) > 255 else 255
     lower_bound = float(lower_bound) if lower_bound is not None else None
     upper_bound = float(upper_bound) if upper_bound is not None else None
-    if None not in (original_max, upper_bound):
+    if lower_bound is None:
+        lower_bound = 0
+    # array = np.where(array < lower_bound, 0, array)
+    # try linear scaling from the lower bound to upper bound instead of 0 to upper
+    # subtract the lower bound from all elements and retain those above 0
+    # allows better gradual scaling around the lower bound threshold
+    array = np.where((array - lower_bound) > 0, (array - lower_bound), 0)
+    if upper_bound is not None:
         try:
-            scale_factor = float(original_max) / upper_bound
+            scale_factor = 255 / upper_bound
         except ZeroDivisionError:
             scale_factor = 1
     else:
         scale_factor = 1
-    if lower_bound is None:
-        lower_bound = 0
-    array = np.where(array < lower_bound, 0, array)
     try:
         if upper_bound >= 0:
             array = np.where(array > upper_bound, upper_bound, array)
@@ -211,8 +215,6 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
         pass
     if scale_factor >= 0 and scale_factor != 1:
         array = array * scale_factor
-    if original_max > 255:
-        array = array * (255 / original_max)
     return array
 
 
