@@ -1816,9 +1816,11 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('annotation_canvas', 'figure'),
                        State('uploaded_dict', 'data'),
                        Input('channel-intensity-hover', 'value'),
+                       State('canvas-layers', 'data'),
                        prevent_initial_call=True)
     def toggle_channel_intensities_on_hover(currently_selected, data_selection, cur_graph,
-                                            raw_data_dict, show_each_channel_intensity):
+                                            raw_data_dict, show_each_channel_intensity,
+                                            canvas_layers):
         """
         toggle showing the individual pixel intensities on the canvas. Note that the space complexity and performance
         of the canvas is significantly compromised if the individual channel intensity is used
@@ -1835,11 +1837,23 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 new_hover = per_channel_intensity_hovertext(currently_selected)
                 fig.update_traces(hovertemplate=new_hover)
             else:
-                cur_graph['data'][0]['customdata'] = None
+                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected if \
+                             elem in canvas_layers[exp][slide][acq].keys()])
                 default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                cur_graph['data'][0]['hovertemplate'] = default_hover
-                fig = go.Figure(cur_graph)
-                # fig.update_traces(hovertemplate=default_hover)
+                fig = px.imshow(Image.fromarray(image))
+                fig.update_layout(uirevision=True)
+                fig.update_traces(hovertemplate=default_hover)
+                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                  xaxis=XAxis(showticklabels=False, domain=[0, 1]),
+                                  yaxis=YAxis(showticklabels=False),
+                                  margin=dict(
+                                      l=10,
+                                      r=0,
+                                      b=25,
+                                      t=35,
+                                      pad=0
+                                  ))
+                fig.update_layout(hovermode="x")
             return fig
 
         else:

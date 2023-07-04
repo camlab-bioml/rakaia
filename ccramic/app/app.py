@@ -285,22 +285,22 @@ def init_dashboard(server, authentic_id):
 
             ], id='tab-quant')
         ]),
-        dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+        dcc.Store(id="uploaded_dict"),
         # use a blank template for the lazy loading
-        dcc.Loading(dcc.Store(id="uploaded_dict_template"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="session_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="window_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="param_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="session_alert_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="image_presets"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="metadata_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="static-session-var"), fullscreen=True, type="dot")
+        dcc.Loading(dcc.Store(id="uploaded_dict_template"), type="dot", fullscreen=True),
+        dcc.Store(id="session_config"),
+        dcc.Store(id="window_config"),
+        dcc.Store(id="param_config"),
+        dcc.Store(id="session_alert_config"),
+        dcc.Store(id="hdf5_obj"),
+        dcc.Store(id="blending_colours"),
+        dcc.Store(id="image_presets"),
+        dcc.Store(id="metadata_config"),
+        dcc.Store(id="anndata"),
+        dcc.Store(id="image-metadata"),
+        dcc.Store(id="canvas-layers"),
+        dcc.Store(id="alias-dict"),
+        dcc.Store(id="static-session-var")
     ], style={"margin": "12px"})
 
     dash_app.enable_dev_tools(debug=True)
