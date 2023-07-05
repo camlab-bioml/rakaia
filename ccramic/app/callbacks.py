@@ -224,18 +224,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         if session_config is not None:
             if current_blend_dict is None and uploaded is not None:
                 current_blend_dict = create_new_blending_dict(uploaded)
-            # elif current_blend_dict is not None and uploaded is not None:
-            #     for exp in uploaded.keys():
-            #         if "metadata" not in exp:
-            #             for slide in uploaded[exp].keys():
-            #                 for acq in uploaded[exp][slide].keys():
-            #                     for channel in uploaded[exp][slide][acq].keys():
-            #                         current_blend_dict[exp][slide][acq][channel] = {'color': None,
-            #                                                                         'x_lower_bound': None,
-            #                                                                         'x_upper_bound': None,
-            #                                                                         'filter_type': None,
-            #                                                                         'filter_val': None}
-            #                         current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
             return current_blend_dict
         else:
             raise PreventUpdate
@@ -252,7 +240,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('param_config', 'data', allow_duplicate=True),
                        prevent_initial_call=True)
-    def upload_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
+    def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict):
         """
         update the blend dictionary when a new channel is added to the multi-channel selector
@@ -298,6 +286,13 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 else:
                     # create a nested dict with the image and all of the filters being used for it
                     # if the same blend parameters have been transferred from another ROI, apply them
+                    # set a default upper bound for the channel if the value is None
+                    if current_blend_dict[exp][slide][acq][elem]['x_upper_bound'] is None:
+                        current_blend_dict[exp][slide][acq][elem]['x_upper_bound'] = \
+                        get_default_channel_upper_bound_by_percentile(
+                        uploaded_w_data[exp][slide][acq][elem])
+                    if current_blend_dict[exp][slide][acq][elem]['x_lower_bound'] is None:
+                        current_blend_dict[exp][slide][acq][elem]['x_lower_bound'] = 0
                     array_preset = apply_preset_to_array(uploaded_w_data[exp][slide][acq][elem],
                                                          current_blend_dict[exp][slide][acq][elem])
                     all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(array_preset,
@@ -1205,20 +1200,24 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
     @dash_app.callback(
         Output("selected-area-table", "data"),
-        Input('annotation_canvas', 'figure'),
+        State('annotation_canvas', 'figure'),
         Input('annotation_canvas', 'relayoutData'),
         State('uploaded_dict', 'data'),
         State('image_layers', 'value'),
         State('data-collection', 'value'),
-        State('alias-dict', 'data'))
+        State('alias-dict', 'data'),
+        Input("compute-region-statistics", "n_clicks"),
+        Input("area-stats-collapse", "is_open"))
     # @cache.memoize())
-    def update_area_information(graph, graph_layout, upload, layers, data_selection, aliases_dict):
+    def update_area_information(graph, graph_layout, upload, layers, data_selection, aliases_dict, nclicks,
+                                stats_table_open):
         # these range keys correspond to the zoom feature
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         # these keys are used if a shape has been created, then modified
         modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
 
-        if graph is not None and graph_layout is not None and data_selection is not None:
+        if graph is not None and graph_layout is not None and data_selection is not None and \
+                nclicks and stats_table_open:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             # option 1: if shapes are drawn on the canvas
@@ -1369,9 +1368,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             else:
                 return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                      'Min': []}).to_dict(orient='records')
-        else:
+        elif stats_table_open:
             return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
+        else:
+            raise PreventUpdate
+
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
                        # Input('image-analysis', 'value'),
@@ -1385,14 +1387,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Input('unique-channel-list', 'value'),
                        Input('alias-dict', 'data'),
                        Input('preset-button', 'n_clicks'),
-                       Input('all-tabs', 'active_tab'),
                        prevent_initial_call=True,
                        background=True,
                        manager=cache_manager)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          tab_change):
+                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks):
         try:
             if gallery_data is not None:
                 row_children = []
@@ -1470,7 +1470,17 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         [Input("open-download-collapse", "n_clicks")],
         [State("download-collapse", "is_open")])
     # @cache.memoize())
-    def toggle_collapse(n, is_open):
+    def toggle_download_collapse(n, is_open):
+        if n:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(
+        Output("area-stats-collapse", "is_open", allow_duplicate=True),
+        [Input("compute-region-statistics", "n_clicks")],
+        [State("area-stats-collapse", "is_open")])
+    # @cache.memoize())
+    def toggle_area_stats_collapse(n, is_open):
         if n:
             return not is_open
         return is_open

@@ -82,7 +82,7 @@ def init_dashboard(server, authentic_id):
                         'edits': {'shapePosition': False}, 'scrollZoom': True}, relayoutData={'autosize': True},
                         id='annotation_canvas-fullscreen',
             style={"margin": "auto", "width": "100vw", "height": "100vh",
-                   "max-width": "none", "max-height": "none"},
+                   "max-width": "none", "max-height": "none", 'textAlign': 'center'},
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False,
@@ -103,7 +103,7 @@ def init_dashboard(server, authentic_id):
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=30000,
                         max_total_size=30000, max_files=200,
-                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt']),
+                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "-50px"}),
                         dcc.Input(id="read-filepath", type="text",
                         placeholder="Upload file using file path (local runs only)", value=None,
                                   style={"width": "85%"}),
@@ -171,12 +171,17 @@ def init_dashboard(server, authentic_id):
                                               yaxis=go.YAxis(showticklabels=False))}),
                     html.H6("Current canvas blend", style={'width': '75%'}),
                     html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
-                    html.H6("Selection information", style={'width': '75%'}),
-                    html.Div([dash_table.DataTable(id='selected-area-table',
-                                                   columns=[{'id': p, 'name': p} for p in
-                                                            ['Channel', 'Mean', 'Max', 'Min']],
-                                                   data=None)], style={"width": "85%"})]),
-                        width=9),
+                    dbc.Button("Show/hide region statistics", id="compute-region-statistics", className="mb-3",
+                               color="primary", n_clicks=0),
+                    html.Div(dbc.Collapse(
+                        html.Div([html.H6("Selection information", style={'width': '75%'}),
+                                  html.Div([dash_table.DataTable(id='selected-area-table',
+                                                                 columns=[{'id': p, 'name': p} for p in
+                                                                          ['Channel', 'Mean', 'Max', 'Min']],
+                                                                 data=None)], style={"width": "85%"})
+                                  ]),
+                        id="area-stats-collapse", is_open=False), style={"minHeight": "100px"})]),
+                        width=9, style={"margin": "auto"}),
                         dbc.Col(html.Div([html.H5("Select channel to modify",
                                 style={'width': '50%', 'display': 'inline-block'}),
                         html.Abbr("\u2753", title="Select a channel in the current blend to \nchange colour, "
@@ -186,6 +191,7 @@ def init_dashboard(server, authentic_id):
                         html.Br(),
                         daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
                         value=dict(hex="#00ABFC")),
+                        dcc.Loading(
                         dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                          xaxis=go.XAxis(showticklabels=False),
                                                          yaxis=go.YAxis(showticklabels=False),
@@ -197,12 +203,13 @@ def init_dashboard(server, authentic_id):
                         # 'modeBarButtonsToRemove': ['zoom', 'pan']
                                 #},
                                   ),
+                            type="default", fullscreen=False),
                         html.Br(),
                         html.Div([dcc.RangeSlider(0, 100, 1, value=[None, None], marks=dict([(i,str(i)) for \
                                                                                         i in range(0, 100, 25)]),
                                                   id='pixel-intensity-slider',
                                                   tooltip={"placement": "top", "always_visible": True})],
-                                        style={"width": "92%", "margin-left": "27px", "margin-top": "-45px"}),
+                                        style={"width": "91.5%", "margin-left": "27px", "margin-top": "-50px"}),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),
                         dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),
@@ -285,9 +292,9 @@ def init_dashboard(server, authentic_id):
 
             ], id='tab-quant')
         ]),
-        dcc.Store(id="uploaded_dict"),
+        dcc.Loading(dcc.Store(id="uploaded_dict"), type="default", fullscreen=True),
         # use a blank template for the lazy loading
-        dcc.Loading(dcc.Store(id="uploaded_dict_template"), type="dot", fullscreen=True),
+        dcc.Loading(dcc.Store(id="uploaded_dict_template"), type="default", fullscreen=True),
         dcc.Store(id="session_config"),
         dcc.Store(id="window_config"),
         dcc.Store(id="param_config"),
@@ -301,7 +308,7 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="canvas-layers"),
         dcc.Store(id="alias-dict"),
         dcc.Store(id="static-session-var")
-    ], style={"margin": "12px"})
+    ], style={"margin": "15px"})
 
     dash_app.enable_dev_tools(debug=True)
 

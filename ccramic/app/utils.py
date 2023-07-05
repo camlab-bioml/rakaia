@@ -218,13 +218,13 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     return array
 
 
-def pixel_hist_from_array(array):
+def pixel_hist_from_array(array, subset_number=1000000):
     # try:
     # IMP: do not use the conversion to L as it will automatically set the max to 255
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
     hist_data = np.hstack(array)
     max_hist = np.max(array)
-    hist = np.random.choice(hist_data, 1000000) if hist_data.shape[0] > 1000000 else hist_data
+    hist = np.random.choice(hist_data, subset_number) if hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     try:
         hist = np.concatenate([np.array(hist), np.array([max_hist])])
@@ -356,3 +356,11 @@ def per_channel_intensity_hovertext(channel_list):
         pass
     hover_template = hover_template + "<extra></extra>"
     return hover_template
+
+def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_number=1000000):
+    """
+    Get a reasonable upper bound default on a channel with a percentile of the pixels
+    """
+    array_stack = np.hstack(array)
+    data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
+    return float(np.percentile(data, percentile))
