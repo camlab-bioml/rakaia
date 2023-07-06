@@ -576,7 +576,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure'),
-                       Output('annotation_canvas', 'relayoutData'),
+                       # Output('annotation_canvas', 'relayoutData'),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -752,9 +752,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 #     ]))
                 # fig.update_traces(hovertemplate=None)
                 fig.update_layout(dragmode="zoom")
-                return fig, {'autosize': True}
+                return fig
             except ValueError:
-                return {}, None
+                return dash.no_update
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected
 
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
@@ -800,7 +800,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         Update the annotation canvas when the zoom or custom coordinates are requested.
         """
 
-        bad_update = ctx.triggered_id == "annotation_canvas" and cur_graph_layout in [{"autosize": True}]
+        bad_update = cur_graph_layout in [{"autosize": True}]
 
         # update the scale bar with and without zooming
         if cur_graph is not None and \
@@ -845,16 +845,6 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                 cur_graph['layout']['annotations'][index]['text'] = scale_text
 
                                 fig = go.Figure(cur_graph)
-                                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=XAxis(showticklabels=False),
-                                              yaxis=YAxis(showticklabels=False),
-                                              margin=dict(
-                                                  l=25,
-                                                  r=0,
-                                                  b=25,
-                                                  t=35,
-                                                  pad=0
-                                              ))
 
                     return fig, cur_graph_layout
                 except (ValueError, KeyError, AssertionError) as e:
@@ -1388,13 +1378,14 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Input('alias-dict', 'data'),
                        Input('preset-button', 'n_clicks'),
                        State('blending_colours', 'data'),
+                       Input('default-scaling-gallery', 'value'),
                        prevent_initial_call=True,
                        background=True,
                        manager=cache_manager)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          blend_colour_dict):
+                          blend_colour_dict, toggle_scaling_gallery):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
@@ -1406,6 +1397,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
                 # decide if channel view or ROI view is selected
                 # channel view
+                blend_return = dash.no_update
                 if view_by_channel and channel_selected is not None:
                     views = get_all_images_by_channel_name(gallery_data, channel_selected)
                 elif data_selection is not None:
@@ -1413,25 +1405,30 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     exp, slide, acq = split[0], split[1], split[2]
                     # maintain the original order of channels that is dictated by the metadata
                     views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
-                    for channel in blend_colour_dict[exp][slide][acq].keys():
-                        try:
-                            if blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] is None:
-                                blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] = \
+                    if toggle_scaling_gallery:
+                        for channel in blend_colour_dict[exp][slide][acq].keys():
+                            try:
+                                if blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] is None:
+                                    blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] = \
                                 get_default_channel_upper_bound_by_percentile(
                                     gallery_data[exp][slide][acq][channel])
-                            if blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] is None:
-                                blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] = 0
-                        except TypeError:
-                            pass
+                                if blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] is None:
+                                    blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] = 0
+                            except TypeError:
+                                pass
+                        blend_return = blend_colour_dict
                 else:
                     views = None
 
                 if views is not None:
                     for key, value in views.items():
-                        try:
-                            image_render = resize_for_canvas(apply_preset_to_array(value,
+                        if toggle_scaling_gallery:
+                            try:
+                                image_render = resize_for_canvas(apply_preset_to_array(value,
                                                         blend_colour_dict[exp][slide][acq][key]))
-                        except (KeyError, TypeError):
+                            except (KeyError, TypeError):
+                                image_render = resize_for_canvas(value)
+                        else:
                             image_render = resize_for_canvas(value)
                         if None not in (preset_selection, preset_dict) and nclicks > 0:
                             image_render = apply_preset_to_array(value, preset_dict[preset_selection])
@@ -1454,7 +1451,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                                                           dbc.CardImg(
                                                               src=Image.fromarray(image_render).convert('RGB'),
                                                               bottom=True)]), width=3))
-                return row_children, blend_colour_dict
+                return row_children, blend_return
             else:
                 raise PreventUpdate
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError):
@@ -1869,6 +1866,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 new_hover = per_channel_intensity_hovertext(currently_selected)
                 fig.update_traces(hovertemplate=new_hover)
             else:
+                del cur_graph
                 image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]) for elem in currently_selected if \
                              elem in canvas_layers[exp][slide][acq].keys()])
                 default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
