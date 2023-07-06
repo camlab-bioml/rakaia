@@ -171,7 +171,7 @@ def test_basic_blend_dict_params():
     # check that the default values are either hex white or None
     possibilities = ['#FFFFFF', None]
 
-    # assert that the firdst ROI has non default params
+    # assert that the first ROI has non default params
     for channel in blend_dict["experiment0"]['slide0']["acq0"].keys():
         for blend_param in blend_dict["experiment0"]['slide0']["acq0"][channel].values():
             assert blend_param not in possibilities
@@ -198,3 +198,5 @@ def test_calculate_percentile_intensity(get_current_dir):
     assert lower_val == 10.202707290649414
     assert default_val > lower_val
     assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) == float(np.max(array))
+    assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) > \
+           get_default_channel_upper_bound_by_percentile(array=array, percentile=99.999)

@@ -1165,8 +1165,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         Input('annotation-canvas-size', 'value'),
         State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),
-        Input('autosize-canvas', 'n_clicks'),
-        prevent_initial_call=True)
+        Input('autosize-canvas', 'n_clicks'))
     def update_canvas_size(value, current_canvas, cur_graph_layout, nclicks):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
@@ -1376,6 +1375,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
                        # Input('image-analysis', 'value'),
                        Input('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
@@ -1387,12 +1387,18 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Input('unique-channel-list', 'value'),
                        Input('alias-dict', 'data'),
                        Input('preset-button', 'n_clicks'),
+                       State('blending_colours', 'data'),
                        prevent_initial_call=True,
                        background=True,
                        manager=cache_manager)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks):
+                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
+                          blend_colour_dict):
+        """
+        Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
+        default percentile scaling applied, apply before rendering
+        """
         try:
             if gallery_data is not None:
                 row_children = []
@@ -1407,13 +1413,26 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     exp, slide, acq = split[0], split[1], split[2]
                     # maintain the original order of channels that is dictated by the metadata
                     views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
+                    for channel in blend_colour_dict[exp][slide][acq].keys():
+                        try:
+                            if blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] is None:
+                                blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] = \
+                                get_default_channel_upper_bound_by_percentile(
+                                    gallery_data[exp][slide][acq][channel])
+                            if blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] is None:
+                                blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] = 0
+                        except TypeError:
+                            pass
                 else:
                     views = None
 
                 if views is not None:
                     for key, value in views.items():
-                        image_render = resize_for_canvas(value)
-
+                        try:
+                            image_render = resize_for_canvas(apply_preset_to_array(value,
+                                                        blend_colour_dict[exp][slide][acq][key]))
+                        except (KeyError, TypeError):
+                            image_render = resize_for_canvas(value)
                         if None not in (preset_selection, preset_dict) and nclicks > 0:
                             image_render = apply_preset_to_array(value, preset_dict[preset_selection])
 
@@ -1424,15 +1443,18 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                             y_range_high = math.ceil(int(canvas_layout['yaxis.range[0]']))
                             assert x_range_high >= x_range_low
                             assert y_range_high >= y_range_low
-                            image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+                            try:
+                                image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                                            range(int(x_range_low), int(x_range_high), 1))]
+                            except IndexError:
+                                pass
 
                         label = aliases[key] if aliases is not None and key in aliases.keys() else key
                         row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(label, className="card-text")),
                                                           dbc.CardImg(
                                                               src=Image.fromarray(image_render).convert('RGB'),
                                                               bottom=True)]), width=3))
-                return row_children
+                return row_children, blend_colour_dict
             else:
                 raise PreventUpdate
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError):

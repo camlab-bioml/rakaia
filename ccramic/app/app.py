@@ -82,7 +82,7 @@ def init_dashboard(server, authentic_id):
                         'edits': {'shapePosition': False}, 'scrollZoom': True}, relayoutData={'autosize': True},
                         id='annotation_canvas-fullscreen',
             style={"margin": "auto", "width": "100vw", "height": "100vh",
-                   "max-width": "none", "max-height": "none", 'textAlign': 'center'},
+                   "max-width": "none", "max-height": "none"},
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False,
@@ -103,7 +103,7 @@ def init_dashboard(server, authentic_id):
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=30000,
                         max_total_size=30000, max_files=200,
-                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "-50px"}),
+                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px"}),
                         dcc.Input(id="read-filepath", type="text",
                         placeholder="Upload file using file path (local runs only)", value=None,
                                   style={"width": "85%"}),
@@ -153,7 +153,7 @@ def init_dashboard(server, authentic_id):
                                                     "margin-right": "10px", "margin-top": "7px"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%", "margin-bottom": "15px"}),
-                        dcc.Graph(config={"modeBarButtonsToAdd": [
+                        html.Div([dcc.Graph(config={"modeBarButtonsToAdd": [
                         # "drawline",
                         # "drawopenpath",
                         "drawclosedpath",
@@ -164,11 +164,10 @@ def init_dashboard(server, authentic_id):
                             # disable scrollable zoom for now to control the scale bar
                         'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
                         id='annotation_canvas',
-                            style={"margin-top": "-30px"},
-                            # style={"width": "100vw", "height": "100vh"},
+                            style={"width": "65vw", "height": "65vh"},
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                               xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False))}),
+                                              yaxis=go.YAxis(showticklabels=False))})], style={"margin-top": "-30px"}),
                     html.H6("Current canvas blend", style={'width': '75%'}),
                     html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
                     dbc.Button("Show/hide region statistics", id="compute-region-statistics", className="mb-3",
@@ -181,7 +180,7 @@ def init_dashboard(server, authentic_id):
                                                                  data=None)], style={"width": "85%"})
                                   ]),
                         id="area-stats-collapse", is_open=False), style={"minHeight": "100px"})]),
-                        width=9, style={"margin": "auto"}),
+                        width=9),
                         dbc.Col(html.Div([html.H5("Select channel to modify",
                                 style={'width': '50%', 'display': 'inline-block'}),
                         html.Abbr("\u2753", title="Select a channel in the current blend to \nchange colour, "
