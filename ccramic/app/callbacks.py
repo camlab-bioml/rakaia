@@ -608,9 +608,10 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                     legend_text = legend_text + f'<span style="color:' \
                                                 f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
                                                 f'>{label}</span><br>'
-            image = np.asarray(canvas_layers[exp][slide][acq][currently_selected[0]]).astype(np.float32)
-            for other_channel in currently_selected[1:]:
-                image = blend_arrays_additively(image, np.asarray(canvas_layers[exp][slide][acq][other_channel]))
+            image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+                         elem in currently_selected if \
+                         elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+            image = np.clip(image, 0, 255)
             try:
                 fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
                 # fig.update(data=[{'customdata': )
@@ -1077,9 +1078,10 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             exp, slide, acq = split[0], split[1], split[2]
 
             try:
-                image = np.asarray(canvas_layers[exp][slide][acq][currently_selected[0]]).astype(np.float32)
-                for other_channel in currently_selected[1:]:
-                    image = blend_arrays_additively(image, np.asarray(canvas_layers[exp][slide][acq][other_channel]))
+                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+                             elem in currently_selected if \
+                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                image = np.clip(image, 0, 255)
             except (TypeError, IndexError):
                 image = None
 
@@ -1870,9 +1872,10 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 fig.update_traces(hovertemplate=new_hover)
             else:
                 del cur_graph
-                image = np.asarray(canvas_layers[exp][slide][acq][currently_selected[0]]).astype(np.float32)
-                for other_channel in currently_selected[1:]:
-                    image = blend_arrays_additively(image, np.asarray(canvas_layers[exp][slide][acq][other_channel]))
+                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+                             elem in currently_selected if \
+                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                image = np.clip(image, 0, 255)
                 default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
                 fig = px.imshow(Image.fromarray(image))
                 fig.update_layout(uirevision=True)
