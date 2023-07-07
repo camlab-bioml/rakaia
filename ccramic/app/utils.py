@@ -364,3 +364,17 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     array_stack = np.hstack(array)
     data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
     return float(np.percentile(data, percentile))
+
+
+def blend_arrays_additively(array_1, array_2, pixel_threshold=3):
+    """
+    Blend RGB arrays based on the additive colour model
+    """
+    to_add = np.asarray(array_2).astype(np.float32)
+    mask1 = (array_1.astype(np.uint8) < pixel_threshold).all(-1)
+    mask2 = (to_add.astype(np.uint8) < pixel_threshold).all(-1)
+    combined = np.logical_or(mask1, mask2)
+    array_1[~combined] = array_1[~combined] / 2
+    to_add[~combined] = to_add[~combined] / 2
+    array_1 = (array_1.astype(np.float32) + to_add.astype(np.float32))
+    return array_1
