@@ -184,15 +184,14 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             except IndexError:
                 raise PreventUpdate
             try:
-                assert all([elem in names.keys() for elem in image_dict[exp][slide][acq].keys()])
-                assert len(names.keys()) == len(image_dict[exp][slide][acq].keys())
                 # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
                 if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
                     all([elem in image_dict[exp][slide][acq].keys() for elem in currently_selected_channels]):
-                    channels_return = list(currently_selected_channels)
+                    channels_selected = list(currently_selected_channels)
                 else:
-                    channels_return = []
-                return [{'label': names[i], 'value': i} for i in names.keys()], channels_return, Serverside(image_dict)
+                    channels_selected = []
+                return [{'label': names[i], 'value': i} for i in names.keys() if len(i) > 0 and \
+                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict)
             except AssertionError:
                 return [], [], Serverside(image_dict)
         else:
