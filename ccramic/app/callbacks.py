@@ -14,7 +14,7 @@ from numpy.core._exceptions import _ArrayMemoryError
 from plotly.graph_objs.layout import XAxis, YAxis
 from .inputs import *
 
-def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
+def init_callbacks(dash_app, tmpdirname, authentic_id):
     dash_app.config.suppress_callback_exceptions = True
 
     @dash_app.callback(
@@ -75,9 +75,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Output('dataset-preview-table', 'columns'),
                        Output('dataset-preview-table', 'data'),
                        Input('session_config', 'data'),
-                       prevent_initial_call=True,
-                       background=True,
-                       manager=cache_manager)
+                       prevent_initial_call=True)
     def create_upload_dict_from_filepath_string(session_dict):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
@@ -1399,9 +1397,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        Input('preset-button', 'n_clicks'),
                        State('blending_colours', 'data'),
                        Input('default-scaling-gallery', 'value'),
-                       prevent_initial_call=True,
-                       background=True,
-                       manager=cache_manager)
+                       prevent_initial_call=True)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,

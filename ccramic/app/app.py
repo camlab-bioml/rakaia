@@ -49,23 +49,23 @@ def init_dashboard(server, authentic_id):
     #     VALID_USERNAME_PASSWORD_PAIRS
     # )
 
-    try:
-        cache = Cache(dash_app.server, config={
-            'CACHE_TYPE': 'redis',
-            'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
-        })
-    except (ModuleNotFoundError, RuntimeError) as no_redis:
-        try:
-            cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
-            background_callback_manager = DiskcacheManager(cache)
-        except DatabaseError:
-            cache = Cache(dash_app.server, config={
-                'CACHE_TYPE': 'filesystem',
-                'CACHE_DIR': 'cache-directory'
-            })
-
-    cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
-    background_callback_manager = DiskcacheManager(cache)
+    # try:
+    #     cache = Cache(dash_app.server, config={
+    #         'CACHE_TYPE': 'redis',
+    #         'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
+    #     })
+    # except (ModuleNotFoundError, RuntimeError) as no_redis:
+    #     try:
+    #         cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
+    #         background_callback_manager = DiskcacheManager(cache)
+    #     except DatabaseError:
+    #         cache = Cache(dash_app.server, config={
+    #             'CACHE_TYPE': 'filesystem',
+    #             'CACHE_DIR': 'cache-directory'
+    #         })
+    #
+    # cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
+    # background_callback_manager = DiskcacheManager(cache)
 
     dash_app.layout = html.Div([
         # this is the generic error modal that will pop up on specific errors return by the alert dict
@@ -294,6 +294,6 @@ def init_dashboard(server, authentic_id):
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname, background_callback_manager, authentic_id, cache)
+    init_callbacks(dash_app, tmpdirname, authentic_id)
 
     return dash_app.server
