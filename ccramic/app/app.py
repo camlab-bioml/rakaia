@@ -13,6 +13,7 @@ from sqlite3 import DatabaseError
 from .parsers import *
 from .callbacks import init_callbacks
 import shutil
+from .inputs import *
 
 
 def init_dashboard(server, authentic_id):
@@ -71,22 +72,8 @@ def init_dashboard(server, authentic_id):
         dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})]),
                   id="alert-modal"),
         # this modal is for the fullscreen view and does not belong in a nested tab
-        dbc.Modal(children=dbc.ModalBody([dcc.Graph(config={"modeBarButtonsToAdd": [
-                        # "drawline",
-                        # "drawopenpath",
-                        "drawclosedpath",
-                        # "drawcircle",
-                        "drawrect",
-                        "eraseshape"],
-                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
-                        'edits': {'shapePosition': False}, 'scrollZoom': True}, relayoutData={'autosize': True},
-                        id='annotation_canvas-fullscreen',
-            style={"margin": "auto", "width": "100vw", "height": "100vh",
-                   "max-width": "none", "max-height": "none"},
-                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False,
-                                                             uirevision="consistent"))})]),
+        dbc.Modal(children=dbc.ModalBody([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
+                                                                           fullscreen_mode=True)]),
             id="fullscreen-canvas", fullscreen=True, size='xl',
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
                               "max-width": "none", "max-height": "none"}),
@@ -154,21 +141,8 @@ def init_dashboard(server, authentic_id):
                                                     "margin-right": "10px", "margin-top": "7px"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%", "margin-bottom": "15px"}),
-                        html.Div([dcc.Graph(config={"modeBarButtonsToAdd": [
-                        # "drawline",
-                        # "drawopenpath",
-                        "drawclosedpath",
-                        # "drawcircle",
-                        "drawrect",
-                        "eraseshape"],
-                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
-                            # disable scrollable zoom for now to control the scale bar
-                        'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
-                        id='annotation_canvas',
-                            style={"width": "65vw", "height": "65vh"},
-                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False))})], style={"margin-top": "-30px"}),
+                        html.Div([render_default_annotation_canvas(input_id="annotation_canvas")],
+                                 style={"margin-top": "-30px"}, id="canvas-div-holder"),
                     html.H6("Current canvas blend", style={'width': '75%'}),
                     html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
                     dbc.Button("Show/hide region statistics", id="compute-region-statistics", className="mb-3",

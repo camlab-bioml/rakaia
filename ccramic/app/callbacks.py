@@ -12,6 +12,7 @@ import math
 from .parsers import *
 from numpy.core._exceptions import _ArrayMemoryError
 from plotly.graph_objs.layout import XAxis, YAxis
+from .inputs import *
 
 def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     dash_app.config.suppress_callback_exceptions = True
@@ -160,9 +161,11 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
         else:
             raise PreventUpdate
 
+
     @dash_app.callback(Output('image_layers', 'options'),
                        Output('image_layers', 'value', allow_duplicate=True),
                        Output('uploaded_dict', 'data', allow_duplicate=True),
+                       Output('canvas-div-holder', 'children'),
                        State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'),
@@ -171,8 +174,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        prevent_initial_call=True)
     def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config):
         """
-        #TODO: update here with lazy loading to read a specific ROI into the upload dict
+        Update the image layers and dropdown options when a new ROI is selected.
+        Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
+        if the dimensions are above 3000 for either axis
         """
+        # set the default canvas to return without a load screen
+        canvas_return = [render_default_annotation_canvas()]
         if image_dict and data_selection:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
@@ -181,6 +188,13 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
             try:
                 image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
                                                      session_config=session_config)
+                # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
+                if all([image_dict[exp][slide][acq][elem] is not None for \
+                        elem in image_dict[exp][slide][acq].keys()]):
+                    # get the first image in the ROI and check the dimensions
+                    first_image = list(image_dict[exp][slide][acq].keys())[0]
+                    first_image = image_dict[exp][slide][acq][first_image]
+                    canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image)]
             except IndexError:
                 raise PreventUpdate
             try:
@@ -191,9 +205,9 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                 else:
                     channels_selected = []
                 return [{'label': names[i], 'value': i} for i in names.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict)
+                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return
             except AssertionError:
-                return [], [], Serverside(image_dict)
+                return [], [], Serverside(image_dict), canvas_return
         else:
             raise PreventUpdate
 
@@ -243,7 +257,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict):
         """
-        update the blend dictionary when a new channel is added to the multi-channel selector
+        Update the blend dictionary when a new channel is added to the multi-channel selector
         """
         use_preset_condition = None not in (preset_selection, preset_dict)
         if add_to_layer is not None and current_blend_dict is not None:
@@ -586,10 +600,12 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
                        State('annotation_canvas', 'relayoutData'),
                        State('uploaded_dict', 'data'),
                        State('channel-intensity-hover', 'value'),
+                       State('canvas-div-holder', 'children'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_change(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
-                               cur_graph, cur_graph_layout, raw_data_dict, show_each_channel_intensity):
+                               cur_graph, cur_graph_layout, raw_data_dict, show_each_channel_intensity,
+                                        canvas_children):
 
         """
         Update the canvas from a layer dictionary update
@@ -597,7 +613,7 @@ def init_callbacks(dash_app, tmpdirname, cache_manager, authentic_id, cache):
 
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
-                not in [{'dragmode': 'pan'}]:
+                not in [{'dragmode': 'pan'}] and len(canvas_children) > 0:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
