@@ -7,7 +7,7 @@ import os
 import uuid
 
 _program = "ccramic"
-__version__ = "0.2.0"
+__version__ = "0.3.0"
 
 
 def get_current_dir():
@@ -59,10 +59,9 @@ def init_app():
 
     with app.app_context():
         # Import parts of our core Flask app
-        import ccramic.app.routes
 
         # Import Dash application
-        from .app import init_dashboard, init_callbacks
+        from .app import init_dashboard
         # use a unique uuid for the session id I/O
         authentic_user = str(uuid.uuid1())
         app = init_dashboard(app, authentic_user)

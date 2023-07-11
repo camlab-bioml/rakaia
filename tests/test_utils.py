@@ -66,12 +66,18 @@ def test_filtering_intensity_changes(get_current_dir):
     filtered_1 = filter_by_upper_and_lower_bound(greyscale, lower_bound=51, upper_bound=450)
     original_pixels = Image.fromarray(greyscale).load()
     new_pixels = Image.fromarray(filtered_1).load()
+    assert np.max(filtered_1) == 255
     for i in range(greyscale_image.height):
         for j in range(greyscale_image.width):
             if original_pixels[i, j] < 51:
                 assert new_pixels[i, j] == 0
             else:
-                assert new_pixels[i, j] >= 51
+                # if the priginal pixel is 52 or more intense, the final value will be at least the scale value
+                if original_pixels[i, j] >= 52:
+                    assert new_pixels[i, j] >= (255 / (450 - 51))
+                else:
+                    # otherwise, the original pixel is either 0 or a fraction of the scale value (likely a float)
+                    assert 0 <= new_pixels[i, j] < (255 / (450 - 51))
 
     assert np.max(greyscale) >= np.max(filtered_1)
 
@@ -95,12 +101,14 @@ def test_filtering_intensity_changes_low(get_current_dir):
     filtered_1 = filter_by_upper_and_lower_bound(greyscale, lower_bound=1, upper_bound=15)
     original_pixels = Image.fromarray(greyscale).load()
     new_pixels = Image.fromarray(filtered_1).load()
+    # assert that when a low upper bound is used, it scales up to the max of 255
+    assert int(round(np.max(filtered_1))) == 255
     for i in range(greyscale_image.height):
         for j in range(greyscale_image.width):
             if original_pixels[i, j] < 1:
                 assert new_pixels[i, j] == 0
             else:
-                assert 15 <= new_pixels[i, j]
+                assert new_pixels[i, j] <= 255
 
     assert np.max(greyscale) >= np.max(filtered_1)
 
@@ -108,13 +116,13 @@ def test_filtering_intensity_changes_low(get_current_dir):
 def test_generate_histogram(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
     greyscale = np.array(greyscale_image)
-    histogram = pixel_hist_from_array(greyscale)
+    histogram, array_max = pixel_hist_from_array(greyscale)
     assert isinstance(histogram, plotly.graph_objs._figure.Figure)
     assert histogram["data"] is not None
     assert histogram["layout"] is not None
     values = histogram["data"][0]['x']
     assert len(values) == 360001
-    assert max(values) == np.max(greyscale)
+    assert array_max == int(np.max(greyscale))
 
 
 def test_basic_blend_dict_params():
@@ -163,7 +171,7 @@ def test_basic_blend_dict_params():
     # check that the default values are either hex white or None
     possibilities = ['#FFFFFF', None]
 
-    # assert that the firdst ROI has non default params
+    # assert that the first ROI has non default params
     for channel in blend_dict["experiment0"]['slide0']["acq0"].keys():
         for blend_param in blend_dict["experiment0"]['slide0']["acq0"][channel].values():
             assert blend_param not in possibilities
@@ -173,9 +181,22 @@ def test_basic_blend_dict_params():
         for blend_param in blend_dict["experiment0"]['slide0']["acq1"][channel].values():
             assert blend_param in possibilities
 
-    blend_dict = copy_values_within_nested_dict(blend_dict, "experiment0+slide0+acq0", "experiment0+slide0+acq1")
+    blend_dict = copy_values_within_nested_dict(blend_dict, "experiment0+++slide0+++acq0",
+                                                "experiment0+++slide0+++acq1")
 
     # assert that the default parameters in the second ROi are overwritten
     for channel in blend_dict["experiment0"]['slide0']["acq1"].keys():
         for blend_param in blend_dict["experiment0"]['slide0']["acq1"][channel].values():
             assert blend_param not in possibilities
+
+
+def test_calculate_percentile_intensity(get_current_dir):
+    array = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
+    default_val = get_default_channel_upper_bound_by_percentile(array=array)
+    assert default_val == 70.67082221984863
+    lower_val = get_default_channel_upper_bound_by_percentile(array=array, percentile=50)
+    assert lower_val == 10.202707290649414
+    assert default_val > lower_val
+    assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) == float(np.max(array))
+    assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) > \
+           get_default_channel_upper_bound_by_percentile(array=array, percentile=99.999)

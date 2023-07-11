@@ -254,7 +254,6 @@ def create_new_blending_dict(uploaded):
                         current_blend_dict[exp][slide][acq][channel] = {'color': None,
                                                                         'x_lower_bound': None,
                                                                         'x_upper_bound': None,
-                                                                        'y_ceiling': None,
                                                                         'filter_type': None,
                                                                         'filter_val': None}
                         current_blend_dict[exp][slide][acq][channel]['color'] = '#FFFFFF'
@@ -266,7 +265,7 @@ def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config):
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
     try:
-        split = dataset_selection.split("+")
+        split = split_string_at_pattern(dataset_selection)
         exp, slide, acq_name = split[0], split[1], split[2]
         # get the index of the file from the experiment number in the event that there are multiple uploads
         index = int(exp.split("experiment")[1])

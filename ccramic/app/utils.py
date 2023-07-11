@@ -6,15 +6,14 @@ import numpy as np
 import pandas as pd
 from PIL import Image
 from PIL import ImageColor
-import io
-import base64
 import plotly.graph_objects as go
 import plotly.express as px
-from skimage import data, draw
+from skimage import draw
 from scipy import ndimage
-import numpy.ma as ma
 from scipy.ndimage import gaussian_filter, median_filter
 
+def split_string_at_pattern(string, pattern="+++"):
+    return string.split(pattern)
 
 def get_luma(rbg):
     return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
@@ -187,52 +186,52 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Filter on the lower bound: removes any pixels less than the lower bound
     Filter on the upper bound: sets the upper bound as the new max intensity and scales all pixels
     relative to the new max.
-    Example: original max intensity 255, new upper bound = 100. Scaling will be done to each pixel retained
-    by multiplying by 255/100
+    Uses linear scaling instead of 0 to max upper bound scaling: pixels close to the boundary of the lower bound
+    are scaled relative to their intensity to the lower bound instead of the full scale factor
     """
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
     # array = np.array(Image.fromarray(array).convert('L'))
-    original_max = np.max(array)
+    # original_max = np.max(array) if np.max(array) > 255 else 255
     lower_bound = float(lower_bound) if lower_bound is not None else None
     upper_bound = float(upper_bound) if upper_bound is not None else None
-    if None not in (original_max, upper_bound):
-        try:
-            scale_factor = float(original_max) / upper_bound
-        except ZeroDivisionError:
-            scale_factor = 1
-    else:
-        scale_factor = 1
     if lower_bound is None:
         lower_bound = 0
-    array = np.where(array < lower_bound, 0, array)
+    # array = np.where(array < lower_bound, 0, array)
+    # try linear scaling from the lower bound to upper bound instead of 0 to upper
+    # subtract the lower bound from all elements and retain those above 0
+    # allows better gradual scaling around the lower bound threshold
     try:
         if upper_bound >= 0:
             array = np.where(array > upper_bound, upper_bound, array)
     except TypeError:
         pass
-    if scale_factor >= 0 and scale_factor != 1:
+    array = np.where((array - lower_bound) > 0, (array - lower_bound), 0)
+    if upper_bound is not None:
+        try:
+            scale_factor = 255 / (upper_bound - lower_bound)
+        except ZeroDivisionError:
+            scale_factor = 255
+    else:
+        scale_factor = 1
+    if scale_factor > 0 and scale_factor != 1:
         array = array * scale_factor
-    # if upper_bound is not None and upper_bound < 255:
-    #     # # if pixels are more intense than the upper bound, reset them to the upper bound
-    #     # re-scale pixels lastly based on the max possible intensity of 255
-    #     second_scaling = 255 / upper_bound
-    #     array = array * second_scaling
     return array
 
 
-def pixel_hist_from_array(array):
+def pixel_hist_from_array(array, subset_number=1000000):
     # try:
     # IMP: do not use the conversion to L as it will automatically set the max to 255
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
     hist_data = np.hstack(array)
     max_hist = np.max(array)
-    hist = np.random.choice(hist_data, 1000000) if hist_data.shape[0] > 1000000 else hist_data
+    hist = np.random.choice(hist_data, subset_number) if hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     try:
         hist = np.concatenate([np.array(hist), np.array([max_hist])])
     except ValueError:
         pass
-    return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)])
+    return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)]), \
+        int(np.max(array))
     # except ValueError:
     #     print("error")
     #     return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
@@ -300,15 +299,82 @@ def validate_incoming_metadata_table(metadata, upload_dict):
         return None
 
 
+def create_new_coord_bounds(window_dict, x_request, y_request):
+    """
+    Create a new window based on an xy coordinate request. The current zoom level is maintained
+    and the requested coordinate is approximately the middle of the new window
+    """
+    try:
+        assert all([value is not None for value in window_dict.values()])
+        # first cast the bounds as int, then cast as floats and add significant digits
+        # 634.5215773809524
+        x_request = float(x_request) + 0.000000000000
+        y_request = float(y_request) + 0.000000000000
+        x_low = float(min(float(window_dict['x_high']), float(window_dict['x_low'])))
+        x_high = float(max(float(window_dict['x_high']), float(window_dict['x_low'])))
+        y_low = float(min(float(window_dict['y_high']), float(window_dict['y_low'])))
+        y_high = float(max(float(window_dict['y_high']), float(window_dict['y_low'])))
+        midway_x = abs(float((x_high - x_low))) / 2
+        midway_y = abs(float((y_high - y_low))) / 2
+        new_x_low = float(float(x_request - midway_x) + 0.000000000000)
+        new_x_high = float(float(x_request + midway_x) + 0.000000000000)
+        new_y_low = float(float(y_request - midway_y) + 0.000000000000)
+        new_y_high = float(float(y_request + midway_y) + 0.000000000000)
+        return new_x_low, new_x_high, new_y_low, new_y_high
+    except (AssertionError, KeyError):
+        return None
+
 def copy_values_within_nested_dict(dict, current_data_selection, new_data_selection):
     """
     Copy the blend dictionary parameters (colour, filtering, scaling) from one acquisition/ROI in a nested
     dictionary to another
     """
 
-    cur_exp, cur_slide, cur_acq = current_data_selection.split("+")
-    new_exp, new_slide, new_acq = new_data_selection.split("+")
+
+    cur_exp, cur_slide, cur_acq = split_string_at_pattern(current_data_selection)
+    new_exp, new_slide, new_acq = split_string_at_pattern(new_data_selection)
 
     for key, value in dict[cur_exp][cur_slide][cur_acq].items():
         dict[new_exp][new_slide][new_acq][key] = value
     return dict
+
+def per_channel_intensity_hovertext(channel_list):
+    """
+    generate custom hovertext for the annotation canvas that shows the individual pixel intensities of ll
+    channels selected in the hover template. Assumes that the data has been added as customdata through
+    np.stack((channels), axis=-1)
+    """
+    data_index = 0
+    hover_template = "x: %{x}, y: %{y} <br>"
+    try:
+        assert isinstance(channel_list, list)
+        for elem in channel_list:
+            assert channel_list.index(elem) == data_index
+            hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
+            data_index += 1
+    except AssertionError:
+        pass
+    hover_template = hover_template + "<extra></extra>"
+    return hover_template
+
+def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_number=1000000):
+    """
+    Get a reasonable upper bound default on a channel with a percentile of the pixels
+    """
+    array_stack = np.hstack(array)
+    data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
+    return float(np.percentile(data, percentile))
+
+
+def blend_arrays_additively(array_1, array_2, pixel_threshold=3):
+    """
+    Blend RGB arrays based on the additive colour model
+    """
+    to_add = np.asarray(array_2).astype(np.float32)
+    mask1 = (array_1.astype(np.uint8) < pixel_threshold).all(-1)
+    mask2 = (to_add.astype(np.uint8) < pixel_threshold).all(-1)
+    combined = np.logical_or(mask1, mask2)
+    array_1[~combined] = array_1[~combined] / 2
+    to_add[~combined] = to_add[~combined] / 2
+    array_1 = (array_1.astype(np.float32) + to_add.astype(np.float32))
+    return array_1

@@ -32,7 +32,7 @@ select the relevant operating system.
 Once conda is installed:
 
 ```
-conda env create -f environment.yml
+conda env create -f envs/environment.yml
 conda activate ccramic
 pip install .
 ```
@@ -83,7 +83,7 @@ ccramic can be run using Docker with the following commands (requires an install
 
 
 ```
-docker build -t ccramic .
+docker build -t ccramic envs/
 docker run -d -p 5000:5000 ccramic:latest ccramic
 ```
 

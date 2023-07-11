@@ -1,19 +1,18 @@
-import os
 
 from dash import dash_table
 import tempfile
 import dash_uploader as du
-from flask_caching import Cache
-from dash_extensions.enrich import DashProxy, html, dcc, \
-    ServersideOutputTransform, FileSystemCache, ServersideBackend, FileSystemBackend
+from dash_extensions.enrich import DashProxy, html, ServersideOutputTransform, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-from dash import ctx, DiskcacheManager
-import diskcache
-from sqlite3 import DatabaseError
-from .parsers import *
+# from dash import DiskcacheManager
+# import diskcache
+# from sqlite3 import DatabaseError
+# from .parsers import *
+# from flask_caching import Cache
 from .callbacks import init_callbacks
 import shutil
+from .inputs import *
 
 
 def init_dashboard(server, authentic_id):
@@ -30,6 +29,7 @@ def init_dashboard(server, authentic_id):
             shutil.rmtree(cache_dest)
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
+                             update_title=None,
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
                          external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                          server=server,
@@ -48,45 +48,31 @@ def init_dashboard(server, authentic_id):
     #     VALID_USERNAME_PASSWORD_PAIRS
     # )
 
-    try:
-        cache = Cache(dash_app.server, config={
-            'CACHE_TYPE': 'redis',
-            'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
-        })
-    except (ModuleNotFoundError, RuntimeError) as no_redis:
-        try:
-            cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
-            background_callback_manager = DiskcacheManager(cache)
-        except DatabaseError:
-            cache = Cache(dash_app.server, config={
-                'CACHE_TYPE': 'filesystem',
-                'CACHE_DIR': 'cache-directory'
-            })
-
-    cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
-    background_callback_manager = DiskcacheManager(cache)
+    # try:
+    #     cache = Cache(dash_app.server, config={
+    #         'CACHE_TYPE': 'redis',
+    #         'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
+    #     })
+    # except (ModuleNotFoundError, RuntimeError) as no_redis:
+    #     try:
+    #         cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
+    #         background_callback_manager = DiskcacheManager(cache)
+    #     except DatabaseError:
+    #         cache = Cache(dash_app.server, config={
+    #             'CACHE_TYPE': 'filesystem',
+    #             'CACHE_DIR': 'cache-directory'
+    #         })
+    #
+    # cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
+    # background_callback_manager = DiskcacheManager(cache)
 
     dash_app.layout = html.Div([
         # this is the generic error modal that will pop up on specific errors return by the alert dict
         dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})]),
                   id="alert-modal"),
         # this modal is for the fullscreen view and does not belong in a nested tab
-        dbc.Modal(children=dbc.ModalBody([dcc.Graph(config={"modeBarButtonsToAdd": [
-                        # "drawline",
-                        # "drawopenpath",
-                        "drawclosedpath",
-                        # "drawcircle",
-                        "drawrect",
-                        "eraseshape"],
-                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
-                        'edits': {'shapePosition': False}, 'scrollZoom': True}, relayoutData={'autosize': True},
-                        id='annotation_canvas-fullscreen',
-            style={"margin": "auto", "width": "100vw", "height": "100vh",
-                   "max-width": "none", "max-height": "none"},
-                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False,
-                                                             uirevision="consistent"))})]),
+        dbc.Modal(children=dbc.ModalBody([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
+                                                                           fullscreen_mode=True)]),
             id="fullscreen-canvas", fullscreen=True, size='xl',
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
                               "max-width": "none", "max-height": "none"}),
@@ -103,7 +89,7 @@ def init_dashboard(server, authentic_id):
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=30000,
                         max_total_size=30000, max_files=200,
-                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt']),
+                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px"}),
                         dcc.Input(id="read-filepath", type="text",
                         placeholder="Upload file using file path (local runs only)", value=None,
                                   style={"width": "85%"}),
@@ -118,10 +104,11 @@ def init_dashboard(server, authentic_id):
                                                                                         "margin-right": "25px"}),
                         html.H5("Choose channel image", style={'width': '65%', 'display': 'inline-block'}),
                         dcc.Dropdown(id='data-collection', multi=False, options=[],
-                        style={'width': '30%', 'display': 'inline-block', 'margin-right': '-30'}),
+                        style={'width': '50%', 'display': 'inline-block', 'margin-right': '-50'}),
                         dcc.Dropdown(id='image_layers', multi=True,
-                        style={'width': '70%', 'height': '100px', 'display': 'inline-block'})],
-                        style={'width': '125%', 'height': '100%', 'display': 'inline-block', 'margin-left': '-30'}),
+                        style={'width': '72%', 'height': '100px', 'display': 'inline-block', 'margin-left': '195px',
+                               'margin-top': '-22.5px'})],
+                        style={'width': '125%', 'height': '100%', 'display': 'inline-block'}),
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
                         html.Div([html.H3("", style={"margin-right": "50px",
                                                                            "margin-left": "30px"}),
@@ -132,43 +119,41 @@ def init_dashboard(server, authentic_id):
                                              id="make-canvas-fullscreen",
                                             color=None, n_clicks=0,
                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
-                                  html.H6("Current Bounds:", style={"margin-left": "120px",
-                                                                    "margin-top": "10px", "height": "100%"}),
+                                  dbc.Button("Auto-fit canvas", id="autosize-canvas",
+                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
+                                  html.Div(style={"margin-left": "20px", "margin-right": "10px",
+                                                                    "margin-top": "10px", "height": "100%",
+                                                  "width": "150%"},
+                                          id="bound-shower"),
                                   dcc.Input(id="set-x-auto-bound", type="number", value=None,
                                             placeholder="Set x-coord",
-                                            style={"margin-left": "120px",
+                                            style={"margin-left": "10px",
                                                    "margin-top": "10px", "height": "100%", "width": "15vh"}
                                             ),
                                   dcc.Input(id="set-y-auto-bound", type="number", value=None,
                                             placeholder="Set y-coord",
-                                            style={"margin-left": "120px",
+                                            style={"margin-left": "10px",
                                                    "margin-top": "10px", "height": "100%", "width": "15vh"}
                                             ),
+                                  dbc.Button("Set", id="activate-coord",
+                                             style={"width": "50px", "height": "35px", "margin-left": "15px",
+                                                    "margin-right": "10px", "margin-top": "7px"}),
                         html.Br()],
                         style={"display": "flex", "width": "100%", "margin-bottom": "15px"}),
-                        dcc.Graph(config={"modeBarButtonsToAdd": [
-                        # "drawline",
-                        # "drawopenpath",
-                        "drawclosedpath",
-                        # "drawcircle",
-                        "drawrect",
-                        "eraseshape"],
-                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
-                            # disable scrollable zoom for now to control the scale bar
-                        'edits': {'shapePosition': False}}, relayoutData={'autosize': True},
-                        id='annotation_canvas',
-                            style={"margin-top": "-30px"},
-                            # style={"width": "100vw", "height": "100vh"},
-                        figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
-                                              xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False))}),
+                        html.Div([render_default_annotation_canvas(input_id="annotation_canvas")],
+                                 style={"margin-top": "-30px"}, id="canvas-div-holder"),
                     html.H6("Current canvas blend", style={'width': '75%'}),
                     html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
-                    html.H6("Selection information", style={'width': '75%'}),
-                    html.Div([dash_table.DataTable(id='selected-area-table',
-                                                   columns=[{'id': p, 'name': p} for p in
-                                                            ['Channel', 'Mean', 'Max', 'Min']],
-                                                   data=None)], style={"width": "85%"})]),
+                    dbc.Button("Show/hide region statistics", id="compute-region-statistics", className="mb-3",
+                               color="primary", n_clicks=0),
+                    html.Div(dbc.Collapse(
+                        html.Div([html.H6("Selection information", style={'width': '75%'}),
+                                  html.Div([dash_table.DataTable(id='selected-area-table',
+                                                                 columns=[{'id': p, 'name': p} for p in
+                                                                          ['Channel', 'Mean', 'Max', 'Min']],
+                                                                 data=None)], style={"width": "85%"})
+                                  ]),
+                        id="area-stats-collapse", is_open=False), style={"minHeight": "100px"})]),
                         width=9),
                         dbc.Col(html.Div([html.H5("Select channel to modify",
                                 style={'width': '50%', 'display': 'inline-block'}),
@@ -177,20 +162,27 @@ def init_dashboard(server, authentic_id):
                         style={'width': '5%', 'display': 'inline-block'}),
                         dcc.Dropdown(id='images_in_blend', multi=False),
                         html.Br(),
-                        daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
-                        value=dict(hex="#00ABFC")),
+                        daq.ColorPicker(id="annotation-color-picker", label="Current channel color",
+                        value=dict(hex="#00ABFC", rgb=None)),
+                        dcc.Loading(
                         dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                          xaxis=go.XAxis(showticklabels=False),
                                                          yaxis=go.YAxis(showticklabels=False),
                                                         margin=dict(l=5, r=5, b=15, t=20, pad=0)),
                                                            },
                         style={'width': '60vh', 'height': '30vh', 'margin-left': '-30px'},
-                        config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
+                        # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
                         # keep zoom and pan bars to be able to modify the histogram view
                         # 'modeBarButtonsToRemove': ['zoom', 'pan']
-                                },
+                                #},
                                   ),
+                            type="default", fullscreen=False),
                         html.Br(),
+                        html.Div([dcc.RangeSlider(0, 100, 1, value=[None, None], marks=dict([(i,str(i)) for \
+                                                                                        i in range(0, 100, 25)]),
+                                                  id='pixel-intensity-slider',
+                                                  tooltip={"placement": "top", "always_visible": True})],
+                                        style={"width": "91.5%", "margin-left": "27px", "margin-top": "-50px"}),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),
                         dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),
@@ -200,6 +192,9 @@ def init_dashboard(server, authentic_id):
                         html.H6("Set custom scalebar value", style={'width': '75%'}),
                         dcc.Input(id="custom-scale-val", type="number", value=None),
                         html.Br(),
+                        html.Br(),
+                        dcc.Checklist(options=[' show channel intensities on hover'],
+                                      value=[], id="channel-intensity-hover"),
                         html.Br(),
                         dbc.Button("Create preset", id="preset-button", className="me-1",
                                           ),
@@ -231,13 +226,21 @@ def init_dashboard(server, authentic_id):
                         width=3)])])]),
 
             dbc.Tab(label="Image Gallery", tab_id='gallery-tab',
-                        children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on canvas zoom',
-                        id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px"}),
+                        children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
+                        id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px",
+                                                                                               "margin-top": "10px"}),
                                   daq.ToggleSwitch(label='View gallery by channel',
-                                                   id='toggle-gallery-view', labelPosition='bottom', color="blue"),
+                                                   id='toggle-gallery-view', labelPosition='bottom', color="blue",
+                                                   style={"margin-right": "7px", "margin-top": "10px"}
+                                                   ),
+                                    daq.ToggleSwitch(label='Use default scaling for preview',
+                                                             id='default-scaling-gallery', labelPosition='bottom',
+                                                             color="blue", style={"margin-left": "15px",
+                                                                                  "margin-top": "10px"}),
                                             dcc.Dropdown(id='unique-channel-list', multi=False, options=[],
                                                          style={'width': '60%', 'display': 'inline-block',
-                                                                'margin-right': '-30', 'margin-left': '15px'})
+                                                                'margin-right': '-30', 'margin-left': '15px',
+                                                                "margin-top": "10px"})
                                             ],
                                            style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
@@ -270,25 +273,26 @@ def init_dashboard(server, authentic_id):
 
             ], id='tab-quant')
         ]),
-        dcc.Loading(dcc.Store(id="uploaded_dict"), fullscreen=True, type="dot"),
+        dcc.Loading(dcc.Store(id="uploaded_dict"), type="default", fullscreen=True),
         # use a blank template for the lazy loading
-        dcc.Loading(dcc.Store(id="uploaded_dict_template"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="session_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="param_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="session_alert_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="hdf5_obj"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="blending_colours"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="image_presets"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="metadata_config"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="anndata"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="image-metadata"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="canvas-layers"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="alias-dict"), fullscreen=True, type="dot"),
-        dcc.Loading(dcc.Store(id="static-session-var"), fullscreen=True, type="dot")
-    ], style={"margin": "12px"})
+        dcc.Loading(dcc.Store(id="uploaded_dict_template"), type="default", fullscreen=True),
+        dcc.Store(id="session_config"),
+        dcc.Store(id="window_config"),
+        dcc.Store(id="param_config"),
+        dcc.Store(id="session_alert_config"),
+        dcc.Store(id="hdf5_obj"),
+        dcc.Store(id="blending_colours"),
+        dcc.Store(id="image_presets"),
+        dcc.Store(id="metadata_config"),
+        dcc.Store(id="anndata"),
+        dcc.Store(id="image-metadata"),
+        dcc.Store(id="canvas-layers"),
+        dcc.Store(id="alias-dict"),
+        dcc.Store(id="static-session-var")
+    ], style={"margin": "15px"})
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname, background_callback_manager, authentic_id, cache)
+    init_callbacks(dash_app, tmpdirname, authentic_id)
 
     return dash_app.server
