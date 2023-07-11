@@ -2,15 +2,14 @@
 from dash import dash_table
 import tempfile
 import dash_uploader as du
-from flask_caching import Cache
-from dash_extensions.enrich import DashProxy, html, dcc, \
-    ServersideOutputTransform, FileSystemBackend
+from dash_extensions.enrich import DashProxy, html, ServersideOutputTransform, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-from dash import DiskcacheManager
-import diskcache
-from sqlite3 import DatabaseError
-from .parsers import *
+# from dash import DiskcacheManager
+# import diskcache
+# from sqlite3 import DatabaseError
+# from .parsers import *
+# from flask_caching import Cache
 from .callbacks import init_callbacks
 import shutil
 from .inputs import *
@@ -163,8 +162,8 @@ def init_dashboard(server, authentic_id):
                         style={'width': '5%', 'display': 'inline-block'}),
                         dcc.Dropdown(id='images_in_blend', multi=False),
                         html.Br(),
-                        daq.ColorPicker(id="annotation-color-picker", label="Color Picker",
-                        value=dict(hex="#00ABFC")),
+                        daq.ColorPicker(id="annotation-color-picker", label="Current channel color",
+                        value=dict(hex="#00ABFC", rgb=None)),
                         dcc.Loading(
                         dcc.Graph(id="pixel-hist", figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                          xaxis=go.XAxis(showticklabels=False),

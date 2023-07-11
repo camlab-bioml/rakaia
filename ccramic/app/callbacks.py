@@ -1,15 +1,13 @@
 import anndata
 import dash.exceptions
-import numpy as np
 from dash.exceptions import PreventUpdate
 import flask
 import dash_uploader as du
-from dash_extensions.enrich import Output, Input, State, Serverside, html, dcc
+from dash_extensions.enrich import Output, Input, State, Serverside, html
 import dash_bootstrap_components as dbc
 from dash import ctx
 from tifffile import imwrite
 import math
-from .parsers import *
 from numpy.core._exceptions import _ArrayMemoryError
 from plotly.graph_objs.layout import XAxis, YAxis
 from .inputs import *
@@ -261,10 +259,10 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
         if add_to_layer is not None and current_blend_dict is not None:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
-            if param_dict is None:
+            if param_dict is None or len(param_dict) < 1:
                 param_dict = {"current_roi": data_selection}
             if data_selection is not None:
-                if current_blend_dict is not None and param_dict["current_roi"] != data_selection:
+                if current_blend_dict is not None and "current_roi" in param_dict.keys():
                     current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
                                                                         data_selection)
                     param_dict["current_roi"] = data_selection
@@ -331,7 +329,7 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
                        State('images_in_blend', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def upload_blend_dict_on_color_selection(colour, layer, uploaded_w_data,
+    def update_blend_dict_on_color_selection(colour, layer, uploaded_w_data,
                                     current_blend_dict, data_selection, add_to_layer,
                                     all_layers, filter_chosen, filter_name, filter_value,
                                     blend_options):
@@ -342,7 +340,6 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
                 current_blend_dict is not None:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
-            current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
             array = uploaded_w_data[exp][slide][acq][layer]
 
             blend_options = [elem['value'] for elem in blend_options]
@@ -366,9 +363,14 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
 
                 # if filters have been selected, apply them before recolouring
 
-                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex'] and \
+                        colour['hex'] not in ['#ffffff', '#FFFFFF']:
+                    current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
+                    all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
-                return current_blend_dict, Serverside(all_layers)
+                    return current_blend_dict, Serverside(all_layers)
+                else:
+                    raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -599,19 +601,22 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
                        State('uploaded_dict', 'data'),
                        State('channel-intensity-hover', 'value'),
                        State('canvas-div-holder', 'children'),
+                       State('param_config', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_change(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
                                cur_graph, cur_graph_layout, raw_data_dict, show_each_channel_intensity,
-                                        canvas_children):
+                                        canvas_children, param_dict):
 
         """
-        Update the canvas from a layer dictionary update
+        Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
+        that will be added together to form the canvas
         """
 
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
-                not in [{'dragmode': 'pan'}] and len(canvas_children) > 0:
+                not in [{'dragmode': 'pan'}] and len(canvas_children) > 0 and \
+                param_dict["current_roi"] == data_selection:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
@@ -1553,7 +1558,7 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def reset_graphs_on_empty_modification_menu(current_selection, blend, cur_canvas):
         """
-        reset all of the relevent input widgets and dropdown menus when there is no channel currently selected
+        reset all the relevant input widgets and dropdown menus when there is no channel currently selected
         """
         if blend is None or len(blend) == 0 and len(current_selection) > 0:
             fig = go.Figure()
@@ -1904,5 +1909,29 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
                 fig.update_layout(hovermode="x")
             return fig
 
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
+                       Input('alias-dict', 'data'),
+                       Input("imc-metadata-editable", "data"),
+                       State('session_alert_config', 'data'),
+                       prevent_initial_call=True)
+    def give_alert_on_improper_edited_metadata(gene_aliases, metadata_editable, error_config):
+        """
+        Send an alert when the format of the editable metadata table looks incorrect
+        Will arise if more labels are provided than there are channels, which will create blank key entries
+        in the metadata list and alias dictionary
+        """
+        bad_entries = ['', ' ']
+        if any([elem in bad_entries for elem in gene_aliases.keys()]) or \
+            any([elem['Channel Name'] in bad_entries or elem['Channel Label'] in bad_entries for \
+                 elem in metadata_editable]):
+            if error_config is None:
+                error_config = {"error": None}
+            error_config["error"] = "Warning: the edited metadata appears to be incorrectly formatted. " \
+                                    "Ensure that the number of " \
+                                    "channels matches the provided channel labels."
+            return error_config
         else:
             raise PreventUpdate
