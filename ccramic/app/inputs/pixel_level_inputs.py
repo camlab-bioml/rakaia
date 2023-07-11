@@ -1,6 +1,7 @@
 
 from dash_extensions.enrich import dcc
-from .parsers import *
+from ..parsers.pixel_level_parsers import *
+import plotly.graph_objs as go
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False):
     """

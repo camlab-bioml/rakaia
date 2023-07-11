@@ -1,4 +1,3 @@
-import anndata
 import dash.exceptions
 from dash.exceptions import PreventUpdate
 import flask
@@ -10,23 +9,16 @@ from tifffile import imwrite
 import math
 from numpy.core._exceptions import _ArrayMemoryError
 from plotly.graph_objs.layout import XAxis, YAxis
-from .inputs import *
+from ..inputs.pixel_level_inputs import *
+from ..parsers.pixel_level_parsers import *
+import os
 
-def init_callbacks(dash_app, tmpdirname, authentic_id):
+def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
+    """
+    Initialize the callbacks associated with pixel level analysis/raw image preprocessing (image loading,
+    blending, filtering, scaling, etc.)
+    """
     dash_app.config.suppress_callback_exceptions = True
-
-    @dash_app.callback(
-        Output("metadata-distribution", "figure"),
-        Input('anndata', 'data'),
-        Input('metadata_options', 'value'))
-    # @cache.memoize())
-    def display_metadata_distribution(anndata_obj, metadata_selection):
-        if anndata_obj is not None and metadata_selection is not None:
-            ann_data = anndata_obj['metadata'][metadata_selection]
-            fig = px.histogram(ann_data, range_x=[min(ann_data), max(ann_data)])
-            return fig
-        else:
-            raise PreventUpdate
 
     @du.callback(Output('session_config', 'data'),
                  id='upload-image')
@@ -111,49 +103,6 @@ def init_callbacks(dash_app, tmpdirname, authentic_id):
     def reset_canvas_on_new_upload(uploaded, cur_fig):
         if None not in (uploaded, cur_fig) and 'data' in cur_fig:
             return {}
-        else:
-            raise PreventUpdate
-
-    @du.callback(Output('anndata', 'data'),
-                 id='upload-quantification')
-    # @cache.memoize())
-    def create_layered_dict(status: du.UploadStatus):
-        filenames = [str(x) for x in status.uploaded_files]
-        anndata_files = {}
-        if filenames:
-            for data_file in filenames:
-                anndata_dict = {}
-                data = anndata.read_h5ad(data_file)
-                anndata_dict["file_path"] = str(data_file)
-                anndata_dict["observations"] = data.X
-                anndata_dict["metadata"] = data.obs
-                anndata_dict["full_obj"] = data
-                for sub_assay in data.obsm_keys():
-                    if "assays" not in anndata_dict.keys():
-                        anndata_dict["assays"] = {sub_assay: data.obsm[sub_assay]}
-                    else:
-                        anndata_dict["assays"][sub_assay] = data.obsm[sub_assay]
-                anndata_files = anndata_dict
-        if anndata_files is not None and len(anndata_files) > 0:
-            return Serverside(anndata_files)
-        else:
-            raise PreventUpdate
-
-    @dash_app.callback(Output('dimension-reduction_options', 'options'),
-                       Input('anndata', 'data'))
-    # @cache.memoize())
-    def create_anndata_dimension_options(anndata_dict):
-        if anndata_dict and "assays" in anndata_dict.keys():
-            return [{'label': i, 'value': i} for i in anndata_dict["assays"].keys()]
-        else:
-            raise PreventUpdate
-
-    @dash_app.callback(Output('metadata_options', 'options'),
-                       Input('anndata', 'data'))
-    # @cache.memoize())
-    def create_anndata_dimension_options(anndata_dict):
-        if anndata_dict and "metadata" in anndata_dict.keys():
-            return [{'label': i, 'value': i} for i in anndata_dict["metadata"].columns]
         else:
             raise PreventUpdate
 

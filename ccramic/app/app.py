@@ -10,10 +10,11 @@ import dash_bootstrap_components as dbc
 # from sqlite3 import DatabaseError
 # from .parsers import *
 # from flask_caching import Cache
-from .callbacks import init_callbacks
+from .callbacks.pixel_level_callbacks import init_pixel_level_callbacks
+from .callbacks.cell_level_callbacks import init_cell_level_callbacks
+from .inputs.pixel_level_inputs import *
 import shutil
-from .inputs import *
-
+import os
 
 def init_dashboard(server, authentic_id):
 
@@ -259,16 +260,19 @@ def init_dashboard(server, authentic_id):
                             width=3)])])])])
                           ])], id='tab-annotation'),
             dbc.Tab(tab_id='quantification-tab', label='Quantification/Clustering', children=[
-                du.Upload(id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5'],
-                    upload_id="upload-quantification"),
+                du.Upload(id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5', 'csv'],
+                          max_files=1, upload_id="upload-quantification"),
                 html.Div([dbc.Row([
-                    dbc.Col(html.Div(["Dimension Reduction/Clustering",
-                                      dcc.Dropdown(id='dimension-reduction_options'),
-                                      dcc.Graph(id='umap-plot', style={'width': '150vh', 'height': '150vh'})]),
-                            width=6),
-                    dbc.Col(html.Div(["Metadata Distribution",
-                                      dcc.Dropdown(id='metadata_options'),
-                                      dcc.Graph(id="metadata-distribution")]), width=6),
+                    dbc.Col(html.Div([html.Br(),
+                        html.H6("Cell-Level Marker Expression"),
+                                      dcc.RadioItems(['max', 'mean', 'min'], 'mean',
+                                                     inline=True, id="quantification-bar-mode"),
+                                      dcc.Graph(id="quantification-bar-full",
+                                                figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                                                       xaxis=go.XAxis(showticklabels=False),
+                                                                       yaxis=go.YAxis(showticklabels=False),
+                                                                       margin=dict(l=5, r=5, b=15, t=20, pad=0)),
+                                                        })]), width=12),
                 ])]),
 
             ], id='tab-quant')
@@ -288,11 +292,14 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="image-metadata"),
         dcc.Store(id="canvas-layers"),
         dcc.Store(id="alias-dict"),
-        dcc.Store(id="static-session-var")
+        dcc.Store(id="static-session-var"),
+        dcc.Store(id="session_config_quantification"),
+        dcc.Store(id="quantification-dict"),
     ], style={"margin": "15px"})
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname, authentic_id)
+    init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_cell_level_callbacks(dash_app)
 
     return dash_app.server

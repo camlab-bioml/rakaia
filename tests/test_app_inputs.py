@@ -1,12 +1,3 @@
-import pytest
-from ccramic.app.utils import *
-from ccramic.app.parsers import *
-from ccramic.app.inputs import *
-import os
-from PIL import Image, ImageColor
-import tifffile
-import plotly
-import dash
 from dash_extensions.enrich import dcc
 
 def test_return_canvas_input():

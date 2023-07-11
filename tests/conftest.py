@@ -1,6 +1,6 @@
 import pytest
 import os
-from ccramic.app.entrypoint import init_app
+from ccramic.app import init_app
 
 
 @pytest.fixture(scope="module")

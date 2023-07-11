@@ -1,9 +1,5 @@
-import pytest
-from ccramic.app.utils import *
-from ccramic.app.parsers import *
 import os
-from PIL import Image, ImageColor
-import tifffile
+from PIL import Image
 import plotly
 
 
