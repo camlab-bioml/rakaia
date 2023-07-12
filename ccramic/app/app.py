@@ -186,6 +186,15 @@ def init_dashboard(server, authentic_id):
                                         style={"width": "91.5%", "margin-left": "27px", "margin-top": "-50px"}),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
                         id="bool-apply-filter"),
+                        html.Br(),
+                        html.H6("Import mask"),
+                        du.Upload(id='upload-mask', max_file_size=30000,
+                                                    max_total_size=30000, max_files=1,
+                                                    filetypes=['tif', 'tiff'],
+                                                    default_style={"margin-top": "20px"}),
+                        html.Br(),
+                        daq.ToggleSwitch(label='Apply mask',id='apply-mask', labelPosition='bottom',
+                                                           color="blue"),
                         dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),
                         dcc.Input(id="kernel-val-filter", type="number", value=3),
                         html.Br(),
@@ -295,6 +304,8 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="static-session-var"),
         dcc.Store(id="session_config_quantification"),
         dcc.Store(id="quantification-dict"),
+        dcc.Store(id="mask-dict"),
+        dcc.Store(id="figure-cache"),
     ], style={"margin": "15px"})
 
     dash_app.enable_dev_tools(debug=True)

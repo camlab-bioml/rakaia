@@ -1884,3 +1884,43 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return error_config
         else:
             raise PreventUpdate
+
+    @du.callback(Output('mask-dict', 'data'),
+                 id='upload-mask')
+    # @cache.memoize())
+    def import_mask(status: du.UploadStatus):
+        filenames = [str(x) for x in status.uploaded_files]
+        mask_config = {'mask': []}
+        # IMP: ensure that the progress is up to 100% in the float before beginning to process
+        if len(filenames) == 1:
+            with TiffFile(filenames[0]) as tif:
+                for page in tif.pages:
+                    mask_config["mask"] = page.asarray()
+
+            return Serverside(mask_config)
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       State('mask-dict', 'data'),
+                       Input('apply-mask', 'value'),
+                       State('annotation_canvas', 'figure'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def toggle_mask(mask_config, mask_toggle, cur_graph):
+        if mask_config is not None and len(mask_config) > 0 and cur_graph is not None:
+            if mask_toggle:
+                fig = go.Figure(cur_graph)
+                mask_img = np.array(Image.fromarray(np.array(mask_config["mask"])).convert('RGB'))
+                fig.add_trace(go.Image(z=mask_img))
+                default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
+                fig.update_traces(hovertemplate=default_hover)
+                return fig
+            else:
+                for elem in cur_graph['data']:
+                    if 'z' in elem and elem['z'] is not None:
+                        index = cur_graph['data'].index(elem)
+                        cur_graph['data'].pop(index)
+                return go.Figure(cur_graph)
+        else:
+            raise PreventUpdate
