@@ -11,7 +11,9 @@ from numpy.core._exceptions import _ArrayMemoryError
 from plotly.graph_objs.layout import XAxis, YAxis
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
+from ..utils.cell_level_utils import *
 import os
+import cv2
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -551,15 +553,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('channel-intensity-hover', 'value'),
                        State('canvas-div-holder', 'children'),
                        State('param_config', 'data'),
+                       State('mask-dict', 'data'),
+                       Input('apply-mask', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def render_canvas_from_layer_change(canvas_layers, currently_selected, data_selection, blend_colour_dict, aliases,
-                               cur_graph, cur_graph_layout, raw_data_dict, show_each_channel_intensity,
-                                        canvas_children, param_dict):
+    def render_canvas_from_layer_or_mask_change(canvas_layers, currently_selected,
+                                                data_selection, blend_colour_dict, aliases,
+                                                cur_graph, cur_graph_layout, raw_data_dict,
+                                                show_each_channel_intensity,
+                                                canvas_children, param_dict,
+                                                mask_config, mask_toggle):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
         that will be added together to form the canvas
+        or
+        if a mask is applied to the canvas
         """
 
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
@@ -579,6 +588,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                          elem in currently_selected if \
                          elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
             image = np.clip(image, 0, 255)
+            if mask_toggle and mask_config is not None and len(mask_config) > 0:
+                if image.shape[0] == mask_config["mask"].shape[0] and \
+                        image.shape[1] == mask_config["mask"].shape[1]:
+                    image = cv2.addWeighted(image.astype(np.uint8), 1,
+                        mask_config["mask"].astype(np.uint8), 1, 0)
+
             try:
                 fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
                 # fig.update(data=[{'customdata': )
@@ -1804,7 +1819,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
         if alert_dict is not None and len(alert_dict) > 0 and "error" in alert_dict.keys() and \
                 alert_dict["error"] is not None:
-            children = [html.H6("Error: \n"), html.H6(alert_dict["error"])]
+            children = [html.H6("Message: \n"), html.H6(alert_dict["error"])]
             return True, children
         else:
             return False, None
@@ -1895,32 +1910,37 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if len(filenames) == 1:
             with TiffFile(filenames[0]) as tif:
                 for page in tif.pages:
-                    mask_config["mask"] = page.asarray()
+                    mask_config["mask"] = np.array(Image.fromarray(
+                        convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
 
             return Serverside(mask_config)
         else:
             raise PreventUpdate
 
-    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
-                       State('mask-dict', 'data'),
-                       Input('apply-mask', 'value'),
-                       State('annotation_canvas', 'figure'),
+    @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
+                       Input('mask-dict', 'data'),
+                       State('data-collection', 'value'),
+                       Input('uploaded_dict', 'data'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
-    # @cache.memoize())
-    def toggle_mask(mask_config, mask_toggle, cur_graph):
-        if mask_config is not None and len(mask_config) > 0 and cur_graph is not None:
-            if mask_toggle:
-                fig = go.Figure(cur_graph)
-                mask_img = np.array(Image.fromarray(np.array(mask_config["mask"])).convert('RGB'))
-                fig.add_trace(go.Image(z=mask_img))
-                default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                fig.update_traces(hovertemplate=default_hover)
-                return fig
+    def give_alert_on_improper_mask_import(mask_dict, data_selection, upload_dict, error_config):
+        """
+        Send an alert if the imported mask does not match the current ROI selection
+        Works by validating the imported mask against the first channel of the current ROI selection
+        """
+        if None not in (mask_dict, data_selection, upload_dict):
+            split = split_string_at_pattern(data_selection)
+            exp, slide, acq = split[0], split[1], split[2]
+            first_image = list(upload_dict[exp][slide][acq].keys())[0]
+            first_image = upload_dict[exp][slide][acq][first_image]
+            if first_image.shape[0] != mask_dict["mask"].shape[0] or \
+                    first_image.shape[1] != mask_dict["mask"].shape[1]:
+                if error_config is None:
+                    error_config = {"error": None}
+                error_config["error"] = "Warning: the current mask does not have " \
+                                        "the same dimensions as the current ROI."
+                return error_config
             else:
-                for elem in cur_graph['data']:
-                    if 'z' in elem and elem['z'] is not None:
-                        index = cur_graph['data'].index(elem)
-                        cur_graph['data'].pop(index)
-                return go.Figure(cur_graph)
+                raise PreventUpdate
         else:
             raise PreventUpdate
