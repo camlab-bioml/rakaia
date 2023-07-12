@@ -1,4 +1,5 @@
-from dash_extensions.enrich import dcc
+from ccramic.app.inputs.pixel_level_inputs import *
+import numpy as np
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()

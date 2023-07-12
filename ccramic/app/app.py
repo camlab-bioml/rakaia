@@ -306,6 +306,7 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="quantification-dict"),
         dcc.Store(id="mask-dict"),
         dcc.Store(id="figure-cache"),
+        dcc.Store(id="uploads")
     ], style={"margin": "15px"})
 
     dash_app.enable_dev_tools(debug=True)

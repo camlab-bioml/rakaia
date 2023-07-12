@@ -329,10 +329,15 @@ def copy_values_within_nested_dict(dict, current_data_selection, new_data_select
     Copy the blend dictionary parameters (colour, filtering, scaling) from one acquisition/ROI in a nested
     dictionary to another
     """
-
-
     cur_exp, cur_slide, cur_acq = split_string_at_pattern(current_data_selection)
     new_exp, new_slide, new_acq = split_string_at_pattern(new_data_selection)
+
+    if new_exp not in list(dict.keys()):
+        dict[new_exp] = {}
+    if new_slide not in list(dict[new_exp].keys()):
+        dict[new_exp][new_slide] = {}
+    if new_acq not in list(dict[new_exp][new_slide].keys()):
+        dict[new_exp][new_slide][new_acq] = {}
 
     for key, value in dict[cur_exp][cur_slide][cur_acq].items():
         dict[new_exp][new_slide][new_acq][key] = value

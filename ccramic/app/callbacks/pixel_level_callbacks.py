@@ -12,6 +12,7 @@ from plotly.graph_objs.layout import XAxis, YAxis
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
+from ..utils.pixel_level_utils import *
 import os
 import cv2
 
@@ -22,19 +23,36 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
     dash_app.config.suppress_callback_exceptions = True
 
-    @du.callback(Output('session_config', 'data'),
+    @du.callback(Output('uploads', 'data'),
                  id='upload-image')
     # @cache.memoize())
-    def get_session_uploads_from_drag_and_drop(status: du.UploadStatus):
+    def get_filenames_from_drag_and_drop(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
-        session_config = {'uploads': []}
         # IMP: ensure that the progress is up to 100% in the float before beginning to process
         if filenames and float(status.progress) == 1.0:
-            for file in filenames:
-                session_config['uploads'].append(file)
+            return filenames
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
+                       Input('uploads', 'data'),
+                       State('session_config', 'data'),
+                       prevent_initial_call=True)
+    def populate_session_uploads_from_drag_and_drop(upload_list, cur_session):
+        """
+        populate the session uploads list from the list of uploads from a given execution.
+        Requires the intermediate list as the callback is restricted to one output
+        """
+        session_config = cur_session if cur_session is not None and \
+                                        len(cur_session['uploads']) > 0 else {'uploads': []}
+        if upload_list is not None and len(upload_list) > 0:
+            for new_upload in upload_list:
+                if new_upload not in session_config["uploads"]:
+                    session_config["uploads"].append(new_upload)
             return session_config
         else:
             raise PreventUpdate
+
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data'),
@@ -67,33 +85,42 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('dataset-preview-table', 'columns'),
                        Output('dataset-preview-table', 'data'),
                        Input('session_config', 'data'),
+                       State('blending_colours', 'data'),
                        prevent_initial_call=True)
-    def create_upload_dict_from_filepath_string(session_dict):
+    def create_upload_dict_from_filepath_string(session_dict, current_blend):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
-            return Serverside(upload_dict), session_dict, blend_dict, columns, data
+            blend_return = blend_dict if current_blend is None or len(current_blend) == 0 else dash.no_update
+            return Serverside(upload_dict), session_dict, blend_return, columns, data
         else:
             raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'options'),
                        Output('data-collection', 'value'),
-                       Output('image_layers', 'value', allow_duplicate=True),
+                       Output('image_layers', 'value'),
                        Input('uploaded_dict_template', 'data'),
+                       State('data-collection', 'value'),
+                       State('image_layers', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def populate_dataset_options(uploaded):
-        # important: ensure that the selected value is reset to none when a new upload is made
+    def populate_dataset_options(uploaded, cur_data_selection, cur_layers_selected):
         if uploaded is not None:
             datasets = []
+            selection_return = None
+            channels_return = None
             for exp in uploaded.keys():
                 if "metadata" not in exp:
                     for slide in uploaded[exp].keys():
                         for acq in uploaded[exp][slide].keys():
                             datasets.append(f"{exp}+++{slide}+++{acq}")
-            return datasets, None, None
+            if cur_data_selection is not None:
+                selection_return = cur_data_selection if cur_data_selection in datasets else None
+                if cur_layers_selected is not None and len(cur_layers_selected) > 0:
+                    channels_return = cur_layers_selected
+            return datasets, selection_return, channels_return
         else:
             raise PreventUpdate
 
@@ -177,15 +204,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('uploaded_dict_template', 'data'),
                        State('blending_colours', 'data'),
                        Output('blending_colours', 'data'),
+                       State('data-collection', 'value'),
                        prevent_initial_call=True)
-    def create_new_blend_dict_on_upload(session_config, uploaded, current_blend_dict):
+    def create_new_blend_dict_on_upload(session_config, uploaded, current_blend_dict, current_selection):
         """
         Create a new blending dictionary on a new dataset upload.
         """
         if session_config is not None:
-            if current_blend_dict is None and uploaded is not None:
+            if current_blend_dict is None and uploaded is not None and current_selection is None:
                 current_blend_dict = create_new_blending_dict(uploaded)
-            return current_blend_dict
+                return current_blend_dict
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -213,7 +243,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if param_dict is None or len(param_dict) < 1:
                 param_dict = {"current_roi": data_selection}
             if data_selection is not None:
-                if current_blend_dict is not None and "current_roi" in param_dict.keys():
+                if current_blend_dict is not None and "current_roi" in param_dict.keys() and \
+                        data_selection != param_dict["current_roi"]:
                     current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
                                                                         data_selection)
                     param_dict["current_roi"] = data_selection
@@ -505,17 +536,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
-    @dash_app.callback(Output('image_layers', 'value'),
-                       Input('data-collection', 'value'),
-                       State('image_layers', 'value'),
-                       prevent_initial_call=True)
-    # @cache.memoize())
-    def reset_image_layers_selected(current_layers, new_selection):
-        if new_selection is not None and current_layers is not None:
-            if len(current_layers) > 0:
-                return None
-        else:
-            raise PreventUpdate
+    # @dash_app.callback(Output('image_layers', 'value', allow_duplicate=True),
+    #                    Input('data-collection', 'value'),
+    #                    State('image_layers', 'value'),
+    #                    prevent_initial_call=True)
+    # # @cache.memoize())
+    # def reset_image_layers_selected(current_layers, new_selection):
+    #     if new_selection is not None and current_layers is not None:
+    #         if len(current_layers) > 0:
+    #             return None
+    #     else:
+    #         raise PreventUpdate
 
     @dash_app.callback(Output('images_in_blend', 'value', allow_duplicate=True),
                        Output('images_in_blend', 'options', allow_duplicate=True),
@@ -605,7 +636,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
                 # if the current graph already has an image, take the existing layout and apply it to the new figure
                 # otherwise, set the uirevision for the first time
-                if 'uirevision' in cur_graph['layout'] and cur_graph['layout']['uirevision']:
+                if 'layout' in cur_graph and 'uirevision' in cur_graph['layout'] and cur_graph['layout']['uirevision']:
                     try:
                         # fig['layout'] = cur_graph['layout']
                         cur_graph['data'] = fig['data']
@@ -1460,11 +1491,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if blend_colours is not None and current_blend is not None and data_selection is not None:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
-            for key, value in blend_colours[exp][slide][acq].items():
-                if blend_colours[exp][slide][acq][key]['color'] != '#FFFFFF' and key in current_blend:
-                    label = aliases[key] if aliases is not None and key in aliases.keys() else key
-                    children.append(html.H6(f"{label}", style={"color": f"{value['color']}"}))
-
+            try:
+                for key, value in blend_colours[exp][slide][acq].items():
+                    if blend_colours[exp][slide][acq][key]['color'] != '#FFFFFF' and key in current_blend:
+                        label = aliases[key] if aliases is not None and key in aliases.keys() else key
+                        children.append(html.H6(f"{label}", style={"color": f"{value['color']}"}))
+            except KeyError:
+                pass
             return html.Div(children=children)
         else:
             raise PreventUpdate
