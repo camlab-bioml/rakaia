@@ -89,10 +89,12 @@ def init_dashboard(server, authentic_id):
                 tab_id='pixel-analysis',
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=30000,
+                                  text='Import imaging data from MCD or tiff files using drag and drop',
+                                  chunk_size=100,
                         max_total_size=30000, max_files=200,
                         filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px"}),
                         dcc.Input(id="read-filepath", type="text",
-                        placeholder="Upload file using file path (local runs only)", value=None,
+                        placeholder="Import imaging file using filepath (local runs only)", value=None,
                                   style={"width": "85%"}),
                         dbc.Button("Add file by path", id="add-file-by-path",
                         className="mb-3", color="primary", n_clicks=0,
@@ -189,6 +191,7 @@ def init_dashboard(server, authentic_id):
                         html.Br(),
                         html.H6("Import mask"),
                         du.Upload(id='upload-mask', max_file_size=30000,
+                                  text='Import mask in tiff format using drag and drop',
                                                     max_total_size=30000, max_files=1,
                                                     filetypes=['tif', 'tiff'],
                                                     default_style={"margin-top": "20px"}),
@@ -263,6 +266,7 @@ def init_dashboard(server, authentic_id):
                         dash_table.DataTable(id='imc-metadata-editable', columns=[], data=None,
                                             editable=True)]), width=9),
                         dbc.Col(html.Div([du.Upload(id='upload-metadata', max_file_size=1000, max_files=1,
+                                            text='Import panel metadata in CSV format using drag and drop',
                                             filetypes=['csv'], upload_id="upload-image"),
                         html.Button("Download Edited metadata", id="btn-download-metadata"),
                         dcc.Download(id="download-edited-table")]),
@@ -270,6 +274,7 @@ def init_dashboard(server, authentic_id):
                           ])], id='tab-annotation'),
             dbc.Tab(tab_id='quantification-tab', label='Quantification/Clustering', children=[
                 du.Upload(id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5', 'csv'],
+                          text='Import cell quantification results in CSV format using drag and drop',
                           max_files=1, upload_id="upload-quantification"),
                 html.Div([dbc.Row([
                     dbc.Col(html.Div([html.Br(),

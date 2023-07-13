@@ -262,8 +262,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                 if elem not in current_blend_dict[exp][slide][acq].keys():
                     current_blend_dict[exp][slide][acq][elem] = {'color': None,
-                                                                 'x_lower_bound': None,
-                                                                 'x_upper_bound': None,
+                                                                 'x_lower_bound': 0,
+                                                                 'x_upper_bound':
+                                                                     get_default_channel_upper_bound_by_percentile(
+                                                                uploaded_w_data[exp][slide][acq][elem]),
                                                                  'filter_type': None,
                                                                  'filter_val': None}
                     current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
@@ -1095,18 +1097,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                              elem in currently_selected if \
                              elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
                 image = np.clip(image, 0, 255)
-            except (TypeError, IndexError):
+            except (TypeError, IndexError, AttributeError):
                 image = None
 
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
-            dest_file = os.path.join(dest_path, "canvas.tiff")
-            if not os.path.exists(dest_path):
-                os.makedirs(dest_path)
 
             # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
             # buf = io.BytesIO(fig_bytes)
             # img = Image.open(buf)
+            dest_file = dash.no_update
             if image is not None:
+                dest_file = str(os.path.join(dest_path, "canvas.tiff"))
+                if not os.path.exists(dest_path):
+                    os.makedirs(dest_path)
                 imwrite(dest_file, image.astype(np.uint8), photometric='rgb')
 
             del image
@@ -1161,7 +1164,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     hf.close()
                 except:
                     pass
-                return str(relative_filename), str(dest_file)
+                return str(relative_filename), dest_file
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
                 raise PreventUpdate
@@ -1405,6 +1408,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
+        IMPORTANT: do not return the blend dictionary here as it will override
+        the session blend dictionary on an ROI change
         """
         try:
             if gallery_data is not None:
@@ -1421,18 +1426,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     exp, slide, acq = split[0], split[1], split[2]
                     # maintain the original order of channels that is dictated by the metadata
                     views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
-                    if toggle_scaling_gallery:
-                        for channel in blend_colour_dict[exp][slide][acq].keys():
-                            try:
-                                if blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] is None:
-                                    blend_colour_dict[exp][slide][acq][channel]['x_upper_bound'] = \
-                                get_default_channel_upper_bound_by_percentile(
-                                    gallery_data[exp][slide][acq][channel])
-                                if blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] is None:
-                                    blend_colour_dict[exp][slide][acq][channel]['x_lower_bound'] = 0
-                            except TypeError:
-                                pass
-                        blend_return = blend_colour_dict
                 else:
                     views = None
 
@@ -1440,8 +1433,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     for key, value in views.items():
                         if toggle_scaling_gallery:
                             try:
-                                image_render = resize_for_canvas(apply_preset_to_array(value,
-                                                        blend_colour_dict[exp][slide][acq][key]))
+                                if blend_colour_dict[exp][slide][acq][key]['x_lower_bound'] is None:
+                                    blend_colour_dict[exp][slide][acq][key]['x_lower_bound'] = 0
+                                if blend_colour_dict[exp][slide][acq][key]['x_upper_bound'] is None:
+                                    blend_colour_dict[exp][slide][acq][key]['x_upper_bound'] = \
+                                    get_default_channel_upper_bound_by_percentile(
+                                    gallery_data[exp][slide][acq][key])
+                                image_render = apply_preset_to_array(resize_for_canvas(value),
+                                                        blend_colour_dict[exp][slide][acq][key])
                             except (KeyError, TypeError):
                                 image_render = resize_for_canvas(value)
                         else:
