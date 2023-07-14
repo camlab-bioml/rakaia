@@ -2,8 +2,10 @@
 from dash_extensions.enrich import dcc
 from ..parsers.pixel_level_parsers import *
 import plotly.graph_objs as go
+import dash_draggable
 
-def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False):
+def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
+                                     draggable=False):
     """
     Return the default dcc.Graph annotation figure input. For multiple annotation graphs, a unique input ID
     must be used
@@ -17,7 +19,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
     else:
         style_canvas = {"width": "65vw", "height": "65vh"}
 
-    return dcc.Graph(config={"modeBarButtonsToAdd": [
+    canvas = dcc.Graph(config={"modeBarButtonsToAdd": [
                         # "drawline",
                         # "drawopenpath",
                         "drawclosedpath",
@@ -34,6 +36,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False))})
 
+    return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
 def wrap_canvas_in_loading_screen_for_large_images(image, size_threshold=3000):
     """

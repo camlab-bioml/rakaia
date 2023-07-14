@@ -287,9 +287,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         uploaded_w_data[exp][slide][acq][elem])
                     if current_blend_dict[exp][slide][acq][elem]['x_lower_bound'] is None:
                         current_blend_dict[exp][slide][acq][elem]['x_lower_bound'] = 0
-                    array_preset = apply_preset_to_array(uploaded_w_data[exp][slide][acq][elem],
+                    # TODO: evaluate whether there should be a conditional here if the elem is already
+                    #  present in the layers dictionary to save time
+                    if elem not in all_layers[exp][slide][acq].keys():
+                        array_preset = apply_preset_to_array(uploaded_w_data[exp][slide][acq][elem],
                                                          current_blend_dict[exp][slide][acq][elem])
-                    all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(array_preset,
+                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(array_preset,
                                                                                     current_blend_dict[exp][slide][
                                                                                         acq][
                                                                                         elem]['color'])).astype(
@@ -575,6 +578,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('annotation_canvas', 'figure'),
                        # Output('annotation_canvas', 'relayoutData'),
+                       Output('current_canvas_image', 'data'),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -588,6 +592,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('param_config', 'data'),
                        State('mask-dict', 'data'),
                        Input('apply-mask', 'value'),
+                       Input('mask-options', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_or_mask_change(canvas_layers, currently_selected,
@@ -595,7 +600,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 cur_graph, cur_graph_layout, raw_data_dict,
                                                 show_each_channel_intensity,
                                                 canvas_children, param_dict,
-                                                mask_config, mask_toggle):
+                                                mask_config, mask_toggle, mask_selection):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -621,17 +626,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                          elem in currently_selected if \
                          elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
             image = np.clip(image, 0, 255)
-            if mask_toggle and mask_config is not None and len(mask_config) > 0:
-                if image.shape[0] == mask_config["mask"].shape[0] and \
-                        image.shape[1] == mask_config["mask"].shape[1]:
+            if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
+                if image.shape[0] == mask_config[mask_selection].shape[0] and \
+                        image.shape[1] == mask_config[mask_selection].shape[1]:
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
-                        mask_config["mask"].astype(np.uint8), 1, 0)
+                        mask_config[mask_selection].astype(np.uint8), 1, 0)
 
             try:
                 fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
                 # fig.update(data=[{'customdata': )
                 image_shape = image.shape
-                del image
                 fig.update_traces(hoverinfo="skip")
                 x_axis_placement = 0.00001 * image_shape[1]
                 # make sure the placement is min 0.05 and max 0.1
@@ -770,7 +774,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 #     ]))
                 # fig.update_traces(hovertemplate=None)
                 fig.update_layout(dragmode="zoom")
-                return fig
+                return fig, Serverside(image)
             except ValueError:
                 return dash.no_update
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected
@@ -1077,28 +1081,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input("open-download-collapse", "n_clicks"),
                        Input("download-collapse", "is_open"),
                        State('data-collection', 'value'),
-                       Input('canvas-layers', 'data'),
-                       State('image_layers', 'value'))
+                       Input('current_canvas_image', 'data'))
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                canvas_layers, currently_selected):
+                                current_canvas):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
-        if uploaded is not None and blend_dict is not None and \
-                all(elem in uploaded.keys() for elem in blend_dict.keys()) and nclicks > 0 and download_open:
+
+        if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
 
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
-
-            try:
-                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
-                             elem in currently_selected if \
-                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-                image = np.clip(image, 0, 255)
-            except (TypeError, IndexError, AttributeError):
-                image = None
 
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
 
@@ -1106,13 +1101,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             # buf = io.BytesIO(fig_bytes)
             # img = Image.open(buf)
             dest_file = dash.no_update
-            if image is not None:
+            if current_canvas is not None:
                 dest_file = str(os.path.join(dest_path, "canvas.tiff"))
                 if not os.path.exists(dest_path):
                     os.makedirs(dest_path)
-                imwrite(dest_file, image.astype(np.uint8), photometric='rgb')
-
-            del image
+                imwrite(dest_file, current_canvas.astype(np.uint8), photometric='rgb')
 
             download_dir = os.path.join(tmpdirname,
                                         authentic_id,
@@ -1932,41 +1925,50 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
-    @du.callback(Output('mask-dict', 'data'),
+    @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
     # @cache.memoize())
-    def import_mask(status: du.UploadStatus):
+    def return_mask_upload(status: du.UploadStatus):
         filenames = [str(x) for x in status.uploaded_files]
         mask_config = {'mask': []}
         # IMP: ensure that the progress is up to 100% in the float before beginning to process
         if len(filenames) == 1:
-            with TiffFile(filenames[0]) as tif:
-                for page in tif.pages:
-                    mask_config["mask"] = np.array(Image.fromarray(
-                        convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
-
-            return Serverside(mask_config)
+            default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
+            return {default_mask_name: filenames[0]}
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output('input-mask-name', 'value'),
+                       Input('mask-uploads', 'data'),
+                       prevent_initial_call=True)
+    def input_mask_name_on_upload(mask_uploads):
+        if mask_uploads is not None and len(mask_uploads) > 0:
+            return list(mask_uploads.keys())[0]
+        else:
+            raise PreventUpdate
+
 
     @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('mask-dict', 'data'),
                        State('data-collection', 'value'),
                        Input('uploaded_dict', 'data'),
                        State('session_alert_config', 'data'),
+                       Input('mask-options', 'value'),
+                       Input('apply-mask', 'value'),
                        prevent_initial_call=True)
-    def give_alert_on_improper_mask_import(mask_dict, data_selection, upload_dict, error_config):
+    def give_alert_on_improper_mask_import(mask_dict, data_selection, upload_dict, error_config, mask_selection,
+                                           mask_toggle):
         """
         Send an alert if the imported mask does not match the current ROI selection
         Works by validating the imported mask against the first channel of the current ROI selection
         """
-        if None not in (mask_dict, data_selection, upload_dict):
+        if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             first_image = list(upload_dict[exp][slide][acq].keys())[0]
             first_image = upload_dict[exp][slide][acq][first_image]
-            if first_image.shape[0] != mask_dict["mask"].shape[0] or \
-                    first_image.shape[1] != mask_dict["mask"].shape[1]:
+            if first_image.shape[0] != mask_dict[mask_selection].shape[0] or \
+                    first_image.shape[1] != mask_dict[mask_selection].shape[1]:
                 if error_config is None:
                     error_config = {"error": None}
                 error_config["error"] = "Warning: the current mask does not have " \
@@ -1974,5 +1976,35 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return error_config
             else:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("mask-name-modal", "is_open"),
+        Input('input-mask-name', 'value'),
+        Input('set-mask-name', 'n_clicks'))
+    def toggle_mask_name_input_modal(new_mask_name, mask_clicks):
+        if new_mask_name and ctx.triggered_id == "input-mask-name":
+            return True
+        elif ctx.triggered_id == "set-mask-name" and mask_clicks > 0:
+            return False
+        else:
+            return False
+
+    @dash_app.callback(Output('mask-dict', 'data'),
+                       Output('mask-options', 'options'),
+                       State('mask-uploads', 'data'),
+                       State('input-mask-name', 'value'),
+                       Input('set-mask-name', 'n_clicks'),
+                       State('mask-dict', 'data'),
+                       prevent_initial_call=True)
+    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict):
+        if set_mask > 0 and None not in (mask_uploads, chosen_mask_name):
+            cur_mask_dict = {} if cur_mask_dict is None else cur_mask_dict
+            with TiffFile(str(mask_uploads[list(mask_uploads.keys())[0]])) as tif:
+                for page in tif.pages:
+                    cur_mask_dict[chosen_mask_name] = np.array(Image.fromarray(
+                        convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+            return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
         else:
             raise PreventUpdate

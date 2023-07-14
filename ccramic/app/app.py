@@ -15,7 +15,6 @@ from .callbacks.cell_level_callbacks import init_cell_level_callbacks
 from .inputs.pixel_level_inputs import *
 import shutil
 import os
-
 def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -92,7 +91,8 @@ def init_dashboard(server, authentic_id):
                                   text='Import imaging data from MCD or tiff files using drag and drop',
                                   chunk_size=100,
                         max_total_size=30000, max_files=200,
-                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px"}),
+                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px",
+                                                                                             "height": "10vh"}),
                         dcc.Input(id="read-filepath", type="text",
                         placeholder="Import imaging file using filepath (local runs only)", value=None,
                                   style={"width": "85%"}),
@@ -186,18 +186,30 @@ def init_dashboard(server, authentic_id):
                                                   id='pixel-intensity-slider',
                                                   tooltip={"placement": "top", "always_visible": True})],
                                         style={"width": "91.5%", "margin-left": "27px", "margin-top": "-50px"}),
-                        dcc.Checklist(options=[' apply/refresh filter'], value=[],
-                        id="bool-apply-filter"),
                         html.Br(),
                         html.H6("Import mask"),
+                        dbc.Modal(children=dbc.ModalBody(
+                        [html.H6("Set the label for the imported mask"),
+                                 dcc.Input(id="input-mask-name", type="text", value=None, style={"width": "50%",
+                                                                                        "margin-right": "10px"}),
+                         dbc.Button("Set mask import", id="set-mask-name", className="me-1")]),
+                                                    id="mask-name-modal", size='l', style={"margin-left": "10px"}),
                         du.Upload(id='upload-mask', max_file_size=30000,
                                   text='Import mask in tiff format using drag and drop',
                                                     max_total_size=30000, max_files=1,
+                                                    chunk_size=100,
                                                     filetypes=['tif', 'tiff'],
-                                                    default_style={"margin-top": "20px"}),
+                                                    default_style={"margin-top": "20px", "height": "3.5vh"}),
                         html.Br(),
+                        html.Div([dcc.Dropdown(id='mask-options', multi=False, options=[],
+                                                       style={'width': '100%', 'display': 'inline-block',
+                                                              'margin-right': '-50'}),
                         daq.ToggleSwitch(label='Apply mask',id='apply-mask', labelPosition='bottom',
-                                                           color="blue"),
+                                                           color="blue")]),
+
+                        html.Br(),
+                        dcc.Checklist(options=[' apply/refresh filter'], value=[],
+                                                        id="bool-apply-filter"),
                         dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),
                         dcc.Input(id="kernel-val-filter", type="number", value=3),
                         html.Br(),
@@ -247,6 +259,7 @@ def init_dashboard(server, authentic_id):
                                                    style={"margin-right": "7px", "margin-top": "10px"}
                                                    ),
                                     daq.ToggleSwitch(label='Use default scaling for preview',
+                                                     value=True,
                                                              id='default-scaling-gallery', labelPosition='bottom',
                                                              color="blue", style={"margin-left": "15px",
                                                                                   "margin-top": "10px"}),
@@ -310,8 +323,10 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="session_config_quantification"),
         dcc.Store(id="quantification-dict"),
         dcc.Store(id="mask-dict"),
+        dcc.Store(id="mask-uploads"),
         dcc.Store(id="figure-cache"),
-        dcc.Store(id="uploads")
+        dcc.Store(id="uploads"),
+        dcc.Store(id="current_canvas_image"),
     ], style={"margin": "15px"})
 
     dash_app.enable_dev_tools(debug=True)
