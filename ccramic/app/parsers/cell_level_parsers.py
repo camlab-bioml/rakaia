@@ -10,10 +10,10 @@ def validate_incoming_measurements_csv(measurements_csv, current_image=None, val
         return None
     # check the measurement CSV against an image to ensure that the dimensions match
     elif validate_with_image and current_image is not None:
-        if int(current_image.shape[0]) != int(measurements_csv['x_max'].argmax()) or \
-            int(current_image.shape[1]) != int(measurements_csv['y_max'].argmax()):
+        if float(current_image.shape[0]) != float(measurements_csv['x_max'].max()) or \
+            float(current_image.shape[1]) != float(measurements_csv['y_max'].max()):
             return None
         else:
-            pass
+            return measurements_csv
     else:
         return measurements_csv

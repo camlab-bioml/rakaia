@@ -201,9 +201,9 @@ def init_dashboard(server, authentic_id):
                                                     filetypes=['tif', 'tiff'],
                                                     default_style={"margin-top": "20px", "height": "3.5vh"}),
                         html.Br(),
-                        html.Div([dcc.Dropdown(id='mask-options', multi=False, options=[],
+                        html.Div([dcc.Loading(dcc.Dropdown(id='mask-options', multi=False, options=[],
                                                        style={'width': '100%', 'display': 'inline-block',
-                                                              'margin-right': '-50'}),
+                                                    'margin-right': '-50'}), type="default", fullscreen=False),
                         daq.ToggleSwitch(label='Apply mask',id='apply-mask', labelPosition='bottom',
                                                            color="blue")]),
 
