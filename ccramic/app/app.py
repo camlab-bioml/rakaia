@@ -299,7 +299,17 @@ def init_dashboard(server, authentic_id):
                                                                        xaxis=go.XAxis(showticklabels=False),
                                                                        yaxis=go.YAxis(showticklabels=False),
                                                                        margin=dict(l=5, r=5, b=15, t=20, pad=0)),
-                                                        })]), width=12),
+                                                        })]), width=6),
+                    dbc.Col(html.Div([html.Br(),
+                                      html.H6("Dimension Reduction"),
+                                      dcc.Loading(dcc.Dropdown(id='umap-projection-options', multi=False, options=[]),
+                                                  type="default", fullscreen=False),
+                                      dcc.Graph(id="umap-plot",
+                                                figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                                                       xaxis=go.XAxis(showticklabels=False),
+                                                                       yaxis=go.YAxis(showticklabels=False),
+                                                                       margin=dict(l=5, r=5, b=15, t=20, pad=0)),
+                                                        })]), width=6)
                 ])]),
 
             ], id='tab-quant')
@@ -327,6 +337,7 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="figure-cache"),
         dcc.Store(id="uploads"),
         dcc.Store(id="current_canvas_image"),
+        dcc.Store(id="umap-projection"),
     ], style={"margin": "15px"})
 
     dash_app.enable_dev_tools(debug=True)

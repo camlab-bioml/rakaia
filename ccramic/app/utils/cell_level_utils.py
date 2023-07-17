@@ -14,6 +14,7 @@ from tifffile import TiffFile
 from ccramic.app.utils.pixel_level_utils import *
 import plotly.graph_objects as go
 import cv2
+import numba
 
 def get_pixel(mask, i, j):
     if len(mask.shape) > 2:
@@ -44,3 +45,20 @@ def convert_mask_to_cell_boundary(mask, outline_color=255, greyscale=True):
 
     # Floating point errors can occaisionally put us very slightly below 0
     return np.where(outlines >= 0, outlines, 0).astype(np.uint8)
+
+
+def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict):
+    """
+    Subset measurements frame based on a range of UMAP coordinates in the x and y axes
+    Expects that the length of both frames are equal
+    """
+    try:
+        assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']])
+        query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
+                         f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
+                         f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
+                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
+        return measurements.loc[umap_frame.index[query.index.tolist()]]
+    except AssertionError:
+        return None

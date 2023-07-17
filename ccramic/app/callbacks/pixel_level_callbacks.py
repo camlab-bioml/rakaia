@@ -969,19 +969,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
-    @dash_app.callback(Output('umap-plot', 'figure'),
-                       Input('anndata', 'data'),
-                       Input('metadata_options', 'value'),
-                       Input('dimension-reduction_options', 'value'))
-    # @cache.memoize())
-    def render_umap_plot(anndata_obj, metadata_selection, assay_selection):
-        if anndata_obj and "assays" in anndata_obj.keys() and metadata_selection and assay_selection:
-            umap_data = anndata_obj["full_obj"]
-            return px.scatter(umap_data.obsm[assay_selection], x=0, y=1, color=umap_data.obs[metadata_selection],
-                              labels={'color': metadata_selection})
-        else:
-            raise PreventUpdate
-
     @du.callback(Output('metadata_config', 'data'),
                  id='upload-metadata')
     # @cache.memoize())

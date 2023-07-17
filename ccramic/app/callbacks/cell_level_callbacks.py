@@ -1,4 +1,4 @@
-
+import pandas as pd
 from dash.exceptions import PreventUpdate
 import dash_uploader as du
 from dash_extensions.enrich import Output, Input, State, Serverside
@@ -8,6 +8,9 @@ from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
 from tifffile import TiffFile
 import os
+import umap
+from sklearn.preprocessing import StandardScaler
+
 def init_cell_level_callbacks(dash_app):
     """
     Initialize the callbacks associated with cell level analysis (object detection, quantification, dimensional reduction)
@@ -43,21 +46,70 @@ def init_cell_level_callbacks(dash_app):
                        Input('quantification-dict', 'data'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('quantification-bar-mode', 'value'),
+                       Input('umap-plot', 'relayoutData'),
+                       State('umap-projection', 'data'),
                        prevent_initial_call=True)
-    def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value):
+    def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value, umap_layout, embeddings):
         zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
         if quantification_dict is not None and len(quantification_dict) > 0:
-            if all([key in canvas_layout for key in zoom_keys]):
+            if all([key in canvas_layout for key in zoom_keys]) and ctx.triggered_id == "annotation_canvas":
                 subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
                                "x_max": max(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
                                "y_min": min(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]']),
                                "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
+                return get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
+                                                        subset_dict=subset_zoom, mode=mode_value)
+            elif ctx.triggered_id == "umap-plot" and all([key in umap_layout for key in zoom_keys]):
+                subset_frame = subset_measurements_frame_from_umap_coordinates(pd.DataFrame(quantification_dict),
+                                                    pd.DataFrame(embeddings, columns = ['UMAP1', 'UMAP2']),
+                                                                               umap_layout)
+                return get_cell_channel_expression_plot(subset_frame,
+                                                        subset_dict=None, mode=mode_value)
             else:
                 subset_zoom=None
-            return get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
-                                                    subset_dict=subset_zoom, mode=mode_value)
+                return get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
+                                                        subset_dict=subset_zoom, mode=mode_value)
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output('umap-projection', 'data'),
+                       Output('umap-projection-options', 'options'),
+                       Input('quantification-dict', 'data'),
+                       prevent_initial_call=True)
+    def generate_umap_from_measurements_csv(quantification_dict):
+        if quantification_dict is not None:
+            data_frame = pd.DataFrame(quantification_dict)
+            for elem in ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']:
+                if elem in data_frame.columns:
+                    data_frame = data_frame.drop([elem], axis=1)
+            umap_obj = umap.UMAP()
+            scaled = StandardScaler().fit_transform(data_frame)
+            embedding = umap_obj.fit_transform(scaled)
+            return Serverside(embedding), list(data_frame.columns)
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('umap-plot', 'figure'),
+                       Input('umap-projection', 'data'),
+                       Input('umap-projection-options', 'value'),
+                       State('quantification-dict', 'data'),
+                       State('umap-plot', 'figure'),
+                       prevent_initial_call=True)
+    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
+        if embeddings is not None:
+            quant_frame = pd.DataFrame(quantification_dict)
+            colour = quant_frame[channel_overlay].astype(float) if channel_overlay is not None else None
+            df = pd.DataFrame(embeddings, columns = ['UMAP1', 'UMAP2'])
+            fig = px.scatter(df, x="UMAP1", y="UMAP2", color=colour)
+            if cur_umap_fig is None:
+                fig['layout']['uirevision'] = True
+            else:
+                fig['layout'] = cur_umap_fig['layout']
+            return fig
+        else:
+            raise PreventUpdate
+
+
 
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
@@ -141,6 +193,22 @@ def init_cell_level_callbacks(dash_app):
             return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
         else:
             raise PreventUpdate
+
+
+
+
+    # @dash_app.callback(Output('umap-plot', 'figure'),
+    #                    Input('anndata', 'data'),
+    #                    Input('metadata_options', 'value'),
+    #                    Input('dimension-reduction_options', 'value'))
+    # # @cache.memoize())
+    # def render_umap_plot(anndata_obj, metadata_selection, assay_selection):
+    #     if anndata_obj and "assays" in anndata_obj.keys() and metadata_selection and assay_selection:
+    #         umap_data = anndata_obj["full_obj"]
+    #         return px.scatter(umap_data.obsm[assay_selection], x=0, y=1, color=umap_data.obs[metadata_selection],
+    #                           labels={'color': metadata_selection})
+    #     else:
+    #         raise PreventUpdate
 
     # @dash_app.callback(
     #     Output("metadata-distribution", "figure"),
