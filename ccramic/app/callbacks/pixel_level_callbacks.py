@@ -11,7 +11,6 @@ from numpy.core._exceptions import _ArrayMemoryError
 from plotly.graph_objs.layout import XAxis, YAxis
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
-from ..utils.cell_level_utils import *
 from ..utils.pixel_level_utils import *
 import os
 import cv2
@@ -1922,89 +1921,5 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                     "Ensure that the number of " \
                                     "channels matches the provided channel labels."
             return error_config
-        else:
-            raise PreventUpdate
-
-    @du.callback(Output('mask-uploads', 'data'),
-                 id='upload-mask')
-    # @cache.memoize())
-    def return_mask_upload(status: du.UploadStatus):
-        filenames = [str(x) for x in status.uploaded_files]
-        mask_config = {'mask': []}
-        # IMP: ensure that the progress is up to 100% in the float before beginning to process
-        if len(filenames) == 1:
-            default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
-            return {default_mask_name: filenames[0]}
-        else:
-            raise PreventUpdate
-
-    @dash_app.callback(Output('input-mask-name', 'value'),
-                       Input('mask-uploads', 'data'),
-                       prevent_initial_call=True)
-    def input_mask_name_on_upload(mask_uploads):
-        if mask_uploads is not None and len(mask_uploads) > 0:
-            return list(mask_uploads.keys())[0]
-        else:
-            raise PreventUpdate
-
-
-    @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
-                       Input('mask-dict', 'data'),
-                       State('data-collection', 'value'),
-                       Input('uploaded_dict', 'data'),
-                       State('session_alert_config', 'data'),
-                       Input('mask-options', 'value'),
-                       Input('apply-mask', 'value'),
-                       prevent_initial_call=True)
-    def give_alert_on_improper_mask_import(mask_dict, data_selection, upload_dict, error_config, mask_selection,
-                                           mask_toggle):
-        """
-        Send an alert if the imported mask does not match the current ROI selection
-        Works by validating the imported mask against the first channel of the current ROI selection
-        """
-        if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            first_image = list(upload_dict[exp][slide][acq].keys())[0]
-            first_image = upload_dict[exp][slide][acq][first_image]
-            if first_image.shape[0] != mask_dict[mask_selection].shape[0] or \
-                    first_image.shape[1] != mask_dict[mask_selection].shape[1]:
-                if error_config is None:
-                    error_config = {"error": None}
-                error_config["error"] = "Warning: the current mask does not have " \
-                                        "the same dimensions as the current ROI."
-                return error_config
-            else:
-                raise PreventUpdate
-        else:
-            raise PreventUpdate
-
-    @dash_app.callback(
-        Output("mask-name-modal", "is_open"),
-        Input('input-mask-name', 'value'),
-        Input('set-mask-name', 'n_clicks'))
-    def toggle_mask_name_input_modal(new_mask_name, mask_clicks):
-        if new_mask_name and ctx.triggered_id == "input-mask-name":
-            return True
-        elif ctx.triggered_id == "set-mask-name" and mask_clicks > 0:
-            return False
-        else:
-            return False
-
-    @dash_app.callback(Output('mask-dict', 'data'),
-                       Output('mask-options', 'options'),
-                       State('mask-uploads', 'data'),
-                       State('input-mask-name', 'value'),
-                       Input('set-mask-name', 'n_clicks'),
-                       State('mask-dict', 'data'),
-                       prevent_initial_call=True)
-    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict):
-        if set_mask > 0 and None not in (mask_uploads, chosen_mask_name):
-            cur_mask_dict = {} if cur_mask_dict is None else cur_mask_dict
-            with TiffFile(str(mask_uploads[list(mask_uploads.keys())[0]])) as tif:
-                for page in tif.pages:
-                    cur_mask_dict[chosen_mask_name] = np.array(Image.fromarray(
-                        convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
-            return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
         else:
             raise PreventUpdate
