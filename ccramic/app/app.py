@@ -214,8 +214,15 @@ def init_dashboard(server, authentic_id):
                         dcc.Input(id="kernel-val-filter", type="number", value=3),
                         html.Br(),
                         html.Br(),
-                        html.H6("Set custom scalebar value", style={'width': '75%'}),
-                        dcc.Input(id="custom-scale-val", type="number", value=None),
+                        html.Div([daq.ToggleSwitch(label='Toggle legend',
+                                                   id='toggle-canvas-annotations', labelPosition='bottom',
+                                                   value=True, color="blue", style={"width": "75%",
+                                                                                "margin-left": "-15px"}),
+                                  html.Div([html.H6("Set custom scalebar value", style={'width': '110%'}),
+                                            dcc.Input(id="custom-scale-val", type="number", value=None,
+                                                      style={"width": "60%", "margin-left": "30px"})],
+                                           style={"display": "block"})],
+                                 style={"display": "flex"}),
                         html.Br(),
                         html.Br(),
                         dcc.Checklist(options=[' show channel intensities on hover'],
@@ -338,7 +345,7 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="uploads"),
         dcc.Store(id="current_canvas_image"),
         dcc.Store(id="umap-projection"),
-    ], style={"margin": "15px"})
+    ], style={"margin": "17.5px"})
 
     dash_app.enable_dev_tools(debug=True)
 
