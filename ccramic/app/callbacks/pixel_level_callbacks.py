@@ -6,7 +6,6 @@ from dash_extensions.enrich import Output, Input, State, Serverside, html
 import dash_bootstrap_components as dbc
 from dash import ctx
 from tifffile import imwrite
-import math
 from numpy.core._exceptions import _ArrayMemoryError
 from plotly.graph_objs.layout import XAxis, YAxis
 from ..inputs.pixel_level_inputs import *
@@ -593,6 +592,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('apply-mask', 'value'),
                        Input('mask-options', 'value'),
                        State('toggle-canvas-annotations', 'value'),
+                       Input('mask-blending-slider', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_or_mask_change(canvas_layers, currently_selected,
@@ -600,7 +600,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 cur_graph, cur_graph_layout, raw_data_dict,
                                                 show_each_channel_intensity,
                                                 canvas_children, param_dict,
-                                                mask_config, mask_toggle, mask_selection, show_canvas_legend):
+                                                mask_config, mask_toggle, mask_selection, show_canvas_legend,
+                                                mask_blending_level):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -629,8 +630,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
                 if image.shape[0] == mask_config[mask_selection].shape[0] and \
                         image.shape[1] == mask_config[mask_selection].shape[1]:
+                    # set the mask blending level based on the slider, by default use an equal blend
+                    mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
-                        mask_config[mask_selection].astype(np.uint8), 1, 0)
+                        mask_config[mask_selection].astype(np.uint8), mask_level, 0)
 
             try:
                 fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
@@ -652,12 +655,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         # imp: do not remove the current scale bar value if its there
                         if 'annotations' in cur_graph['layout'] and len(cur_graph['layout']['annotations']) > 0:
                             cur_graph['layout']['annotations'] = [annotation for annotation in \
-                                                          cur_graph['layout']['annotations'] if annotation['y'] == 0.06]
+                                                          cur_graph['layout']['annotations'] if \
+                                                                  annotation['y'] == 0.06 and show_canvas_legend]
                         if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']):
                             cur_graph['layout']['shapes'] = []
                         fig = cur_graph
-                        if len(cur_graph['layout']['annotations']) == 0 and show_canvas_legend:
-                            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
                     # keywrror could happen if the canvas is reset with no layers, so rebuild from scratch
                     except KeyError:
                         fig['layout']['uirevision'] = True
@@ -746,7 +748,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return fig, Serverside(image)
             except ValueError:
                 return dash.no_update
-        #TODO: this step can be used to keep the current ui revision if a new ROI is selected
+        #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
         #     fig = cur_graph if cur_graph is not None else go.Figure()
@@ -838,7 +840,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 fig = go.Figure(cur_graph)
 
                     return fig, cur_graph_layout
-                except (ValueError, KeyError, AssertionError) as e:
+                except (ValueError, KeyError, AssertionError):
                     raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
                 if None not in (x_request, y_request, current_window) and \

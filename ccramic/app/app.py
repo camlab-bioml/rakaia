@@ -190,10 +190,15 @@ def init_dashboard(server, authentic_id):
                         html.H6("Import mask"),
                         dbc.Modal(children=dbc.ModalBody(
                         [html.H6("Set the label for the imported mask"),
-                                 dcc.Input(id="input-mask-name", type="text", value=None, style={"width": "50%",
-                                                                                        "margin-right": "10px"}),
+                                 html.Div([dcc.Input(id="input-mask-name", type="text", value=None,
+                                                     style={"width": "65%", "margin-right": "10px", "height": "50%"}),
+                         daq.ToggleSwitch(label='Derive cell boundary', id='derive-cell-boundary',
+                                          labelPosition='bottom', color="blue", value=True,
+                                          style={"margin-right": "-30px", "margin-left": "10px"})],
+                                          style={"display": "flex"}),
                          dbc.Button("Set mask import", id="set-mask-name", className="me-1")]),
-                                                    id="mask-name-modal", size='l', style={"margin-left": "10px"}),
+                                                    id="mask-name-modal", size='l',
+                            style={"margin-left": "10px", "margin-top": "15px"}),
                         du.Upload(id='upload-mask', max_file_size=30000,
                                   text='Import mask in tiff format using drag and drop',
                                                     max_total_size=30000, max_files=1,
@@ -204,6 +209,9 @@ def init_dashboard(server, authentic_id):
                         html.Div([dcc.Loading(dcc.Dropdown(id='mask-options', multi=False, options=[],
                                                        style={'width': '100%', 'display': 'inline-block',
                                                     'margin-right': '-50'}), type="default", fullscreen=False),
+                        dcc.Slider(0, 100, 2.5, value=100, id='mask-blending-slider', marks={0: '0%', 25: '25%',
+                                                                                           50: '50%', 75: '75%', 100:
+                                                                                           '100%'}),
                         daq.ToggleSwitch(label='Apply mask',id='apply-mask', labelPosition='bottom',
                                                            color="blue")]),
 

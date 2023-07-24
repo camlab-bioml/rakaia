@@ -182,18 +182,22 @@ def init_cell_level_callbacks(dash_app):
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
                        State('mask-dict', 'data'),
+                       State('derive-cell-boundary', 'value'),
                        prevent_initial_call=True)
-    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict):
+    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
         if set_mask > 0 and None not in (mask_uploads, chosen_mask_name):
             cur_mask_dict = {} if cur_mask_dict is None else cur_mask_dict
             with TiffFile(str(mask_uploads[list(mask_uploads.keys())[0]])) as tif:
                 for page in tif.pages:
-                    cur_mask_dict[chosen_mask_name] = np.array(Image.fromarray(
+                    if derive_cell_boundary:
+                        mask_import = np.array(Image.fromarray(
                         convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+                    else:
+                        mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
+                    cur_mask_dict[chosen_mask_name] = mask_import
             return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
         else:
             raise PreventUpdate
-
 
 
 
