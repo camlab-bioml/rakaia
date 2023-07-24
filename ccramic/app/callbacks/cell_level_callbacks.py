@@ -49,10 +49,9 @@ def init_cell_level_callbacks(dash_app):
                        Input('quantification-bar-mode', 'value'),
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
-                       State('quantification-bar-full', 'figure'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, cur_quantification_graph):
+                                               umap_layout, embeddings):
         zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
         if quantification_dict is not None and len(quantification_dict) > 0:
             if all([key in canvas_layout for key in zoom_keys]) and ctx.triggered_id == "annotation_canvas":
@@ -72,12 +71,6 @@ def init_cell_level_callbacks(dash_app):
                 subset_zoom=None
                 fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
                                                         subset_dict=subset_zoom, mode=mode_value))
-            # print(cur_quantification_graph)
-            # if cur_quantification_graph is not None and 'layout' in cur_quantification_graph and \
-            #     'uirevision' in cur_quantification_graph['layout'] and \
-            #         cur_quantification_graph['layout']['uirevision']:
-            #     fig['layout'] = cur_quantification_graph['layout']
-            # else:
             fig['layout']['uirevision'] = True
             return fig
         else:

@@ -264,3 +264,41 @@ def test_calculate_percentile_intensity(get_current_dir):
     assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) == float(np.max(array))
     assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) > \
            get_default_channel_upper_bound_by_percentile(array=array, percentile=99.999)
+
+
+def test_validation_of_channel_metadata(get_current_dir):
+    metadata = pd.read_csv(os.path.join(get_current_dir, "channel_metadata.csv"))
+    empty_upload_dict = {"exp0": {"slide0": {"acq0": None}}}
+    assert validate_incoming_metadata_table(metadata, empty_upload_dict) is None
+
+def test_acquire_acq_images_for_gallery():
+    upload_dict = {"experiment0": {"slide0": {"acq0": {"DNA": np.array([0, 0, 0, 0]),
+                                                       "Nuclear": np.array([1, 1, 1, 1]),
+                                                       "Cytoplasm": np.array([2, 2, 2, 2])},
+                                              "acq1": {"DNA": np.array([3, 3, 3, 3]),
+                                                       "Nuclear": np.array([4, 4, 4, 4]),
+                                                       "Cytoplasm": np.array([5, 5, 5, 5])}
+                                              }}}
+    assert len(get_all_images_by_channel_name(upload_dict, "DNA")) == 2
+    assert len(get_all_images_by_channel_name(upload_dict, "fake")) == 0
+
+def test_make_hovertext_from_channel_list():
+    channel_list = ["channel_1", "channel_2"]
+    assert per_channel_intensity_hovertext(channel_list) == "x: %{x}, y: %{y} <br>channel_1: %{customdata[0]} " \
+                                                            "<br>channel_2: " \
+                                                            "%{customdata[1]} <br><extra></extra>"
+
+def test_coord_navigation():
+    window_dict = {"x_high": 200, "x_low": 100, "y_high": 200, "y_low": 100}
+    new_coords = create_new_coord_bounds(window_dict, 500, 500)
+    assert new_coords[0] == 450.0
+    assert new_coords[1] == 550.0
+    assert new_coords[1] - new_coords[0] == 100.0
+
+
+def test_get_statistics_from_rect_array(get_current_dir):
+    array = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
+    stats_1 = get_area_statistics_from_rect(array, 100, 200, 100, 200)
+    assert 27.55 <= stats_1[0] <= 27.57
+    bad_stats = get_area_statistics_from_rect(array, 10000, 20000, 100, 200)
+    assert all([elem is None for elem in bad_stats])

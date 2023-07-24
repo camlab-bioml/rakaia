@@ -14,16 +14,16 @@ from scipy.ndimage import gaussian_filter, median_filter
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
-
-def get_luma(rbg):
-    return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
-
-
-def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
-    # image = recolour_greyscale(tiff_dict[tiff_list[0]], colour_dict[tiff_list[0]])
-    # for other in tiff_list[1:]:
-    #     image = image + recolour_greyscale(tiff_dict[other], colour_dict[other]
-    return Image.fromarray(sum([recolour_greyscale(tiff_dict[elem], colour_dict[elem]) for elem in tiff_list]))
+#
+# def get_luma(rbg):
+#     return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
+#
+#
+# def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
+#     # image = recolour_greyscale(tiff_dict[tiff_list[0]], colour_dict[tiff_list[0]])
+#     # for other in tiff_list[1:]:
+#     #     image = image + recolour_greyscale(tiff_dict[other], colour_dict[other]
+#     return Image.fromarray(sum([recolour_greyscale(tiff_dict[elem], colour_dict[elem]) for elem in tiff_list]))
 
 
 def recolour_greyscale(array, colour):
@@ -47,76 +47,6 @@ def recolour_greyscale(array, colour):
         image = Image.fromarray(array.astype(np.uint8))
         image = image.convert('RGB')
         return np.array(image).astype(np.uint8)
-
-
-# def convert_image_to_bytes(image):
-#     buffered = io.BytesIO()
-#     image.save(buffered, format="PNG")
-#     return base64.b64encode(buffered.getvalue()).decode()
-#
-#
-# def read_back_base64_to_image(string):
-#     image_back = base64.b64decode(string)
-#     return Image.open(io.BytesIO(image_back))
-
-
-# def fig_to_uri(in_fig, close_all=True, **save_args):
-#     """
-#     Save a figure as a URI
-#     :param in_fig:
-#     :return:
-#     """
-#     out_img = BytesIO()
-#     in_fig.savefig(out_img, format='png', **save_args)
-#     if close_all:
-#         in_fig.clf()
-#         plt.close('all')
-#     out_img.seek(0)  # rewind file
-#     encoded = base64.b64encode(out_img.read()).decode("ascii").replace("\n", "")
-#     return "data:image/png;base64,{}".format(encoded)
-
-def df_to_sarray(df):
-    """
-    Convert a pandas DataFrame object to a numpy structured array.
-    Also, for every column of a str type, convert it into
-    a 'bytes' str literal of length = max(len(col)).
-
-    :param df: the data frame to convert
-    :return: a numpy structured array representation of df
-    """
-
-    def make_col_type(col_type, col):
-        try:
-            if 'numpy.object_' in str(col_type.type):
-                maxlens = col.dropna().str.len()
-                if maxlens.any():
-                    maxlen = maxlens.max().astype(int)
-                    col_type = ('S%s' % maxlen, 1)
-                else:
-                    col_type = 'f2'
-            return col.name, col_type
-        except:
-            print(col.name, col_type, col_type.type, type(col))
-            raise
-
-    v = df.values
-    types = df.dtypes
-    numpy_struct_types = [make_col_type(types[col], df.loc[:, col]) for col in df.columns]
-    dtype = np.dtype(numpy_struct_types)
-    z = np.zeros(v.shape[0], dtype)
-    for (i, k) in enumerate(z.dtype.names):
-        # This is in case you have problems with the encoding, remove the if branch if not
-        try:
-            if dtype[i].str.startswith('|S'):
-                z[k] = df[k].str.encode('latin').astype('S')
-            else:
-                z[k] = v[:, i]
-        except:
-            print(k, v[:, i])
-            raise
-
-    return z, dtype
-
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
     try:
@@ -369,17 +299,3 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     array_stack = np.hstack(array)
     data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
     return float(np.percentile(data, percentile))
-
-
-def blend_arrays_additively(array_1, array_2, pixel_threshold=3):
-    """
-    Blend RGB arrays based on the additive colour model
-    """
-    to_add = np.asarray(array_2).astype(np.float32)
-    mask1 = (array_1.astype(np.uint8) < pixel_threshold).all(-1)
-    mask2 = (to_add.astype(np.uint8) < pixel_threshold).all(-1)
-    combined = np.logical_or(mask1, mask2)
-    array_1[~combined] = array_1[~combined] / 2
-    to_add[~combined] = to_add[~combined] / 2
-    array_1 = (array_1.astype(np.float32) + to_add.astype(np.float32))
-    return array_1
