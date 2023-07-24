@@ -17,7 +17,7 @@ def get_current_dir():
 
 
 def init_app():
-    # suopress numba depreciation warnings
+    # suppress numba depreciation warnings from umap
     warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
     warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
     """Construct core Flask application with embedded Dash app."""

@@ -8,8 +8,8 @@ from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
 from tifffile import TiffFile
 import os
-import umap
 from sklearn.preprocessing import StandardScaler
+import sys
 
 def init_cell_level_callbacks(dash_app):
     """
@@ -37,8 +37,9 @@ def init_cell_level_callbacks(dash_app):
     def populate_quantification_table_from_upload(session_dict):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             quantification_worksheet = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
-                                                         validate_with_image=False).to_dict(orient="records")
-            return quantification_worksheet
+                                                         validate_with_image=False)
+            # TODO: establish where to use the percentile filtering on the measurements
+            return filter_measurements_csv_by_channel_percentile(quantification_worksheet).to_dict(orient="records")
         else:
             raise PreventUpdate
 
@@ -48,8 +49,10 @@ def init_cell_level_callbacks(dash_app):
                        Input('quantification-bar-mode', 'value'),
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
+                       State('quantification-bar-full', 'figure'),
                        prevent_initial_call=True)
-    def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value, umap_layout, embeddings):
+    def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
+                                               umap_layout, embeddings, cur_quantification_graph):
         zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
         if quantification_dict is not None and len(quantification_dict) > 0:
             if all([key in canvas_layout for key in zoom_keys]) and ctx.triggered_id == "annotation_canvas":
@@ -57,18 +60,26 @@ def init_cell_level_callbacks(dash_app):
                                "x_max": max(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
                                "y_min": min(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]']),
                                "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
-                return get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
-                                                        subset_dict=subset_zoom, mode=mode_value)
+                fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
+                                                        subset_dict=subset_zoom, mode=mode_value))
             elif ctx.triggered_id == "umap-plot" and all([key in umap_layout for key in zoom_keys]):
                 subset_frame = subset_measurements_frame_from_umap_coordinates(pd.DataFrame(quantification_dict),
                                                     pd.DataFrame(embeddings, columns = ['UMAP1', 'UMAP2']),
                                                                                umap_layout)
-                return get_cell_channel_expression_plot(subset_frame,
-                                                        subset_dict=None, mode=mode_value)
+                fig = go.Figure(get_cell_channel_expression_plot(subset_frame,
+                                                        subset_dict=None, mode=mode_value))
             else:
                 subset_zoom=None
-                return get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
-                                                        subset_dict=subset_zoom, mode=mode_value)
+                fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
+                                                        subset_dict=subset_zoom, mode=mode_value))
+            # print(cur_quantification_graph)
+            # if cur_quantification_graph is not None and 'layout' in cur_quantification_graph and \
+            #     'uirevision' in cur_quantification_graph['layout'] and \
+            #         cur_quantification_graph['layout']['uirevision']:
+            #     fig['layout'] = cur_quantification_graph['layout']
+            # else:
+            fig['layout']['uirevision'] = True
+            return fig
         else:
             raise PreventUpdate
 
@@ -77,15 +88,33 @@ def init_cell_level_callbacks(dash_app):
                        Input('quantification-dict', 'data'),
                        prevent_initial_call=True)
     def generate_umap_from_measurements_csv(quantification_dict):
+        """
+        Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
+        of the embeddings and a list of the channels for interactive projection
+        """
         if quantification_dict is not None:
+            # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
+            #  column-wise, by channel)
             data_frame = pd.DataFrame(quantification_dict)
+            umap_obj = None
             for elem in ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']:
                 if elem in data_frame.columns:
                     data_frame = data_frame.drop([elem], axis=1)
-            umap_obj = umap.UMAP()
-            scaled = StandardScaler().fit_transform(data_frame)
-            embedding = umap_obj.fit_transform(scaled)
-            return Serverside(embedding), list(data_frame.columns)
+            # TODO: evaluate the umap import speed (slow) possibly due to numba compilation:
+            # https://github.com/lmcinnes/umap/issues/631
+            if 'umap' not in sys.modules:
+                import umap
+            try:
+                umap_obj = umap.UMAP()
+            except UnboundLocalError:
+                import umap
+                umap_obj = umap.UMAP()
+            if umap_obj is not None:
+                scaled = StandardScaler().fit_transform(data_frame)
+                embedding = umap_obj.fit_transform(scaled)
+                return Serverside(embedding), list(data_frame.columns)
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 

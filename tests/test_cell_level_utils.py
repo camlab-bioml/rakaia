@@ -18,3 +18,6 @@ def test_basic_mask_boundary_converter(get_current_dir):
     # comparison
     mask_from_reconverted = convert_mask_to_cell_boundary(reconverted_back)
     assert np.mean(reconverted_back) > np.mean(mask_from_reconverted)
+    # assert that a pixel inside the cell boundary is essentially invisible
+    assert reconverted_back[628, 491] == 255
+    assert mask_from_reconverted[628, 491] <= 3

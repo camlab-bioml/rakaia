@@ -17,7 +17,10 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                                         f'y_max <= {subset_dict["y_max"]}')
         except KeyError:
             pass
-    dropped = pd.DataFrame(measurement_frame).drop(dropped_columns, axis=1)
+    try:
+        dropped = pd.DataFrame(measurement_frame).drop(dropped_columns, axis=1)
+    except KeyError:
+        dropped = pd.DataFrame(measurement_frame)
     if mode == "mean":
         dropped = dropped.mean(axis=0)
     elif mode == "max":

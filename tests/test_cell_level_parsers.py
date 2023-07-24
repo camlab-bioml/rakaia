@@ -15,3 +15,15 @@ def test_validation_of_measurements_csv(get_current_dir):
 
     fake_image_bad_dims = np.empty((1490, 92, 3))
     assert validate_incoming_measurements_csv(measurements_csv, current_image=fake_image_bad_dims) is None
+
+
+def test_filtering_channel_measurements_by_percentile(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    filtered = filter_measurements_csv_by_channel_percentile(measurements_csv)
+    assert len(measurements_csv) > len(filtered)
+    for col in filtered.columns:
+        assert np.max(measurements_csv[col]) > np.max(filtered[col])
+
+    filtered_50 = filter_measurements_csv_by_channel_percentile(measurements_csv, percentile=0.5)
+    for col in filtered_50.columns:
+        assert np.max(filtered[col]) > np.max(filtered_50[col])

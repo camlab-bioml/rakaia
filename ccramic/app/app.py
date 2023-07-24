@@ -5,11 +5,6 @@ import dash_uploader as du
 from dash_extensions.enrich import DashProxy, html, ServersideOutputTransform, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-# from dash import DiskcacheManager
-# import diskcache
-# from sqlite3 import DatabaseError
-# from .parsers import *
-# from flask_caching import Cache
 from .callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from .callbacks.cell_level_callbacks import init_cell_level_callbacks
 from .inputs.pixel_level_inputs import *
