@@ -11,6 +11,7 @@ import plotly.express as px
 from skimage import draw
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter, median_filter
+from dash.exceptions import PreventUpdate
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -299,3 +300,14 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     array_stack = np.hstack(array)
     data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
     return float(np.percentile(data, percentile))
+
+def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options):
+    """
+    On button prompt, remove a dataset option from the options list.
+    """
+    if remove_clicks > 0 and None not in (cur_data_selection, cur_options):
+        return_list = cur_options.copy()
+        return_list.remove(cur_data_selection)
+        return return_list, None, [], None
+    else:
+        raise PreventUpdate

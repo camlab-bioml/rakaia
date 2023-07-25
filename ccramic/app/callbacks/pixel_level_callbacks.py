@@ -122,6 +122,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Output('data-collection', 'options', allow_duplicate=True),
+                       Output('data-collection', 'value', allow_duplicate=True),
+                       Output('image_layers', 'options', allow_duplicate=True),
+                       Output('image_layers', 'value', allow_duplicate=True),
+                       Input('remove-collection', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('data-collection', 'options'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def remove_dataset_from_collection(remove_clicks, cur_data_selection, cur_options):
+        """
+        Use the trash icon to remove a dataset collection from the possible selections
+        Causes a reset of the canvas, channel selection, and channel modification menus
+        """
+        return delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options)
+
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
                        Input('uploaded_dict_template', 'data'),
                        State('annotation_canvas', 'figure'),

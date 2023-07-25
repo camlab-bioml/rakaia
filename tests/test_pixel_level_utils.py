@@ -1,8 +1,6 @@
 import os
-from PIL import Image
+import pytest
 import plotly
-import numpy as np
-
 from ccramic.app.parsers.pixel_level_parsers import create_new_blending_dict
 from ccramic.app.utils.pixel_level_utils import *
 
@@ -302,3 +300,13 @@ def test_get_statistics_from_rect_array(get_current_dir):
     assert 27.55 <= stats_1[0] <= 27.57
     bad_stats = get_area_statistics_from_rect(array, 10000, 20000, 100, 200)
     assert all([elem is None for elem in bad_stats])
+
+def test_basic_dataset_dropdown_removal():
+    dataset_options = ["dataset1", "dataset2"]
+    removed = delete_dataset_option_from_list_interactively(1, "dataset2", dataset_options)
+    assert "dataset2" not in removed[0]
+    assert "dataset1" in removed[0]
+    with pytest.raises(PreventUpdate):
+        delete_dataset_option_from_list_interactively(1, None, dataset_options)
+    with pytest.raises(PreventUpdate):
+        delete_dataset_option_from_list_interactively(0, "dataset2", dataset_options)
