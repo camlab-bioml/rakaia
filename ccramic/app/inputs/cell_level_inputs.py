@@ -1,6 +1,7 @@
 
-import pandas as pd
-import plotly.express as px
+import plotly.graph_objs as go
+from ..inputs.cell_level_inputs import *
+from ..utils.cell_level_utils import *
 
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                      dropped_columns=['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'],
@@ -34,3 +35,43 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                       title=f"Segmented Marker Expression ({len(measurement_frame)} cells)")
     else:
         return None
+
+def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
+    if embeddings is not None:
+        quant_frame = pd.DataFrame(quantification_dict)
+        colour = quant_frame[channel_overlay].astype(float) if channel_overlay is not None else None
+        df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
+        fig = px.scatter(df, x="UMAP1", y="UMAP2", color=colour)
+        if cur_umap_fig is None:
+            fig['layout']['uirevision'] = True
+        else:
+            fig['layout'] = cur_umap_fig['layout']
+        return fig
+    else:
+        raise PreventUpdate
+
+def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
+                                               umap_layout, embeddings, zoom_keys, triggered_id):
+    if quantification_dict is not None and len(quantification_dict) > 0:
+        if all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
+            subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
+                           "x_max": max(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
+                           "y_min": min(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]']),
+                           "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
+            fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
+                                                             subset_dict=subset_zoom, mode=mode_value))
+        elif triggered_id == "umap-plot" and all([key in umap_layout for key in zoom_keys]):
+            subset_frame = subset_measurements_frame_from_umap_coordinates(pd.DataFrame(quantification_dict),
+                                                                           pd.DataFrame(embeddings,
+                                                                                        columns=['UMAP1', 'UMAP2']),
+                                                                           umap_layout)
+            fig = go.Figure(get_cell_channel_expression_plot(subset_frame,
+                                                             subset_dict=None, mode=mode_value))
+        else:
+            subset_zoom = None
+            fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
+                                                             subset_dict=subset_zoom, mode=mode_value))
+        fig['layout']['uirevision'] = True
+        return fig
+    else:
+        raise PreventUpdate

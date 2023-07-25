@@ -1,5 +1,10 @@
 
+from dash_extensions.enrich import Serverside
+from ..utils.cell_level_utils import *
+from sklearn.preprocessing import StandardScaler
+import sys
 from ..utils.pixel_level_utils import *
+from dash.exceptions import PreventUpdate
 
 def get_pixel(mask, i, j):
     if len(mask.shape) > 2:
@@ -47,3 +52,49 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
         return measurements.loc[umap_frame.index[query.index.tolist()]]
     except AssertionError:
         return None
+
+def return_umap_dataframe_from_quantification_dict(quantification_dict):
+    if quantification_dict is not None:
+        # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
+        #  column-wise, by channel)
+        data_frame = pd.DataFrame(quantification_dict)
+        umap_obj = None
+        for elem in ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']:
+            if elem in data_frame.columns:
+                data_frame = data_frame.drop([elem], axis=1)
+        # TODO: evaluate the umap import speed (slow) possibly due to numba compilation:
+        # https://github.com/lmcinnes/umap/issues/631
+        if 'umap' not in sys.modules:
+            import umap
+        try:
+            umap_obj = umap.UMAP()
+        except UnboundLocalError:
+            import umap
+            umap_obj = umap.UMAP()
+        if umap_obj is not None:
+            scaled = StandardScaler().fit_transform(data_frame)
+            embedding = umap_obj.fit_transform(scaled)
+            return Serverside(embedding), list(data_frame.columns)
+        else:
+            raise PreventUpdate
+    else:
+        raise PreventUpdate
+
+def send_alert_on_imcompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
+                                           mask_toggle):
+    if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
+        split = split_string_at_pattern(data_selection)
+        exp, slide, acq = split[0], split[1], split[2]
+        first_image = list(upload_dict[exp][slide][acq].keys())[0]
+        first_image = upload_dict[exp][slide][acq][first_image]
+        if first_image.shape[0] != mask_dict[mask_selection].shape[0] or \
+                first_image.shape[1] != mask_dict[mask_selection].shape[1]:
+            if error_config is None:
+                error_config = {"error": None}
+            error_config["error"] = "Warning: the current mask does not have " \
+                                    "the same dimensions as the current ROI."
+            return error_config
+        else:
+            raise PreventUpdate
+    else:
+        raise PreventUpdate

@@ -225,17 +225,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('canvas-layers', 'data'),
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
+                       State('images_in_blend', 'value'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('param_config', 'data', allow_duplicate=True),
+                       Output('images_in_blend', 'value', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
-                                               param_dict, all_layers, preset_selection, preset_dict):
+                                               param_dict, all_layers, preset_selection, preset_dict,
+                                               cur_image_in_mod_menu):
         """
         Update the blend dictionary when a new channel is added to the multi-channel selector
         """
         use_preset_condition = None not in (preset_selection, preset_dict)
         if add_to_layer is not None and current_blend_dict is not None:
+            channel_modify = dash.no_update
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             if param_dict is None or len(param_dict) < 1:
@@ -246,6 +250,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
                                                                         data_selection)
                     param_dict["current_roi"] = data_selection
+                    if cur_image_in_mod_menu is not None and cur_image_in_mod_menu in \
+                        current_blend_dict[exp][slide][acq].keys():
+                        channel_modify = cur_image_in_mod_menu
                 else:
                     param_dict["current_roi"] = data_selection
             if all_layers is None:
@@ -295,7 +302,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                                         acq][
                                                                                         elem]['color'])).astype(
                         np.uint8)
-            return current_blend_dict, Serverside(all_layers), param_dict
+            return current_blend_dict, Serverside(all_layers), param_dict, channel_modify
         else:
             raise PreventUpdate
 
@@ -551,17 +558,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     #     else:
     #         raise PreventUpdate
 
-    @dash_app.callback(Output('images_in_blend', 'value', allow_duplicate=True),
-                       Output('images_in_blend', 'options', allow_duplicate=True),
-                       Input('data-collection', 'value'),
-                       # State('image_layers', 'value'),
-                       prevent_initial_call=True)
-    # @cache.memoize())
-    def reset_blend_layers_selected(new_selection):
-        if new_selection is not None:
-            return None, []
-        else:
-            raise PreventUpdate
+    # @dash_app.callback(Output('images_in_blend', 'value', allow_duplicate=True),
+    #                    Output('images_in_blend', 'options', allow_duplicate=True),
+    #                    Input('data-collection', 'value'),
+    #                    # State('image_layers', 'value'),
+    #                    prevent_initial_call=True)
+    # # @cache.memoize())
+    # def reset_blend_layers_selected(new_selection):
+    #     """
+    #     Reset the channels that are available in the modification dropdown manu when a new ROI/dataset is selected.
+    #     """
+    #     if new_selection is not None:
+    #         return None, []
+    #     else:
+    #         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
                        Input('data-collection', 'value'),
