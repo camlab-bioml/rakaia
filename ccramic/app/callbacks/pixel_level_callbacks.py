@@ -652,7 +652,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
                          elem in currently_selected if \
                          elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-            image = np.clip(image, 0, 255)
+            image = np.clip(image, 0, 255).astype(np.uint8)
             if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
                 if image.shape[0] == mask_config[mask_selection].shape[0] and \
                         image.shape[1] == mask_config[mask_selection].shape[1]:
@@ -1907,10 +1907,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('uploaded_dict', 'data'),
                        Input('channel-intensity-hover', 'value'),
                        State('canvas-layers', 'data'),
+                       State('mask-dict', 'data'),
+                       State('apply-mask', 'value'),
+                       State('mask-options', 'value'),
+                       State('toggle-canvas-annotations', 'value'),
+                       State('mask-blending-slider', 'value'),
+                       State('blending_colours', 'data'),
+                       State('alias-dict', 'data'),
                        prevent_initial_call=True)
     def toggle_channel_intensities_on_hover(currently_selected, data_selection, cur_graph,
                                             raw_data_dict, show_each_channel_intensity,
-                                            canvas_layers):
+                                            canvas_layers, mask_config, mask_toggle, mask_selection, show_canvas_legend,
+                                                mask_blending_level, blend_colour_dict, aliases):
         """
         toggle showing the individual pixel intensities on the canvas. Note that the space complexity and performance
         of the canvas is significantly compromised if the individual channel intensity is used
@@ -1918,6 +1926,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if None not in (currently_selected, data_selection, cur_graph):
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
+            legend_text = ''
+            for image in currently_selected:
+                if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
+                    label = aliases[image] if aliases is not None and image in aliases.keys() else image
+                    legend_text = legend_text + f'<span style="color:' \
+                                                f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
+                                                f'>{label}</span><br>'
             if " show channel intensities on hover" in show_each_channel_intensity and \
                     len(show_each_channel_intensity) > 0:
                 fig = go.Figure(cur_graph)
@@ -1931,10 +1946,49 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
                              elem in currently_selected if \
                              elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-                image = np.clip(image, 0, 255)
+                image = np.clip(image, 0, 255).astype(np.uint8)
+                if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
+                    if image.shape[0] == mask_config[mask_selection].shape[0] and \
+                            image.shape[1] == mask_config[mask_selection].shape[1]:
+                        # set the mask blending level based on the slider, by default use an equal blend
+                        mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
+                        image = cv2.addWeighted(image.astype(np.uint8), 1,
+                                                mask_config[mask_selection].astype(np.uint8), mask_level, 0)
                 default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
                 fig = px.imshow(Image.fromarray(image))
-                fig.update_layout(uirevision=True)
+                image_shape = image.shape
+                if show_canvas_legend:
+                    x_axis_placement = 0.00001 * image_shape[1]
+                    # make sure the placement is min 0.05 and max 0.1
+                    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
+                    # if the current graph already has an image, take the existing layout and apply it to the new figure
+                    # otherwise, set the uirevision for the first time
+                    fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
+
+                    if legend_text != '' and show_canvas_legend:
+                        fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                                           yref='paper',
+                                           x=(1 - x_axis_placement),
+                                           # xanchor='right',
+                                           y=0.05,
+                                           # yanchor='bottom',
+                                           bgcolor="black",
+                                           showarrow=False)
+
+                    # set the x-axis scale placement based on the size of the image
+                    # for adding a scale bar
+                    if show_canvas_legend:
+                        fig.add_shape(type="line",
+                                      xref="paper", yref="paper",
+                                      x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
+                                      y1=0.05,
+                                      line=dict(
+                                          color="white",
+                                          width=2,
+                                      ),
+                                      )
+
+                fig['layout']['uirevision'] = True
                 fig.update_traces(hovertemplate=default_hover)
                 fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                                   xaxis=XAxis(showticklabels=False, domain=[0, 1]),
