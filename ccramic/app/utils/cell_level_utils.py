@@ -80,7 +80,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict):
     else:
         raise PreventUpdate
 
-def send_alert_on_imcompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
+def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle):
     if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
         split = split_string_at_pattern(data_selection)

@@ -127,7 +127,7 @@ def init_dashboard(server, authentic_id):
                                             color=None, n_clicks=0,
                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
                                   dbc.Button("Auto-fit canvas", id="autosize-canvas",
-                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
+                                             style={"margin-left": "10px", "margin-top": "5px", "height": "100%"}),
                                   html.Div(style={"margin-left": "20px", "margin-right": "10px",
                                                                     "margin-top": "10px", "height": "100%",
                                                   "width": "150%"},
@@ -151,8 +151,14 @@ def init_dashboard(server, authentic_id):
                                  style={"margin-top": "-22px"}, id="canvas-div-holder"),
                     html.H6("Current canvas blend", style={'width': '75%'}),
                     html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
+                    dbc.Button("Add region annotation", id="region-annotation",
+                               style={"margin-top": "5px", "height": "100%"},
+                               disabled=True),
+                    html.Br(),
+                    html.Br(),
                     dbc.Button("Show/hide region statistics", id="compute-region-statistics", className="mb-3",
                                color="primary", n_clicks=0),
+                    html.Br(),
                     html.Div(dbc.Collapse(
                         html.Div([html.H6("Selection information", style={'width': '75%'}),
                                   html.Div([dash_table.DataTable(id='selected-area-table',
@@ -216,8 +222,14 @@ def init_dashboard(server, authentic_id):
                         dcc.Slider(0, 100, 2.5, value=100, id='mask-blending-slider', marks={0: '0%', 25: '25%',
                                                                                            50: '50%', 75: '75%', 100:
                                                                                            '100%'}),
-                        daq.ToggleSwitch(label='Apply mask',id='apply-mask', labelPosition='bottom',
-                                                           color="blue")]),
+                        html.Div([daq.ToggleSwitch(label='Apply mask',id='apply-mask', labelPosition='bottom',
+                                                           color="blue", style={"margin-left": "60px"}),
+                                  html.Abbr(dcc.Checklist(options=[' add boundary'], value=[],
+                                                id="add-mask-boundary", style={"margin-left": "35px",
+                                                                               "margin-top": "10px"}),
+                                            title="Use this feature only if the cell boundary was not "
+                                                  "derived on import"),
+                                  ], style={"display": "flex"})]),
 
                         html.Br(),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
@@ -357,6 +369,7 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="uploads"),
         dcc.Store(id="current_canvas_image"),
         dcc.Store(id="umap-projection"),
+        dcc.Store(id="annotations-dict"),
     ], style={"margin": "17.5px"})
 
     dash_app.enable_dev_tools(debug=True)

@@ -85,7 +85,7 @@ def init_cell_level_callbacks(dash_app):
         Send an alert if the imported mask does not match the current ROI selection
         Works by validating the imported mask against the first channel of the current ROI selection
         """
-        return send_alert_on_imcompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
+        return send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle)
 
     @dash_app.callback(

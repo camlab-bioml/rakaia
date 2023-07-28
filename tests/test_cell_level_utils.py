@@ -41,14 +41,14 @@ def test_receive_alert_on_imcompatible_mask():
     upload_dict = {"experiment0": {"slide0": {"acq0": {"channel_1": np.empty((50, 50))}}}}
     data_selection = "experiment0+++slide0+++acq0"
     mask_dict = {"mask": np.empty((50, 49))}
-    error = send_alert_on_imcompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
+    error = send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
     assert 'error' in error.keys()
     with pytest.raises(PreventUpdate):
         # if the masks are the same, do not send error
         upload_dict = {"experiment0": {"slide0": {"acq0": {"channel_1": np.empty((50, 50))}}}}
         data_selection = "experiment0+++slide0+++acq0"
         mask_dict = {"mask": np.empty((50, 50))}
-        send_alert_on_imcompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
+        send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
     with pytest.raises(PreventUpdate):
         # if inputs are none, do not set error
-        send_alert_on_imcompatible_mask(None, None, None, None, "mask", True)
+        send_alert_on_incompatible_mask(None, None, None, None, "mask", True)

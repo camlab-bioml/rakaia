@@ -81,7 +81,6 @@ def parse_masks_from_filenames(status):
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
     if set_mask > 0 and None not in (mask_uploads, chosen_mask_name):
-        print(mask_uploads)
         cur_mask_dict = {} if cur_mask_dict is None else cur_mask_dict
         with TiffFile(str(mask_uploads[list(mask_uploads.keys())[0]])) as tif:
             for page in tif.pages:

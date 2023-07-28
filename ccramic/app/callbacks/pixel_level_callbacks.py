@@ -11,6 +11,7 @@ from plotly.graph_objs.layout import XAxis, YAxis
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.pixel_level_utils import *
+from ..utils.cell_level_utils import *
 import os
 import cv2
 
@@ -619,6 +620,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('mask-options', 'value'),
                        State('toggle-canvas-annotations', 'value'),
                        Input('mask-blending-slider', 'value'),
+                       Input('add-mask-boundary', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_or_mask_change(canvas_layers, currently_selected,
@@ -627,7 +629,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 show_each_channel_intensity,
                                                 canvas_children, param_dict,
                                                 mask_config, mask_toggle, mask_selection, show_canvas_legend,
-                                                mask_blending_level):
+                                                mask_blending_level, add_mask_boundary):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -660,6 +662,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
                         mask_config[mask_selection].astype(np.uint8), mask_level, 0)
+                    if add_mask_boundary:
+                        # add the border of the mask after converting back to greyscale to derive the conversion
+                        greyscale_mask = np.array(Image.fromarray(mask_config[mask_selection]).convert('L'))
+                        reconverted = np.array(Image.fromarray(
+                        convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
+                        image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
 
             try:
                 fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
@@ -1914,11 +1922,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('mask-blending-slider', 'value'),
                        State('blending_colours', 'data'),
                        State('alias-dict', 'data'),
+                       State('add-mask-boundary', 'value'),
                        prevent_initial_call=True)
     def toggle_channel_intensities_on_hover(currently_selected, data_selection, cur_graph,
                                             raw_data_dict, show_each_channel_intensity,
                                             canvas_layers, mask_config, mask_toggle, mask_selection, show_canvas_legend,
-                                                mask_blending_level, blend_colour_dict, aliases):
+                                                mask_blending_level, blend_colour_dict, aliases, add_mask_boundary):
         """
         toggle showing the individual pixel intensities on the canvas. Note that the space complexity and performance
         of the canvas is significantly compromised if the individual channel intensity is used
@@ -1954,6 +1963,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
                         image = cv2.addWeighted(image.astype(np.uint8), 1,
                                                 mask_config[mask_selection].astype(np.uint8), mask_level, 0)
+                        if add_mask_boundary:
+                            # add the border of the mask after converting back to greyscale to derive the conversion
+                            greyscale_mask = np.array(Image.fromarray(mask_config[mask_selection]).convert('L'))
+                            reconverted = np.array(Image.fromarray(
+                                convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
+                            image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
                 default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
                 fig = px.imshow(Image.fromarray(image))
                 image_shape = image.shape
@@ -2029,3 +2044,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return error_config
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output('region-annotation', 'disabled'),
+                       Input('annotation_canvas', 'relayoutData'),
+                       prevent_initial_call=True)
+    def enable_region_annotation_on_layout(cur_graph_layout):
+        """
+        Enable the region annotation button to be selectable when the canvas is either zoomed in on, or
+        a shape is being added/edited. These represent a region selection that can be annotated
+        """
+        if cur_graph_layout is not None and len(cur_graph_layout) > 0:
+            zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+            if 'shapes' in cur_graph_layout.keys() or all([elem in cur_graph_layout for elem in zoom_keys]):
+                return False
+            else:
+                return True
+        else:
+            return True
+    #TODO: add modal for when a region can be annotated with inputs for adding an annotation to a dictionary
