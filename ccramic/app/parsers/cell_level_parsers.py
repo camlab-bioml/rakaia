@@ -10,7 +10,7 @@ from ..utils.cell_level_utils import *
 def validate_incoming_measurements_csv(measurements_csv, current_image=None, validate_with_image=True,
                                        required_columns=['cell_id', 'x', 'y', 'x_max', 'y_max', 'area']):
     """
-    Validate an incoming measurements CSV against the current canvas, and ensure that it has all of the required
+    Validate an incoming measurements CSV against the current canvas, and ensure that it has the required
     information columns
     """
     if not all([column in measurements_csv.columns for column in required_columns]):

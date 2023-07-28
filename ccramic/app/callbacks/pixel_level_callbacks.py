@@ -1,19 +1,19 @@
+import os
+
+import cv2
 import dash.exceptions
-from dash.exceptions import PreventUpdate
-import flask
-import dash_uploader as du
-from dash_extensions.enrich import Output, Input, State, Serverside, html
 import dash_bootstrap_components as dbc
+import dash_uploader as du
+import flask
 from dash import ctx
-from tifffile import imwrite
+from dash_extensions.enrich import Output, Input, State, html
 from numpy.core._exceptions import _ArrayMemoryError
-from plotly.graph_objs.layout import XAxis, YAxis
+from tifffile import imwrite
+
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
-from ..utils.pixel_level_utils import *
 from ..utils.cell_level_utils import *
-import os
-import cv2
+
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -1909,6 +1909,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return False, None
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
                        State('annotation_canvas', 'figure'),
@@ -1936,6 +1937,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
+            layout_return = dash.no_update
             for image in currently_selected:
                 if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                     label = aliases[image] if aliases is not None and image in aliases.keys() else image
@@ -1952,72 +1954,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 fig.update_traces(hovertemplate=new_hover)
             else:
                 del cur_graph
-                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
-                             elem in currently_selected if \
-                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-                image = np.clip(image, 0, 255).astype(np.uint8)
-                if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
-                    if image.shape[0] == mask_config[mask_selection].shape[0] and \
-                            image.shape[1] == mask_config[mask_selection].shape[1]:
-                        # set the mask blending level based on the slider, by default use an equal blend
-                        mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
-                        image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                                mask_config[mask_selection].astype(np.uint8), mask_level, 0)
-                        if add_mask_boundary:
-                            # add the border of the mask after converting back to greyscale to derive the conversion
-                            greyscale_mask = np.array(Image.fromarray(mask_config[mask_selection]).convert('L'))
-                            reconverted = np.array(Image.fromarray(
-                                convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
-                            image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
-                default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                fig = px.imshow(Image.fromarray(image))
-                image_shape = image.shape
-                if show_canvas_legend:
-                    x_axis_placement = 0.00001 * image_shape[1]
-                    # make sure the placement is min 0.05 and max 0.1
-                    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
-                    # if the current graph already has an image, take the existing layout and apply it to the new figure
-                    # otherwise, set the uirevision for the first time
-                    fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
-
-                    if legend_text != '' and show_canvas_legend:
-                        fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
-                                           yref='paper',
-                                           x=(1 - x_axis_placement),
-                                           # xanchor='right',
-                                           y=0.05,
-                                           # yanchor='bottom',
-                                           bgcolor="black",
-                                           showarrow=False)
-
-                    # set the x-axis scale placement based on the size of the image
-                    # for adding a scale bar
-                    if show_canvas_legend:
-                        fig.add_shape(type="line",
-                                      xref="paper", yref="paper",
-                                      x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
-                                      y1=0.05,
-                                      line=dict(
-                                          color="white",
-                                          width=2,
-                                      ),
-                                      )
-
-                fig['layout']['uirevision'] = True
-                fig.update_traces(hovertemplate=default_hover)
-                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                  xaxis=XAxis(showticklabels=False, domain=[0, 1]),
-                                  yaxis=YAxis(showticklabels=False),
-                                  margin=dict(
-                                      l=10,
-                                      r=0,
-                                      b=25,
-                                      t=35,
-                                      pad=0
-                                  ))
-                fig.update_layout(hovermode="x")
-            return fig
-
+                fig = get_additive_image_with_masking(currently_selected, data_selection, canvas_layers, mask_config,
+                                    mask_toggle, mask_selection, show_canvas_legend,
+                                    mask_blending_level, add_mask_boundary, legend_text)
+                layout_return = {'autosize': True}
+            return fig, layout_return
         else:
             raise PreventUpdate
 
@@ -2061,4 +2002,38 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return True
         else:
             return True
-    #TODO: add modal for when a region can be annotated with inputs for adding an annotation to a dictionary
+
+    @dash_app.callback(
+        Output("region-annotation-modal", "is_open"),
+        Input('region-annotation', 'n_clicks'),
+         Input('create-annotation', 'n_clicks'))
+    def toggle_region_annotation_modal(clicks_add_annotation, clicks_submit_annotation):
+        if clicks_add_annotation and ctx.triggered_id == "region-annotation":
+            return True
+        elif ctx.triggered_id == "create-annotation" and clicks_submit_annotation:
+            return False
+        else:
+            return False
+
+    @dash_app.callback(
+        Output("annotations-dict", "data"),
+        Input('create-annotation', 'n_clicks'),
+        State('region-annotation-name', 'value'),
+        State('region-annotation-body', 'value'),
+        State('annotation_canvas', 'relayoutData'),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'))
+    def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, canvas_layout, annotations_dict,
+                               data_selection):
+        if create_annotation and None not in (annotation_title, annotation_body, canvas_layout):
+            if annotations_dict is None or len(annotations_dict) < 1:
+                annotations_dict = {}
+            if data_selection not in annotations_dict.keys():
+                annotations_dict[data_selection] = {}
+            if annotation_title not in annotations_dict[data_selection].keys():
+                annotations_dict[data_selection][annotation_title] = {}
+            annotations_dict[data_selection][annotation_title]['body'] = annotation_body
+            annotations_dict[data_selection][annotation_title]['region'] = canvas_layout
+            return annotations_dict
+        else:
+            raise PreventUpdate

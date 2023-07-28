@@ -10,6 +10,7 @@ from .callbacks.cell_level_callbacks import init_cell_level_callbacks
 from .inputs.pixel_level_inputs import *
 import shutil
 import os
+# from sd_material_ui import AutoComplete
 def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -154,6 +155,18 @@ def init_dashboard(server, authentic_id):
                     dbc.Button("Add region annotation", id="region-annotation",
                                style={"margin-top": "5px", "height": "100%"},
                                disabled=True),
+                    dbc.Modal(children=dbc.ModalBody(
+                        [html.H6("Create a region annotation"),
+                         html.Div([dcc.Input(id="region-annotation-name", type="text", value="annotation title",
+                                             style={"width": "65%", "margin-right": "10px", "height": "50%"}),
+                                   dcc.Input(id="region-annotation-body", type="text", value="annotation body",
+                                             style={"width": "65%", "margin-right": "10px", "height": "50%"}),
+                                   ],
+                                  style={"display": "flex"}),
+                         dbc.Button("Create annotation", id="create-annotation", className="me-1",
+                                    style={"margin-top": "10px"})]),
+                        id="region-annotation-modal", size='l',
+                        style={"margin-left": "10px", "margin-top": "15px"}),
                     html.Br(),
                     html.Br(),
                     dbc.Button("Show/hide region statistics", id="compute-region-statistics", className="mb-3",

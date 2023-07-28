@@ -1,5 +1,6 @@
 from ccramic.app.inputs.pixel_level_inputs import *
 import numpy as np
+import plotly.graph_objs as go
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()
@@ -28,3 +29,25 @@ def test_add_scalebar_to_canvas(get_current_dir):
 
     custom_scaleval = add_scale_value_to_figure(image, recoloured.shape, 0.05, scale_value=51)
     assert custom_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">51μm</span><br>'
+
+
+def test_basic_additive_image():
+    upload_dict = {"experiment0": {"slide0": {"acq0": {"DNA": np.zeros((600, 600, 3)),
+                                                       "Nuclear": np.zeros((600, 600, 3)),
+                                                       "Cytoplasm": np.zeros((600, 600, 3))},
+                                              "acq1": {"DNA": np.zeros((600, 600, 3)),
+                                                       "Nuclear": np.zeros((600, 600, 3)),
+                                                       "Cytoplasm": np.zeros((600, 600, 3))}
+                                              }}}
+
+    # blend_dict = create_new_blending_dict(upload_dict)
+
+    image = get_additive_image_with_masking(["DNA", "Nuclear"], data_selection="experiment0+++slide0+++acq0",
+                                            canvas_layers=upload_dict, mask_config=None, mask_toggle=False,
+                                            mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
+                                            add_mask_boundary=False, legend_text='')
+    assert isinstance(image, go.Figure)
+    assert image['data'] is not None
+    assert image['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
+    assert image['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert image['layout']['uirevision']
