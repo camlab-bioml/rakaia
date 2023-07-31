@@ -87,8 +87,8 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
         exp, slide, acq = split[0], split[1], split[2]
         first_image = list(upload_dict[exp][slide][acq].keys())[0]
         first_image = upload_dict[exp][slide][acq][first_image]
-        if first_image.shape[0] != mask_dict[mask_selection].shape[0] or \
-                first_image.shape[1] != mask_dict[mask_selection].shape[1]:
+        if first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
+                first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]:
             if error_config is None:
                 error_config = {"error": None}
             error_config["error"] = "Warning: the current mask does not have " \

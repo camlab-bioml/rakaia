@@ -311,3 +311,21 @@ def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_select
         return return_list, None, [], None
     else:
         raise PreventUpdate
+
+def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_blend, aliases, triggered_id):
+    channel_order = [] if channel_order is None or len(channel_order) < 1 else channel_order
+    # input 1: if a channel is added or removed
+    if triggered_id == "image_layers" and current_blend is not None and len(current_blend) > 0:
+        for channel in current_blend:
+            if channel not in channel_order:
+                channel_order.append(channel)
+        # make sure to remove any channels that are no longer selected while maintaining order
+        return [elem for elem in channel_order if elem in current_blend]
+    # option 2: if a unique order is set by the draggable grid
+    elif triggered_id == "set-sort" and rowdata is not None and set_order_clicks > 0:
+        # imp: when taking the order from the dash grid, these are the values, so need to convert back to keys
+        channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Current canvas blend'])] for \
+                         elem in rowdata]
+        return channel_order
+    else:
+        raise PreventUpdate

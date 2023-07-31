@@ -36,6 +36,6 @@ setup(
                       "multiprocess", "dash-extensions==1.0.1", "dash_daq", "dash-google-auth",
                       "dash-bootstrap-components", "imctools", "tifffile", "dash[testing]", "selenium",
                       "diskcache", "h5py", "dash>=2.9.0", "readimc", "Cython", "dash-auth", "Flask-HTTPAuth",
-                      "scipy", "dash-draggable", "pytest-cov", "sd-material-ui"],
+                      "scipy", "dash-draggable", "pytest-cov", "sd-material-ui", "dash-ag-grid"],
     python_requires=">=3.9.0",
 )

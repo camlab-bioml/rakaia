@@ -87,9 +87,12 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                 if derive_cell_boundary:
                     mask_import = np.array(Image.fromarray(
                         convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+                    boundary_import = None
                 else:
                     mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
-                cur_mask_dict[chosen_mask_name] = mask_import
+                    boundary_import = np.array(Image.fromarray(
+                        convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+                cur_mask_dict[chosen_mask_name] = {"array": mask_import, "boundary": boundary_import}
         return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
     else:
         raise PreventUpdate

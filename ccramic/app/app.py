@@ -11,6 +11,7 @@ from .inputs.pixel_level_inputs import *
 import shutil
 import os
 # from sd_material_ui import AutoComplete
+import dash_ag_grid as dag
 def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -150,8 +151,25 @@ def init_dashboard(server, authentic_id):
                         style={"display": "flex", "width": "100%", "margin-bottom": "15px"}),
                         html.Div([render_default_annotation_canvas(input_id="annotation_canvas")],
                                  style={"margin-top": "-22px"}, id="canvas-div-holder"),
-                    html.H6("Current canvas blend", style={'width': '75%'}),
-                    html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
+                    dbc.Button("Set blend order", id="set-sort",
+                               className="mb-3", color="primary", n_clicks=0,
+                               style={"margin-left": "20px", "margin-top": "10px"}),
+                    html.Div([dag.AgGrid(
+                        id='blend-options-ag-grid',
+                        rowData=[],
+                        columnDefs=[{'field': 'Current canvas blend'}],
+                        defaultColDef={"sortable": True, "filter": True},
+                        columnSize="sizeToFit",
+                        dashGridOptions={
+                            "rowDragManaged": True,
+                            "animateRows": True,
+                            "rowDragMultiRow": True,
+                            "rowSelection": "multiple",
+                            "rowDragEntireRow": True,
+                            "domLayout": "autoHeight"
+                        },
+                    style={"width": "25%"})]),
+                    # html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
                     dbc.Button("Add region annotation", id="region-annotation",
                                style={"margin-top": "5px", "height": "100%"},
                                disabled=True),
@@ -262,8 +280,10 @@ def init_dashboard(server, authentic_id):
                                  style={"display": "flex"}),
                         html.Br(),
                         html.Br(),
-                        dcc.Checklist(options=[' show channel intensities on hover'],
+                        html.Abbr(dcc.Checklist(options=[' show channel intensities on hover'],
                                       value=[], id="channel-intensity-hover"),
+                                  title="WARNING: speed is significantly compromised with this feature, "
+                                        "particularly for large images."),
                         html.Br(),
                         dbc.Button("Create preset", id="preset-button", className="me-1",
                                           ),
@@ -383,6 +403,7 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="current_canvas_image"),
         dcc.Store(id="umap-projection"),
         dcc.Store(id="annotations-dict"),
+        dcc.Store(id="channel-order"),
     ], style={"margin": "17.5px"})
 
     dash_app.enable_dev_tools(debug=True)

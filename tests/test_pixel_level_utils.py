@@ -310,3 +310,16 @@ def test_basic_dataset_dropdown_removal():
         delete_dataset_option_from_list_interactively(1, None, dataset_options)
     with pytest.raises(PreventUpdate):
         delete_dataset_option_from_list_interactively(0, "dataset2", dataset_options)
+
+def test_basic_channel_ordering():
+    rowdata = [{"Current canvas blend": "channel_2"}, {"Current canvas blend": "channel_1"},
+               {"Current canvas blend": "channel_3"}]
+    current_blend = ["channel_1", "channel_3", "channel_2"]
+    aliases = {"channel_1": "channel_1", "channel_3": "channel_3", "channel_2": "channel_2"}
+    channel_order = set_channel_list_order(1, rowdata, None, current_blend, aliases, "image_layers")
+    assert channel_order == ['channel_1', 'channel_3', 'channel_2']
+    channel_order = set_channel_list_order(1, rowdata, None, current_blend, aliases, "set-sort")
+    assert channel_order == ['channel_2', 'channel_1', 'channel_3']
+    current_blend = ["channel_1", "channel_3", "channel_2", "channel_4"]
+    channel_order = set_channel_list_order(1, rowdata, channel_order, current_blend, aliases, "image_layers")
+    assert channel_order == ['channel_2', 'channel_1', 'channel_3', 'channel_4']

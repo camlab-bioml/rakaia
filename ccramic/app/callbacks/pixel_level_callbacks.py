@@ -1,5 +1,4 @@
 import os
-
 import cv2
 import dash.exceptions
 import dash_bootstrap_components as dbc
@@ -621,6 +620,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('toggle-canvas-annotations', 'value'),
                        Input('mask-blending-slider', 'value'),
                        Input('add-mask-boundary', 'value'),
+                       Input('channel-order', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_or_mask_change(canvas_layers, currently_selected,
@@ -629,7 +629,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 show_each_channel_intensity,
                                                 canvas_children, param_dict,
                                                 mask_config, mask_toggle, mask_selection, show_canvas_legend,
-                                                mask_blending_level, add_mask_boundary):
+                                                mask_blending_level, add_mask_boundary,
+                                                channel_order):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -637,39 +638,36 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         or
         if a mask is applied to the canvas
         """
-
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
                 not in [{'dragmode': 'pan'}] and len(canvas_children) > 0 and \
-                param_dict["current_roi"] == data_selection:
+                param_dict["current_roi"] == data_selection and len(channel_order) > 0:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
-            for image in currently_selected:
+            for image in channel_order:
                 if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                     label = aliases[image] if aliases is not None and image in aliases.keys() else image
                     legend_text = legend_text + f'<span style="color:' \
                                                 f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
                                                 f'>{label}</span><br>'
-            image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
-                         elem in currently_selected if \
-                         elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-            image = np.clip(image, 0, 255).astype(np.uint8)
-            if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
-                if image.shape[0] == mask_config[mask_selection].shape[0] and \
-                        image.shape[1] == mask_config[mask_selection].shape[1]:
-                    # set the mask blending level based on the slider, by default use an equal blend
-                    mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
-                    image = cv2.addWeighted(image.astype(np.uint8), 1,
-                        mask_config[mask_selection].astype(np.uint8), mask_level, 0)
-                    if add_mask_boundary:
-                        # add the border of the mask after converting back to greyscale to derive the conversion
-                        greyscale_mask = np.array(Image.fromarray(mask_config[mask_selection]).convert('L'))
-                        reconverted = np.array(Image.fromarray(
-                        convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
-                        image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
-
             try:
+                image = sum([canvas_layers[exp][slide][acq][elem].astype(np.float32) for \
+                             elem in currently_selected if \
+                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                image = np.clip(image, 0, 255).astype(np.uint8)
+                if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
+                    if image.shape[0] == mask_config[mask_selection]["array"].shape[0] and \
+                            image.shape[1] == mask_config[mask_selection]["array"].shape[1]:
+                        # set the mask blending level based on the slider, by default use an equal blend
+                        mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
+                        image = cv2.addWeighted(image.astype(np.uint8), 1,
+                                                mask_config[mask_selection]["array"].astype(np.uint8), mask_level, 0)
+                        if add_mask_boundary and mask_config[mask_selection]["boundary"] is not None:
+                            # add the border of the mask after converting back to greyscale to derive the conversion
+                            image = cv2.addWeighted(image.astype(np.uint8), 1,
+                                                    mask_config[mask_selection]["boundary"].astype(np.uint8), 1, 0)
+
                 fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
                 # fig.update(data=[{'customdata': )
                 image_shape = image.shape
@@ -780,7 +778,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # fig.update_traces(hovertemplate=None)
                 fig.update_layout(dragmode="zoom")
                 return fig, Serverside(image)
-            except ValueError:
+            except (ValueError, AttributeError):
                 return dash.no_update
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
@@ -974,9 +972,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('blending_colours', 'data'),
                        State('alias-dict', 'data'),
                        State('uploaded_dict', 'data'),
+                       State('channel-order', 'data'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_annotations, cur_canvas, cur_layout, currently_selected,
-                                                   data_selection, blend_colour_dict, aliases, image_dict):
+                                                   data_selection, blend_colour_dict, aliases, image_dict,
+                                                   channel_order):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend)
         """
@@ -999,7 +999,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 x_axis_placement = 0.00001 * image_shape[1]
                 # make sure the placement is min 0.05 and max 0.1
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
-                for image in currently_selected:
+                for image in channel_order:
                     if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                         label = aliases[image] if aliases is not None and image in aliases.keys() else image
                         legend_text = legend_text + f'<span style="color:' \
@@ -1530,26 +1530,41 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         return flask.send_from_directory(
             os.path.join(tmpdirname, str(authentic_id), 'downloads'), path, as_attachment=True)
 
-    @dash_app.callback(Output('blend-color-legend', 'children'),
+    @dash_app.callback(Output('blend-options-ag-grid', 'rowData'),
+                       Output('blend-options-ag-grid', 'defaultColDef'),
                        Input('blending_colours', 'data'),
-                       Input('images_in_blend', 'options'),
+                       Input('channel-order', 'data'),
                        State('data-collection', 'value'),
                        Input('alias-dict', 'data'))
     # @cache.memoize())
-    def create_legend(blend_colours, current_blend, data_selection, aliases):
-        current_blend = [elem['value'] for elem in current_blend] if current_blend is not None else None
-        children = []
-        if blend_colours is not None and current_blend is not None and data_selection is not None:
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            try:
-                for key, value in blend_colours[exp][slide][acq].items():
-                    if blend_colours[exp][slide][acq][key]['color'] != '#FFFFFF' and key in current_blend:
-                        label = aliases[key] if aliases is not None and key in aliases.keys() else key
-                        children.append(html.H6(f"{label}", style={"color": f"{value['color']}"}))
-            except KeyError:
-                pass
-            return html.Div(children=children)
+    def create_ag_grid_legend(blend_colours, current_blend, data_selection, aliases):
+        """
+        Set the inputs and parameters for the dash ag grid containing the current blend channels
+        """
+        # current_blend = [elem['value'] for elem in current_blend] if current_blend is not None else None
+        if current_blend is not None and len(current_blend) > 0:
+            in_blend = [aliases[elem] for elem in current_blend]
+            cell_styling_conditions = []
+            if blend_colours is not None and current_blend is not None and data_selection is not None:
+                split = split_string_at_pattern(data_selection)
+                exp, slide, acq = split[0], split[1], split[2]
+                try:
+                    for key, value in blend_colours[exp][slide][acq].items():
+                        if blend_colours[exp][slide][acq][key]['color'] != '#FFFFFF' and key in current_blend:
+                            label = aliases[key] if aliases is not None and key in aliases.keys() else key
+                            cell_styling_conditions.append( {"condition": f"params.value == '{label}'",
+                            "style": {"color": f"{blend_colours[exp][slide][acq][key]['color']}"}})
+                except KeyError:
+                    pass
+                if len(in_blend) > 0:
+                    return pd.DataFrame(in_blend, columns=["Current canvas blend"]).to_dict(orient="records"), \
+                    {"sortable": True, "filter": True,
+                         "cellStyle": {
+                             "styleConditions": cell_styling_conditions
+                         },
+                         }
+                else:
+                    return None, {"sortable": True, "filter": True}
         else:
             raise PreventUpdate
 
@@ -1924,11 +1939,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('blending_colours', 'data'),
                        State('alias-dict', 'data'),
                        State('add-mask-boundary', 'value'),
+                       State('channel-order', 'data'),
                        prevent_initial_call=True)
     def toggle_channel_intensities_on_hover(currently_selected, data_selection, cur_graph,
                                             raw_data_dict, show_each_channel_intensity,
                                             canvas_layers, mask_config, mask_toggle, mask_selection, show_canvas_legend,
-                                                mask_blending_level, blend_colour_dict, aliases, add_mask_boundary):
+                                                mask_blending_level, blend_colour_dict, aliases, add_mask_boundary,
+                                            channel_order):
         """
         toggle showing the individual pixel intensities on the canvas. Note that the space complexity and performance
         of the canvas is significantly compromised if the individual channel intensity is used
@@ -1938,7 +1955,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
             layout_return = dash.no_update
-            for image in currently_selected:
+            for image in channel_order:
                 if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                     label = aliases[image] if aliases is not None and image in aliases.keys() else image
                     legend_text = legend_text + f'<span style="color:' \
@@ -2037,3 +2054,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return annotations_dict
         else:
             raise PreventUpdate
+
+    @dash_app.callback(
+        Output('channel-order', 'data'),
+        Input('set-sort', 'n_clicks'),
+        State('blend-options-ag-grid', 'virtualRowData'),
+        State('channel-order', 'data'),
+        Input('image_layers', 'value'),
+        State('alias-dict', 'data'),
+        prevent_initial_call=True)
+    def set_channel_sorting(nclicks, rowdata, channel_order, current_blend, aliases):
+        """
+        Set the channel order in a dcc Store based on the dash ag grid or adding/removing a channel from the list
+        """
+        return set_channel_list_order(nclicks, rowdata, channel_order, current_blend, aliases, ctx.triggered_id)
