@@ -1248,17 +1248,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 else:
                     aspect_ratio = 1
             except (KeyError, ZeroDivisionError):
-                raise PreventUpdate
+                return {'width': f'{value}vh', 'height': f'{value}vh'}
 
             if value is not None:
                 return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
             else:
-                raise PreventUpdate
-
-        elif value is not None and current_canvas is None:
-            return {'width': f'{value}vh', 'height': f'{value}vh'}
+                return {'width': f'{value}vh', 'height': f'{value}vh'}
+        # elif value is not None and current_canvas is None:
+        #     return {'width': f'{value}vh', 'height': f'{value}vh'}
         else:
-            raise PreventUpdate
+            return {'width': f'{value}vh', 'height': f'{value}vh'}
 
     @dash_app.callback(
         Output("selected-area-table", "data"),
@@ -1642,12 +1641,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
+                       Input("pixel-hist-collapse", "is_open"),
                        prevent_initial_call=True)
                        # background=True,
                        # manager=cache_manager)
     # @cache.memoize())
-    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
-
+    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict, show_pixel_hist):
+        """
+        Create pixel histogram and output the default percentiles
+        """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
@@ -1656,9 +1658,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             except ValueError:
                 fig = go.Figure()
 
-            fig.update_layout(showlegend=False, yaxis={'title': None},
+            fig = fig if show_pixel_hist else dash.no_update
+            if show_pixel_hist:
+                fig.update_layout(showlegend=False, yaxis={'title': None},
                               xaxis={'title': None})
-
             # if the hist is triggered by the changing of a channel to modify
             if ctx.triggered_id == "images_in_blend":
                 try:
@@ -1677,6 +1680,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     return fig, hist_max, [lower_bound, upper_bound], tick_markers
                 except (KeyError, ValueError):
                     return {}, dash.no_update, dash.no_update, dash.no_update
+            elif ctx.triggered_id == "pixel-hist-collapse":
+                return fig, dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -2068,3 +2073,33 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Set the channel order in a dcc Store based on the dash ag grid or adding/removing a channel from the list
         """
         return set_channel_list_order(nclicks, rowdata, channel_order, current_blend, aliases, ctx.triggered_id)
+
+    @dash_app.callback(
+        Output("inputs-offcanvas", "is_open"),
+        Input("inputs-offcanvas-button", "n_clicks"),
+        State("inputs-offcanvas", "is_open"),
+    )
+    def toggle_offcanvas_inputs(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(
+        Output("blend-config-offcanvas", "is_open"),
+        Input("blend-offcanvas-button", "n_clicks"),
+        State("blend-config-offcanvas", "is_open"),
+    )
+    def toggle_offcanvas_blend_options(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(
+        Output("pixel-hist-collapse", "is_open", allow_duplicate=True),
+        [Input("show-pixel-hist", "n_clicks")],
+        [State("pixel-hist-collapse", "is_open")])
+    # @cache.memoize())
+    def toggle_pixel_hist_collapse(n, is_open):
+        if n:
+            return not is_open
+        return is_open
