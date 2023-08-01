@@ -5,16 +5,13 @@ import dash_uploader as du
 from dash_extensions.enrich import DashProxy, html, ServersideOutputTransform, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-# from dash import DiskcacheManager
-# import diskcache
-# from sqlite3 import DatabaseError
-# from .parsers import *
-# from flask_caching import Cache
-from .callbacks import init_callbacks
+from .callbacks.pixel_level_callbacks import init_pixel_level_callbacks
+from .callbacks.cell_level_callbacks import init_cell_level_callbacks
+from .inputs.pixel_level_inputs import *
 import shutil
-from .inputs import *
-
-
+import os
+# from sd_material_ui import AutoComplete
+import dash_ag_grid as dag
 def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -88,10 +85,13 @@ def init_dashboard(server, authentic_id):
                 tab_id='pixel-analysis',
                 children=[html.Div([dbc.Row([dbc.Col(html.Div([
                         du.Upload(id='upload-image', max_file_size=30000,
+                                  text='Import imaging data from MCD or tiff files using drag and drop',
+                                  chunk_size=100,
                         max_total_size=30000, max_files=200,
-                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px"}),
+                        filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px",
+                                                                                             "height": "10vh"}),
                         dcc.Input(id="read-filepath", type="text",
-                        placeholder="Upload file using file path (local runs only)", value=None,
+                        placeholder="Import imaging file using filepath (local runs only)", value=None,
                                   style={"width": "85%"}),
                         dbc.Button("Add file by path", id="add-file-by-path",
                         className="mb-3", color="primary", n_clicks=0,
@@ -100,13 +100,22 @@ def init_dashboard(server, authentic_id):
                                         'display': 'inline-block'}),
                                              dbc.Button("Dataset info", id="show-dataset-info",
                         className="mb-3", color="primary", n_clicks=0,
-                        style={"margin-left": "-235px", "margin-top": "10px"})], style={"width": "50%",
-                                                                                        "margin-right": "25px"}),
-                        html.H5("Choose channel image", style={'width': '65%', 'display': 'inline-block'}),
+                        style={"margin-left": "-235px", "margin-top": "10px"}),
+                                             dbc.Button(children=html.Span([html.Abbr(html.I(className="fa fa-trash",
+                                                                                   style={"display": "iflex"}),
+                                                title="Remove the current data collection. "
+                                                      "(IMPORTANT): cannot be undone."),
+                                                                            ], style={"width": "100vw"}),
+                                                        id="remove-collection",
+                                                        color=None, n_clicks=0,
+                                                        style={"margin-top": "-5px", "height": "75%"}),
+                                             ], style={"width": "50%", "margin-right": "25px"}),
+                        html.H5("Choose channel image", style={'width': '65%', 'display': 'inline-block',
+                                                               'margin-left': '15px'}),
                         dcc.Dropdown(id='data-collection', multi=False, options=[],
                         style={'width': '50%', 'display': 'inline-block', 'margin-right': '-50'}),
                         dcc.Dropdown(id='image_layers', multi=True,
-                        style={'width': '72%', 'height': '100px', 'display': 'inline-block', 'margin-left': '195px',
+                        style={'width': '65%', 'height': '100px', 'display': 'inline-block', 'margin-left': '220px',
                                'margin-top': '-22.5px'})],
                         style={'width': '125%', 'height': '100%', 'display': 'inline-block'}),
                         dcc.Slider(50, 100, 5, value=75, id='annotation-canvas-size'),
@@ -115,12 +124,12 @@ def init_dashboard(server, authentic_id):
                                   dbc.Button(children=html.Span([html.Div("Fullscreen"),
                                                                  html.I(className="fas fa-expand-arrows-alt",
                                                                         style={"display": "inline-block"}),
-                                  ], style={"width": "100vw"}),
+                                  ], style={"width": "100vw", "margin-top": "-5px", "margin-bottom": "10px"}),
                                              id="make-canvas-fullscreen",
                                             color=None, n_clicks=0,
                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
                                   dbc.Button("Auto-fit canvas", id="autosize-canvas",
-                                             style={"margin-left": "10px", "margin-top": "0px", "height": "100%"}),
+                                             style={"margin-left": "10px", "margin-top": "5px", "height": "100%"}),
                                   html.Div(style={"margin-left": "20px", "margin-right": "10px",
                                                                     "margin-top": "10px", "height": "100%",
                                                   "width": "150%"},
@@ -141,11 +150,46 @@ def init_dashboard(server, authentic_id):
                         html.Br()],
                         style={"display": "flex", "width": "100%", "margin-bottom": "15px"}),
                         html.Div([render_default_annotation_canvas(input_id="annotation_canvas")],
-                                 style={"margin-top": "-30px"}, id="canvas-div-holder"),
-                    html.H6("Current canvas blend", style={'width': '75%'}),
-                    html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
+                                 style={"margin-top": "-22px"}, id="canvas-div-holder"),
+                    dbc.Button("Set blend order", id="set-sort",
+                               className="mb-3", color="primary", n_clicks=0,
+                               style={"margin-left": "20px", "margin-top": "10px"}),
+                    html.Div([dag.AgGrid(
+                        id='blend-options-ag-grid',
+                        rowData=[],
+                        columnDefs=[{'field': 'Current canvas blend'}],
+                        defaultColDef={"sortable": True, "filter": True},
+                        columnSize="sizeToFit",
+                        dashGridOptions={
+                            "rowDragManaged": True,
+                            "animateRows": True,
+                            "rowDragMultiRow": True,
+                            "rowSelection": "multiple",
+                            "rowDragEntireRow": True,
+                            "domLayout": "autoHeight"
+                        },
+                    style={"width": "25%"})]),
+                    # html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
+                    dbc.Button("Add region annotation", id="region-annotation",
+                               style={"margin-top": "5px", "height": "100%"},
+                               disabled=True),
+                    dbc.Modal(children=dbc.ModalBody(
+                        [html.H6("Create a region annotation"),
+                         html.Div([dcc.Input(id="region-annotation-name", type="text", value="annotation title",
+                                             style={"width": "65%", "margin-right": "10px", "height": "50%"}),
+                                   dcc.Input(id="region-annotation-body", type="text", value="annotation body",
+                                             style={"width": "65%", "margin-right": "10px", "height": "50%"}),
+                                   ],
+                                  style={"display": "flex"}),
+                         dbc.Button("Create annotation", id="create-annotation", className="me-1",
+                                    style={"margin-top": "10px"})]),
+                        id="region-annotation-modal", size='l',
+                        style={"margin-left": "10px", "margin-top": "15px"}),
+                    html.Br(),
+                    html.Br(),
                     dbc.Button("Show/hide region statistics", id="compute-region-statistics", className="mb-3",
                                color="primary", n_clicks=0),
+                    html.Br(),
                     html.Div(dbc.Collapse(
                         html.Div([html.H6("Selection information", style={'width': '75%'}),
                                   html.Div([dash_table.DataTable(id='selected-area-table',
@@ -182,19 +226,64 @@ def init_dashboard(server, authentic_id):
                                                                                         i in range(0, 100, 25)]),
                                                   id='pixel-intensity-slider',
                                                   tooltip={"placement": "top", "always_visible": True})],
-                                        style={"width": "91.5%", "margin-left": "27px", "margin-top": "-50px"}),
+                                        style={"width": "92.5%", "margin-left": "27px", "margin-top": "-50px"}),
+                        html.Br(),
+                        html.H6("Import mask"),
+                        dbc.Modal(children=dbc.ModalBody(
+                        [html.H6("Set the label for the imported mask"),
+                                 html.Div([dcc.Input(id="input-mask-name", type="text", value=None,
+                                                     style={"width": "65%", "margin-right": "10px", "height": "50%"}),
+                         daq.ToggleSwitch(label='Derive cell boundary', id='derive-cell-boundary',
+                                          labelPosition='bottom', color="blue", value=True,
+                                          style={"margin-right": "-30px", "margin-left": "10px"})],
+                                          style={"display": "flex"}),
+                         dbc.Button("Set mask import", id="set-mask-name", className="me-1")]),
+                                                    id="mask-name-modal", size='l',
+                            style={"margin-left": "10px", "margin-top": "15px"}),
+                        du.Upload(id='upload-mask', max_file_size=30000,
+                                  text='Import mask in tiff format using drag and drop',
+                                                    max_total_size=30000, max_files=1,
+                                                    chunk_size=100,
+                                                    filetypes=['tif', 'tiff'],
+                                                    default_style={"margin-top": "20px", "height": "3.5vh"}),
+                        html.Br(),
+                        html.Div([dcc.Loading(dcc.Dropdown(id='mask-options', multi=False, options=[],
+                                                       style={'width': '100%', 'display': 'inline-block',
+                                                    'margin-right': '-50'}), type="default", fullscreen=False),
+                        dcc.Slider(0, 100, 2.5, value=100, id='mask-blending-slider', marks={0: '0%', 25: '25%',
+                                                                                           50: '50%', 75: '75%', 100:
+                                                                                           '100%'}),
+                        html.Div([daq.ToggleSwitch(label='Apply mask',id='apply-mask', labelPosition='bottom',
+                                                           color="blue", style={"margin-left": "60px"}),
+                                  html.Abbr(dcc.Checklist(options=[' add boundary'], value=[],
+                                                id="add-mask-boundary", style={"margin-left": "35px",
+                                                                               "margin-top": "10px"}),
+                                            title="Use this feature only if the cell boundary was not "
+                                                  "derived on import"),
+                                  ], style={"display": "flex"})]),
+
+                        html.Br(),
                         dcc.Checklist(options=[' apply/refresh filter'], value=[],
-                        id="bool-apply-filter"),
+                                                        id="bool-apply-filter"),
                         dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type'),
                         dcc.Input(id="kernel-val-filter", type="number", value=3),
                         html.Br(),
                         html.Br(),
-                        html.H6("Set custom scalebar value", style={'width': '75%'}),
-                        dcc.Input(id="custom-scale-val", type="number", value=None),
+                        html.Div([daq.ToggleSwitch(label='Toggle legend',
+                                                   id='toggle-canvas-annotations', labelPosition='bottom',
+                                                   value=True, color="blue", style={"width": "75%",
+                                                                                "margin-left": "-15px"}),
+                                  html.Div([html.H6("Set custom scalebar value", style={'width': '110%'}),
+                                            dcc.Input(id="custom-scale-val", type="number", value=None,
+                                                      style={"width": "60%", "margin-left": "30px"})],
+                                           style={"display": "block"})],
+                                 style={"display": "flex"}),
                         html.Br(),
                         html.Br(),
-                        dcc.Checklist(options=[' show channel intensities on hover'],
+                        html.Abbr(dcc.Checklist(options=[' show channel intensities on hover'],
                                       value=[], id="channel-intensity-hover"),
+                                  title="WARNING: speed is significantly compromised with this feature, "
+                                        "particularly for large images."),
                         html.Br(),
                         dbc.Button("Create preset", id="preset-button", className="me-1",
                                           ),
@@ -234,6 +323,7 @@ def init_dashboard(server, authentic_id):
                                                    style={"margin-right": "7px", "margin-top": "10px"}
                                                    ),
                                     daq.ToggleSwitch(label='Use default scaling for preview',
+                                                     value=True,
                                                              id='default-scaling-gallery', labelPosition='bottom',
                                                              color="blue", style={"margin-left": "15px",
                                                                                   "margin-top": "10px"}),
@@ -253,22 +343,37 @@ def init_dashboard(server, authentic_id):
                         dash_table.DataTable(id='imc-metadata-editable', columns=[], data=None,
                                             editable=True)]), width=9),
                         dbc.Col(html.Div([du.Upload(id='upload-metadata', max_file_size=1000, max_files=1,
+                                            text='Import panel metadata in CSV format using drag and drop',
                                             filetypes=['csv'], upload_id="upload-image"),
                         html.Button("Download Edited metadata", id="btn-download-metadata"),
                         dcc.Download(id="download-edited-table")]),
                             width=3)])])])])
                           ])], id='tab-annotation'),
             dbc.Tab(tab_id='quantification-tab', label='Quantification/Clustering', children=[
-                du.Upload(id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5'],
-                    upload_id="upload-quantification"),
+                du.Upload(id='upload-quantification', max_file_size=5000, filetypes=['h5ad', 'h5', 'csv'],
+                          text='Import cell quantification results in CSV format using drag and drop',
+                          max_files=1, upload_id="upload-quantification"),
                 html.Div([dbc.Row([
-                    dbc.Col(html.Div(["Dimension Reduction/Clustering",
-                                      dcc.Dropdown(id='dimension-reduction_options'),
-                                      dcc.Graph(id='umap-plot', style={'width': '150vh', 'height': '150vh'})]),
-                            width=6),
-                    dbc.Col(html.Div(["Metadata Distribution",
-                                      dcc.Dropdown(id='metadata_options'),
-                                      dcc.Graph(id="metadata-distribution")]), width=6),
+                    dbc.Col(html.Div([html.Br(),
+                        html.H6("Cell-Level Marker Expression"),
+                                      dcc.RadioItems(['max', 'mean', 'min'], 'mean',
+                                                     inline=True, id="quantification-bar-mode"),
+                                      dcc.Graph(id="quantification-bar-full",
+                                                figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                                                       xaxis=go.XAxis(showticklabels=False),
+                                                                       yaxis=go.YAxis(showticklabels=False),
+                                                                       margin=dict(l=5, r=5, b=15, t=20, pad=0)),
+                                                        })]), width=6),
+                    dbc.Col(html.Div([html.Br(),
+                                      html.H6("Dimension Reduction"),
+                                      dcc.Loading(dcc.Dropdown(id='umap-projection-options', multi=False, options=[]),
+                                                  type="default", fullscreen=False),
+                                      dcc.Graph(id="umap-plot",
+                                                figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                                                       xaxis=go.XAxis(showticklabels=False),
+                                                                       yaxis=go.YAxis(showticklabels=False),
+                                                                       margin=dict(l=5, r=5, b=15, t=20, pad=0)),
+                                                        })]), width=6)
                 ])]),
 
             ], id='tab-quant')
@@ -288,11 +393,22 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="image-metadata"),
         dcc.Store(id="canvas-layers"),
         dcc.Store(id="alias-dict"),
-        dcc.Store(id="static-session-var")
-    ], style={"margin": "15px"})
+        dcc.Store(id="static-session-var"),
+        dcc.Store(id="session_config_quantification"),
+        dcc.Store(id="quantification-dict"),
+        dcc.Store(id="mask-dict"),
+        dcc.Store(id="mask-uploads"),
+        dcc.Store(id="figure-cache"),
+        dcc.Store(id="uploads"),
+        dcc.Store(id="current_canvas_image"),
+        dcc.Store(id="umap-projection"),
+        dcc.Store(id="annotations-dict"),
+        dcc.Store(id="channel-order"),
+    ], style={"margin": "17.5px"})
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_callbacks(dash_app, tmpdirname, authentic_id)
+    init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_cell_level_callbacks(dash_app)
 
     return dash_app.server

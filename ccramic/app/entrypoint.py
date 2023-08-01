@@ -5,9 +5,11 @@ from flask_httpauth import HTTPBasicAuth
 from werkzeug.security import generate_password_hash, check_password_hash
 import os
 import uuid
+from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
+import warnings
 
 _program = "ccramic"
-__version__ = "0.3.0"
+__version__ = "0.4.0"
 
 
 def get_current_dir():
@@ -15,6 +17,9 @@ def get_current_dir():
 
 
 def init_app():
+    # suppress numba depreciation warnings from umap
+    warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
+    warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
     """Construct core Flask application with embedded Dash app."""
     # STATIC_DIR = os.path.dirname(os.path.join(get_current_dir(), "templates", "static"))
     app = Flask(__name__, instance_relative_config=False,

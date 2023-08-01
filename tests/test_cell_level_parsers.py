@@ -1,0 +1,70 @@
+import pytest
+
+from ccramic.app.parsers.cell_level_parsers import *
+import numpy as np
+import pandas as pd
+import os
+from dash_uploader import UploadStatus
+from dash.exceptions import PreventUpdate
+import dash_extensions
+
+def test_validation_of_measurements_csv(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    assert measurements_csv.equals(validate_incoming_measurements_csv(measurements_csv))
+
+    measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area'], axis=1)
+    assert validate_incoming_measurements_csv(measurements_bad) is None
+
+    fake_image = np.empty((1490, 93, 3))
+    assert validate_incoming_measurements_csv(measurements_csv, current_image=fake_image) is not None
+
+    fake_image_bad_dims = np.empty((1490, 92, 3))
+    assert validate_incoming_measurements_csv(measurements_csv, current_image=fake_image_bad_dims) is None
+
+
+def test_filtering_channel_measurements_by_percentile(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    filtered = filter_measurements_csv_by_channel_percentile(measurements_csv)
+    assert len(measurements_csv) > len(filtered)
+    for col in filtered.columns:
+        assert np.max(measurements_csv[col]) > np.max(filtered[col])
+
+    filtered_50 = filter_measurements_csv_by_channel_percentile(measurements_csv, percentile=0.5)
+    for col in filtered_50.columns:
+        assert np.max(filtered[col]) > np.max(filtered_50[col])
+
+
+def test_parsing_quantification_filepaths():
+    uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=1, total_size_mb=1)
+    upload_session = get_quantification_filepaths_from_drag_and_drop(uploader)
+    assert len(upload_session['uploads']) > 0
+
+def test_parsing_incoming_measurements_csv(get_current_dir):
+    measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
+    validated_measurements = parse_and_validate_measurements_csv(measurements_dict)
+    assert isinstance(validated_measurements, list)
+    for elem in validated_measurements:
+        assert isinstance(elem, dict)
+    with pytest.raises(PreventUpdate):
+        parse_and_validate_measurements_csv(None)
+    with pytest.raises(PreventUpdate):
+        measurements_dict = {"fake_col": [os.path.join(get_current_dir, "cell_measurements.csv")]}
+        parse_and_validate_measurements_csv(measurements_dict)
+
+def test_parse_mask_filenames():
+    uploader = UploadStatus(uploaded_files=["mask.tiff"], n_total=1, uploaded_size_mb=1, total_size_mb=1)
+    mask_files = parse_masks_from_filenames(uploader)
+    assert 'mask' in mask_files.keys()
+    assert mask_files['mask'] == "mask.tiff"
+    with pytest.raises(PreventUpdate):
+        uploader = UploadStatus(uploaded_files=["mask.tiff", "second_mask.tiff"],
+                                n_total=2, uploaded_size_mb=1, total_size_mb=1)
+        parse_masks_from_filenames(uploader)
+
+def test_read_in_mask_from_filepath(get_current_dir):
+    masks_dict = {"mask": os.path.join(get_current_dir, "mask.tiff")}
+    #TODO: validate the read_in_mask_array_from_filepath function
+    mask_return = read_in_mask_array_from_filepath(masks_dict, "mask", 1, None, True)
+    assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
+    assert isinstance(mask_return[1], list)
+    assert 'mask' in mask_return[1]

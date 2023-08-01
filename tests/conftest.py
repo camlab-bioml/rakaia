@@ -2,7 +2,6 @@ import pytest
 import os
 from ccramic.app.entrypoint import init_app
 
-
 @pytest.fixture(scope="module")
 def get_current_dir():
     return str(os.path.abspath(os.path.join(os.path.dirname(__file__))))

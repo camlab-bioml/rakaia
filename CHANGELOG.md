@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+
+## [0.4.0] - 2023-08-01
+
+### Added
+
+- ability to import multiple masks as single channel tiffs, either with or without cell boundaries with range slider for mask opacity
+- ability to import a measurements CSV with defined columns for marker expression by segmented cell
+- UMAP plotting for the marker measurements as above by cell
+- toggle scalebar and legend in the canvas
+- add button to remove an ROI from the session #41
+- ability to custom sort the channels in a dash ag draggable grid #36
+
+
+### Fixed
+
+- ability to perform multiple rounds of dataset import from drag and drop #16
+- retain the currently selected channel in the mod menu when the ROI is changed #43
+
 ## [0.3.0] - 2023-07-10
 
 ### Added
