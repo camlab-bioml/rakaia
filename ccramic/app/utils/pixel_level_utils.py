@@ -328,4 +328,4 @@ def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_ble
                          elem in rowdata]
         return channel_order
     else:
-        raise PreventUpdate
+        return []

@@ -1564,9 +1564,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                          },
                          }
                 else:
-                    return None, {"sortable": True, "filter": True}
+                    return [], {"sortable": True, "filter": True}
         else:
-            raise PreventUpdate
+            return [], {"sortable": True, "filter": True}
 
     @dash_app.callback(
         Output("download-collapse", "is_open", allow_duplicate=True),

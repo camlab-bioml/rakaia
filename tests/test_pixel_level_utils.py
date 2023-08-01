@@ -323,3 +323,5 @@ def test_basic_channel_ordering():
     current_blend = ["channel_1", "channel_3", "channel_2", "channel_4"]
     channel_order = set_channel_list_order(1, rowdata, channel_order, current_blend, aliases, "image_layers")
     assert channel_order == ['channel_2', 'channel_1', 'channel_3', 'channel_4']
+    channel_order = set_channel_list_order(1, rowdata, channel_order, [], aliases, "image_layers")
+    assert len(channel_order) == 0
