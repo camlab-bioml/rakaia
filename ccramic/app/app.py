@@ -351,15 +351,15 @@ def init_dashboard(server, authentic_id):
                              html.Div([dag.AgGrid(
                                  id='blend-options-ag-grid',
                                  rowData=[],
-                                 columnDefs=[{'field': 'Current canvas blend'}],
-                                 # defaultColDef={"sortable": True, "filter": False},
+                                 columnDefs=[{'field': 'Current canvas blend', 'rowDrag': True}],
+                                 defaultColDef={"sortable": False, "filter": False},
                                  columnSize="sizeToFit",
                                  dashGridOptions={
                                      "rowDragManaged": True,
                                      "animateRows": True,
-                                     "rowDragMultiRow": True,
-                                     "rowSelection": "multiple",
-                                     "rowDragEntireRow": True,
+                                     # "rowDragMultiRow": True,
+                                     # "rowSelection": "multiple",
+                                     # "rowDragEntireRow": True,
                                      "pagination": False,
                                      "domLayout": "autoHeight"
                                  })], style={"margin-bottom": "-30px"}),

@@ -1557,15 +1557,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     pass
                 if len(in_blend) > 0:
                     return pd.DataFrame(in_blend, columns=["Current canvas blend"]).to_dict(orient="records"), \
-                    {"sortable": True, "filter": True,
+                    {"sortable": False, "filter": False,
                          "cellStyle": {
                              "styleConditions": cell_styling_conditions
                          },
                          }
                 else:
-                    return [], {"sortable": True, "filter": True}
+                    return [], {"sortable": False, "filter": False}
         else:
-            return [], {"sortable": True, "filter": True}
+            return [], {"sortable": False, "filter": False}
 
     @dash_app.callback(
         Output("download-collapse", "is_open", allow_duplicate=True),
