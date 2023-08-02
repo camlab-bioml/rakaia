@@ -352,7 +352,7 @@ def init_dashboard(server, authentic_id):
                                  id='blend-options-ag-grid',
                                  rowData=[],
                                  columnDefs=[{'field': 'Current canvas blend'}],
-                                 defaultColDef={"sortable": True, "filter": True},
+                                 # defaultColDef={"sortable": True, "filter": False},
                                  columnSize="sizeToFit",
                                  dashGridOptions={
                                      "rowDragManaged": True,
@@ -360,6 +360,7 @@ def init_dashboard(server, authentic_id):
                                      "rowDragMultiRow": True,
                                      "rowSelection": "multiple",
                                      "rowDragEntireRow": True,
+                                     "pagination": False,
                                      "domLayout": "autoHeight"
                                  })], style={"margin-bottom": "-30px"}),
                              dbc.Button(

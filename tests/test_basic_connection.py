@@ -1,3 +1,4 @@
+import argparse
 import base64
 
 import pytest
@@ -7,7 +8,7 @@ import socket
 import platform
 import os
 from subprocess import Popen, PIPE
-from ccramic.app.wsgi import parse_args
+from ccramic.app.wsgi import argparser
 
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
                     reason="Only test the connection in a GA workflow due to passwordless sudo")
@@ -60,11 +61,13 @@ def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
     #     assert dash_duo.find_element(elem) is not None
 
 def test_basic_cli_outputs():
-    parser = parse_args([])
+    parser = argparser()
+    assert isinstance(parser, argparse.ArgumentParser)
+    parser.parse_args([])
     assert "ccramic can be initialized from the command line using:" in parser.usage
     with pytest.raises(SystemExit):
-        parse_args(['-v'])
+        parser.parse_args(['-v'])
     with pytest.raises(SystemExit):
-        parse_args(['-h'])
+        parser.parse_args(['-h'])
     with pytest.raises(SystemExit):
-        parse_args(['-t'])
+        parser.parse_args(['-t'])
