@@ -1892,9 +1892,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             x_high = float(max(cur_graph_layout['xaxis.range[0]'], cur_graph_layout['xaxis.range[1]']))
             y_low = float(min(cur_graph_layout['yaxis.range[0]'], cur_graph_layout['yaxis.range[1]']))
             y_high = float(max(cur_graph_layout['yaxis.range[0]'], cur_graph_layout['yaxis.range[1]']))
-            return html.H6(f"Current bounds: X: ({round(x_low, 2)}, {round(x_high, 2)}), "
-                           f"Y: ({round(y_low, 2)}, {round(y_high, 2)})",
-                           style={"color": "black"}), \
+            return html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}),"
+                           f" Y: ({round(y_low, 2)}, {round(y_high, 2)})",
+                           style={"color": "black", "white-space": "pre"}), \
                 {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
         elif cur_graph_layout in [{"dragmode": "pan"}]:
             raise PreventUpdate
