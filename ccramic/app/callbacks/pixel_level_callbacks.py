@@ -492,7 +492,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded[exp][slide][acq][layer]
 
-            # do not update if all of the channels are not in the current canvas blend dict
+            # do not update if all of the channels are not in the Channel dict
 
             blend_options = [elem['value'] for elem in blend_options]
             if all([elem in cur_layers for elem in blend_options]):
@@ -1556,16 +1556,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 except KeyError:
                     pass
                 if len(in_blend) > 0:
-                    return pd.DataFrame(in_blend, columns=["Current canvas blend"]).to_dict(orient="records"), \
-                    {"sortable": False, "filter": False,
+                    to_return = pd.DataFrame(in_blend, columns=["Channel"]).to_dict(orient="records")
+                    return to_return , {"sortable": False, "filter": False,
                          "cellStyle": {
-                             "styleConditions": cell_styling_conditions
-                         },
-                         }
+                             "styleConditions": cell_styling_conditions}}
                 else:
-                    return [], {"sortable": False, "filter": False}
+                    return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), \
+                        {"sortable": False, "filter": False}
         else:
-            return [], {"sortable": False, "filter": False}
+            return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), \
+                        {"sortable": False, "filter": False}
 
     @dash_app.callback(
         Output("download-collapse", "is_open", allow_duplicate=True),

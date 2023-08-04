@@ -264,6 +264,10 @@ def test_calculate_percentile_intensity(get_current_dir):
            get_default_channel_upper_bound_by_percentile(array=array, percentile=99.999)
 
 
+def test_default_min_percentile_scaling():
+    white = np.zeros((512,512), 'uint8')
+    assert get_default_channel_upper_bound_by_percentile(white) == 1.0
+
 def test_validation_of_channel_metadata(get_current_dir):
     metadata = pd.read_csv(os.path.join(get_current_dir, "channel_metadata.csv"))
     empty_upload_dict = {"exp0": {"slide0": {"acq0": None}}}
@@ -312,8 +316,8 @@ def test_basic_dataset_dropdown_removal():
         delete_dataset_option_from_list_interactively(0, "dataset2", dataset_options)
 
 def test_basic_channel_ordering():
-    rowdata = [{"Current canvas blend": "channel_2"}, {"Current canvas blend": "channel_1"},
-               {"Current canvas blend": "channel_3"}]
+    rowdata = [{"Channel": "channel_2"}, {"Channel": "channel_1"},
+               {"Channel": "channel_3"}]
     current_blend = ["channel_1", "channel_3", "channel_2"]
     aliases = {"channel_1": "channel_1", "channel_3": "channel_3", "channel_2": "channel_2"}
     channel_order = set_channel_list_order(1, rowdata, None, current_blend, aliases, "image_layers")
