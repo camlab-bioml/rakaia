@@ -1,4 +1,4 @@
-from flask import Flask
+from flask import Flask, redirect
 from flask_caching import Cache
 from flask import render_template
 from flask_httpauth import HTTPBasicAuth
@@ -9,7 +9,7 @@ from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWa
 import warnings
 
 _program = "ccramic"
-__version__ = "0.4.0"
+__version__ = "0.5.0"
 
 
 def get_current_dir():
@@ -26,7 +26,14 @@ def init_app():
                 static_url_path="", static_folder="static",
             template_folder="templates")
 
-    app.cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+    # app.cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+
+    cache = Cache(config = {
+        "DEBUG": True,  # some Flask specific configs
+        "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
+        "CACHE_DEFAULT_TIMEOUT": 300
+    })
+    cache.init_app(app)
 
     auth = HTTPBasicAuth()
 
@@ -43,7 +50,6 @@ def init_app():
             return username
 
     @app.route('/')
-    @app.route('/ccramic')
     @auth.login_required
     def home():
         """Landing page."""
