@@ -12,6 +12,7 @@ import shutil
 import os
 # from sd_material_ui import AutoComplete
 import dash_ag_grid as dag
+import dash_mantine_components as dmc
 def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -112,21 +113,14 @@ def init_dashboard(server, authentic_id):
                                   html.Br(),
                         html.Div([html.Span([
                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-info",
-                                                                  style={"display": "inline-block",
-                                                                         "margin-right": "7.5px", "margin-top": "3px"}),
-                                                           html.Div("Dataset info")],
-                                                          style={"display": "flex"}),
-                                       id="show-dataset-info",
-                                       className="mb-3", color="primary", n_clicks=0, style={"margin-top": "10px"}),
-                                             dbc.Button(children=html.Span([html.Abbr(html.I(className="fa fa-trash",
-                                                                                   style={"display": "iflex"}),
-                                                title="Remove the current data collection. "
-                                                      "(IMPORTANT): cannot be undone."),
-                                                                            ], style={"width": "100vw"}),
-                                                        id="remove-collection",
-                                                        color=None, n_clicks=0,
-                                                        style={"margin-top": "-5px", "height": "10%"}),
-                                             ], style={"width": "100%"}),
+                            style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                            html.Div("Dataset info")], style={"display": "flex"}), id="show-dataset-info",
+                            className="mb-3", color="primary", n_clicks=0, style={"margin-top": "10px"}),
+                            dbc.Button(children=html.Span([html.Abbr(html.I(className="fa fa-trash",
+                            style={"display": "iflex"}), title="Remove the current data collection. "
+                            "(IMPORTANT): cannot be undone.")], style={"width": "100vw"}),
+                            id="remove-collection", color=None, n_clicks=0,
+                            style={"margin-top": "-5px", "height": "10%"})], style={"width": "100%"}),
                             html.Br(),
                             html.Br(),
                             html.H5("Choose data collection/ROI", style={'width': '65%',
@@ -233,6 +227,10 @@ def init_dashboard(server, authentic_id):
                                  html.Br(),
                                  daq.ColorPicker(id="annotation-color-picker", label="Current channel color",
                                                  value=dict(hex="#00ABFC", rgb=None)),
+                                 dmc.Center([dmc.ColorPicker(swatches=["#FC4200", "#FC7A00", "#FCF400", "#6EFC00",
+                                                                     "#00BFFC", "#1000FC", "#A600FC"],
+                                                swatchesPerRow=7, size = 'xs', withPicker=False, id="swatch-color-picker",
+                                                           fullWidth=False)]),
                                  dbc.Button(children=html.Span([html.I(className="fa-solid fa-signal",
                                 style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
                                 html.Div("Show/hide pixel histogram")],
@@ -262,7 +260,6 @@ def init_dashboard(server, authentic_id):
                                               style={"width": "85%", "display": "inline-block"}),
                                  dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"})],
                                           style={"display": "inline-block", "margin": "20px"}),
-                                 html.Br(),
                                  html.Br(),
                                  dbc.Button(
                                      children=html.Span([html.I(className="fa-solid fa-gears",
@@ -357,19 +354,22 @@ def init_dashboard(server, authentic_id):
                                 style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
                                 html.Div("Add region annotation")], style={"display": "flex"}),
                                     id="region-annotation", className="mx-auto", color=None, n_clicks=0,
-                                                     style={"margin-top": "10px"}),
+                                    disabled=True, style={"margin-top": "10px"}),
                                 dbc.Modal(children=dbc.ModalBody(
-                                [html.H6("Create a region annotation"),
-                                html.Div([dcc.Input(id="region-annotation-name", type="text",
+                                [dbc.Row([dbc.Col([html.H6("Create a region annotation")], width=8),
+                                          dbc.Col([html.H6("Annotate with cell type")], width=4)]),
+                                dbc.Row([dbc.Col([html.Div([dcc.Input(id="region-annotation-name", type="text",
                                 value="annotation title", style={"width": "65%", "margin-right": "10px",
                                         "height": "50%"}),
                                 dcc.Input(id="region-annotation-body", type="text",
                                 value="annotation body", style={"width": "65%", "margin-right": "10px",
                                 "height": "50%"})],
-                                style={"display": "flex"}),
+                                style={"display": "flex"})], width=8),
+                                dbc.Col([dcc.Dropdown(id='region-annotation-cell-types',
+                                multi=False, options=[], placeholder="Select a cell type")], width=4)]),
                                 dbc.Button("Create annotation", id="create-annotation",
                                 className="me-1", style={"margin-top": "10px"})]),
-                                id="region-annotation-modal", size='l', style={"margin-left": "10px",
+                                id="region-annotation-modal", size='xl', style={"margin-left": "10px",
                                 "margin-top": "15px"}),
                                 html.Br(),
                                 html.Br(),
@@ -389,7 +389,6 @@ def init_dashboard(server, authentic_id):
                                 ], style={"padding": "5px"})
                                     ]),
                                      ]),
-                                 html.Br(),
                                  html.Div([dbc.Button(
                                      children=html.Span([html.I(className="fa-solid fa-list-check",
                                                                 style={"display": "inline-block",
@@ -500,7 +499,11 @@ def init_dashboard(server, authentic_id):
                                                                                                    t=20, pad=0)),
                                                                         })]), width=6)
                                       ])]),
-                                  ],
+                        dbc.Modal(children=dbc.ModalBody([html.H6("Select the cell type annotation column"),
+                        dcc.Dropdown(id='cell-type-col-designation',
+                            multi=False, options=[], style={'width': '100%'})]),
+                        id="quantification-config-modal", size='l', style={"margin-left": "10px",
+                            "margin-top": "15px"})],
                                   )])
                           ])], id='tab-annotation'),
         dcc.Loading(dcc.Store(id="uploaded_dict"), type="default", fullscreen=True),

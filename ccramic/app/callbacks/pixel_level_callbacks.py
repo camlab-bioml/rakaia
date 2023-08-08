@@ -322,6 +322,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
+                       Input('swatch-color-picker', 'value'))
+    def update_colour_picker_from_swatch(swatch):
+        if swatch is not None:
+            return dict(hex=swatch)
+        else:
+            raise PreventUpdate
+
     @dash_app.callback(Input("annotation-color-picker", 'value'),
                        State('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
@@ -2010,13 +2018,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('region-annotation', 'disabled'),
                        Input('annotation_canvas', 'relayoutData'),
+                       State('data-collection', 'value'),
+                       Input('image_layers', 'value'),
                        prevent_initial_call=True)
-    def enable_region_annotation_on_layout(cur_graph_layout):
+    def enable_region_annotation_on_layout(cur_graph_layout, data_selection, current_blend):
         """
         Enable the region annotation button to be selectable when the canvas is either zoomed in on, or
         a shape is being added/edited. These represent a region selection that can be annotated
         """
-        if cur_graph_layout is not None and len(cur_graph_layout) > 0:
+        if None not in (cur_graph_layout, data_selection) and len(cur_graph_layout) > 0 and len(current_blend) > 0:
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
             if 'shapes' in cur_graph_layout.keys() or all([elem in cur_graph_layout for elem in zoom_keys]):
                 return False
@@ -2047,7 +2057,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('data-collection', 'value'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, canvas_layout, annotations_dict,
                                data_selection):
-        if create_annotation and None not in (annotation_title, annotation_body, canvas_layout):
+        if create_annotation and None not in (annotation_title, annotation_body, canvas_layout, data_selection):
             if annotations_dict is None or len(annotations_dict) < 1:
                 annotations_dict = {}
             if data_selection not in annotations_dict.keys():

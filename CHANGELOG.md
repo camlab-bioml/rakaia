@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Major updates to the UI, particularly for the image annotation/blending tab:
 multiple inputs converted to being held in bootstrap offcanvas tabs
-(one offcanvas for inputs and one for adnaved canvas settings)
+(one offcanvas for inputs and one for advanced canvas settings)
 - Edit the canvas div to center the canvas by default and on resizing
 - Make the pixel histogram collapsible and by default have it hidden to speed up channel switching
 - Add font awesome icons to various buttons and remove default styling

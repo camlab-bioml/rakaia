@@ -2,6 +2,7 @@
 import plotly.graph_objs as go
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
+from pandas.errors import UndefinedVariableError
 
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                      dropped_columns=['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'],
@@ -16,7 +17,7 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                                         f'x_max <= {subset_dict["x_max"]} & '
                                                         f'y_max >= {subset_dict["y_min"]} & '
                                                         f'y_max <= {subset_dict["y_max"]}')
-        except KeyError:
+        except (KeyError, UndefinedVariableError):
             pass
     try:
         dropped = pd.DataFrame(measurement_frame).drop(dropped_columns, axis=1)
@@ -54,10 +55,13 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
                                                umap_layout, embeddings, zoom_keys, triggered_id):
     if quantification_dict is not None and len(quantification_dict) > 0:
         if all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
-            subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
+            try:
+                subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
                            "x_max": max(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
                            "y_min": min(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]']),
                            "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
+            except UndefinedVariableError:
+                subset_zoom = None
             fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
                                                              subset_dict=subset_zoom, mode=mode_value))
         elif triggered_id == "umap-plot" and all([key in umap_layout for key in zoom_keys]):

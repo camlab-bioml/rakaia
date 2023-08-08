@@ -27,15 +27,19 @@ def validate_incoming_measurements_csv(measurements_csv, current_image=None, val
 
 def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999,
                                                   dropped_columns=['cell_id', 'x', 'y', 'x_max',
-                                                                   'y_max', 'area', 'sample']):
+                                                                   'y_max', 'area', 'sample'],
+                                                  drop_cols=True):
     """
     Filter out the rows (cells) of a measurements csv (columns as channels, rows as cells) based on a pixel intensity
     threshold by percentile. Effectively removes any cells with "hot" pixels
     """
-    try:
-        measurements = pd.DataFrame(measurements).drop(dropped_columns, axis=1)
-    except KeyError:
-        pass
+    if drop_cols:
+        try:
+            for col in dropped_columns:
+                measurements = pd.DataFrame(measurements).drop(col, axis=1)
+        except KeyError:
+            pass
+
     query = ""
     quantiles = measurements.quantile(q=percentile)
     channel_index = 0
@@ -61,11 +65,15 @@ def get_quantification_filepaths_from_drag_and_drop(status):
 
 
 def parse_and_validate_measurements_csv(session_dict):
+    """
+    Validate the measurements CSV and return a clean version
+    """
     if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
         quantification_worksheet = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
                                                                       validate_with_image=False)
         # TODO: establish where to use the percentile filtering on the measurements
-        return filter_measurements_csv_by_channel_percentile(quantification_worksheet).to_dict(orient="records")
+        return filter_measurements_csv_by_channel_percentile(quantification_worksheet).to_dict(orient="records"), \
+            list(pd.read_csv(session_dict['uploads'][0]).columns)
     else:
         raise PreventUpdate
 
