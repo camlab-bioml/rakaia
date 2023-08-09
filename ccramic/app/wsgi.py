@@ -25,8 +25,6 @@ def argparser():
                         help="automatically open the browser when the app is called. Default: False",
                         dest="auto_open")
 
-    # parser.parse_args(args)
-
     return parser
 
 

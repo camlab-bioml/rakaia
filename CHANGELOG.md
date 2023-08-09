@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.5.0] - 2023-08-08
+## [0.5.0] - 2023-08-10
 
 ### Changed
 
@@ -21,6 +21,7 @@ multiple inputs converted to being held in bootstrap offcanvas tabs
 ### Added
 
 - Add default argparse argument to open the browser window automatically on CLI run
+- Add colour box swatches from dash mantine colour picker for preferred colours
 
 ### Fixed
 

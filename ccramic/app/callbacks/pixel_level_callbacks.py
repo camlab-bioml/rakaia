@@ -323,10 +323,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
+                       Output('swatch-color-picker', 'value'),
                        Input('swatch-color-picker', 'value'))
     def update_colour_picker_from_swatch(swatch):
         if swatch is not None:
-            return dict(hex=swatch)
+            return dict(hex=swatch), None
         else:
             raise PreventUpdate
 
@@ -379,8 +380,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                 # if filters have been selected, apply them before recolouring
 
-                if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex'] and \
-                        colour['hex'] not in ['#ffffff', '#FFFFFF']:
+                if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex']:
+                        # and \
+                        # colour['hex'] not in ['#ffffff', '#FFFFFF']:
                     current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
                     all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
@@ -1669,7 +1671,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             fig = fig if show_pixel_hist else dash.no_update
             if show_pixel_hist:
                 fig.update_layout(showlegend=False, yaxis={'title': None},
-                              xaxis={'title': None})
+                              xaxis={'title': None}, margin=dict(pad=0))
             # if the hist is triggered by the changing of a channel to modify
             if ctx.triggered_id == "images_in_blend":
                 try:
