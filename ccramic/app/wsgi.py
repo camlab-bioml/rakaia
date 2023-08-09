@@ -1,8 +1,11 @@
 from ccramic.app.entrypoint import init_app, __version__
 import argparse
 import sys
+import webbrowser
+from threading import Timer
+import os
 
-def parse_args(args):
+def argparser():
     parser = argparse.ArgumentParser(add_help=False,
                                      description="ccramic: Cell-type Classification (using) Rapid Analysis (of) Multiplexed "
                                                  "Imaging (mass) Cytometry using Flask and Dash.",
@@ -18,19 +21,26 @@ def parse_args(args):
     parser.add_argument('-h', "--help", action="help",
                         help="Show the help output and exit.",
                         dest="help")
-
-    parser.parse_args(args)
+    parser.add_argument('-a', "--auto-open", action="store_true",
+                        help="automatically open the browser when the app is called. Default: False",
+                        dest="auto_open")
 
     return parser
 
 
 def main(sysargs = sys.argv[1:]):
 
-    parse_args(sysargs)
+    parser = argparser()
+    args = parser.parse_args(sysargs)
+    def open_browser():
+        if not os.environ.get("WERKZEUG_RUN_MAIN"):
+            webbrowser.open_new(f'http://127.0.0.1:5000/')
 
-    if len(sysargs) < 1:
-        app = init_app()
-        app.run(host='0.0.0.0', debug=True, threaded=True, port=5000)
+    app = init_app()
+    port = 5000
+    if args.auto_open:
+        Timer(1, open_browser).start()
+    app.run(host='0.0.0.0', debug=True, threaded=True, port=port)
 
 if __name__ == "__main__":
     main()

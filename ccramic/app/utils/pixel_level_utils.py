@@ -15,16 +15,6 @@ from dash.exceptions import PreventUpdate
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
-#
-# def get_luma(rbg):
-#     return 0.2126 * rbg[0] + 0.7152 * rbg[1] + 0.0722 * rbg[2]
-#
-#
-# def generate_tiff_stack(tiff_dict, tiff_list, colour_dict):
-#     # image = recolour_greyscale(tiff_dict[tiff_list[0]], colour_dict[tiff_list[0]])
-#     # for other in tiff_list[1:]:
-#     #     image = image + recolour_greyscale(tiff_dict[other], colour_dict[other]
-#     return Image.fromarray(sum([recolour_greyscale(tiff_dict[elem], colour_dict[elem]) for elem in tiff_list]))
 
 
 def recolour_greyscale(array, colour):
@@ -299,7 +289,8 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     """
     array_stack = np.hstack(array)
     data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
-    return float(np.percentile(data, percentile))
+    upper_percentile = float(np.percentile(data, percentile))
+    return upper_percentile if upper_percentile > 1 else 1.0
 
 def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options):
     """
@@ -324,7 +315,7 @@ def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_ble
     # option 2: if a unique order is set by the draggable grid
     elif triggered_id == "set-sort" and rowdata is not None and set_order_clicks > 0:
         # imp: when taking the order from the dash grid, these are the values, so need to convert back to keys
-        channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Current canvas blend'])] for \
+        channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for \
                          elem in rowdata]
         return channel_order
     else:

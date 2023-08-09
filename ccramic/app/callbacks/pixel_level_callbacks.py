@@ -322,6 +322,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
+                       Output('swatch-color-picker', 'value'),
+                       Input('swatch-color-picker', 'value'))
+    def update_colour_picker_from_swatch(swatch):
+        if swatch is not None:
+            return dict(hex=swatch), None
+        else:
+            raise PreventUpdate
+
     @dash_app.callback(Input("annotation-color-picker", 'value'),
                        State('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
@@ -371,8 +380,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                 # if filters have been selected, apply them before recolouring
 
-                if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex'] and \
-                        colour['hex'] not in ['#ffffff', '#FFFFFF']:
+                if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex']:
+                        # and \
+                        # colour['hex'] not in ['#ffffff', '#FFFFFF']:
                     current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
                     all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
@@ -492,7 +502,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded[exp][slide][acq][layer]
 
-            # do not update if all of the channels are not in the current canvas blend dict
+            # do not update if all of the channels are not in the Channel dict
 
             blend_options = [elem['value'] for elem in blend_options]
             if all([elem in cur_layers for elem in blend_options]):
@@ -1248,17 +1258,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 else:
                     aspect_ratio = 1
             except (KeyError, ZeroDivisionError):
-                raise PreventUpdate
+                return {'width': f'{value}vh', 'height': f'{value}vh'}
 
             if value is not None:
                 return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
             else:
-                raise PreventUpdate
-
-        elif value is not None and current_canvas is None:
-            return {'width': f'{value}vh', 'height': f'{value}vh'}
+                return {'width': f'{value}vh', 'height': f'{value}vh'}
+        # elif value is not None and current_canvas is None:
+        #     return {'width': f'{value}vh', 'height': f'{value}vh'}
         else:
-            raise PreventUpdate
+            return {'width': f'{value}vh', 'height': f'{value}vh'}
 
     @dash_app.callback(
         Output("selected-area-table", "data"),
@@ -1557,16 +1566,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 except KeyError:
                     pass
                 if len(in_blend) > 0:
-                    return pd.DataFrame(in_blend, columns=["Current canvas blend"]).to_dict(orient="records"), \
-                    {"sortable": True, "filter": True,
+                    to_return = pd.DataFrame(in_blend, columns=["Channel"]).to_dict(orient="records")
+                    return to_return , {"sortable": False, "filter": False,
                          "cellStyle": {
-                             "styleConditions": cell_styling_conditions
-                         },
-                         }
+                             "styleConditions": cell_styling_conditions}}
                 else:
-                    return [], {"sortable": True, "filter": True}
+                    return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), \
+                        {"sortable": False, "filter": False}
         else:
-            return [], {"sortable": True, "filter": True}
+            return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), \
+                        {"sortable": False, "filter": False}
 
     @dash_app.callback(
         Output("download-collapse", "is_open", allow_duplicate=True),
@@ -1642,12 +1651,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
+                       Input("pixel-hist-collapse", "is_open"),
                        prevent_initial_call=True)
                        # background=True,
                        # manager=cache_manager)
     # @cache.memoize())
-    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict):
-
+    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict, show_pixel_hist):
+        """
+        Create pixel histogram and output the default percentiles
+        """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
@@ -1656,9 +1668,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             except ValueError:
                 fig = go.Figure()
 
-            fig.update_layout(showlegend=False, yaxis={'title': None},
-                              xaxis={'title': None})
-
+            fig = fig if show_pixel_hist else dash.no_update
+            if show_pixel_hist:
+                fig.update_layout(showlegend=False, yaxis={'title': None},
+                              xaxis={'title': None}, margin=dict(pad=0))
             # if the hist is triggered by the changing of a channel to modify
             if ctx.triggered_id == "images_in_blend":
                 try:
@@ -1677,6 +1690,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     return fig, hist_max, [lower_bound, upper_bound], tick_markers
                 except (KeyError, ValueError):
                     return {}, dash.no_update, dash.no_update, dash.no_update
+            elif ctx.triggered_id == "pixel-hist-collapse":
+                return fig, dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -1887,9 +1902,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             x_high = float(max(cur_graph_layout['xaxis.range[0]'], cur_graph_layout['xaxis.range[1]']))
             y_low = float(min(cur_graph_layout['yaxis.range[0]'], cur_graph_layout['yaxis.range[1]']))
             y_high = float(max(cur_graph_layout['yaxis.range[0]'], cur_graph_layout['yaxis.range[1]']))
-            return html.H6(f"Current bounds: X: ({round(x_low, 2)}, {round(x_high, 2)}), "
-                           f"Y: ({round(y_low, 2)}, {round(y_high, 2)})",
-                           style={"color": "black"}), \
+            return html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}),"
+                           f" Y: ({round(y_low, 2)}, {round(y_high, 2)})",
+                           style={"color": "black", "white-space": "pre"}), \
                 {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
         elif cur_graph_layout in [{"dragmode": "pan"}]:
             raise PreventUpdate
@@ -2005,13 +2020,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('region-annotation', 'disabled'),
                        Input('annotation_canvas', 'relayoutData'),
+                       State('data-collection', 'value'),
+                       Input('image_layers', 'value'),
                        prevent_initial_call=True)
-    def enable_region_annotation_on_layout(cur_graph_layout):
+    def enable_region_annotation_on_layout(cur_graph_layout, data_selection, current_blend):
         """
         Enable the region annotation button to be selectable when the canvas is either zoomed in on, or
         a shape is being added/edited. These represent a region selection that can be annotated
         """
-        if cur_graph_layout is not None and len(cur_graph_layout) > 0:
+        if None not in (cur_graph_layout, data_selection) and len(cur_graph_layout) > 0 and len(current_blend) > 0:
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
             if 'shapes' in cur_graph_layout.keys() or all([elem in cur_graph_layout for elem in zoom_keys]):
                 return False
@@ -2042,7 +2059,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('data-collection', 'value'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, canvas_layout, annotations_dict,
                                data_selection):
-        if create_annotation and None not in (annotation_title, annotation_body, canvas_layout):
+        if create_annotation and None not in (annotation_title, annotation_body, canvas_layout, data_selection):
             if annotations_dict is None or len(annotations_dict) < 1:
                 annotations_dict = {}
             if data_selection not in annotations_dict.keys():
@@ -2068,3 +2085,33 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Set the channel order in a dcc Store based on the dash ag grid or adding/removing a channel from the list
         """
         return set_channel_list_order(nclicks, rowdata, channel_order, current_blend, aliases, ctx.triggered_id)
+
+    @dash_app.callback(
+        Output("inputs-offcanvas", "is_open"),
+        Input("inputs-offcanvas-button", "n_clicks"),
+        State("inputs-offcanvas", "is_open"),
+    )
+    def toggle_offcanvas_inputs(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(
+        Output("blend-config-offcanvas", "is_open"),
+        Input("blend-offcanvas-button", "n_clicks"),
+        State("blend-config-offcanvas", "is_open"),
+    )
+    def toggle_offcanvas_blend_options(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(
+        Output("pixel-hist-collapse", "is_open", allow_duplicate=True),
+        [Input("show-pixel-hist", "n_clicks")],
+        [State("pixel-hist-collapse", "is_open")])
+    # @cache.memoize())
+    def toggle_pixel_hist_collapse(n, is_open):
+        if n:
+            return not is_open
+        return is_open

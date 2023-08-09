@@ -41,7 +41,7 @@ def test_parsing_quantification_filepaths():
 
 def test_parsing_incoming_measurements_csv(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
-    validated_measurements = parse_and_validate_measurements_csv(measurements_dict)
+    validated_measurements, cols = parse_and_validate_measurements_csv(measurements_dict)
     assert isinstance(validated_measurements, list)
     for elem in validated_measurements:
         assert isinstance(elem, dict)

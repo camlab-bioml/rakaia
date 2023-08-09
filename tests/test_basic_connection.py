@@ -1,13 +1,14 @@
+import argparse
 import base64
-
 import pytest
 from selenium.common import NoSuchElementException
-import time
 import socket
 import platform
 import os
 from subprocess import Popen, PIPE
-from ccramic.app.wsgi import parse_args
+from ccramic.app.wsgi import argparser, main
+import time
+import signal
 
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
                     reason="Only test the connection in a GA workflow due to passwordless sudo")
@@ -59,12 +60,43 @@ def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
     # for elem in ['#upload-quantification']:
     #     assert dash_duo.find_element(elem) is not None
 
+
 def test_basic_cli_outputs():
-    parser = parse_args([])
+    parser = argparser()
+    assert isinstance(parser, argparse.ArgumentParser)
+    args = parser.parse_args([])
+    assert vars(args) == {'auto_open': False}
+    assert "ccramic can be initialized from the command line using:" in parser.usage
+    parser = argparser()
+    args = parser.parse_args(['-a'])
+    assert vars(args) == {'auto_open': True}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     with pytest.raises(SystemExit):
-        parse_args(['-v'])
+        parser.parse_args(['-v'])
     with pytest.raises(SystemExit):
-        parse_args(['-h'])
+        parser.parse_args(['-h'])
     with pytest.raises(SystemExit):
-        parse_args(['-t'])
+        parser.parse_args(['-t'])
+    # with pytest.raises(SystemExit):
+    #     main()
+
+@pytest.mark.timeout(10)
+@pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") == "true",
+                    reason="Do not run main test in GA due to memory restrictions")
+def test_basic_cli_outputs_main():
+    """
+    Assert that when valid rguments are passed to main, there is no system exit but rather the expected
+    timeout after 5 seconds
+    """
+    class TimeoutException(Exception):
+        pass
+    def timeout_handler(signum, frame):
+        raise TimeoutException
+
+    signal.signal(signal.SIGALRM, timeout_handler)
+
+    signal.alarm(4)
+    try:
+        main([])
+    except TimeoutException:
+        assert True

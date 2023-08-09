@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2023-08-10
+
+### Changed
+
+- Major updates to the UI, particularly for the image annotation/blending tab:
+multiple inputs converted to being held in bootstrap offcanvas tabs
+(one offcanvas for inputs and one for advanced canvas settings)
+- Edit the canvas div to center the canvas by default and on resizing
+- Make the pixel histogram collapsible and by default have it hidden to speed up channel switching
+- Add font awesome icons to various buttons and remove default styling
+
+### Added
+
+- Add default argparse argument to open the browser window automatically on CLI run
+- Add colour box swatches from dash mantine colour picker for preferred colours
+
+### Fixed
+
+- Make sure the minimum of the default upper bound for pixel scaling by
+percentile is at least 1 #49
+
 
 ## [0.4.0] - 2023-08-01
 

@@ -29,7 +29,7 @@ def test_basic_mask_boundary_converter(get_current_dir):
 
 def test_umap_from_quantification_dict(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
-    validated_measurements = parse_and_validate_measurements_csv(measurements_dict)
+    validated_measurements, cols = parse_and_validate_measurements_csv(measurements_dict)
     returned_umap = return_umap_dataframe_from_quantification_dict(validated_measurements)
     assert isinstance(returned_umap, tuple)
     assert isinstance(returned_umap[0], dash_extensions.enrich.Serverside)

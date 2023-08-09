@@ -1,4 +1,5 @@
 import dash_uploader as du
+import pandas as pd
 from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from ..parsers.cell_level_parsers import *
@@ -18,6 +19,7 @@ def init_cell_level_callbacks(dash_app):
         return get_quantification_filepaths_from_drag_and_drop(status)
 
     @dash_app.callback(Output('quantification-dict', 'data'),
+                       Output('cell-type-col-designation', 'options'),
                        Input('session_config_quantification', 'data'),
                        prevent_initial_call=True)
     def populate_quantification_table_from_upload(session_dict):
@@ -111,6 +113,20 @@ def init_cell_level_callbacks(dash_app):
     def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
         return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
                                                 cur_mask_dict, derive_cell_boundary)
+
+    @dash_app.callback(
+        Output("quantification-config-modal", "is_open"),
+        Input('cell-type-col-designation', 'options'),
+        prevent_initial_call=True)
+    def toggle_annotation_col_modal(quantification_dict):
+        """
+        Toggle the annotation modal on or off when the quantification dataset
+        updates the possible cell type annotations
+        """
+        if quantification_dict is not None:
+            return True
+        else:
+            return False
 
     # @dash_app.callback(Output('umap-plot', 'figure'),
     #                    Input('anndata', 'data'),
