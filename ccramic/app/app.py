@@ -134,7 +134,7 @@ def init_dashboard(server, authentic_id):
                                  html.Div([dcc.Input(id="input-mask-name", type="text", value=None,
                                                      style={"width": "65%", "margin-right": "10px", "height": "50%"}),
                                            daq.ToggleSwitch(label='Derive cell boundary', id='derive-cell-boundary',
-                                                            labelPosition='bottom', color="blue", value=True,
+                                                            labelPosition='bottom', color="blue", value=False,
                                                             style={"margin-right": "-30px", "margin-left": "10px"})],
                                           style={"display": "flex"}),
                                  dbc.Button("Set mask import", id="set-mask-name", className="me-1")]),
@@ -314,7 +314,7 @@ def init_dashboard(server, authentic_id):
                                                             'display': 'inline-block',
                                                             'margin-right': '-50'}),
                                         type="default", fullscreen=False),
-                                    dcc.Slider(0, 100, 2.5, value=100,
+                                    dcc.Slider(0, 100, 2.5, value=35,
                                                id='mask-blending-slider',
                                                marks={0: '0%', 25: '25%',
                                                       50: '50%', 75: '75%',
@@ -326,7 +326,7 @@ def init_dashboard(server, authentic_id):
                                         html.Abbr(dcc.Checklist(
                                             options=[
                                                 ' add boundary'],
-                                            value=[],
+                                            value=[' add boundary'],
                                             id="add-mask-boundary",
                                             style={
                                                 "margin-left": "35px",
