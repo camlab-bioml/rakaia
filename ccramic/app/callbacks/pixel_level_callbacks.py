@@ -359,28 +359,29 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded_w_data[exp][slide][acq][layer]
 
-            blend_options = [elem['value'] for elem in blend_options]
-            if all([elem in add_to_layer for elem in blend_options]):
+            if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex']:
+                blend_options = [elem['value'] for elem in blend_options]
+                if all([elem in add_to_layer for elem in blend_options]):
 
-                # if upper and lower bounds have been set before for this layer, use them before recolouring
+                    # if upper and lower bounds have been set before for this layer, use them before recolouring
 
-                if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
+                    if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                         current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
-                    array = filter_by_upper_and_lower_bound(array,
+                        array = filter_by_upper_and_lower_bound(array,
                                                             float(current_blend_dict[exp][slide][acq][layer][
                                                                       'x_lower_bound']),
                                                             float(current_blend_dict[exp][slide][acq][layer][
                                                                       'x_upper_bound']))
 
-                if len(filter_chosen) > 0 and filter_name is not None:
-                    if filter_name == "median":
-                        array = median_filter(array, int(filter_value))
-                    else:
-                        array = gaussian_filter(array, int(filter_value))
+                    if len(filter_chosen) > 0 and filter_name is not None:
+                        if filter_name == "median":
+                            array = median_filter(array, int(filter_value))
+                        else:
+                            array = gaussian_filter(array, int(filter_value))
 
                 # if filters have been selected, apply them before recolouring
 
-                if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex']:
+
                         # and \
                         # colour['hex'] not in ['#ffffff', '#FFFFFF']:
                     current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
@@ -389,6 +390,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     return current_blend_dict, Serverside(all_layers)
                 else:
                     raise PreventUpdate
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -502,38 +505,49 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             exp, slide, acq = split[0], split[1], split[2]
             array = uploaded[exp][slide][acq][layer]
 
-            # do not update if all of the channels are not in the Channel dict
+            # condition where the current inputs are set to not have a filter, and the current blend dict matches
+            no_filter_in_both = current_blend_dict[exp][slide][acq][layer]['filter_type'] is None and \
+                                current_blend_dict[exp][slide][acq][layer]['filter_val'] is None and \
+                                len(filter_chosen) == 0
 
-            blend_options = [elem['value'] for elem in blend_options]
-            if all([elem in cur_layers for elem in blend_options]):
+            # condition where toggling between two channels, and the first one has no filter and the second
+            # has a filter. prevent the callback with no actual change
+            same_filter_params = current_blend_dict[exp][slide][acq][layer]['filter_type'] == filter_name and \
+                                 current_blend_dict[exp][slide][acq][layer]['filter_val'] == filter_value and \
+                                 len(filter_chosen) > 0
 
-                if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
+            if not no_filter_in_both and not same_filter_params:
+                # do not update if all of the channels are not in the Channel dict
+                blend_options = [elem['value'] for elem in blend_options]
+                if all([elem in cur_layers for elem in blend_options]):
+
+                    if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
                         current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
-                    array = filter_by_upper_and_lower_bound(array,
+                        array = filter_by_upper_and_lower_bound(array,
                                                             float(current_blend_dict[exp][slide][acq][layer][
                                                                       'x_lower_bound']),
                                                             float(current_blend_dict[exp][slide][acq][layer][
                                                                       'x_upper_bound']))
 
-                if len(filter_chosen) > 0 and filter_name is not None:
-                    if filter_name == "median":
-                        array = median_filter(array, int(filter_value))
+                    if len(filter_chosen) > 0 and filter_name is not None:
+                        if filter_name == "median":
+                            array = median_filter(array, int(filter_value))
+                        else:
+                            array = gaussian_filter(array, int(filter_value))
+
+                        current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
+                        current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
+
                     else:
-                        array = gaussian_filter(array, int(filter_value))
+                        current_blend_dict[exp][slide][acq][layer]['filter_type'] = None
+                        current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
 
-                    current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
-                    current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
-
-                else:
-                    current_blend_dict[exp][slide][acq][layer]['filter_type'] = None
-                    current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
-
-                all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                    all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
                                                                                  current_blend_dict[exp][slide][acq][
                                                                                      layer][
                                                                                      'color'])).astype(np.uint8)
 
-                return current_blend_dict, Serverside(all_layers)
+                    return current_blend_dict, Serverside(all_layers)
             else:
                 raise PreventUpdate
         else:
@@ -1705,10 +1719,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('blending_colours', 'data'),
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
-                       State('static-session-var', 'data'))
+                       State('static-session-var', 'data'),
+                       State('bool-apply-filter', 'value'),
+                       State('filter-type', 'value'),
+                       State('kernel-val-filter', 'value'),
+                       State("annotation-color-picker", 'value'))
     # @cache.memoize())
     def update_channel_filter_inputs(selected_channel, uploaded, data_selection, current_blend_dict,
-                                     preset_selection, preset_dict, session_vars):
+                                     preset_selection, preset_dict, session_vars, cur_bool_filter, cur_filter_type,
+                                     cur_filter_val, cur_colour):
         """
         Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used
         """
@@ -1726,10 +1745,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             filter_type = current_blend_dict[exp][slide][acq][selected_channel]['filter_type']
             filter_val = current_blend_dict[exp][slide][acq][selected_channel]['filter_val']
             color = current_blend_dict[exp][slide][acq][selected_channel]['color']
-            to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
-            filter_type_return = filter_type if filter_type is not None else "median"
-            filter_val_return = filter_val if filter_val is not None else 3
-            color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
+            # evaluate the current states of the inputs. if they are the same as the new channel, do not update
+            if ' apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val):
+                to_apply_filter = dash.no_update
+            else:
+                to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
+            if filter_type == cur_filter_type:
+                filter_type_return = dash.no_update
+            else:
+                filter_type_return = filter_type if filter_type is not None else "median"
+            if filter_val == cur_filter_val:
+                filter_val_return = dash.no_update
+            else:
+                filter_val_return = filter_val if filter_val is not None else 3
+            if color == cur_colour['hex']:
+                color_return = dash.no_update
+            else:
+                color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
                 else dash.no_update
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \

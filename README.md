@@ -89,6 +89,11 @@ docker run -d -p 5000:5000 ccramic:latest ccramic
 
 Navigate to the local address `http://0.0.0.0:5000/`
 
+## Documentation
+
+The official documentation for ccramic is in progress. For some FAQ,
+visit [the FAQ documentation](man/README.md)
+
 ## For developers
 
 ccramic can be run in editable mode with either configuration shown below, which permits source code changes to be applied to the application on the fly:
@@ -102,10 +107,9 @@ Installing an editable version through pip is also required to run unit tests:
 
 ```
 pytest --headless --cov ccramic
-
 ```
 
-COnversely, without app installation:
+Conversely, without app installation:
 
 ```
 python ccramic/app/wsgi.py
