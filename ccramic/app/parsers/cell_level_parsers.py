@@ -5,10 +5,52 @@ from tifffile import TiffFile
 import numpy as np
 from dash_extensions.enrich import Serverside
 from PIL import Image
+from ..utils.cell_level_utils import set_columns_to_drop
 from ..utils.cell_level_utils import *
 
+def drop_columns_from_measurements_csv(measurements_csv,
+                                       cols_to_drop=set_columns_to_drop()):
+    try:
+        for col in cols_to_drop:
+            if col in measurements_csv.columns:
+                measurements_csv = pd.DataFrame(measurements_csv).drop(col, axis=1)
+        return measurements_csv
+    except KeyError:
+        return measurements_csv
+
+def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True):
+    if quantification_dict is not None:
+        data_frame = pd.DataFrame(quantification_dict)
+        cols = list(data_frame.columns)
+        if current_umap is None:
+                # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
+            #  column-wise, by channel)
+            umap_obj = None
+            if drop_col:
+                data_frame = drop_columns_from_measurements_csv(data_frame)
+            # TODO: evaluate the umap import speed (slow) possibly due to numba compilation:
+            # https://github.com/lmcinnes/umap/issues/631
+            if 'umap' not in sys.modules:
+                import umap
+            try:
+                umap_obj = umap.UMAP()
+            except UnboundLocalError:
+                import umap
+                umap_obj = umap.UMAP()
+            if umap_obj is not None:
+                scaled = StandardScaler().fit_transform(data_frame)
+                embedding = umap_obj.fit_transform(scaled)
+                return Serverside(embedding), cols
+            else:
+                raise PreventUpdate
+        else:
+            return dash.no_update, cols
+    else:
+        raise PreventUpdate
+
+
 def validate_incoming_measurements_csv(measurements_csv, current_image=None, validate_with_image=True,
-                                       required_columns=['cell_id', 'x', 'y', 'x_max', 'y_max', 'area']):
+                                       required_columns=set_mandatory_columns()):
     """
     Validate an incoming measurements CSV against the current canvas, and ensure that it has the required
     information columns
@@ -26,19 +68,13 @@ def validate_incoming_measurements_csv(measurements_csv, current_image=None, val
         return measurements_csv
 
 def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999,
-                                                  dropped_columns=['cell_id', 'x', 'y', 'x_max',
-                                                                   'y_max', 'area', 'sample'],
-                                                  drop_cols=True):
+                                                  drop_cols=False):
     """
     Filter out the rows (cells) of a measurements csv (columns as channels, rows as cells) based on a pixel intensity
     threshold by percentile. Effectively removes any cells with "hot" pixels
     """
     if drop_cols:
-        try:
-            for col in dropped_columns:
-                measurements = pd.DataFrame(measurements).drop(col, axis=1)
-        except KeyError:
-            pass
+        measurements = drop_columns_from_measurements_csv(measurements)
 
     query = ""
     quantiles = measurements.quantile(q=percentile)
@@ -64,16 +100,19 @@ def get_quantification_filepaths_from_drag_and_drop(status):
         raise PreventUpdate
 
 
-def parse_and_validate_measurements_csv(session_dict):
+def parse_and_validate_measurements_csv(session_dict, use_percentile=False):
     """
     Validate the measurements CSV and return a clean version
+    Use percentile filtering for removing hot pixel cells
     """
     if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
         quantification_worksheet = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
                                                                       validate_with_image=False)
         # TODO: establish where to use the percentile filtering on the measurements
-        return filter_measurements_csv_by_channel_percentile(quantification_worksheet).to_dict(orient="records"), \
-            list(pd.read_csv(session_dict['uploads'][0]).columns)
+        measurements_return = filter_measurements_csv_by_channel_percentile(
+            quantification_worksheet).to_dict(orient="records") if use_percentile else \
+            quantification_worksheet.to_dict(orient="records")
+        return measurements_return, list(pd.read_csv(session_dict['uploads'][0]).columns)
     else:
         raise PreventUpdate
 

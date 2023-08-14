@@ -1,3 +1,4 @@
+import dash
 import dash_uploader as du
 import pandas as pd
 from dash_extensions.enrich import Output, Input, State
@@ -5,6 +6,7 @@ from dash import ctx
 from ..parsers.cell_level_parsers import *
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
+import dash_core_components as dcc
 
 def init_cell_level_callbacks(dash_app):
     """
@@ -41,18 +43,23 @@ def init_cell_level_callbacks(dash_app):
     @dash_app.callback(Output('umap-projection', 'data'),
                        Output('umap-projection-options', 'options'),
                        Input('quantification-dict', 'data'),
+                       State('umap-projection', 'data'),
                        prevent_initial_call=True)
-    def generate_umap_from_measurements_csv(quantification_dict):
+    def generate_umap_from_measurements_csv(quantification_dict, current_umap):
         """
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
         """
-        return return_umap_dataframe_from_quantification_dict(quantification_dict)
+        try:
+            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
+                                                                  current_umap=current_umap)
+        except ValueError:
+            return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
 
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
-                       State('quantification-dict', 'data'),
+                       Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
@@ -127,6 +134,52 @@ def init_cell_level_callbacks(dash_app):
             return True
         else:
             return False
+
+    @dash_app.callback(
+        Input("annotations-dict", "data"),
+        State('quantification-dict', 'data'),
+        State('data-collection', 'value'),
+        Output('quantification-dict', 'data', allow_duplicate=True),
+        Output("annotations-dict", "data", allow_duplicate=True))
+    def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection):
+        """
+        Add a region annotation to the cells of a quantification data frame
+        """
+        # loop through all of the existing annotations
+        # for annotations that have not yet been imported, import and set the import status to True
+        if None not in (annotations, quantification_frame) and len(quantification_frame) > 0 and len(annotations) > 0:
+            if data_selection in annotations.keys() and len(annotations[data_selection]) > 0:
+                quantification_frame = pd.DataFrame(quantification_frame)
+                for annotation in annotations[data_selection].keys():
+                    # import only the new annotations that are rectangles (for now) and are not validated
+                    if annotations[data_selection][annotation]['type'] == "rect" and not \
+                            annotations[data_selection][annotation]['imported']:
+                        quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
+                                                                                                 values_dict=dict(
+                                                                                                     annotation),
+                                                                                                 cell_type=annotations[
+                                                                                                     data_selection][
+                                                                                                     annotation][
+                                                                                                     'cell_type'])
+                        annotations[data_selection][annotation]['imported'] = True
+                return quantification_frame.to_dict(orient="records"), Serverside(annotations)
+            else:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+
+    @dash_app.callback(
+        Output("download-edited-annotations", "data"),
+        Input("btn-download-annotations", "n_clicks"),
+        Input("quantification-dict", "data"))
+    # @cache.memoize())
+    def download_quantification_with_annotations(n_clicks, datatable_contents):
+        if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
+                ctx.triggered_id == "btn-download-annotations":
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "annotations.csv")
+        else:
+            raise PreventUpdate
 
     # @dash_app.callback(Output('umap-plot', 'figure'),
     #                    Input('anndata', 'data'),

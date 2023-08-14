@@ -1,14 +1,14 @@
 
-import plotly.graph_objs as go
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
+from ..parsers.cell_level_parsers import *
 from pandas.errors import UndefinedVariableError
 
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
-                                     dropped_columns=['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'],
-                                     subset_dict=None):
+                                     subset_dict=None, drop_cols=True):
     """
-    generate a barplot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
+    Generate a barplot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
+    Ensure that the non-numeric columns are dropped prior to plotting
     """
 
     if subset_dict is not None and len(subset_dict) == 4:
@@ -19,9 +19,9 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                                         f'y_max <= {subset_dict["y_max"]}')
         except (KeyError, UndefinedVariableError):
             pass
-    try:
-        dropped = pd.DataFrame(measurement_frame).drop(dropped_columns, axis=1)
-    except KeyError:
+    if drop_cols:
+        dropped = drop_columns_from_measurements_csv(measurement_frame)
+    else:
         dropped = pd.DataFrame(measurement_frame)
     if mode == "mean":
         dropped = dropped.mean(axis=0)
@@ -40,9 +40,13 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
     if embeddings is not None:
         quant_frame = pd.DataFrame(quantification_dict)
-        colour = quant_frame[channel_overlay].astype(float) if channel_overlay is not None else None
         df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
-        fig = px.scatter(df, x="UMAP1", y="UMAP2", color=colour)
+        if channel_overlay is not None:
+            df[channel_overlay] = quant_frame[channel_overlay]
+        try:
+            fig = px.scatter(df, x="UMAP1", y="UMAP2", color=channel_overlay)
+        except KeyError:
+            fig = px.scatter(df, x="UMAP1", y="UMAP2")
         if cur_umap_fig is None:
             fig['layout']['uirevision'] = True
         else:

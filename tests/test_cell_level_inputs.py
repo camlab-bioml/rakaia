@@ -49,7 +49,7 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
     zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
     interactive_umap = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, {}, "mean",
                                                                                 {}, umap_dict, zoom_keys, "umap_plot")
-    assert '(228 cells)' in interactive_umap['layout']['title']['text']
+    assert '(244 cells)' in interactive_umap['layout']['title']['text']
     subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 900, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
     interactive_umap = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, {},
                                                                                 "mean", subset_layout,

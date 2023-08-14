@@ -2062,7 +2062,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         if None not in (cur_graph_layout, data_selection) and len(cur_graph_layout) > 0 and len(current_blend) > 0:
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-            if 'shapes' in cur_graph_layout.keys() or all([elem in cur_graph_layout for elem in zoom_keys]):
+            # TODO: Imp: for now, only use rectangles not in a shape or path
+            # in the future, add the ability to annotate using closed shapes
+            if all([elem in cur_graph_layout for elem in zoom_keys]):
                 return False
             else:
                 return True
@@ -2086,21 +2088,36 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input('create-annotation', 'n_clicks'),
         State('region-annotation-name', 'value'),
         State('region-annotation-body', 'value'),
+        State('region-annotation-cell-types', 'value'),
         State('annotation_canvas', 'relayoutData'),
         State("annotations-dict", "data"),
         State('data-collection', 'value'))
-    def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, canvas_layout, annotations_dict,
-                               data_selection):
+    def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
+                               canvas_layout, annotations_dict, data_selection):
         if create_annotation and None not in (annotation_title, annotation_body, canvas_layout, data_selection):
             if annotations_dict is None or len(annotations_dict) < 1:
                 annotations_dict = {}
             if data_selection not in annotations_dict.keys():
                 annotations_dict[data_selection] = {}
-            if annotation_title not in annotations_dict[data_selection].keys():
-                annotations_dict[data_selection][annotation_title] = {}
-            annotations_dict[data_selection][annotation_title]['body'] = annotation_body
-            annotations_dict[data_selection][annotation_title]['region'] = canvas_layout
-            return annotations_dict
+            # use the data collection as the highest key for each ROI, then use the canvas coordinates to
+            # uniquely identify a region
+
+            # IMP: convert the dictionary to a sorted tuple to use as a key
+            # https://stackoverflow.com/questions/1600591/using-a-python-dictionary-as-a-key-non-nested
+            region_type = None
+            if isinstance(canvas_layout, dict):
+                dict_tuple = tuple(sorted(canvas_layout.items()))
+                region_type = "rect"
+            elif isinstance(canvas_layout, list):
+                dict_tuple = tuple(canvas_layout)
+                region_type = "path"
+            if dict_tuple not in annotations_dict[data_selection].keys():
+                annotations_dict[data_selection][dict_tuple] = {}
+
+            annotations_dict[data_selection][dict_tuple] = {'title': annotation_title, 'body': annotation_body,
+                                                               'cell_type': annotation_cell_type, 'imported': False,
+                                                            'type': region_type}
+            return Serverside(annotations_dict)
         else:
             raise PreventUpdate
 
