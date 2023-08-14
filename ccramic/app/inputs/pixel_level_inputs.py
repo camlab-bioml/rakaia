@@ -53,7 +53,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image, size_threshold=3000):
         return render_default_annotation_canvas()
 
 
-def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value=None):
+def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value=None, font_size=12):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -69,7 +69,6 @@ def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value
     midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
     # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
     midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
-    font_size = 10 if image_shape[1] < 1000 else 12
     midpoint = midpoint if font_size == 12 else 0.05
     figure = go.Figure(figure)
     figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
@@ -85,7 +84,7 @@ def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value
 
 def get_additive_image_with_masking(currently_selected, data_selection, canvas_layers, mask_config,
                                     mask_toggle, mask_selection, show_canvas_legend,
-                                    mask_blending_level, add_mask_boundary, legend_text):
+                                    mask_blending_level, add_mask_boundary, legend_text, annotation_size=12):
     """
     Generate an additiive image from one or more channel arrays. Optionally, project a mask on top of the additive image
     using a specified blend ratio with cv2
@@ -119,10 +118,10 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
             x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
             # if the current graph already has an image, take the existing layout and apply it to the new figure
             # otherwise, set the uirevision for the first time
-            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
+            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, font_size=annotation_size)
 
             if legend_text != '' and show_canvas_legend:
-                fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                fig.add_annotation(text=legend_text, font={"size": (annotation_size + 3)}, xref='paper',
                                yref='paper',
                                x=(1 - x_axis_placement),
                                # xanchor='right',

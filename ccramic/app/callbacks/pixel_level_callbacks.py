@@ -13,7 +13,6 @@ from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
 
-
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
     Initialize the callbacks associated with pixel level analysis/raw image preprocessing (image loading,
@@ -418,8 +417,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 upper_bound = max(slider_values)
                 split = split_string_at_pattern(data_selection)
                 exp, slide, acq = split[0], split[1], split[2]
-                if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] == int(lower_bound) and \
-                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] == int(upper_bound):
+                if int(current_blend_dict[exp][slide][acq][layer]['x_lower_bound']) == int(lower_bound) and \
+                        int(current_blend_dict[exp][slide][acq][layer]['x_upper_bound']) == int(upper_bound):
                     raise PreventUpdate
                 else:
                     current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = int(lower_bound)
@@ -645,6 +644,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('mask-blending-slider', 'value'),
                        Input('add-mask-boundary', 'value'),
                        Input('channel-order', 'data'),
+                       State('legend-size-slider', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_or_mask_change(canvas_layers, currently_selected,
@@ -654,7 +654,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 canvas_children, param_dict,
                                                 mask_config, mask_toggle, mask_selection, show_canvas_legend,
                                                 mask_blending_level, add_mask_boundary,
-                                                channel_order):
+                                                channel_order, legend_size):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -721,7 +721,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig['layout']['uirevision'] = True
 
                         if show_canvas_legend:
-                            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
+                            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, font_size=legend_size)
 
                         fig = go.Figure(fig)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -740,7 +740,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig['layout']['uirevision'] = True
 
                     if show_canvas_legend:
-                        fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
+                        fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, font_size=legend_size)
 
                     fig = go.Figure(fig)
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -761,7 +761,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # higher values mean closer to the centre
                 # fig = canvas_layers[image_type][currently_selected[0]]
                 if legend_text != '' and show_canvas_legend:
-                    fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                    fig.add_annotation(text=legend_text, font={"size": legend_size + 3}, xref='paper',
                                            yref='paper',
                                            x=(1 - x_axis_placement),
                                            # xanchor='right',
@@ -997,10 +997,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('alias-dict', 'data'),
                        State('uploaded_dict', 'data'),
                        State('channel-order', 'data'),
+                       State('legend-size-slider', 'value'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_annotations, cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
-                                                   channel_order):
+                                                   channel_order, legend_size):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend)
         """
@@ -1031,7 +1032,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                     f'>{label}</span><br>'
 
                 if legend_text != '':
-                    fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                    fig.add_annotation(text=legend_text, font={"size": legend_size + 3}, xref='paper',
                                            yref='paper',
                                            x=(1 - x_axis_placement),
                                            # xanchor='right',
@@ -1061,8 +1062,34 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                    custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
                 except KeyError:
                     custom_scale_val = None
-                fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, scale_value=custom_scale_val)
+                fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, scale_value=custom_scale_val,
+                                                font_size=legend_size)
                 return fig
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       State('annotation_canvas', 'figure'),
+                       Input('legend-size-slider', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def render_canvas_from_change_annotation_size(cur_graph, legend_size):
+        """
+        Update the canvas when the size of the annotations is modified
+        """
+        if cur_graph is not None:
+            try:
+                annotations_copy = cur_graph['layout']['annotations'].copy()
+                for annotation in annotations_copy:
+                    # the scalebar is always slightly smaller
+                    if annotation['y'] == 0.06:
+                        annotation['font']['size'] = legend_size
+                    elif annotation['y'] == 0.05 and 'color' in annotation['text']:
+                        annotation['font']['size'] = legend_size + 3
+                cur_graph['layout']['annotations'] = annotations_copy
+                return go.Figure(cur_graph)
+            except KeyError:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -1987,12 +2014,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('alias-dict', 'data'),
                        State('add-mask-boundary', 'value'),
                        State('channel-order', 'data'),
+                       State('legend-size-slider', 'value'),
                        prevent_initial_call=True)
     def toggle_channel_intensities_on_hover(currently_selected, data_selection, cur_graph,
                                             raw_data_dict, show_each_channel_intensity,
                                             canvas_layers, mask_config, mask_toggle, mask_selection, show_canvas_legend,
                                                 mask_blending_level, blend_colour_dict, aliases, add_mask_boundary,
-                                            channel_order):
+                                            channel_order, legend_size):
         """
         toggle showing the individual pixel intensities on the canvas. Note that the space complexity and performance
         of the canvas is significantly compromised if the individual channel intensity is used
@@ -2020,7 +2048,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 del cur_graph
                 fig = get_additive_image_with_masking(currently_selected, data_selection, canvas_layers, mask_config,
                                     mask_toggle, mask_selection, show_canvas_legend,
-                                    mask_blending_level, add_mask_boundary, legend_text)
+                                    mask_blending_level, add_mask_boundary, legend_text, legend_size)
                 layout_return = {'autosize': True}
             return fig, layout_return
         else:
