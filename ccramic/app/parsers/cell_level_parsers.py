@@ -139,7 +139,9 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                     mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
                     boundary_import = np.array(Image.fromarray(
                         convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
-                cur_mask_dict[chosen_mask_name] = {"array": mask_import, "boundary": boundary_import}
+                cur_mask_dict[chosen_mask_name] = {"array": mask_import, "boundary": boundary_import,
+                                                   "hover": page.asarray().reshape((page.asarray().shape[0],
+                                                                                    page.asarray().shape[1], 1))}
         return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
     else:
         raise PreventUpdate

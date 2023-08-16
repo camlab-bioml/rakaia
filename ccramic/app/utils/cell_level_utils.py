@@ -138,3 +138,16 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
         pass
 
     return measurements
+
+
+def process_mask_array_for_hovertemplate(mask_array):
+    """
+    Process a mask array with cell IDs for the hover template. Steps include:
+    - converting the array shape to 3D with (shape[0], shape[1], 1)
+    - Coercing array to string
+    - Replacing '0' with None. 0 entries indicate that there is no cell ID present at the pixel
+    """
+    mask_array = mask_array.astype(str)
+    mask_array[mask_array == '0.0'] = 'None'
+    mask_array[mask_array == '0'] = 'None'
+    return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))

@@ -634,7 +634,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('annotation_canvas', 'figure'),
                        State('annotation_canvas', 'relayoutData'),
                        State('uploaded_dict', 'data'),
-                       State('channel-intensity-hover', 'value'),
+                       Input('channel-intensity-hover', 'value'),
                        State('canvas-div-holder', 'children'),
                        State('param_config', 'data'),
                        State('mask-dict', 'data'),
@@ -645,22 +645,26 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('add-mask-boundary', 'value'),
                        Input('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
+                       Input('add-cell-id-mask-hover', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def render_canvas_from_layer_or_mask_change(canvas_layers, currently_selected,
+    def render_canvas_from_layer_mask__hover_change(canvas_layers, currently_selected,
                                                 data_selection, blend_colour_dict, aliases,
                                                 cur_graph, cur_graph_layout, raw_data_dict,
                                                 show_each_channel_intensity,
                                                 canvas_children, param_dict,
                                                 mask_config, mask_toggle, mask_selection, show_canvas_legend,
                                                 mask_blending_level, add_mask_boundary,
-                                                channel_order, legend_size):
+                                                channel_order, legend_size, add_cell_id_hover):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
         that will be added together to form the canvas
         or
         if a mask is applied to the canvas
+        or
+        if the hovertemplate is updated (it is faster to recreate the figure rather than trying to remove the
+        hovertemplate)
         """
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
@@ -703,7 +707,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # if the current graph already has an image, take the existing layout and apply it to the new figure
                     # otherwise, set the uirevision for the first time
                     # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
-                if 'layout' in cur_graph and 'uirevision' in cur_graph['layout'] and cur_graph['layout']['uirevision']:
+                # do not update if there is already a hover template as it will be too slow
+                hover_template_exists = 'data' in cur_graph and 'customdata' in cur_graph['data'] and \
+                                        cur_graph['data']['customdata'] is not None
+                if 'layout' in cur_graph and 'uirevision' in cur_graph['layout'] and \
+                        cur_graph['layout']['uirevision'] and not hover_template_exists:
                     try:
                         # fig['layout'] = cur_graph['layout']
                         cur_graph['data'] = fig['data']
@@ -716,6 +724,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']):
                             cur_graph['layout']['shapes'] = []
                         fig = cur_graph
+                        # del cur_graph
                     # keywrror could happen if the canvas is reset with no layers, so rebuild from scratch
                     except KeyError:
                         fig['layout']['uirevision'] = True
@@ -736,6 +745,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                           ))
                         fig.update_layout(hovermode="x")
                 else:
+                    # del cur_graph
                     # if making the fig for the firs time, set the uirevision
                     fig['layout']['uirevision'] = True
 
@@ -783,23 +793,37 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                   ),
                                   )
 
-                if " show channel intensities on hover" in show_each_channel_intensity:
-                    hover_stack = np.stack((raw_data_dict[exp][slide][acq][elem] for elem in currently_selected),
+                # set the custom hovertext if is is requested
+                # the masking mask ID get priority over the channel intensity hover
+                # TODO: combine both the mask ID and channel intensity into one hover if both are requested
+
+                if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0 and \
+                        ' show mask ID on hover' in add_cell_id_hover:
+                    try:
+                        # fig.update(data=[{'customdata': None}])
+                        fig.update(data=[{'customdata': mask_config[mask_selection]["hover"]}])
+                        new_hover = per_channel_intensity_hovertext(["mask ID"])
+                    except KeyError:
+                        new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
+
+                elif " show channel intensities on hover" in show_each_channel_intensity:
+                    # fig.update(data=[{'customdata': None}])
+                    hover_stack = np.stack(tuple(raw_data_dict[exp][slide][acq][elem] for elem in currently_selected),
                                            axis=-1)
                     fig.update(data=[{'customdata': hover_stack}])
-                    new_hover = per_channel_intensity_hovertext(currently_selected)
-                    fig.update_traces(hovertemplate=new_hover)
+                    # set the labels for the hover from the aliases
+                    hover_labels = []
+                    for label in currently_selected:
+                        if label in aliases.keys():
+                            hover_labels.append(aliases[label])
+                        else:
+                            hover_labels.append(label)
+                    new_hover = per_channel_intensity_hovertext(hover_labels)
+                    # fig.update_traces(hovertemplate=new_hover)
                 else:
-                    default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                    fig.update_traces(hovertemplate=default_hover)
-                # fig.update_traces(
-                #     hovertemplate="<br>".join([
-                #         "<extra>",
-                #         "ColX: %{x}",
-                #         "ColY: %{y}"
-                #         "</extra>"
-                #     ]))
-                # fig.update_traces(hovertemplate=None)
+                    fig.update(data=[{'customdata': None}])
+                    new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
+                fig.update_traces(hovertemplate=new_hover)
                 fig.update_layout(dragmode="zoom")
                 return fig, Serverside(image)
             except (ValueError, AttributeError):
@@ -1948,10 +1972,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return {}, None
 
 
-    @dash_app.callback(Input('annotation_canvas', 'figure'),
+    @dash_app.callback(State('annotation_canvas', 'figure'),
                        Input('annotation_canvas', 'relayoutData'),
                        Output('bound-shower', 'children'),
-                       Output('window_config', 'data'))
+                       Output('window_config', 'data'),
+                       prevent_initial_call=True)
     # @cache.memoize())
     def update_bound_display(cur_graph, cur_graph_layout):
         bound_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
@@ -1996,63 +2021,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return True, children
         else:
             return False, None
-
-    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
-                       Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
-                       State('image_layers', 'value'),
-                       State('data-collection', 'value'),
-                       State('annotation_canvas', 'figure'),
-                       State('uploaded_dict', 'data'),
-                       Input('channel-intensity-hover', 'value'),
-                       State('canvas-layers', 'data'),
-                       State('mask-dict', 'data'),
-                       State('apply-mask', 'value'),
-                       State('mask-options', 'value'),
-                       State('toggle-canvas-annotations', 'value'),
-                       State('mask-blending-slider', 'value'),
-                       State('blending_colours', 'data'),
-                       State('alias-dict', 'data'),
-                       State('add-mask-boundary', 'value'),
-                       State('channel-order', 'data'),
-                       State('legend-size-slider', 'value'),
-                       prevent_initial_call=True)
-    def toggle_channel_intensities_on_hover(currently_selected, data_selection, cur_graph,
-                                            raw_data_dict, show_each_channel_intensity,
-                                            canvas_layers, mask_config, mask_toggle, mask_selection, show_canvas_legend,
-                                                mask_blending_level, blend_colour_dict, aliases, add_mask_boundary,
-                                            channel_order, legend_size):
-        """
-        toggle showing the individual pixel intensities on the canvas. Note that the space complexity and performance
-        of the canvas is significantly compromised if the individual channel intensity is used
-        """
-        if None not in (currently_selected, data_selection, cur_graph):
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            legend_text = ''
-            layout_return = dash.no_update
-            for image in channel_order:
-                if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
-                    label = aliases[image] if aliases is not None and image in aliases.keys() else image
-                    legend_text = legend_text + f'<span style="color:' \
-                                                f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
-                                                f'>{label}</span><br>'
-            if " show channel intensities on hover" in show_each_channel_intensity and \
-                    len(show_each_channel_intensity) > 0:
-                fig = go.Figure(cur_graph)
-                hover_stack = np.stack((raw_data_dict[exp][slide][acq][elem] for elem in currently_selected),
-                                   axis=-1)
-                fig.update(data=[{'customdata': hover_stack}])
-                new_hover = per_channel_intensity_hovertext(currently_selected)
-                fig.update_traces(hovertemplate=new_hover)
-            else:
-                del cur_graph
-                fig = get_additive_image_with_masking(currently_selected, data_selection, canvas_layers, mask_config,
-                                    mask_toggle, mask_selection, show_canvas_legend,
-                                    mask_blending_level, add_mask_boundary, legend_text, legend_size)
-                layout_return = {'autosize': True}
-            return fig, layout_return
-        else:
-            raise PreventUpdate
 
     @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('alias-dict', 'data'),
@@ -2192,3 +2160,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if n:
             return not is_open
         return is_open
+
+    # @dash_app.callback(Output('canvas-div-holder', 'children', allow_duplicate=True),
+    #                    Input('channel-intensity-hover', 'value'),
+    #                    Input('add-cell-id-mask-hover', 'value'),
+    #                    prevent_initial_call=True)
+    # def wrap_canvas_when_using_hovertext(show_channel_intensity_hover, show_mask_hover):
+    #     """
+    #     Wrap the canvas in a loading screen if hover text is used, as it severely slows down the speed of callbacks
+    #     """
+    #     if ' show mask ID on hover' in show_mask_hover or \
+    #             " show channel intensities on hover" in show_channel_intensity_hover:
+    #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=True)]
+    #     else:
+    #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=False)]

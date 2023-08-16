@@ -1,3 +1,4 @@
+import numpy as np
 import pytest
 
 from ccramic.app.utils.cell_level_utils import *
@@ -111,3 +112,11 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
     counts = measurements["ccramic_cell_annotation"].value_counts(normalize=True)
     assert len(dict(counts)) == 3
     assert 'new_cell_type_2' in dict(counts).keys()
+
+
+def test_convert_basic_array_to_hovertemplate():
+    array = np.zeros((1000, 1000))
+    assert len(array.shape) == 2
+    template = process_mask_array_for_hovertemplate(array)
+    assert template.shape[2] == 1
+    assert np.unique(template) == ['None']

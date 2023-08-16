@@ -312,7 +312,7 @@ def init_dashboard(server, authentic_id):
                                             "particularly for large images."),
                                     html.Br(),
                                     html.H6("Adjust legend/scale size"),
-                                    dcc.Slider(6, 24, 2, value=12,
+                                    dcc.Slider(6, 24, 1, value=12,
                                               id='legend-size-slider',
                                               marks={6: 'small', 12: 'default', 24: 'large'}),
                                     html.Br(),
@@ -345,7 +345,16 @@ def init_dashboard(server, authentic_id):
                                                 "margin-left": "35px",
                                                 "margin-top": "10px"}),
                                             title="Use this feature only if the cell "
-                                                  "boundary was not derived on import")],
+                                                  "boundary was not derived on import"),
+                                        dcc.Checklist(
+                                            options=[
+                                                ' show mask ID on hover'],
+                                            value=[],
+                                            id="add-cell-id-mask-hover",
+                                            style={
+                                                "margin-left": "35px",
+                                                "margin-top": "10px"}),
+                                    ],
                                         style={"display": "flex"})])
                                 ]),
                                 dbc.Tab(label="Region/Presets",
