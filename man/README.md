@@ -34,7 +34,22 @@ will maintain the ratio of the annotations to the canvas borders.
 ## Q: When I expand the download button and click the links, nothing happens.
 
 Certain browsers may block unauthorized downloads from unprotected
-sites such as local https addresses by default, or  from certain ports.
+sites such as local https addresses by default, or from certain ports.
 To bypass these restrictions, right-click on the link and select `Copy link address`.
 Open up a new tab and paste the file path address and click Enter. This should allow
 the download to proceed as expected.
+
+The user may also choose to modify the security settings for the browser to accommodate either the local address or port (5000) being used,
+but this is heavily dependent on the individual browser configurations for each computer.
+
+## Q: The proportions of my image look strange, and/or the annotations (legend, scalebar) are not visible.
+
+ccramic attempts to find the aspect ratio for each ROI and fit the canvas area viewport appropriately to
+optimize these dimensions. Currently ccramic uses 75% of the screen width for hte canvas, and the other 25%
+for the sidebar. Occasionally, ROIs with more extreme aspect ratios (i.e. ones that deviate noticeably from 1) will
+produce strange visualizations (i.e. cropping at the sides, spilling over into the sidebar, etc.)
+
+The user may choose to select the `Auto-fit` canvas button in order to try to repeat the auto-fitting procedure. Alternatively,
+if the image appears too small or large compared to the window view, the user can use the `Canvas size` slider to make the image
+appear smaller or larger in the provided area. Lastly, the size of the scalebar an legend can be changed under
+`Advanced canvas options -> Configuration -> Adjust legend/scale size`

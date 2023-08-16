@@ -674,9 +674,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             exp, slide, acq = split[0], split[1], split[2]
             legend_text = ''
             for image in channel_order:
-                if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
-                    label = aliases[image] if aliases is not None and image in aliases.keys() else image
-                    legend_text = legend_text + f'<span style="color:' \
+                # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
+                label = aliases[image] if aliases is not None and image in aliases.keys() else image
+                legend_text = legend_text + f'<span style="color:' \
                                                 f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
                                                 f'>{label}</span><br>'
             try:
@@ -1049,9 +1049,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # make sure the placement is min 0.05 and max 0.1
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
                 for image in channel_order:
-                    if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
-                        label = aliases[image] if aliases is not None and image in aliases.keys() else image
-                        legend_text = legend_text + f'<span style="color:' \
+                    # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
+                    label = aliases[image] if aliases is not None and image in aliases.keys() else image
+                    legend_text = legend_text + f'<span style="color:' \
                                                     f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
                                                     f'>{label}</span><br>'
 
@@ -1303,32 +1303,53 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input('annotation-canvas-size', 'value'),
         State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),
-        Input('autosize-canvas', 'n_clicks'))
-    def update_canvas_size(value, current_canvas, cur_graph_layout, nclicks):
+        Input('autosize-canvas', 'n_clicks'),
+        State('data-collection', 'value'),
+        State('uploaded_dict', 'data'),
+        Input('image_layers', 'value'),
+        State('annotation_canvas', 'style'),
+        prevent_initial_call=True)
+    def update_canvas_size(value, current_canvas, cur_graph_layout, nclicks, data_selection,
+                           image_dict, add_layer, cur_sizing):
         zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
 
         # only update the resolution if not using zoom or panning
-        if cur_graph_layout is not None and all([elem not in cur_graph_layout for elem in zoom_keys]) and \
+        if all([elem not in cur_graph_layout for elem in zoom_keys]) and \
                 'dragmode' not in cur_graph_layout.keys() and 'shapes' not in cur_graph_layout.keys() and \
-                'data' in current_canvas and nclicks is not None and nclicks > 0:
+                add_layer is not None and value is not None:
+            try:
+                split = split_string_at_pattern(data_selection)
+                exp, slide, acq = split[0], split[1], split[2]
+
+                first_image = list(image_dict[exp][slide][acq].keys())[0]
+                first_image = image_dict[exp][slide][acq][first_image]
+                aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
+            except (KeyError, AttributeError):
+                aspect_ratio = 1
 
             # if the current canvas is not None, update using the aspect ratio
             # otherwise, use aspect of 1
-            try:
-                if current_canvas is not None and 'range' in current_canvas['layout']['xaxis'] and \
+            if aspect_ratio is None and current_canvas is not None and \
+                    'range' in current_canvas['layout']['xaxis'] and \
                     'range' in current_canvas['layout']['yaxis']:
+                try:
                     # aspect ratio is width divided by height
-                    aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                    if aspect_ratio is None:
+                        aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
                                int(current_canvas['layout']['yaxis']['range'][0])
-                else:
+                except (KeyError, ZeroDivisionError):
                     aspect_ratio = 1
-            except (KeyError, ZeroDivisionError):
-                return {'width': f'{value}vh', 'height': f'{value}vh'}
 
-            if value is not None:
-                return {'width': f'{value * aspect_ratio}vh', 'height': f'{value}vh'}
-            else:
-                return {'width': f'{value}vh', 'height': f'{value}vh'}
+            width = value * aspect_ratio
+            height = value
+            try:
+                if cur_sizing['height'] != f'{height}vh' and cur_sizing['width'] != f'{width}vh':
+                    return {'width': f'{width}vh', 'height': f'{height}vh'}
+                else:
+                    print("already same")
+                    raise PreventUpdate
+            except KeyError:
+                return {'width': f'{width}vh', 'height': f'{height}vh'}
         # elif value is not None and current_canvas is None:
         #     return {'width': f'{value}vh', 'height': f'{value}vh'}
         else:
