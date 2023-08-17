@@ -29,6 +29,18 @@ def get_min_max_values_from_zoom_box(coord_dict):
     except AssertionError:
         return None
 
+def get_min_max_values_from_rect_box(coord_dict):
+    try:
+        assert all([elem in coord_dict.keys() for elem in \
+                    ['x0', 'x1', 'y0', 'y1']])
+        x_min = min(coord_dict['x0'], coord_dict['x1'])
+        x_max = max(coord_dict['x0'], coord_dict['x1'])
+        y_min = min(coord_dict['y0'], coord_dict['y1'])
+        y_max = max(coord_dict['y0'], coord_dict['y1'])
+        return x_min, x_max, y_min, y_max
+    except AssertionError:
+        return None
+
 def convert_mask_to_cell_boundary(mask, outline_color=255, greyscale=True):
     """
     Convert a mask array with filled in cell masks to an array with drawn boundaries with black interiors of cells
@@ -111,7 +123,7 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
 def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=None,
                                                     annotation_column="ccramic_cell_annotation",
                                                     values_dict=None,
-                                                    cell_type=None):
+                                                    cell_type=None, box_type="zoom"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     by coordinate bounding box
@@ -123,7 +135,12 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
         coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
 
     try:
-        x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(values_dict)
+        if box_type == "zoom":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(values_dict)
+        elif box_type == "rect":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(values_dict)
+        else:
+            raise KeyError
         measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] >=
                                                         float(x_min)) &
                                                (measurements[str(f"{coord_dict['x_max']}")] <=

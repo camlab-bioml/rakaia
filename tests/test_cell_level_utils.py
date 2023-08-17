@@ -113,6 +113,22 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
     assert len(dict(counts)) == 3
     assert 'new_cell_type_2' in dict(counts).keys()
 
+def test_basic_cell_annotation_col_pop_2(get_current_dir):
+    """
+    Same test as above, but instead from a rectangle instead of zoom
+    """
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+    bounds = {'x0': 826, 'x1': 836, 'y0': 12, 'y1': 21}
+
+    measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds,
+                                                                   cell_type="new_cell_type", box_type="rect")
+    assert list(measurements["ccramic_cell_annotation"][(measurements["x_max"] == 836) &
+          (measurements["y_max"] == 20)]) == ['new_cell_type']
+    assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 1
+    counts = measurements["ccramic_cell_annotation"].value_counts(normalize =True)
+    assert len(dict(counts)) == 2
+    assert 'None' in dict(counts).keys()
+
 
 def test_convert_basic_array_to_hovertemplate():
     array = np.zeros((1000, 1000))

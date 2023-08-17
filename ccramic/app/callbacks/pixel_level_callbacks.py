@@ -648,7 +648,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('add-cell-id-mask-hover', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def render_canvas_from_layer_mask__hover_change(canvas_layers, currently_selected,
+    def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
                                                 data_selection, blend_colour_dict, aliases,
                                                 cur_graph, cur_graph_layout, raw_data_dict,
                                                 show_each_channel_intensity,
@@ -683,7 +683,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 image = sum([canvas_layers[exp][slide][acq][elem].astype(np.float32) for \
                              elem in currently_selected if \
                              elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-                image = np.clip(image, 0, 255).astype(np.uint8)
+                image = np.clip(image, 0, 255)
                 if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
                     if image.shape[0] == mask_config[mask_selection]["array"].shape[0] and \
                             image.shape[1] == mask_config[mask_selection]["array"].shape[1]:
@@ -1346,7 +1346,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 if cur_sizing['height'] != f'{height}vh' and cur_sizing['width'] != f'{width}vh':
                     return {'width': f'{width}vh', 'height': f'{height}vh'}
                 else:
-                    print("already same")
                     raise PreventUpdate
             except KeyError:
                 return {'width': f'{width}vh', 'height': f'{height}vh'}
@@ -1364,7 +1363,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('data-collection', 'value'),
         State('alias-dict', 'data'),
         Input("compute-region-statistics", "n_clicks"),
-        Input("area-stats-collapse", "is_open"))
+        Input("area-stats-collapse", "is_open"),
+        prevent_initial_call=True)
     # @cache.memoize())
     def update_area_information(graph, graph_layout, upload, layers, data_selection, aliases_dict, nclicks,
                                 stats_table_open):
@@ -2079,9 +2079,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         if None not in (cur_graph_layout, data_selection) and len(cur_graph_layout) > 0 and len(current_blend) > 0:
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-            # TODO: Imp: for now, only use rectangles not in a shape or path
-            # in the future, add the ability to annotate using closed shapes
-            if all([elem in cur_graph_layout for elem in zoom_keys]):
+            if all([elem in cur_graph_layout for elem in zoom_keys]) or 'shapes' in cur_graph_layout and \
+                    len(cur_graph_layout['shapes']) > 0:
                 return False
             else:
                 return True
@@ -2121,19 +2120,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
             # IMP: convert the dictionary to a sorted tuple to use as a key
             # https://stackoverflow.com/questions/1600591/using-a-python-dictionary-as-a-key-non-nested
-            region_type = None
-            if isinstance(canvas_layout, dict):
-                dict_tuple = tuple(sorted(canvas_layout.items()))
-                region_type = "rect"
-            elif isinstance(canvas_layout, list):
-                dict_tuple = tuple(canvas_layout)
-                region_type = "path"
-            if dict_tuple not in annotations_dict[data_selection].keys():
-                annotations_dict[data_selection][dict_tuple] = {}
-
-            annotations_dict[data_selection][dict_tuple] = {'title': annotation_title, 'body': annotation_body,
+            annotation_list = {}
+            # Option 1: if zoom is used
+            if isinstance(canvas_layout, dict) and 'shapes' not in canvas_layout:
+                annotation_list[tuple(sorted(canvas_layout.items()))] = "zoom"
+            # Option 2: if a shape is drawn on the canvas
+            elif 'shapes' in canvas_layout and isinstance(canvas_layout, dict):
+                # only get the shapes that are a rect or path, the others are canvas annotations
+                for shape in canvas_layout['shapes']:
+                    if shape['type'] == 'path':
+                        annotation_list[shape['path']] = 'path'
+                    elif shape['type'] == "rect":
+                        key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}
+                        annotation_list[tuple(sorted(key.items()))] = "rect"
+            for key, value in annotation_list.items():
+                if key not in annotations_dict[data_selection].keys():
+                    annotations_dict[data_selection][key] = {}
+                    annotations_dict[data_selection][key] = {'title': annotation_title, 'body': annotation_body,
                                                                'cell_type': annotation_cell_type, 'imported': False,
-                                                            'type': region_type}
+                                                            'type': value}
             return Serverside(annotations_dict)
         else:
             raise PreventUpdate

@@ -6,7 +6,7 @@ from dash import ctx
 from ..parsers.cell_level_parsers import *
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
-import dash_core_components as dcc
+from dash import dcc
 
 def init_cell_level_callbacks(dash_app):
     """
@@ -151,16 +151,41 @@ def init_cell_level_callbacks(dash_app):
             if data_selection in annotations.keys() and len(annotations[data_selection]) > 0:
                 quantification_frame = pd.DataFrame(quantification_frame)
                 for annotation in annotations[data_selection].keys():
+                    if not annotations[data_selection][annotation]['imported']:
                     # import only the new annotations that are rectangles (for now) and are not validated
-                    if annotations[data_selection][annotation]['type'] == "rect" and not \
-                            annotations[data_selection][annotation]['imported']:
-                        quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
+                        if annotations[data_selection][annotation]['type'] == "zoom":
+                            quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
                                                                                                  values_dict=dict(
                                                                                                      annotation),
                                                                                                  cell_type=annotations[
                                                                                                      data_selection][
                                                                                                      annotation][
                                                                                                      'cell_type'])
+
+                        elif annotations[data_selection][annotation]['type'] == "path":
+                            # TODO; for now, the svgpath will use a convex envelope for the annotation
+                            # in the future, will want to convert this to pixel level membership (i.e. if 80%
+                            # or more of the pixels for a cell are in the svgpath, include the cell)
+                            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
+                            val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
+                                        'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
+                            quantification_frame = populate_cell_annotation_column_from_bounding_box(
+                                quantification_frame,
+                                values_dict=val_dict,
+                                cell_type=annotations[
+                                    data_selection][
+                                    annotation][
+                                    'cell_type'])
+                        elif annotations[data_selection][annotation]['type'] == "rect":
+                            quantification_frame = populate_cell_annotation_column_from_bounding_box(
+                                quantification_frame,
+                                values_dict=dict(
+                                    annotation),
+                                cell_type=annotations[
+                                    data_selection][
+                                    annotation][
+                                    'cell_type'],
+                            box_type="rect")
                         annotations[data_selection][annotation]['imported'] = True
                 return quantification_frame.to_dict(orient="records"), Serverside(annotations)
             else:

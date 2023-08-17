@@ -98,7 +98,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
         image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
                  elem in currently_selected if \
                  elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-        image = np.clip(image, 0, 255).astype(np.uint8)
+        image = np.clip(image, 0, 255)
         if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
             if image.shape[0] == mask_config[mask_selection].shape[0] and \
                 image.shape[1] == mask_config[mask_selection].shape[1]:
@@ -113,7 +113,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
                         convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
                     image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
         default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-        fig = px.imshow(Image.fromarray(image))
+        fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
         image_shape = image.shape
         if show_canvas_legend:
             x_axis_placement = 0.00001 * image_shape[1]
