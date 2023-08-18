@@ -194,7 +194,7 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
                 for acq in upload_dict[exp][slide].keys():
                     for channel in upload_dict[exp][slide][acq].keys():
                         if channel == channel_name:
-                            string = f"{exp}_{slide}_{acq}"
+                            string = f"{exp}+++{slide}+++{acq}"
                             if upload_dict[exp][slide][acq][channel] is not None:
                                 images[string] = upload_dict[exp][slide][acq][channel]
     return images

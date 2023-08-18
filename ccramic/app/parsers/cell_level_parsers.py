@@ -1,3 +1,4 @@
+import dash
 import pandas as pd
 from dash.exceptions import PreventUpdate
 import os
@@ -56,16 +57,16 @@ def validate_incoming_measurements_csv(measurements_csv, current_image=None, val
     information columns
     """
     if not all([column in measurements_csv.columns for column in required_columns]):
-        return None
+        return None, None
     # check the measurement CSV against an image to ensure that the dimensions match
     elif validate_with_image and current_image is not None:
         if float(current_image.shape[0]) != float(measurements_csv['x_max'].max()) or \
             float(current_image.shape[1]) != float(measurements_csv['y_max'].max()):
-            return None
+            return measurements_csv, "Warning: the dimensions of the current ROI do not match the quantification sheet."
         else:
-            return measurements_csv
+            return measurements_csv, None
     else:
-        return measurements_csv
+        return measurements_csv, None
 
 def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999,
                                                   drop_cols=False):
@@ -100,19 +101,26 @@ def get_quantification_filepaths_from_drag_and_drop(status):
         raise PreventUpdate
 
 
-def parse_and_validate_measurements_csv(session_dict, use_percentile=False):
+def parse_and_validate_measurements_csv(session_dict, error_config=None, image_to_validate=None,
+                                        use_percentile=False):
     """
     Validate the measurements CSV and return a clean version
     Use percentile filtering for removing hot pixel cells
     """
     if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-        quantification_worksheet = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
-                                                                      validate_with_image=False)
+        quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
+                                            current_image=image_to_validate, validate_with_image=True)
         # TODO: establish where to use the percentile filtering on the measurements
         measurements_return = filter_measurements_csv_by_channel_percentile(
             quantification_worksheet).to_dict(orient="records") if use_percentile else \
             quantification_worksheet.to_dict(orient="records")
-        return measurements_return, list(pd.read_csv(session_dict['uploads'][0]).columns)
+        warning_return = dash.no_update
+        if warning is not None:
+            if error_config is None:
+                error_config = {"error": None}
+            error_config["error"] = warning
+            warning_return = error_config
+        return measurements_return, list(pd.read_csv(session_dict['uploads'][0]).columns), warning_return
     else:
         raise PreventUpdate
 
@@ -141,7 +149,8 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                         convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
                 cur_mask_dict[chosen_mask_name] = {"array": mask_import, "boundary": boundary_import,
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
-                                                                                    page.asarray().shape[1], 1))}
+                                                                                    page.asarray().shape[1], 1)),
+                                                   "raw": page.asarray()}
         return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
     else:
         raise PreventUpdate

@@ -1562,19 +1562,31 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if gallery_data is not None:
                 row_children = []
                 zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-
+                views = None
+                if data_selection is not None:
+                    split = split_string_at_pattern(data_selection)
+                    exp, slide, acq = split[0], split[1], split[2]
+                    # maintain the original order of channels that is dictated by the metadata
                 # decide if channel view or ROI view is selected
                 # channel view
                 blend_return = dash.no_update
                 if view_by_channel and channel_selected is not None:
                     views = get_all_images_by_channel_name(gallery_data, channel_selected)
-                elif data_selection is not None:
-                    split = split_string_at_pattern(data_selection)
-                    exp, slide, acq = split[0], split[1], split[2]
-                    # maintain the original order of channels that is dictated by the metadata
-                    views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
+                    if toggle_scaling_gallery:
+                        try:
+                            if blend_colour_dict[exp][slide][acq][channel_selected]['x_lower_bound'] is None:
+                                blend_colour_dict[exp][slide][acq][channel_selected]['x_lower_bound'] = 0
+                            if blend_colour_dict[exp][slide][acq][channel_selected]['x_upper_bound'] is None:
+                                blend_colour_dict[exp][slide][acq][channel_selected]['x_upper_bound'] = \
+                                get_default_channel_upper_bound_by_percentile(
+                                    gallery_data[exp][slide][acq][channel_selected])
+                            views = {key: apply_preset_to_array(resize_for_canvas(value),
+                                                        blend_colour_dict[exp][slide][acq][channel_selected]) for \
+                                key, value in views.items()}
+                        except KeyError:
+                            pass
                 else:
-                    views = None
+                    views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
 
                 if views is not None:
                     for key, value in views.items():

@@ -22,10 +22,22 @@ def init_cell_level_callbacks(dash_app):
 
     @dash_app.callback(Output('quantification-dict', 'data'),
                        Output('cell-type-col-designation', 'options'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('session_config_quantification', 'data'),
+                       State('session_alert_config', 'data'),
+                       State('uploaded_dict', 'data'),
+                       State('data-collection', 'value'),
                        prevent_initial_call=True)
-    def populate_quantification_table_from_upload(session_dict):
-        return parse_and_validate_measurements_csv(session_dict)
+    def populate_quantification_table_from_upload(session_dict, error_config, upload_dict, data_selection):
+        if None not in (data_selection, upload_dict):
+            split = split_string_at_pattern(data_selection)
+            exp, slide, acq = split[0], split[1], split[2]
+            first_image = list(upload_dict[exp][slide][acq].keys())[0]
+            image_for_validation = upload_dict[exp][slide][acq][first_image]
+        else:
+            image_for_validation = None
+        return parse_and_validate_measurements_csv(session_dict, error_config=error_config,
+                                                   image_to_validate=image_for_validation)
 
     @dash_app.callback(Output('quantification-bar-full', 'figure'),
                        Input('quantification-dict', 'data'),
@@ -139,9 +151,13 @@ def init_cell_level_callbacks(dash_app):
         Input("annotations-dict", "data"),
         State('quantification-dict', 'data'),
         State('data-collection', 'value'),
+        State('mask-dict', 'data'),
+        State('apply-mask', 'value'),
+        State('mask-options', 'value'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True))
-    def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection):
+    def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
+                                                      mask_config, mask_toggle, mask_selection):
         """
         Add a region annotation to the cells of a quantification data frame
         """
@@ -155,37 +171,32 @@ def init_cell_level_callbacks(dash_app):
                     # import only the new annotations that are rectangles (for now) and are not validated
                         if annotations[data_selection][annotation]['type'] == "zoom":
                             quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
-                                                                                                 values_dict=dict(
-                                                                                                     annotation),
-                                                                                                 cell_type=annotations[
-                                                                                                     data_selection][
-                                                                                                     annotation][
-                                                                                                     'cell_type'])
+                            values_dict=dict(annotation),cell_type=annotations[data_selection][annotation]['cell_type'])
 
                         elif annotations[data_selection][annotation]['type'] == "path":
-                            # TODO; for now, the svgpath will use a convex envelope for the annotation
-                            # in the future, will want to convert this to pixel level membership (i.e. if 80%
-                            # or more of the pixels for a cell are in the svgpath, include the cell)
-                            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
-                            val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
+                            # TODO: decide which method of annotation to use
+                            # if a mask is enabled, use the mask ID threshold method
+                            # otherwise, make a convex envelope bounding box
+
+                            # option 1: mask ID threshold
+                            if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
+                                cells_included = get_cells_in_svg_boundary_by_mask_percentage(
+                                    mask_array= mask_config[mask_selection]["raw"], svgpath=annotation)
+                                quantification_frame = populate_cell_annotation_column_from_cell_id_list(
+                                                quantification_frame, cell_list=list(cells_included.keys()),
+                                    cell_type=annotations[data_selection][annotation]['cell_type'])
+                            # option 2: convex envelope bounding box
+                            else:
+                                x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
+                                val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
                                         'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
-                            quantification_frame = populate_cell_annotation_column_from_bounding_box(
-                                quantification_frame,
-                                values_dict=val_dict,
-                                cell_type=annotations[
-                                    data_selection][
-                                    annotation][
-                                    'cell_type'])
+                                quantification_frame = populate_cell_annotation_column_from_bounding_box(
+                                quantification_frame, values_dict=val_dict,
+                                    cell_type=annotations[data_selection][annotation]['cell_type'])
                         elif annotations[data_selection][annotation]['type'] == "rect":
                             quantification_frame = populate_cell_annotation_column_from_bounding_box(
-                                quantification_frame,
-                                values_dict=dict(
-                                    annotation),
-                                cell_type=annotations[
-                                    data_selection][
-                                    annotation][
-                                    'cell_type'],
-                            box_type="rect")
+                                quantification_frame, values_dict=dict(annotation),
+                                cell_type=annotations[data_selection][annotation]['cell_type'], box_type="rect")
                         annotations[data_selection][annotation]['imported'] = True
                 return quantification_frame.to_dict(orient="records"), Serverside(annotations)
             else:

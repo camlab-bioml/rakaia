@@ -11,16 +11,25 @@ import dash_extensions
 
 def test_validation_of_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
-    assert measurements_csv.equals(validate_incoming_measurements_csv(measurements_csv))
+    valid, err = validate_incoming_measurements_csv(measurements_csv)
+    assert measurements_csv.equals(valid)
+    assert valid is not None
+    assert err is None
 
     measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area'], axis=1)
-    assert validate_incoming_measurements_csv(measurements_bad) is None
+    valid_bad, err = validate_incoming_measurements_csv(measurements_bad)
+    assert valid_bad is None
+    assert err is None
 
     fake_image = np.empty((1490, 93, 3))
-    assert validate_incoming_measurements_csv(measurements_csv, current_image=fake_image) is not None
+    valid, err = validate_incoming_measurements_csv(measurements_csv, current_image=fake_image)
+    assert valid is not None
+    assert err is None
 
     fake_image_bad_dims = np.empty((1490, 92, 3))
-    assert validate_incoming_measurements_csv(measurements_csv, current_image=fake_image_bad_dims) is None
+    not_valid, err = validate_incoming_measurements_csv(measurements_csv, current_image=fake_image_bad_dims)
+    assert not_valid is not None
+    assert err is not None
 
 
 def test_filtering_channel_measurements_by_percentile(get_current_dir):
@@ -42,7 +51,7 @@ def test_parsing_quantification_filepaths():
 
 def test_parsing_incoming_measurements_csv(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
-    validated_measurements, cols = parse_and_validate_measurements_csv(measurements_dict)
+    validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
     assert isinstance(validated_measurements, list)
     for elem in validated_measurements:
         assert isinstance(elem, dict)

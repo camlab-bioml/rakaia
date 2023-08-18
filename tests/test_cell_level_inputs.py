@@ -35,7 +35,8 @@ def test_bar_graph_from_measurements_csv_with_subsetting(get_current_dir):
 def test_umap_plot(get_current_dir):
     umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
-    validated_measurements = parse_and_validate_measurements_csv(measurements_dict)
+    validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
+    assert isinstance(warning, dash._callback.NoUpdate)
     umap_plot = generate_umap_plot(umap_dict, None, validated_measurements, None)
     assert isinstance(umap_plot, plotly.graph_objs._figure.Figure)
     assert umap_plot['layout']['uirevision']
@@ -44,7 +45,7 @@ def test_umap_plot(get_current_dir):
 
 def test_expression_plot_from_interactive_triggers(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
-    validated_measurements, cols = parse_and_validate_measurements_csv(measurements_dict)
+    validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
     umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
     zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
     interactive_umap = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, {}, "mean",

@@ -156,6 +156,21 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
 
     return measurements
 
+def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
+                                                    annotation_column="ccramic_cell_annotation",
+                                                    cell_identifier="cell_id",
+                                                    cell_type=None):
+    """
+    Populate a cell annotation column in the measurements data frame using numpy conditional searching
+    with a list of cell IDs
+    """
+    if annotation_column not in measurements.columns:
+        measurements[annotation_column] = "None"
+
+    measurements[annotation_column] = np.where(measurements[cell_identifier].isin(cell_list), cell_type,
+                                               measurements[annotation_column])
+    return measurements
+
 
 def process_mask_array_for_hovertemplate(mask_array):
     """
@@ -168,3 +183,23 @@ def process_mask_array_for_hovertemplate(mask_array):
     mask_array[mask_array == '0.0'] = 'None'
     mask_array[mask_array == '0'] = 'None'
     return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))
+
+def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85):
+    """
+    Derive a list of cell IDs from a mask that are contained within an svg path based on a threshold
+    For example, with a threshold of 0.85, one would include a cell ID if 85% of the cell's pixels are
+    contained within the svg path
+    Returns a dict with the cell ID from the mask and its percentage
+    """
+    bool_inside = path_to_mask(svgpath, (mask_array.shape[0], mask_array.shape[1]))
+    uniques, counts = np.unique(mask_array[bool_inside], return_counts=True)
+    channel_index = 0
+    cells_included = {}
+    for cell in list(uniques):
+        if int(cell) > 0:
+            where_is_cell = np.where(mask_array == cell)
+            percent = counts[channel_index] / len(mask_array[where_is_cell])
+            if percent >= threshold:
+                cells_included[cell] = percent
+        channel_index += 1
+    return cells_included
