@@ -12,6 +12,9 @@ from tifffile import imwrite
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
+import tkinter as tk
+from tkinter import filedialog
+from pathlib import Path
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -28,6 +31,37 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         # IMP: ensure that the progress is up to 100% in the float before beginning to process
         if filenames and float(status.progress) == 1.0:
             return filenames
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
+                       Input('local-dialog-file', 'n_clicks'),
+                       State('session_config', 'data'),
+                       prevent_initial_call=True)
+    def read_from_local_dialog_box(nclicks, cur_session):
+        if nclicks > 0:
+            root = tk.Tk()
+            root.wm_geometry('1000x1000')
+            root.attributes('-fullscreen', True)
+            root.columnconfigure([1, 2, 3], weight=1, pad=10)
+            root.rowconfigure([1, 2], weight=1, pad=10)
+            root.attributes('-topmost', True)
+            root.resizable(False, False)
+            root.state('iconic')
+            label = tk.Label(root, text="", font=('Courier 13 bold'))
+            label.pack()
+            root.withdraw()
+            file_directory = filedialog.askopenfilename(initialdir=str(Path.home()))
+            session_config = cur_session if cur_session is not None and \
+                                        len(cur_session['uploads']) > 0 else {'uploads': []}
+            if file_directory is not None and len(file_directory) > 0:
+                if file_directory not in session_config["uploads"]:
+                    session_config["uploads"].append(file_directory)
+                root.destroy()
+                return session_config
+            else:
+                root.destroy()
+                raise PreventUpdate
         else:
             raise PreventUpdate
 

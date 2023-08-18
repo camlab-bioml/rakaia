@@ -110,6 +110,9 @@ def init_dashboard(server, authentic_id):
                         dbc.Button("Add file by path", id="add-file-by-path",
                         className="mb-3", color="primary", n_clicks=0,
                         style={"margin-top": "10px"}),
+                        dbc.Button("Open local dialog", id="local-dialog-file",
+                                             className="mb-3", color="primary", n_clicks=0,
+                                             style={"margin-top": "10px"}),
                                   html.Br(),
                         html.Div([html.Span([
                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-info",
