@@ -7,16 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.6.0] - 2023-08-18
+## [0.6.0] - 2023-08-21
 
 ### Changed
 
 - Auto sizing of the canvas now happens automatically on an ROI dimension switch
+instead of manually
 
 ### Added
 
 - Ability to add the ccramic cell type annotation to a quantification data frame from a
-region annotation: supports zoom, rectangles, and open form (non-convex) shapes
+region annotation: supports zoom, rectangles, and open form (non-convex) shapes #48
 - Added slider to change the size of the annotations (scalebar value and legend text)
 - Add toggle for custom hovertext over a mask, adding the mask/cell ID to the hover #51
 
@@ -24,6 +25,8 @@ region annotation: supports zoom, rectangles, and open form (non-convex) shapes
 
 - Edits to callbacks on channel switching to avoid running callbacks when the channel
 blend parameters haven't changed (happens when switching between channels in the mod menu)
+- Fix the centering of the scalebar value over the scalebar and edit default scalebar size and
+ratio of scale value to legend size
 
 ### Changed
 
