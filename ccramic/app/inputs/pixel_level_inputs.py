@@ -42,18 +42,21 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
 
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
-def wrap_canvas_in_loading_screen_for_large_images(image, size_threshold=3000):
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
+    or
+    if hovertext is used (slows down the canvas considerably)
     """
-    if image.shape[0] > size_threshold or image.shape[1] > size_threshold:
+    # conditions for wrapping the canvas
+    large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
+    if large_image or hovertext:
         return dcc.Loading(render_default_annotation_canvas(),
                                      type="default", fullscreen=False)
     else:
         return render_default_annotation_canvas()
 
-
-def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value=None):
+def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -63,20 +66,13 @@ def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value
         scale_val = scale_value
     scale_annot = str(scale_val) + "μm"
     scale_text = f'<span style="color: white">{scale_annot}</span><br>'
-    # this is the middle point of the scale bar
-    # add shift based on the image shape
-    shift = math.log10(image_shape[1]) - 3
-    midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
-    # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
-    midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
-    font_size = 10 if image_shape[1] < 1000 else 12
-    midpoint = midpoint if font_size == 12 else 0.05
     figure = go.Figure(figure)
+    # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
     figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
-                       x=midpoint,
-                       # xanchor='right',
+                       x=0.0875,
+                       xanchor='center',
                        y=0.06,
                        # yanchor='bottom',
                        showarrow=False)
@@ -85,7 +81,7 @@ def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value
 
 def get_additive_image_with_masking(currently_selected, data_selection, canvas_layers, mask_config,
                                     mask_toggle, mask_selection, show_canvas_legend,
-                                    mask_blending_level, add_mask_boundary, legend_text):
+                                    mask_blending_level, add_mask_boundary, legend_text, annotation_size=12):
     """
     Generate an additiive image from one or more channel arrays. Optionally, project a mask on top of the additive image
     using a specified blend ratio with cv2
@@ -96,7 +92,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
         image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
                  elem in currently_selected if \
                  elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-        image = np.clip(image, 0, 255).astype(np.uint8)
+        image = np.clip(image, 0, 255)
         if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
             if image.shape[0] == mask_config[mask_selection].shape[0] and \
                 image.shape[1] == mask_config[mask_selection].shape[1]:
@@ -111,7 +107,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
                         convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
                     image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
         default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-        fig = px.imshow(Image.fromarray(image))
+        fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
         image_shape = image.shape
         if show_canvas_legend:
             x_axis_placement = 0.00001 * image_shape[1]
@@ -119,10 +115,10 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
             x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
             # if the current graph already has an image, take the existing layout and apply it to the new figure
             # otherwise, set the uirevision for the first time
-            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
+            fig = add_scale_value_to_figure(fig, image_shape, font_size=annotation_size)
 
             if legend_text != '' and show_canvas_legend:
-                fig.add_annotation(text=legend_text, font={"size": 15}, xref='paper',
+                fig.add_annotation(text=legend_text, font={"size": (annotation_size + 3)}, xref='paper',
                                yref='paper',
                                x=(1 - x_axis_placement),
                                # xanchor='right',

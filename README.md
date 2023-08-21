@@ -20,6 +20,7 @@ ccramic can be installed locally without an environment or container,
 but this is not recommended for dependency management:
 
 ```
+pip install -r requirements.txt
 pip install .
 ```
 
@@ -32,18 +33,12 @@ select the relevant operating system.
 Once conda is installed:
 
 ```
-conda env create -f envs/environment.yml
+conda create --name ccramic python=3.9
 conda activate ccramic
+# cd ccramic
+pip install -r requirements.txt
 pip install .
 ```
-
-The `requirements.txt` file can also be used to install the required dependencies via pip:
-
-```
-pip install -r requirements.txt
-```
-
-Note that with the conda installation as above, installing from the `requirements.txt` should not be necessary.
 
 ## Updating local installations
 
@@ -83,11 +78,16 @@ ccramic can be run using Docker with the following commands (requires an install
 
 
 ```
-docker build -t ccramic envs/
+docker build -t ccramic .
 docker run -d -p 5000:5000 ccramic:latest ccramic
 ```
 
 Navigate to the local address `http://0.0.0.0:5000/`
+
+## Documentation
+
+The official documentation for ccramic is in progress. For some FAQ,
+visit [the FAQ documentation](man/README.md)
 
 ## For developers
 
@@ -102,10 +102,9 @@ Installing an editable version through pip is also required to run unit tests:
 
 ```
 pytest --headless --cov ccramic
-
 ```
 
-COnversely, without app installation:
+Conversely, without app installation:
 
 ```
 python ccramic/app/wsgi.py

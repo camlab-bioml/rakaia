@@ -329,3 +329,43 @@ def test_basic_channel_ordering():
     assert channel_order == ['channel_2', 'channel_1', 'channel_3', 'channel_4']
     channel_order = set_channel_list_order(1, rowdata, channel_order, [], aliases, "image_layers")
     assert len(channel_order) == 0
+
+def test_basic_svgpath_pixel_mask():
+    array = np.zeros((600, 600))
+    svgpath = "M222.86561906127866,131.26498798809564L232.88973251102587,145.5851500591631L235.75376492523935," \
+              "151.8860213704328L235.467361683818,158.18689268170246L231.74411954534048,161.33732833733728L224.58403850980676," \
+              "162.4829413030227L212.84150561153143,161.33732833733728L204.82221485173366,157.3276829574384L201.67177919609884," \
+              "152.45882785327547L199.6669565061494,145.0123435763204L199.95335974757074,138.99787550647207L202.24458567894152," \
+              "135.84743985083725L202.5309889203629,133.55621391946644L202.5309889203629,133.84261716088778Z"
+    path_to_coords = path_to_indices(svgpath)
+    assert list(list(path_to_coords)[0]) == [223, 131]
+    bool_inside = path_to_mask(svgpath, array.shape)
+    x_inside = np.where(bool_inside == True)[1]
+    y_inside = np.where(bool_inside == True)[0]
+    assert np.min(x_inside) == 200
+    assert np.max(x_inside) == 236
+    assert np.min(y_inside) == 131
+    assert np.max(y_inside) == 162
+    assert bool_inside[131, 223]
+    assert not bool_inside[130, 223]
+    # Edit pixels inside and outside of the path to compute the statistics
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0)
+    array[130, 223] = 5000
+    array[131, 237] = 5000
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0)
+    array[131, 223] = 5000
+    mean, max, min = get_area_statistics_from_closed_path(array, svgpath)
+    assert mean > 0
+    assert max == 5000.0
+    assert min == 0.0
+    array[150, 220] = 500
+    mean_2, max_2, min_2 = get_area_statistics_from_closed_path(array, svgpath)
+    assert mean_2 > mean
+    assert max_2 == 5000.0
+    assert min_2 == 0.0
+    array[152, 230] = -1.0
+    mean_3, max_3, min_3 = get_area_statistics_from_closed_path(array, svgpath)
+    assert mean_2 > mean_3
+    assert max_2 == 5000.0
+    assert min_3 == -1.0
+    assert get_bounding_box_for_svgpath(svgpath) == (200, 236, 131, 162)

@@ -1,3 +1,4 @@
+import dash
 import dash_uploader as du
 import pandas as pd
 from dash_extensions.enrich import Output, Input, State
@@ -5,6 +6,7 @@ from dash import ctx
 from ..parsers.cell_level_parsers import *
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
+from dash import dcc
 
 def init_cell_level_callbacks(dash_app):
     """
@@ -20,10 +22,22 @@ def init_cell_level_callbacks(dash_app):
 
     @dash_app.callback(Output('quantification-dict', 'data'),
                        Output('cell-type-col-designation', 'options'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('session_config_quantification', 'data'),
+                       State('session_alert_config', 'data'),
+                       State('uploaded_dict', 'data'),
+                       State('data-collection', 'value'),
                        prevent_initial_call=True)
-    def populate_quantification_table_from_upload(session_dict):
-        return parse_and_validate_measurements_csv(session_dict)
+    def populate_quantification_table_from_upload(session_dict, error_config, upload_dict, data_selection):
+        if None not in (data_selection, upload_dict):
+            split = split_string_at_pattern(data_selection)
+            exp, slide, acq = split[0], split[1], split[2]
+            first_image = list(upload_dict[exp][slide][acq].keys())[0]
+            image_for_validation = upload_dict[exp][slide][acq][first_image]
+        else:
+            image_for_validation = None
+        return parse_and_validate_measurements_csv(session_dict, error_config=error_config,
+                                                   image_to_validate=image_for_validation)
 
     @dash_app.callback(Output('quantification-bar-full', 'figure'),
                        Input('quantification-dict', 'data'),
@@ -41,18 +55,23 @@ def init_cell_level_callbacks(dash_app):
     @dash_app.callback(Output('umap-projection', 'data'),
                        Output('umap-projection-options', 'options'),
                        Input('quantification-dict', 'data'),
+                       State('umap-projection', 'data'),
                        prevent_initial_call=True)
-    def generate_umap_from_measurements_csv(quantification_dict):
+    def generate_umap_from_measurements_csv(quantification_dict, current_umap):
         """
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
         """
-        return return_umap_dataframe_from_quantification_dict(quantification_dict)
+        try:
+            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
+                                                                  current_umap=current_umap)
+        except ValueError:
+            return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
 
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
-                       State('quantification-dict', 'data'),
+                       Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
@@ -127,6 +146,76 @@ def init_cell_level_callbacks(dash_app):
             return True
         else:
             return False
+
+    @dash_app.callback(
+        Input("annotations-dict", "data"),
+        State('quantification-dict', 'data'),
+        State('data-collection', 'value'),
+        State('mask-dict', 'data'),
+        State('apply-mask', 'value'),
+        State('mask-options', 'value'),
+        Output('quantification-dict', 'data', allow_duplicate=True),
+        Output("annotations-dict", "data", allow_duplicate=True))
+    def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
+                                                      mask_config, mask_toggle, mask_selection):
+        """
+        Add a region annotation to the cells of a quantification data frame
+        """
+        # loop through all of the existing annotations
+        # for annotations that have not yet been imported, import and set the import status to True
+        if None not in (annotations, quantification_frame) and len(quantification_frame) > 0 and len(annotations) > 0:
+            if data_selection in annotations.keys() and len(annotations[data_selection]) > 0:
+                quantification_frame = pd.DataFrame(quantification_frame)
+                for annotation in annotations[data_selection].keys():
+                    if not annotations[data_selection][annotation]['imported']:
+                    # import only the new annotations that are rectangles (for now) and are not validated
+                        if annotations[data_selection][annotation]['type'] == "zoom":
+                            quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
+                            values_dict=dict(annotation),cell_type=annotations[data_selection][annotation]['cell_type'])
+
+                        elif annotations[data_selection][annotation]['type'] == "path":
+                            # TODO: decide which method of annotation to use
+                            # if a mask is enabled, use the mask ID threshold method
+                            # otherwise, make a convex envelope bounding box
+
+                            # option 1: mask ID threshold
+                            if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
+                                cells_included = get_cells_in_svg_boundary_by_mask_percentage(
+                                    mask_array= mask_config[mask_selection]["raw"], svgpath=annotation)
+                                quantification_frame = populate_cell_annotation_column_from_cell_id_list(
+                                                quantification_frame, cell_list=list(cells_included.keys()),
+                                    cell_type=annotations[data_selection][annotation]['cell_type'])
+                            # option 2: convex envelope bounding box
+                            else:
+                                x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
+                                val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
+                                        'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
+                                quantification_frame = populate_cell_annotation_column_from_bounding_box(
+                                quantification_frame, values_dict=val_dict,
+                                    cell_type=annotations[data_selection][annotation]['cell_type'])
+                        elif annotations[data_selection][annotation]['type'] == "rect":
+                            quantification_frame = populate_cell_annotation_column_from_bounding_box(
+                                quantification_frame, values_dict=dict(annotation),
+                                cell_type=annotations[data_selection][annotation]['cell_type'], box_type="rect")
+                        annotations[data_selection][annotation]['imported'] = True
+                return quantification_frame.to_dict(orient="records"), Serverside(annotations)
+            else:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+
+    @dash_app.callback(
+        Output("download-edited-annotations", "data"),
+        Input("btn-download-annotations", "n_clicks"),
+        Input("quantification-dict", "data"))
+    # @cache.memoize())
+    def download_quantification_with_annotations(n_clicks, datatable_contents):
+        if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
+                ctx.triggered_id == "btn-download-annotations":
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "annotations.csv")
+        else:
+            raise PreventUpdate
 
     # @dash_app.callback(Output('umap-plot', 'figure'),
     #                    Input('anndata', 'data'),

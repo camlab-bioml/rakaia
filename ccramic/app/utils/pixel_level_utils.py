@@ -19,7 +19,7 @@ def split_string_at_pattern(string, pattern="+++"):
 
 def recolour_greyscale(array, colour):
     if colour not in ['#ffffff', '#FFFFFF']:
-        image = Image.fromarray(array.astype(np.uint8))
+        image = Image.fromarray(array)
         image = image.convert('RGB')
         red, green, blue = ImageColor.getcolor(colour, "RGB")
 
@@ -35,15 +35,15 @@ def recolour_greyscale(array, colour):
         return converted.astype(np.uint8)
 
     else:
-        image = Image.fromarray(array.astype(np.uint8))
+        image = Image.fromarray(array)
         image = image.convert('RGB')
-        return np.array(image).astype(np.uint8)
+        return np.array(image)
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
     try:
         subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-        return np.average(subset), np.amax(subset), np.amin(subset)
+        return np.average(subset), np.max(subset), np.min(subset)
     except IndexError:
         return None, None, None
 
@@ -51,11 +51,8 @@ def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low,
 def path_to_indices(path):
     """From SVG path to numpy array of coordinates, each row being a (row, col) point
     """
-    indices_str = [
-        el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")
-    ]
+    indices_str = [el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")]
     return np.rint(np.array(indices_str, dtype=float)).astype(int)
-
 
 def path_to_mask(path, shape):
     """From SVG path to a boolean array where all pixels enclosed by the path
@@ -68,6 +65,14 @@ def path_to_mask(path, shape):
     mask = ndimage.binary_fill_holes(mask)
     return mask
 
+def get_bounding_box_for_svgpath(svgpath):
+    """
+    Return the x and y min and max that defines the bounding box for a non-convex or convex svgpath
+    Return values are: x_min, x_max, y_min, y_max
+    """
+    cols, rows = path_to_indices(svgpath).T
+    return min(cols), max(cols), min(rows), max(rows)
+
 
 def get_area_statistics_from_closed_path(array, svgpath):
     """
@@ -77,7 +82,7 @@ def get_area_statistics_from_closed_path(array, svgpath):
 
     masked_array = path_to_mask(svgpath, array.shape)
     # masked_subset_data = ma.array(array, mask=masked_array)
-    return np.average(array[masked_array]), np.amax(array[masked_array]), np.amin(array[masked_array])
+    return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array])
 
 
 def convert_to_below_255(array):
@@ -153,9 +158,6 @@ def pixel_hist_from_array(array, subset_number=1000000):
         pass
     return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)]), \
         int(np.max(array))
-    # except ValueError:
-    #     print("error")
-    #     return pixel_hist_from_array(np.array(Image.fromarray(array.astype(np.uint8)).convert('L')))
 
 
 def apply_preset_to_array(array, preset):
@@ -192,7 +194,7 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
                 for acq in upload_dict[exp][slide].keys():
                     for channel in upload_dict[exp][slide][acq].keys():
                         if channel == channel_name:
-                            string = f"{exp}_{slide}_{acq}"
+                            string = f"{exp}+++{slide}+++{acq}"
                             if upload_dict[exp][slide][acq][channel] is not None:
                                 images[string] = upload_dict[exp][slide][acq][channel]
     return images
