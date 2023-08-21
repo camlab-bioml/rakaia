@@ -12,10 +12,7 @@ from tifffile import imwrite
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
-import tkinter as tk
-from tkinter import filedialog
 from pathlib import Path
-import wx
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -41,16 +38,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def read_from_local_dialog_box(nclicks, cur_session):
         if nclicks > 0:
+            import wx
             app = wx.App(None)
-            dialog = wx.FileDialog(None, 'Open', str(Path.home()), style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+            dialog = wx.FileDialog(None, 'Open', str(Path.home()),
+                                   style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
                                    wildcard="*.tiff;*.tif;*.mcd;*.txt|*.tiff;*.tif;*.mcd;*.txt")
             if dialog.ShowModal() == wx.ID_OK:
-                filename = dialog.GetPath()
-                if filename is not None and len(filename) > 0:
-                    dialog.Destroy()
+                filenames = dialog.GetPaths()
+                if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
                     session_config = cur_session if cur_session is not None and \
-                                                len(cur_session['uploads']) > 0 else {'uploads': []}
-                    session_config["uploads"].append(filename)
+                                                    len(cur_session['uploads']) > 0 else {'uploads': []}
+                    for filename in filenames:
+                        session_config["uploads"].append(filename)
+                    dialog.Destroy()
                     return session_config
                 else:
                     dialog.Destroy()
@@ -79,32 +79,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return session_config
         else:
             raise PreventUpdate
-
-
-    # @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
-    #                    Output('session_alert_config', 'data'),
-    #                    State('read-filepath', 'value'),
-    #                    Input('add-file-by-path', 'n_clicks'),
-    #                    State('session_config', 'data'),
-    #                    State('session_alert_config', 'data'),
-    #                    prevent_initial_call=True)
-    # def get_session_uploads_from_filepath(filepath, clicks, cur_session, error_config):
-    #     if filepath is not None and clicks > 0:
-    #         # TODO: fix ability to read in multiple files at different times
-    #         session_config = cur_session if cur_session is not None and \
-    #                                         len(cur_session['uploads']) > 0 else {'uploads': []}
-    #         if error_config is None:
-    #             error_config = {"error": None}
-    #         # session_config = {'uploads': []}
-    #         if os.path.isfile(filepath):
-    #             session_config['uploads'].append(filepath)
-    #             error_config["error"] = None
-    #             return session_config, error_config
-    #         else:
-    #             error_config["error"] = "Invalid filepath provided."
-    #             return dash.no_update, error_config
-    #     else:
-    #         raise PreventUpdate
 
     @dash_app.callback(Output('uploaded_dict_template', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
