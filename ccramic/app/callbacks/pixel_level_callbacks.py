@@ -15,6 +15,7 @@ from ..utils.cell_level_utils import *
 import tkinter as tk
 from tkinter import filedialog
 from pathlib import Path
+import wx
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -40,27 +41,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def read_from_local_dialog_box(nclicks, cur_session):
         if nclicks > 0:
-            root = tk.Tk()
-            root.wm_geometry('1000x1000')
-            root.attributes('-fullscreen', True)
-            root.columnconfigure([1, 2, 3], weight=1, pad=10)
-            root.rowconfigure([1, 2], weight=1, pad=10)
-            root.attributes('-topmost', True)
-            root.resizable(False, False)
-            root.state('iconic')
-            label = tk.Label(root, text="", font=('Courier 13 bold'))
-            label.pack()
-            root.withdraw()
-            file_directory = filedialog.askopenfilename(initialdir=str(Path.home()))
-            session_config = cur_session if cur_session is not None and \
-                                        len(cur_session['uploads']) > 0 else {'uploads': []}
-            if file_directory is not None and len(file_directory) > 0:
-                if file_directory not in session_config["uploads"]:
-                    session_config["uploads"].append(file_directory)
-                root.destroy()
-                return session_config
+            app = wx.App(None)
+            dialog = wx.FileDialog(None, 'Open', str(Path.home()), style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST,
+                                   wildcard="*.tiff;*.tif;*.mcd;*.txt|*.tiff;*.tif;*.mcd;*.txt")
+            if dialog.ShowModal() == wx.ID_OK:
+                filename = dialog.GetPath()
+                if filename is not None and len(filename) > 0:
+                    dialog.Destroy()
+                    session_config = cur_session if cur_session is not None and \
+                                                len(cur_session['uploads']) > 0 else {'uploads': []}
+                    session_config["uploads"].append(filename)
+                    return session_config
+                else:
+                    dialog.Destroy()
+                    raise PreventUpdate
             else:
-                root.destroy()
+                dialog.Destroy()
                 raise PreventUpdate
         else:
             raise PreventUpdate
@@ -85,30 +81,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
 
-    @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
-                       Output('session_alert_config', 'data'),
-                       State('read-filepath', 'value'),
-                       Input('add-file-by-path', 'n_clicks'),
-                       State('session_config', 'data'),
-                       State('session_alert_config', 'data'),
-                       prevent_initial_call=True)
-    def get_session_uploads_from_filepath(filepath, clicks, cur_session, error_config):
-        if filepath is not None and clicks > 0:
-            # TODO: fix ability to read in multiple files at different times
-            session_config = cur_session if cur_session is not None and \
-                                            len(cur_session['uploads']) > 0 else {'uploads': []}
-            if error_config is None:
-                error_config = {"error": None}
-            # session_config = {'uploads': []}
-            if os.path.isfile(filepath):
-                session_config['uploads'].append(filepath)
-                error_config["error"] = None
-                return session_config, error_config
-            else:
-                error_config["error"] = "Invalid filepath provided."
-                return dash.no_update, error_config
-        else:
-            raise PreventUpdate
+    # @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
+    #                    Output('session_alert_config', 'data'),
+    #                    State('read-filepath', 'value'),
+    #                    Input('add-file-by-path', 'n_clicks'),
+    #                    State('session_config', 'data'),
+    #                    State('session_alert_config', 'data'),
+    #                    prevent_initial_call=True)
+    # def get_session_uploads_from_filepath(filepath, clicks, cur_session, error_config):
+    #     if filepath is not None and clicks > 0:
+    #         # TODO: fix ability to read in multiple files at different times
+    #         session_config = cur_session if cur_session is not None and \
+    #                                         len(cur_session['uploads']) > 0 else {'uploads': []}
+    #         if error_config is None:
+    #             error_config = {"error": None}
+    #         # session_config = {'uploads': []}
+    #         if os.path.isfile(filepath):
+    #             session_config['uploads'].append(filepath)
+    #             error_config["error"] = None
+    #             return session_config, error_config
+    #         else:
+    #             error_config["error"] = "Invalid filepath provided."
+    #             return dash.no_update, error_config
+    #     else:
+    #         raise PreventUpdate
 
     @dash_app.callback(Output('uploaded_dict_template', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
@@ -2123,7 +2119,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Enable the region annotation button to be selectable when the canvas is either zoomed in on, or
         a shape is being added/edited. These represent a region selection that can be annotated
         """
-        if None not in (cur_graph_layout, data_selection) and len(cur_graph_layout) > 0 and len(current_blend) > 0:
+        if None not in (cur_graph_layout, data_selection, current_blend) and len(cur_graph_layout) > 0 and \
+                len(current_blend) > 0:
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
             if all([elem in cur_graph_layout for elem in zoom_keys]) or 'shapes' in cur_graph_layout and \
                     len(cur_graph_layout['shapes']) > 0:
