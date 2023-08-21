@@ -730,7 +730,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig['layout']['uirevision'] = True
 
                         if show_canvas_legend:
-                            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, font_size=legend_size)
+                            fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size)
 
                         fig = go.Figure(fig)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -750,7 +750,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig['layout']['uirevision'] = True
 
                     if show_canvas_legend:
-                        fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, font_size=legend_size)
+                        fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size)
 
                     fig = go.Figure(fig)
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -771,7 +771,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # higher values mean closer to the centre
                 # fig = canvas_layers[image_type][currently_selected[0]]
                 if legend_text != '' and show_canvas_legend:
-                    fig.add_annotation(text=legend_text, font={"size": legend_size + 3}, xref='paper',
+                    fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
                                            yref='paper',
                                            x=(1 - x_axis_placement),
                                            # xanchor='right',
@@ -1056,7 +1056,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                     f'>{label}</span><br>'
 
                 if legend_text != '':
-                    fig.add_annotation(text=legend_text, font={"size": legend_size + 3}, xref='paper',
+                    fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
                                            yref='paper',
                                            x=(1 - x_axis_placement),
                                            # xanchor='right',
@@ -1086,7 +1086,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                    custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
                 except KeyError:
                     custom_scale_val = None
-                fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, scale_value=custom_scale_val,
+                fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
                                                 font_size=legend_size)
                 return fig
         else:
@@ -1109,7 +1109,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     if annotation['y'] == 0.06:
                         annotation['font']['size'] = legend_size
                     elif annotation['y'] == 0.05 and 'color' in annotation['text']:
-                        annotation['font']['size'] = legend_size + 3
+                        annotation['font']['size'] = legend_size + 1
                 cur_graph['layout']['annotations'] = annotations_copy
                 return go.Figure(cur_graph)
             except KeyError:

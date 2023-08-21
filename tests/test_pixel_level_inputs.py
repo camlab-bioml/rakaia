@@ -23,11 +23,11 @@ def test_add_scalebar_to_canvas(get_current_dir):
     recoloured = recolour_greyscale(np.array(greyscale), colour='#D14A1A')
     image = go.Figure(px.imshow(recoloured))
     assert len(image['layout']['annotations']) == 0
-    with_scaleval = add_scale_value_to_figure(image, recoloured.shape, 0.05)
+    with_scaleval = add_scale_value_to_figure(image, recoloured.shape)
     assert len(with_scaleval['layout']['annotations']) != 0
     assert with_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
 
-    custom_scaleval = add_scale_value_to_figure(image, recoloured.shape, 0.05, scale_value=51)
+    custom_scaleval = add_scale_value_to_figure(image, recoloured.shape, scale_value=51)
     assert custom_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">51μm</span><br>'
 
 

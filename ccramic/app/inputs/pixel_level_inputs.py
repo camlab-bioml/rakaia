@@ -56,7 +56,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     else:
         return render_default_annotation_canvas()
 
-def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value=None, font_size=12):
+def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -66,19 +66,13 @@ def add_scale_value_to_figure(figure, image_shape, x_axis_placement, scale_value
         scale_val = scale_value
     scale_annot = str(scale_val) + "μm"
     scale_text = f'<span style="color: white">{scale_annot}</span><br>'
-    # this is the middle point of the scale bar
-    # add shift based on the image shape
-    shift = math.log10(image_shape[1]) - 3
-    midpoint = (x_axis_placement + (0.075 / (2.5 * len(str(scale_val)) + shift)))
-    # ensure that the text label does not go beyond the scale bar or over the midpoint of the scale bar
-    midpoint = midpoint if (0.05 < midpoint < 0.0875) else x_axis_placement
-    midpoint = midpoint if font_size == 12 else 0.05
     figure = go.Figure(figure)
+    # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
     figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
-                       x=midpoint,
-                       # xanchor='right',
+                       x=0.0875,
+                       xanchor='center',
                        y=0.06,
                        # yanchor='bottom',
                        showarrow=False)
@@ -121,7 +115,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
             x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
             # if the current graph already has an image, take the existing layout and apply it to the new figure
             # otherwise, set the uirevision for the first time
-            fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement, font_size=annotation_size)
+            fig = add_scale_value_to_figure(fig, image_shape, font_size=annotation_size)
 
             if legend_text != '' and show_canvas_legend:
                 fig.add_annotation(text=legend_text, font={"size": (annotation_size + 3)}, xref='paper',
