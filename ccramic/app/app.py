@@ -13,6 +13,7 @@ import os
 # from sd_material_ui import AutoComplete
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
+from plotly.graph_objs.layout import YAxis, XAxis
 def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -259,8 +260,8 @@ def init_dashboard(server, authentic_id):
                                 "float": "center", "justify-content": "center"}),
                                  html.Div(dbc.Collapse(html.Div([html.H6("Pixel histogram", style={'width': '75%'}),
                                 html.Div([dcc.Loading(dcc.Graph(id="pixel-hist", figure={'layout': dict(
-                                xaxis_showgrid=False, yaxis_showgrid=False, xaxis=go.XAxis(showticklabels=False),
-                                yaxis=go.YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
+                                xaxis_showgrid=False, yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                                yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
                                 style={'width': '60vh', 'height': '30vh', 'margin-left': '-30px'},
                                 # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
                                 # keep zoom and pan bars to be able to modify the histogram view
@@ -519,9 +520,9 @@ def init_dashboard(server, authentic_id):
                                                   dcc.Graph(id="quantification-bar-full",
                                                             figure={'layout': dict(xaxis_showgrid=False,
                                                                                    yaxis_showgrid=False,
-                                                                                   xaxis=go.XAxis(
+                                                                                   xaxis=XAxis(
                                                                                        showticklabels=False),
-                                                                                   yaxis=go.YAxis(
+                                                                                   yaxis=YAxis(
                                                                                        showticklabels=False),
                                                                                    margin=dict(l=5, r=5, b=15,
                                                                                                t=20, pad=0)),
@@ -535,9 +536,9 @@ def init_dashboard(server, authentic_id):
                                                       dcc.Graph(id="umap-plot",
                                                                 figure={'layout': dict(xaxis_showgrid=False,
                                                                                        yaxis_showgrid=False,
-                                                                                       xaxis=go.XAxis(
+                                                                                       xaxis=XAxis(
                                                                                            showticklabels=False),
-                                                                                       yaxis=go.YAxis(
+                                                                                       yaxis=YAxis(
                                                                                            showticklabels=False),
                                                                                        margin=dict(l=5, r=5, b=15,
                                                                                                    t=20, pad=0)),

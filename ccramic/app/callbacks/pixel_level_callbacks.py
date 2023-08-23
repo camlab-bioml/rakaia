@@ -1,5 +1,3 @@
-import os
-import cv2
 import dash.exceptions
 import dash_bootstrap_components as dbc
 import dash_uploader as du
@@ -12,6 +10,7 @@ from tifffile import imwrite
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
+from plotly.graph_objs.layout import YAxis, XAxis
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -667,8 +666,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         hovertemplate)
         """
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
-                data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
-                not in [{'dragmode': 'pan'}] and len(canvas_children) > 0 and \
+                data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 param_dict["current_roi"] == data_selection and len(channel_order) > 0:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
@@ -826,7 +824,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig.update(data=[{'customdata': None}])
                     new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
                 fig.update_traces(hovertemplate=new_hover)
-                fig.update_layout(dragmode="zoom")
+                # fig.update_layout(dragmode="zoom")
                 return fig, Serverside(image)
             except (ValueError, AttributeError):
                 return dash.no_update
@@ -1033,16 +1031,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
             if not toggle_annotations:
-                if 'layout' in cur_canvas.keys() and 'annotations' in cur_canvas['layout'].keys() and \
+                if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout'] and \
                         len(cur_canvas['layout']['annotations']) > 0:
-                    cur_canvas['layout']['annotations'] = None
-                if 'layout' in cur_canvas.keys() and 'shapes' in cur_canvas['layout'].keys():
-                    cur_canvas['layout']['shapes'] = None
-                return go.Figure(cur_canvas)
+                    cur_canvas['layout']['annotations'] = []
+                if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout'] and \
+                        cur_canvas['layout']['shapes'] is not None and len(cur_canvas['layout']['shapes']) > 0:
+                    cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
+                                                      shape is not None and 'type' in shape and shape['type'] \
+                                                      in ['rect', 'path']]
+                return cur_canvas
             else:
                 split = split_string_at_pattern(data_selection)
                 exp, slide, acq = split[0], split[1], split[2]
                 legend_text = ''
+                cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
+                                                  shape is not None and 'label' in shape and \
+                                                  shape['label'] is not None and 'texttemplate' not in shape['label']]
+
                 fig = go.Figure(cur_canvas)
                 first_image = list(image_dict[exp][slide][acq].keys())[0]
                 first_image = image_dict[exp][slide][acq][first_image]
@@ -1112,8 +1117,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         annotation['font']['size'] = legend_size
                     elif annotation['y'] == 0.05 and 'color' in annotation['text']:
                         annotation['font']['size'] = legend_size + 1
-                cur_graph['layout']['annotations'] = annotations_copy
-                return go.Figure(cur_graph)
+                cur_graph['layout']['annotations'] = [elem for elem in cur_graph['layout']['annotations'] if \
+                                                  elem is not None and 'texttemplate' not in elem]
+                return cur_graph
             except KeyError:
                 raise PreventUpdate
         else:

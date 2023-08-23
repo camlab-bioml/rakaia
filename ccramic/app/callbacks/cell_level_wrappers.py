@@ -59,8 +59,11 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
     """
     if n_clicks > 0 and None not in (cur_canvas, canvas_layout) and 'shapes' not in canvas_layout:
         if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
-            cur_canvas['layout']['shapes'] = [elem for elem in cur_canvas['layout']['shapes'] if \
+            try:
+                cur_canvas['layout']['shapes'] = [elem for elem in cur_canvas['layout']['shapes'] if \
                                               elem['type'] not in ['rect', 'path']]
+            except KeyError:
+                pass
             return cur_canvas, dash.no_update
         else:
             raise PreventUpdate
@@ -71,6 +74,6 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
             error_config = {"error": None}
         error_config["error"] = "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes."
-        return dash.no_update, error_config
+        return cur_canvas, error_config
     else:
         raise PreventUpdate
