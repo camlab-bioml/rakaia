@@ -6,6 +6,7 @@ from dash import ctx
 from ..parsers.cell_level_parsers import *
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
+from .cell_level_wrappers import *
 from dash import dcc
 
 def init_cell_level_callbacks(dash_app):
@@ -163,46 +164,8 @@ def init_cell_level_callbacks(dash_app):
         """
         # loop through all of the existing annotations
         # for annotations that have not yet been imported, import and set the import status to True
-        if None not in (annotations, quantification_frame) and len(quantification_frame) > 0 and len(annotations) > 0:
-            if data_selection in annotations.keys() and len(annotations[data_selection]) > 0:
-                quantification_frame = pd.DataFrame(quantification_frame)
-                for annotation in annotations[data_selection].keys():
-                    if not annotations[data_selection][annotation]['imported']:
-                    # import only the new annotations that are rectangles (for now) and are not validated
-                        if annotations[data_selection][annotation]['type'] == "zoom":
-                            quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
-                            values_dict=dict(annotation),cell_type=annotations[data_selection][annotation]['cell_type'])
-
-                        elif annotations[data_selection][annotation]['type'] == "path":
-                            # TODO: decide which method of annotation to use
-                            # if a mask is enabled, use the mask ID threshold method
-                            # otherwise, make a convex envelope bounding box
-
-                            # option 1: mask ID threshold
-                            if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
-                                cells_included = get_cells_in_svg_boundary_by_mask_percentage(
-                                    mask_array= mask_config[mask_selection]["raw"], svgpath=annotation)
-                                quantification_frame = populate_cell_annotation_column_from_cell_id_list(
-                                                quantification_frame, cell_list=list(cells_included.keys()),
-                                    cell_type=annotations[data_selection][annotation]['cell_type'])
-                            # option 2: convex envelope bounding box
-                            else:
-                                x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
-                                val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
-                                        'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
-                                quantification_frame = populate_cell_annotation_column_from_bounding_box(
-                                quantification_frame, values_dict=val_dict,
-                                    cell_type=annotations[data_selection][annotation]['cell_type'])
-                        elif annotations[data_selection][annotation]['type'] == "rect":
-                            quantification_frame = populate_cell_annotation_column_from_bounding_box(
-                                quantification_frame, values_dict=dict(annotation),
-                                cell_type=annotations[data_selection][annotation]['cell_type'], box_type="rect")
-                        annotations[data_selection][annotation]['imported'] = True
-                return quantification_frame.to_dict(orient="records"), Serverside(annotations)
-            else:
-                raise PreventUpdate
-        else:
-            raise PreventUpdate
+        return callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
+                                                      mask_config, mask_toggle, mask_selection)
 
 
     @dash_app.callback(
@@ -217,71 +180,18 @@ def init_cell_level_callbacks(dash_app):
         else:
             raise PreventUpdate
 
-    # @dash_app.callback(Output('umap-plot', 'figure'),
-    #                    Input('anndata', 'data'),
-    #                    Input('metadata_options', 'value'),
-    #                    Input('dimension-reduction_options', 'value'))
-    # # @cache.memoize())
-    # def render_umap_plot(anndata_obj, metadata_selection, assay_selection):
-    #     if anndata_obj and "assays" in anndata_obj.keys() and metadata_selection and assay_selection:
-    #         umap_data = anndata_obj["full_obj"]
-    #         return px.scatter(umap_data.obsm[assay_selection], x=0, y=1, color=umap_data.obs[metadata_selection],
-    #                           labels={'color': metadata_selection})
-    #     else:
-    #         raise PreventUpdate
-
-    # @dash_app.callback(
-    #     Output("metadata-distribution", "figure"),
-    #     Input('anndata', 'data'),
-    #     Input('metadata_options', 'value'))
-    # # @cache.memoize())
-    # def display_metadata_distribution(anndata_obj, metadata_selection):
-    #     if anndata_obj is not None and metadata_selection is not None:
-    #         ann_data = anndata_obj['metadata'][metadata_selection]
-    #         fig = px.histogram(ann_data, range_x=[min(ann_data), max(ann_data)])
-    #         return fig
-    #     else:
-    #         raise PreventUpdate
-    #
-    # @du.callback(Output('anndata', 'data'),
-    #              id='upload-quantification')
-    # # @cache.memoize())
-    # def create_layered_dict(status: du.UploadStatus):
-    #     filenames = [str(x) for x in status.uploaded_files]
-    #     anndata_files = {}
-    #     if filenames:
-    #         for data_file in filenames:
-    #             anndata_dict = {}
-    #             data = anndata.read_h5ad(data_file)
-    #             anndata_dict["file_path"] = str(data_file)
-    #             anndata_dict["observations"] = data.X
-    #             anndata_dict["metadata"] = data.obs
-    #             anndata_dict["full_obj"] = data
-    #             for sub_assay in data.obsm_keys():
-    #                 if "assays" not in anndata_dict.keys():
-    #                     anndata_dict["assays"] = {sub_assay: data.obsm[sub_assay]}
-    #                 else:
-    #                     anndata_dict["assays"][sub_assay] = data.obsm[sub_assay]
-    #             anndata_files = anndata_dict
-    #     if anndata_files is not None and len(anndata_files) > 0:
-    #         return Serverside(anndata_files)
-    #     else:
-    #         raise PreventUpdate
-    #
-    # @dash_app.callback(Output('dimension-reduction_options', 'options'),
-    #                    Input('anndata', 'data'))
-    # # @cache.memoize())
-    # def create_anndata_dimension_options(anndata_dict):
-    #     if anndata_dict and "assays" in anndata_dict.keys():
-    #         return [{'label': i, 'value': i} for i in anndata_dict["assays"].keys()]
-    #     else:
-    #         raise PreventUpdate
-    #
-    # @dash_app.callback(Output('metadata_options', 'options'),
-    #                    Input('anndata', 'data'))
-    # # @cache.memoize())
-    # def create_anndata_dimension_options(anndata_dict):
-    #     if anndata_dict and "metadata" in anndata_dict.keys():
-    #         return [{'label': i, 'value': i} for i in anndata_dict["metadata"].columns]
-    #     else:
-    #         raise PreventUpdate
+    @dash_app.callback(
+        Output('annotation_canvas', 'figure', allow_duplicate=True),
+        Output('session_alert_config', 'data', allow_duplicate=True),
+        Input("clear-region-annotation-shapes", "n_clicks"),
+        State('annotation_canvas', 'figure'),
+        State('annotation_canvas', 'relayoutData'),
+        State('session_alert_config', 'data'))
+    # @cache.memoize())
+    def clear_canvas_shapes(n_clicks, cur_canvas, canvas_layout, error_config):
+        """
+        Clear the current canvas of any shapes that are not associated with the legend or scalebar
+        Important: requires that the current dragmode be set to zoom or pan to remove any shapes in the current
+        canvas layout
+        """
+        return callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout, error_config)

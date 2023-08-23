@@ -703,7 +703,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 if show_canvas_legend:
                     x_axis_placement = 0.00001 * image_shape[1]
                     # make sure the placement is min 0.05 and max 0.1
-                    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
+                    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
                     # if the current graph already has an image, take the existing layout and apply it to the new figure
                     # otherwise, set the uirevision for the first time
                     # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
@@ -730,7 +730,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig['layout']['uirevision'] = True
 
                         if show_canvas_legend:
-                            fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size)
+                            fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
+                                                            x_axis_left=x_axis_placement)
 
                         fig = go.Figure(fig)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -750,7 +751,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig['layout']['uirevision'] = True
 
                     if show_canvas_legend:
-                        fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size)
+                        fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
+                                                        x_axis_left=x_axis_placement)
 
                     fig = go.Figure(fig)
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -1047,7 +1049,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 image_shape = first_image.shape
                 x_axis_placement = 0.00001 * image_shape[1]
                 # make sure the placement is min 0.05 and max 0.1
-                x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
+                x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
                 for image in channel_order:
                     # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                     label = aliases[image] if aliases is not None and image in aliases.keys() else image
@@ -1087,7 +1089,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 except KeyError:
                     custom_scale_val = None
                 fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                                                font_size=legend_size)
+                                                font_size=legend_size, x_axis_left=x_axis_placement)
                 return fig
         else:
             raise PreventUpdate

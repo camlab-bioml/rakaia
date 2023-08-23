@@ -377,6 +377,12 @@ def init_dashboard(server, authentic_id):
                                 html.Div("Add region annotation")], style={"display": "flex"}),
                                     id="region-annotation", className="mx-auto", color=None, n_clicks=0,
                                     disabled=True, style={"margin-top": "10px"}),
+                                #TODO: update the logic for the button that can clear annotation shapes
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-delete-left",
+                                style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
+                                html.Div("Clear annotation shapes")],style={"display": "flex"}),
+                                id="clear-region-annotation-shapes", className="mx-auto", color=None, n_clicks=0,
+                                disabled=False, style={"margin-top": "10px"}),
                                           html.Br(),
                                           html.Br(),
                                           dbc.Button("Create preset", id="preset-button", className="me-1"),
