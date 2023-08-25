@@ -186,26 +186,20 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(
         Output("download-annotation-pdf", "data"),
-        Input("btn-download-annot-pdf", "n_clicks"))
+        Input("btn-download-annot-pdf", "n_clicks"),
+        State("annotations-dict", "data"),
+        State('canvas-layers', 'data'),
+        State('data-collection', 'value'),
+        State('mask-dict', 'data'),
+        State('alias-dict', 'data'),)
     # @cache.memoize())
-    def download_annotations_pdf(n_clicks):
-        if n_clicks is not None and n_clicks > 0 and ctx.triggered_id == "btn-download-annot-pdf":
+    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers, data_selection, mask_config, aliases):
+        if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
-            fake_array = np.zeros((500, 500))
-            pdf_path = os.path.join(dest_path, "annotations.pdf")
-            with PdfPages(pdf_path) as pdf:
-                fig = plt.figure(figsize=(10, 10))
-                fig.tight_layout()
-                ax = fig.add_subplot(111)
-                ax.imshow(fake_array, interpolation='nearest')
-                ax.set_title('test', fontsize=30)
-                ax.set_xticks([])
-                ax.set_yticks([])
-                ax.set_xlabel('This is a test', fontsize=20)
-                pdf.savefig()
-            return dcc.send_file(pdf_path, type="application/pdf")
+            return dcc.send_file(generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection,
+                mask_config, aliases, dest_dir=dest_path, output_file="annotations.pdf"), type="application/pdf")
         else:
             raise PreventUpdate
 
@@ -224,3 +218,23 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         canvas layout
         """
         return callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout, error_config)
+
+    @dash_app.callback(
+        Output("annotations-dict", "data", allow_duplicate=True),
+        Input('clear-annotation_dict', 'n_clicks'),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        prevent_initial_call=True)
+    # @cache.memoize())
+    def clear_current_roi_annotations(n_clicks, cur_annotation_dict, data_selection):
+        """
+        Clear all the current ROI annotations
+        """
+        if n_clicks > 0 and None not in (cur_annotation_dict, data_selection):
+            try:
+                cur_annotation_dict[data_selection] = {}
+                return cur_annotation_dict
+            except KeyError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate

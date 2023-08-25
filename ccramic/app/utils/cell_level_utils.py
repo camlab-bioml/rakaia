@@ -8,6 +8,8 @@ from os import system
 import tifffile
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
+import cv2
+import os
 
 def set_columns_to_drop():
     return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation']
@@ -208,7 +210,8 @@ def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=
         channel_index += 1
     return cells_included
 
-def generate_annotations_output_pdf(annotations_dict, image_dict, blend_dict, data_selection):
+def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection, mask_config,
+                                    aliases, dest_dir="/tmp/", output_file="annotations.pdf"):
     """
     Generate a PDF output report with region images linked to annotations.
     The annotations are held in a dictionary with the title, description, shapes/coordinates, and channels used
@@ -216,25 +219,67 @@ def generate_annotations_output_pdf(annotations_dict, image_dict, blend_dict, da
     """
     # subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
     #                       range(int(x_range_low), int(x_range_high), 1))]
-
+    split = split_string_at_pattern(data_selection)
+    exp, slide, acq = split[0], split[1], split[2]
     # ensure that the annotations are taken from the current ROI
-    for key, value in annotations_dict[data_selection].items():
-        pass
-        # loop through each annotation
-        # image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
-        #              elem in currently_selected if \
-        #              elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
-        # image = np.clip(image, 0, 255)
-        # if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
-        #     if image.shape[0] == mask_config[mask_selection].shape[0] and \
-        #             image.shape[1] == mask_config[mask_selection].shape[1]:
-        #         # set the mask blending level based on the slider, by default use an equal blend
-        #         mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
-        #         image = cv2.addWeighted(image.astype(np.uint8), 1,
-        #                                 mask_config[mask_selection].astype(np.uint8), mask_level, 0)
-        #         if add_mask_boundary:
-        #             # add the border of the mask after converting back to greyscale to derive the conversion
-        #             greyscale_mask = np.array(Image.fromarray(mask_config[mask_selection]).convert('L'))
-        #             reconverted = np.array(Image.fromarray(
-        #                 convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
-        #             image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
+    file_output = os.path.join(dest_dir, output_file)
+    if data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
+        with PdfPages(file_output) as pdf:
+            for key, value in annotations_dict[data_selection].items():
+                # the key is the tuple of the coordinates or the svgpath
+                if value['type'] == "zoom":
+                    x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
+                elif value['type'] == "rect":
+                    x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
+                elif value['type'] == "path":
+                    x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
+                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+                             elem in value['channels'] if \
+                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                image = np.clip(image, 0, 255)
+                if value['use_mask'] and None not in (mask_config, value['mask_selection']) and len(mask_config) > 0:
+                    if image.shape[0] == mask_config[value['mask_selection']]["array"].shape[0] and \
+                            image.shape[1] == mask_config[value['mask_selection']]["array"].shape[1]:
+                        # set the mask blending level based on the slider, by default use an equal blend
+                        mask_level = float(value['mask_blending_level'] / 100) if \
+                            value['mask_blending_level'] is not None else 1
+                        image = cv2.addWeighted(image.astype(np.uint8), 1,
+                                                mask_config[value['mask_selection']]["array"].astype(np.uint8),
+                                                mask_level, 0)
+                        if value['add_mask_boundary'] and mask_config[value['mask_selection']]["boundary"] is not None:
+                            # add the border of the mask after converting back to greyscale to derive the conversion
+                            greyscale_mask = np.array(Image.fromarray(mask_config[
+                                                                          value['mask_selection']]["boundary"]).convert(
+                                'L'))
+                            reconverted = np.array(Image.fromarray(
+                                convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
+                            image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
+                region = np.array(image[np.ix_(range(int(y_min), int(y_max), 1),
+                                               range(int(x_min), int(x_max), 1))]).astype(np.uint8)
+                aspect_ratio = image.shape[1] / image.shape[0]
+                # set height based on the pixel number
+                height = 0.02 * image.shape[1] if 0.02 * image.shape[1] < 25 else 25
+                width = height * aspect_ratio
+                # first value is the width, second is the height
+                fig = plt.figure(figsize=(width, height))
+                fig.tight_layout()
+                ax = fig.add_subplot(111)
+                ax.imshow(region, interpolation='nearest')
+                ax.set_title(value['title'], fontsize=25)
+                ax.set_xticks([])
+                ax.set_yticks([])
+                x_dims = float(x_max) - float(x_min)
+                y_dims = float(y_max) - float(y_min)
+                channel_list = []
+                for image in value['channels']:
+                    if aliases is not None and image in aliases.keys():
+                        channel_list.append(aliases[image])
+                    else:
+                        channel_list.append(image)
+                description = value['body'] + "\n" + f"Channels: {channel_list}" + \
+                              f"\nRegion dimensions: {int(x_dims)}x{int(y_dims)}"
+                ax.set_xlabel(description, fontsize=15)
+                pdf.savefig()
+        return file_output
+    else:
+        raise PreventUpdate

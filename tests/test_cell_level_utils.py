@@ -6,6 +6,7 @@ from ccramic.app.inputs.cell_level_inputs import *
 import os
 from PIL import Image
 import dash_extensions
+import tempfile
 
 def test_basic_col_dropper(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -177,3 +178,49 @@ def test_basic_cell_annotation_col_pop_from_masking(get_current_dir):
     assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 2
     assert list(measurements[measurements["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]
     assert list(measurements[measurements["cell_id"] == 403]["ccramic_cell_annotation"]) == ["new_cell_type"]
+
+
+def test_output_annotations_pdf():
+    """
+    test that the output of the annotations pdf produces a valid file
+    """
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file_path = os.path.join(tmpdirname, "ccramic_test_annotations.pdf")
+        assert not os.path.exists(file_path)
+        data_selection = "exp1+++slide0+++roi_1"
+        range_tuple = tuple(sorted({'xaxis.range[0]': 50, 'xaxis.range[1]': 100,
+                    'yaxis.range[0]': 50, 'yaxis.range[1]': 100}.items()))
+        annotations_dict = {data_selection: {range_tuple: {'title': 'Title', 'body': 'body',
+                                                               'cell_type': 'cell_type', 'imported': False,
+                                                            'type': 'zoom', 'channels': ['channel_1'],
+                                                             'use_mask': False,
+                                                             'mask_selection': None,
+                                                             'mask_blending_level': 35,
+                                                             'add_mask_boundary': False}}}
+        layers_dict = {"exp1": {"slide0": {"roi_1": {"channel_1":
+                    np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}}}
+        aliases = {"channel_1": "channel_1"}
+        output_pdf = generate_annotations_output_pdf(annotations_dict, layers_dict, data_selection,
+                                                     mask_config=None, aliases=aliases, dest_dir=tmpdirname)
+        assert os.path.exists(output_pdf)
+        if os.access(output_pdf, os.W_OK):
+            os.remove(output_pdf)
+
+        assert not os.path.exists(output_pdf)
+
+        mask_config = {"mask": {"array": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB')),
+                                "raw": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB')),
+                                "boundary": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}
+        annotations_dict = {data_selection: {range_tuple: {'title': 'Title', 'body': 'body',
+                                                           'cell_type': 'cell_type', 'imported': False,
+                                                           'type': 'zoom', 'channels': ['channel_1'],
+                                                           'use_mask': True,
+                                                           'mask_selection': "mask",
+                                                           'mask_blending_level': 35,
+                                                           'add_mask_boundary': True}}}
+
+        output_pdf = generate_annotations_output_pdf(annotations_dict, layers_dict, data_selection,
+                                                     mask_config=mask_config, aliases=aliases, dest_dir=tmpdirname)
+        assert os.path.exists(output_pdf)
+        if os.access(output_pdf, os.W_OK):
+            os.remove(output_pdf)

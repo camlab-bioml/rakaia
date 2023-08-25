@@ -2175,9 +2175,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('annotation_canvas', 'relayoutData'),
         State("annotations-dict", "data"),
         State('data-collection', 'value'),
-        State('image_layers', 'value'))
+        State('image_layers', 'value'),
+        State('apply-mask', 'value'),
+        State('mask-options', 'value'),
+        State('mask-blending-slider', 'value'),
+        State('add-mask-boundary', 'value'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
-                               canvas_layout, annotations_dict, data_selection, cur_layers):
+                               canvas_layout, annotations_dict, data_selection, cur_layers,
+                               mask_toggle, mask_selection, mask_blending_level, add_mask_boundary):
         if create_annotation and None not in (annotation_title, annotation_body,
                                               canvas_layout, data_selection, cur_layers):
             if annotations_dict is None or len(annotations_dict) < 1:
@@ -2203,11 +2208,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}
                         annotation_list[tuple(sorted(key.items()))] = "rect"
             for key, value in annotation_list.items():
-                if key not in annotations_dict[data_selection].keys():
-                    annotations_dict[data_selection][key] = {}
-                    annotations_dict[data_selection][key] = {'title': annotation_title, 'body': annotation_body,
+                annotations_dict[data_selection][key] = {'title': annotation_title, 'body': annotation_body,
                                                                'cell_type': annotation_cell_type, 'imported': False,
-                                                            'type': value, 'channels': cur_layers}
+                                                            'type': value, 'channels': cur_layers,
+                                                             'use_mask': mask_toggle,
+                                                             'mask_selection': mask_selection,
+                                                             'mask_blending_level': mask_blending_level,
+                                                             'add_mask_boundary': add_mask_boundary}
             return Serverside(annotations_dict)
         else:
             raise PreventUpdate
