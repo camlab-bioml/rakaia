@@ -4,6 +4,10 @@ from sklearn.preprocessing import StandardScaler
 import sys
 from ..utils.pixel_level_utils import *
 from dash.exceptions import PreventUpdate
+from os import system
+import tifffile
+import matplotlib.pyplot as plt
+from matplotlib.backends.backend_pdf import PdfPages
 
 def set_columns_to_drop():
     return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation']
@@ -203,3 +207,34 @@ def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=
                 cells_included[cell] = percent
         channel_index += 1
     return cells_included
+
+def generate_annotations_output_pdf(annotations_dict, image_dict, blend_dict, data_selection):
+    """
+    Generate a PDF output report with region images linked to annotations.
+    The annotations are held in a dictionary with the title, description, shapes/coordinates, and channels used
+    Each annotation must be transformed into a region that is rendered as an image blend with the channels used
+    """
+    # subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+    #                       range(int(x_range_low), int(x_range_high), 1))]
+
+    # ensure that the annotations are taken from the current ROI
+    for key, value in annotations_dict[data_selection].items():
+        pass
+        # loop through each annotation
+        # image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+        #              elem in currently_selected if \
+        #              elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+        # image = np.clip(image, 0, 255)
+        # if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
+        #     if image.shape[0] == mask_config[mask_selection].shape[0] and \
+        #             image.shape[1] == mask_config[mask_selection].shape[1]:
+        #         # set the mask blending level based on the slider, by default use an equal blend
+        #         mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
+        #         image = cv2.addWeighted(image.astype(np.uint8), 1,
+        #                                 mask_config[mask_selection].astype(np.uint8), mask_level, 0)
+        #         if add_mask_boundary:
+        #             # add the border of the mask after converting back to greyscale to derive the conversion
+        #             greyscale_mask = np.array(Image.fromarray(mask_config[mask_selection]).convert('L'))
+        #             reconverted = np.array(Image.fromarray(
+        #                 convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
+        #             image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)

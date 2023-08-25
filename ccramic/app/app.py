@@ -13,6 +13,7 @@ import os
 # from sd_material_ui import AutoComplete
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
+from plotly.graph_objs.layout import YAxis, XAxis
 def init_dashboard(server, authentic_id):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -160,7 +161,11 @@ def init_dashboard(server, authentic_id):
                                 dcc.Loading(html.Div([html.A(id='download-link', children='Download current session'),
                                                       html.Br(),
                                                       html.A(id='download-link-canvas-tiff',
-                                                             children='Download Canvas as tiff (no annotations)')]),
+                                                             children='Download Canvas as tiff (no annotations)'),
+                                                      html.Br(),
+                                                      html.A(id='download-canvas-interactive-html',
+                                                             children='Download Canvas as as interactive HTML')
+                                                      ]),
                                             fullscreen=False, type="default"),
                                 id="download-collapse", is_open=False), style={"minHeight": "100px"})
                         ],
@@ -258,8 +263,8 @@ def init_dashboard(server, authentic_id):
                                 "float": "center", "justify-content": "center"}),
                                  html.Div(dbc.Collapse(html.Div([html.H6("Pixel histogram", style={'width': '75%'}),
                                 html.Div([dcc.Loading(dcc.Graph(id="pixel-hist", figure={'layout': dict(
-                                xaxis_showgrid=False, yaxis_showgrid=False, xaxis=go.XAxis(showticklabels=False),
-                                yaxis=go.YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
+                                xaxis_showgrid=False, yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                                yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
                                 style={'width': '60vh', 'height': '30vh', 'margin-left': '-30px'},
                                 # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
                                 # keep zoom and pan bars to be able to modify the histogram view
@@ -376,6 +381,12 @@ def init_dashboard(server, authentic_id):
                                 html.Div("Add region annotation")], style={"display": "flex"}),
                                     id="region-annotation", className="mx-auto", color=None, n_clicks=0,
                                     disabled=True, style={"margin-top": "10px"}),
+                                #TODO: update the logic for the button that can clear annotation shapes
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-delete-left",
+                                style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
+                                html.Div("Clear annotation shapes")],style={"display": "flex"}),
+                                id="clear-region-annotation-shapes", className="mx-auto", color=None, n_clicks=0,
+                                disabled=False, style={"margin-top": "10px"}),
                                           html.Br(),
                                           html.Br(),
                                           dbc.Button("Create preset", id="preset-button", className="me-1"),
@@ -401,6 +412,12 @@ def init_dashboard(server, authentic_id):
                                                      n_clicks=0,
                                                      style={"margin-top": "10px"}),
                                 dcc.Download(id="download-edited-annotations"),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
+                                html.Div("Download annotations report (PDF)")], style={"display": "flex"}),
+                                id="btn-download-annot-pdf", className="mx-auto", color=None, n_clicks=0,
+                                style={"margin-top": "10px"}),
+                                dcc.Download(id="download-annotation-pdf"),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dbc.Row([dbc.Col([html.H6("Create a region annotation")], width=8),
                                           dbc.Col([html.H6("Annotate with cell type")], width=4)]),
@@ -408,7 +425,7 @@ def init_dashboard(server, authentic_id):
                                 value="annotation title", style={"width": "65%", "margin-right": "10px",
                                         "height": "50%"}),
                                 dcc.Input(id="region-annotation-body", type="text",
-                                value="annotation body", style={"width": "65%", "margin-right": "10px",
+                                value="annotation description", style={"width": "65%", "margin-right": "10px",
                                 "height": "50%"})],
                                 style={"display": "flex"})], width=8),
                                 dbc.Col([
@@ -512,9 +529,9 @@ def init_dashboard(server, authentic_id):
                                                   dcc.Graph(id="quantification-bar-full",
                                                             figure={'layout': dict(xaxis_showgrid=False,
                                                                                    yaxis_showgrid=False,
-                                                                                   xaxis=go.XAxis(
+                                                                                   xaxis=XAxis(
                                                                                        showticklabels=False),
-                                                                                   yaxis=go.YAxis(
+                                                                                   yaxis=YAxis(
                                                                                        showticklabels=False),
                                                                                    margin=dict(l=5, r=5, b=15,
                                                                                                t=20, pad=0)),
@@ -528,9 +545,9 @@ def init_dashboard(server, authentic_id):
                                                       dcc.Graph(id="umap-plot",
                                                                 figure={'layout': dict(xaxis_showgrid=False,
                                                                                        yaxis_showgrid=False,
-                                                                                       xaxis=go.XAxis(
+                                                                                       xaxis=XAxis(
                                                                                            showticklabels=False),
-                                                                                       yaxis=go.YAxis(
+                                                                                       yaxis=YAxis(
                                                                                            showticklabels=False),
                                                                                        margin=dict(l=5, r=5, b=15,
                                                                                                    t=20, pad=0)),
@@ -574,6 +591,6 @@ def init_dashboard(server, authentic_id):
     dash_app.enable_dev_tools(debug=True)
 
     init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
-    init_cell_level_callbacks(dash_app)
+    init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
 
     return dash_app.server

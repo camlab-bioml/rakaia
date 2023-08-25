@@ -2,7 +2,7 @@
 
 Cell-type Classification (using) Rapid Analysis (of) Multiplexed Imaging (mass) Cytometry using Flask and Dash.
 
-ccramic provides in-browser interactive analysis of IMC imaging datasets.
+ccramic provides in-browser interactive analysis of multiplexed imaging datasets.
 
 ## Installation
 
@@ -61,7 +61,14 @@ conda activate ccramic
 ccramic
 ```
 
+
 The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access ccramic.
+
+The current version of ccramic can also be checked on the command line with the following (v0.4.0 or later):
+
+```
+ccramic -v
+```
 
 ## Basic authentication
 
@@ -70,7 +77,7 @@ ccramic uses basic authentication upon a new session. The credentials are as fol
 * username: ccramic_user
 * password: ccramic-1
 
-**Note** that the basic authentication credentials are likely to change with as development builds update.
+**Note** that the basic authentication credentials are likely to change as development builds update.
 
 ## Docker
 
@@ -78,15 +85,24 @@ ccramic can be run using Docker with the following commands (requires an install
 
 
 ```
+cd ccramic
 docker build -t ccramic .
+# use -d to run detached in the background
 docker run -d -p 5000:5000 ccramic:latest ccramic
 ```
 
-Navigate to the local address `http://0.0.0.0:5000/`
+Local file destinations can be mounted for direct access to local filepaths
+in the containerized environment, such as :
+
+```
+docker run -p 5000:5000 -v /home/:/home/ ccramic:latest ccramic
+```
+
+Navigate to the local address `http://0.0.0.0:5000/` or `http://127.0.0.1:5000/`
 
 ## Documentation
 
-The official documentation for ccramic is in progress. For some FAQ,
+The official documentation and user manual for ccramic is in progress. For some FAQ,
 visit [the FAQ documentation](man/README.md)
 
 ## For developers

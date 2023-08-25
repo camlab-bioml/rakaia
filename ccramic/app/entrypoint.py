@@ -20,6 +20,7 @@ def init_app():
     # suppress numba depreciation warnings from umap
     warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
     warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
+    warnings.simplefilter('ignore', category=DeprecationWarning)
     """Construct core Flask application with embedded Dash app."""
     # STATIC_DIR = os.path.dirname(os.path.join(get_current_dir(), "templates", "static"))
     app = Flask(__name__, instance_relative_config=False,

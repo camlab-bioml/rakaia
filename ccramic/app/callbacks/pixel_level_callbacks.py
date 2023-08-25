@@ -1,5 +1,3 @@
-import os
-import cv2
 import dash.exceptions
 import dash_bootstrap_components as dbc
 import dash_uploader as du
@@ -13,6 +11,7 @@ from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
 from pathlib import Path
+from plotly.graph_objs.layout import YAxis, XAxis
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -671,8 +670,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         hovertemplate)
         """
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
-                data_selection is not None and len(currently_selected) > 0 and cur_graph_layout \
-                not in [{'dragmode': 'pan'}] and len(canvas_children) > 0 and \
+                data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 param_dict["current_roi"] == data_selection and len(channel_order) > 0:
             split = split_string_at_pattern(data_selection)
             exp, slide, acq = split[0], split[1], split[2]
@@ -707,7 +705,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 if show_canvas_legend:
                     x_axis_placement = 0.00001 * image_shape[1]
                     # make sure the placement is min 0.05 and max 0.1
-                    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
+                    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
                     # if the current graph already has an image, take the existing layout and apply it to the new figure
                     # otherwise, set the uirevision for the first time
                     # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
@@ -734,7 +732,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig['layout']['uirevision'] = True
 
                         if show_canvas_legend:
-                            fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size)
+                            fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
+                                                            x_axis_left=x_axis_placement)
 
                         fig = go.Figure(fig)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -754,7 +753,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig['layout']['uirevision'] = True
 
                     if show_canvas_legend:
-                        fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size)
+                        fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
+                                                        x_axis_left=x_axis_placement)
 
                     fig = go.Figure(fig)
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -828,7 +828,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig.update(data=[{'customdata': None}])
                     new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
                 fig.update_traces(hovertemplate=new_hover)
-                fig.update_layout(dragmode="zoom")
+                # fig.update_layout(dragmode="zoom")
                 return fig, Serverside(image)
             except (ValueError, AttributeError):
                 return dash.no_update
@@ -1035,23 +1035,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
             if not toggle_annotations:
-                if 'layout' in cur_canvas.keys() and 'annotations' in cur_canvas['layout'].keys() and \
+                if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout'] and \
                         len(cur_canvas['layout']['annotations']) > 0:
-                    cur_canvas['layout']['annotations'] = None
-                if 'layout' in cur_canvas.keys() and 'shapes' in cur_canvas['layout'].keys():
-                    cur_canvas['layout']['shapes'] = None
-                return go.Figure(cur_canvas)
+                    cur_canvas['layout']['annotations'] = []
+                if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout'] and \
+                        cur_canvas['layout']['shapes'] is not None and len(cur_canvas['layout']['shapes']) > 0:
+                    cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
+                                                      shape is not None and 'type' in shape and shape['type'] \
+                                                      in ['rect', 'path']]
+                return cur_canvas
             else:
                 split = split_string_at_pattern(data_selection)
                 exp, slide, acq = split[0], split[1], split[2]
                 legend_text = ''
+                cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
+                                                  shape is not None and 'label' in shape and \
+                                                  shape['label'] is not None and 'texttemplate' not in shape['label']]
+
                 fig = go.Figure(cur_canvas)
                 first_image = list(image_dict[exp][slide][acq].keys())[0]
                 first_image = image_dict[exp][slide][acq][first_image]
                 image_shape = first_image.shape
                 x_axis_placement = 0.00001 * image_shape[1]
                 # make sure the placement is min 0.05 and max 0.1
-                x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
+                x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
                 for image in channel_order:
                     # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
                     label = aliases[image] if aliases is not None and image in aliases.keys() else image
@@ -1091,7 +1098,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 except KeyError:
                     custom_scale_val = None
                 fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                                                font_size=legend_size)
+                                                font_size=legend_size, x_axis_left=x_axis_placement)
                 return fig
         else:
             raise PreventUpdate
@@ -1114,8 +1121,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         annotation['font']['size'] = legend_size
                     elif annotation['y'] == 0.05 and 'color' in annotation['text']:
                         annotation['font']['size'] = legend_size + 1
-                cur_graph['layout']['annotations'] = annotations_copy
-                return go.Figure(cur_graph)
+                cur_graph['layout']['annotations'] = [elem for elem in cur_graph['layout']['annotations'] if \
+                                                  elem is not None and 'texttemplate' not in elem]
+                return cur_graph
             except KeyError:
                 raise PreventUpdate
         else:
@@ -1213,16 +1221,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('download-link', 'href'),
                        Output('download-link-canvas-tiff', 'href'),
+                       Output('download-canvas-interactive-html', 'href'),
                        State('uploaded_dict', 'data'),
                        State('imc-metadata-editable', 'data'),
                        State('blending_colours', 'data'),
                        Input("open-download-collapse", "n_clicks"),
                        Input("download-collapse", "is_open"),
                        State('data-collection', 'value'),
-                       Input('current_canvas_image', 'data'))
+                       State('current_canvas_image', 'data'),
+                       State('annotation_canvas', 'figure'),
+                       State('annotation_canvas', 'style'))
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                current_canvas):
+                                current_image_tiff, current_canvas, canvas_style):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
@@ -1239,11 +1250,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             # buf = io.BytesIO(fig_bytes)
             # img = Image.open(buf)
             dest_file = dash.no_update
-            if current_canvas is not None:
+            if current_image_tiff is not None:
                 dest_file = str(os.path.join(dest_path, "canvas.tiff"))
                 if not os.path.exists(dest_path):
                     os.makedirs(dest_path)
-                imwrite(dest_file, current_canvas.astype(np.uint8), photometric='rgb')
+                imwrite(dest_file, current_image_tiff.astype(np.uint8), photometric='rgb')
 
             download_dir = os.path.join(tmpdirname,
                                         authentic_id,
@@ -1295,12 +1306,49 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     hf.close()
                 except:
                     pass
-                return str(relative_filename), dest_file
+                # TODO: IMP: the legend will not appear to scale in the export because by default it will fill the whole page
+                # instead, give a measure at the bottom converting pixels to distance
+                aspect_ratio = float(current_image_tiff.shape[1] / current_image_tiff.shape[0])
+                # only change the colour to black if the aspect ratio is not wide, otherwise the image will still
+                # fill the HTML so want to keep white
+                scale_update = 'black' if aspect_ratio < 1.75 else 'white'
+                for annotation in current_canvas['layout']['annotations']:
+                    if 'μm' in annotation['text']:
+                        annotation['text'] = f'<span style="color: {scale_update}">1 pixel = 1μm (unzoomed)</span><br>'
+                for shape in current_canvas['layout']['shapes']:
+                    if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
+                        current_canvas['layout']['shapes'].remove(shape)
+                fig = go.Figure(current_canvas)
+                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                                  xaxis=XAxis(showticklabels=False),
+                                  yaxis=YAxis(showticklabels=False),
+                                  margin=dict(l=0, r=0, b=0, t=0, pad=0))
+                fig.write_html(str(os.path.join(download_dir, "canvas.html")))
+                return str(relative_filename), dest_file, str(os.path.join(download_dir, "canvas.html"))
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
                 raise PreventUpdate
         else:
             raise PreventUpdate
+
+    @dash_app.callback(
+        Input('current_canvas_image', 'data'),
+        Input('annotation_canvas', 'figure'),
+        State("download-collapse", "is_open"),
+        Output("download-collapse", "is_open", allow_duplicate=True),
+        prevent_initial_call=True)
+    def reset_canvas_layers_on_new_dataset(current_image, current_canvas, currently_open):
+        """
+        Close the collapsible download when an update is made to the canvas to prevent extraneous downloading
+        """
+        if current_canvas is not None:
+            if currently_open:
+                return False
+            else:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
 
     @dash_app.callback(
         Output('annotation_canvas', 'style'),
@@ -2027,10 +2075,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                            f" Y: ({round(y_low, 2)}, {round(y_high, 2)})",
                            style={"color": "black", "white-space": "pre"}), \
                 {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
-        elif cur_graph_layout in [{"dragmode": "pan"}]:
-            raise PreventUpdate
-        else:
+        # if the zoom is reset to the default, clear the bound window
+        elif cur_graph_layout in [{'xaxis.autorange': True, 'yaxis.autorange': True}, {'autosize': True}]:
             return [], {"x_low": None, "x_high": None, "y_low": None, "y_high": None}
+        # otherwise, keep the bound window (i.e. if a shape is created)
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(
         Output("dataset-preview", "is_open"),
@@ -2124,10 +2174,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('region-annotation-cell-types', 'value'),
         State('annotation_canvas', 'relayoutData'),
         State("annotations-dict", "data"),
-        State('data-collection', 'value'))
+        State('data-collection', 'value'),
+        State('image_layers', 'value'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
-                               canvas_layout, annotations_dict, data_selection):
-        if create_annotation and None not in (annotation_title, annotation_body, canvas_layout, data_selection):
+                               canvas_layout, annotations_dict, data_selection, cur_layers):
+        if create_annotation and None not in (annotation_title, annotation_body,
+                                              canvas_layout, data_selection, cur_layers):
             if annotations_dict is None or len(annotations_dict) < 1:
                 annotations_dict = {}
             if data_selection not in annotations_dict.keys():
@@ -2155,7 +2207,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     annotations_dict[data_selection][key] = {}
                     annotations_dict[data_selection][key] = {'title': annotation_title, 'body': annotation_body,
                                                                'cell_type': annotation_cell_type, 'imported': False,
-                                                            'type': value}
+                                                            'type': value, 'channels': cur_layers}
             return Serverside(annotations_dict)
         else:
             raise PreventUpdate
