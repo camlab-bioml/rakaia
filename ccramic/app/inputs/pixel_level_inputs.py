@@ -1,5 +1,5 @@
 import dash
-from dash_extensions.enrich import dcc
+from dash_extensions.enrich import dcc, html
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
 import plotly.graph_objs as go
@@ -7,6 +7,7 @@ import dash_draggable
 import math
 import cv2
 from plotly.graph_objs.layout import XAxis, YAxis
+import dash_bootstrap_components as dbc
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False):
@@ -155,3 +156,13 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
         return fig
     except KeyError:
         return dash.no_update
+
+
+def add_local_file_dialog(use_local_dialog=False, input_id="local-dialog-file"):
+    if use_local_dialog:
+        return dbc.Button(children=html.Span([html.I(className="fa-regular fa-folder-open",
+        style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+        html.Div("Browse/read local files")], style={"display": "flex"}),
+        id=input_id, className="mb-3", color=None, n_clicks=0, style={"margin-top": "10px"})
+    else:
+        return html.Div(id=input_id)

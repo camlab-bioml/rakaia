@@ -61,6 +61,11 @@ conda activate ccramic
 ccramic
 ```
 
+The ClI options for running ccramic can be viewed using:
+
+```
+ccramic -h
+```
 
 The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access ccramic.
 
@@ -69,6 +74,24 @@ The current version of ccramic can also be checked on the command line with the 
 ```
 ccramic -v
 ```
+
+### Local file dialog (v0.7.0 or later)
+
+With ccramic v0.7.0 or later, the user has the option to use a
+local file dialog rendered with wxPython on local runs. This can be instantiated with
+the `-l` CLI option when running ccramic (by default, this feature
+is not included):
+
+```commandline
+ccramic -l
+```
+
+**IMPORTANT**: Due to the limitations of wxPython on multi-threaded
+systems as well as compatibility problems on different OS options, this feature
+is not likely to work properly on MacOS.
+
+In order to use this feature, users should make sure to install
+wxPython [from the proper download page](https://wxpython.org/pages/downloads/index.html)
 
 ## Basic authentication
 

@@ -14,7 +14,8 @@ import os
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
 from plotly.graph_objs.layout import YAxis, XAxis
-def init_dashboard(server, authentic_id):
+from .entrypoint import __version__
+def init_dashboard(server, authentic_id, config=None):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
@@ -82,7 +83,8 @@ def init_dashboard(server, authentic_id):
         html.Header(
             className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
             children=[
-                html.A("ccramic", className="navbar-brand me-0 px-3", href="#")],
+                html.A("ccramic", className="navbar-brand me-0 px-3", href="#"),
+                html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#", style={"float": "right"})],
             style={"margin-bottom": "15px"}),
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', active_label_style={"color": "#FB79B3"},
                     children=[
@@ -104,13 +106,15 @@ def init_dashboard(server, authentic_id):
                         max_total_size=30000, max_files=200,
                         filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px",
                                                                                              "height": "10vh"}),
-                                  html.Br(),
-                                  dbc.Button(children=html.Span([html.I(className="fa-regular fa-folder-open",
-                                    style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                html.Div("Browse/read local files")], style={"display": "flex"}),
-                                id="local-dialog-file", className="mb-3", color="primary", n_clicks=0,
-                                             style={"margin-top": "10px"}),
-                                  html.Br(),
+                        html.Br(),
+                        dcc.Input(id="read-filepath", type="text",
+                        placeholder="Import imaging file using filepath (local runs only)",
+                        value=None, style={"width": "100%", "height": "10%"}),
+                        dbc.Button("Add file by path", id="add-file-by-path",
+                                   className="mb-3", color="primary", n_clicks=0, style={"margin-top": "10px"}),
+                        add_local_file_dialog(use_local_dialog=config['use_local_dialog']),
+                        dbc.Tooltip("Browse the local file system using a dialog."
+                                " IMPORTANT: may not be compatible with the specific OS.", target="local-dialog-file"),
                         html.Div([html.Span([
                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-info",
                             style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),

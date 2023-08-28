@@ -24,6 +24,9 @@ def argparser():
     parser.add_argument('-a', "--auto-open", action="store_true",
                         help="automatically open the browser when the app is called. Default: False",
                         dest="auto_open")
+    parser.add_argument('-l', "--use-local-dialog", action="store_true",
+                        help="Enable a local file dialog with wxPython to browse and read local files. Default: False",
+                        dest="use_local_dialog")
 
     return parser
 
@@ -36,7 +39,11 @@ def main(sysargs = sys.argv[1:]):
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
             webbrowser.open_new(f'http://127.0.0.1:5000/')
 
-    app = init_app()
+    # establish the cli config
+
+    CLI_CONFIG = {"use_local_dialog": args.use_local_dialog}
+
+    app = init_app(cli_config=CLI_CONFIG)
     port = 5000
     if args.auto_open:
         Timer(1, open_browser).start()

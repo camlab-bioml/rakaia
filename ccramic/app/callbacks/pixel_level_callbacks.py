@@ -32,6 +32,34 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
+                       Output('session_alert_config', 'data'),
+                       State('read-filepath', 'value'),
+                       Input('add-file-by-path', 'n_clicks'),
+                       State('session_config', 'data'),
+                       State('session_alert_config', 'data'),
+                       prevent_initial_call=True)
+    def get_session_uploads_from_filepath(filepath, clicks, cur_session, error_config):
+        if filepath is not None and clicks > 0:
+            # TODO: fix ability to read in multiple files at different times
+            session_config = cur_session if cur_session is not None and \
+                                            len(cur_session['uploads']) > 0 else {'uploads': []}
+            if error_config is None:
+                error_config = {"error": None}
+            # session_config = {'uploads': []}
+            if os.path.isfile(filepath):
+                session_config['uploads'].append(filepath)
+                error_config["error"] = None
+                return session_config, error_config
+            else:
+                error_config["error"] = "Invalid filepath provided. Please verify the following: \n\n" \
+                                        "- That the file path provided is a valid local file \n" \
+                                        "- If running using Docker or a web version, " \
+                                        "local file paths will not be available."
+                return dash.no_update, error_config
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Input('local-dialog-file', 'n_clicks'),
                        State('session_config', 'data'),
                        prevent_initial_call=True)

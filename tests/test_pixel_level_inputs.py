@@ -51,3 +51,7 @@ def test_basic_additive_image():
     assert image['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
     assert image['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
     assert image['layout']['uirevision']
+
+
+def test_basic_return_local_file_dialog():
+    pass

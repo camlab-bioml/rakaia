@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0]
+
+### Changed
+
+
+### Added
+
+- CLI input option for local file dialog with wxPython #38
+- First draft of output report for annotations #53 (static)
+
+### Fixed
+
+- Ensure scalebar value is always centered over the scalebar line
+
 ## [0.6.0] - 2023-08-21
 
 ### Changed
