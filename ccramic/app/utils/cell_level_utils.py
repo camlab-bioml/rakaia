@@ -265,7 +265,7 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
                 fig.tight_layout()
                 ax = fig.add_subplot(111)
                 ax.imshow(region, interpolation='nearest')
-                ax.set_title(value['title'], fontsize=25)
+                ax.set_title(value['title'], fontsize=35)
                 ax.set_xticks([])
                 ax.set_yticks([])
                 x_dims = float(x_max) - float(x_min)
@@ -278,7 +278,7 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
                         channel_list.append(image)
                 description = value['body'] + "\n" + f"Channels: {channel_list}" + \
                               f"\nRegion dimensions: {int(x_dims)}x{int(y_dims)}"
-                ax.set_xlabel(description, fontsize=15)
+                ax.set_xlabel(description, fontsize=25)
                 pdf.savefig()
         return file_output
     else:

@@ -11,7 +11,8 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     bounds = {'xaxis.range[0]': 826, 'xaxis.range[1]': 836, 'yaxis.range[0]': 12, 'yaxis.range[1]': 21}
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
-                  'cell_type': 'mature', 'imported': False, 'type': 'zoom'}
+                  'cell_type': 'mature', 'imported': False, 'type': 'zoom',
+                  'annotation_column': 'ccramic_cell_annotation'}
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
@@ -32,7 +33,8 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     bounds = {'x0': 826, 'x1': 836, 'y0': 12, 'y1': 21}
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
-                  'cell_type': 'mature', 'imported': False, 'type': 'rect'}
+                  'cell_type': 'mature', 'imported': False, 'type': 'rect',
+                  'annotation_column': 'ccramic_cell_annotation'}
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
@@ -45,6 +47,21 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
 
     assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
                                                                 (quantification_frame["y_max"] == 20)]) == ['mature']
+
+    annotation = {'title': 'fake_title', 'body': 'fake_body',
+                  'cell_type': 'different', 'imported': False, 'type': 'rect',
+                  'annotation_column': 'broad'}
+
+    annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                                                                    quantification_frame.to_dict(
+                                                                                                  orient="records"),
+                                                                                              "roi_1", None, False,
+                                                                                              None)
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert "different" not in quantification_frame["ccramic_cell_annotation"].to_list()
+    assert "different" in quantification_frame["broad"].to_list()
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
 
@@ -60,7 +77,8 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
               '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
-                  'cell_type': 'mature', 'imported': False, 'type': 'path'}
+                  'cell_type': 'mature', 'imported': False, 'type': 'path',
+                  'annotation_column': 'ccramic_cell_annotation'}
 
     annotations_dict = {"roi_1": {svgpath: annotation}}
 

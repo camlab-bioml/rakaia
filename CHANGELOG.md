@@ -11,15 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Ensure scalebar value is always centered over the scalebar line
 
 ### Added
 
 - CLI input option for local file dialog with wxPython #38
+- Input to add multiple annotation quantification columns #54
+- Frequency table for current UMAP selection #54
 - First draft of output report for annotations #53 (static)
+- Add version in header banner, right justified
 
 ### Fixed
 
-- Ensure scalebar value is always centered over the scalebar line
+- Fixed improper canvas resizing on layer change
 
 ## [0.6.0] - 2023-08-21
 

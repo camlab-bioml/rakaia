@@ -20,7 +20,8 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                     # import only the new annotations that are rectangles (for now) and are not validated
                     if annotations[data_selection][annotation]['type'] == "zoom":
                         quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
-                        values_dict=dict(annotation), cell_type=annotations[data_selection][annotation]['cell_type'])
+                        values_dict=dict(annotation), cell_type=annotations[data_selection][annotation]['cell_type'],
+                        annotation_column=annotations[data_selection][annotation]['annotation_column'])
 
                     elif annotations[data_selection][annotation]['type'] == "path":
                         # TODO: decide which method of annotation to use
@@ -41,11 +42,13 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                                         'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
                             quantification_frame = populate_cell_annotation_column_from_bounding_box(
                                 quantification_frame, values_dict=val_dict,
-                                cell_type=annotations[data_selection][annotation]['cell_type'])
+                                cell_type=annotations[data_selection][annotation]['cell_type'],
+                                annotation_column=annotations[data_selection][annotation]['annotation_column'])
                     elif annotations[data_selection][annotation]['type'] == "rect":
                         quantification_frame = populate_cell_annotation_column_from_bounding_box(
                             quantification_frame, values_dict=dict(annotation),
-                            cell_type=annotations[data_selection][annotation]['cell_type'], box_type="rect")
+                            cell_type=annotations[data_selection][annotation]['cell_type'], box_type="rect",
+                            annotation_column=annotations[data_selection][annotation]['annotation_column'])
                     annotations[data_selection][annotation]['imported'] = True
             return quantification_frame.to_dict(orient="records"), Serverside(annotations)
         else:

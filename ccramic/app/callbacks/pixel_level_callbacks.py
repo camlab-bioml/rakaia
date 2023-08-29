@@ -2,6 +2,7 @@ import dash.exceptions
 import dash_bootstrap_components as dbc
 import dash_uploader as du
 import flask
+import pandas as pd
 from dash import ctx
 from dash_extensions.enrich import Output, Input, State, html
 from numpy.core._exceptions import _ArrayMemoryError
@@ -1432,7 +1433,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         # elif value is not None and current_canvas is None:
         #     return {'width': f'{value}vh', 'height': f'{value}vh'}
         else:
-            return {'width': f'{value}vh', 'height': f'{value}vh'}
+            raise PreventUpdate
 
     @dash_app.callback(
         Output("selected-area-table", "data"),
@@ -2207,10 +2208,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('apply-mask', 'value'),
         State('mask-options', 'value'),
         State('mask-blending-slider', 'value'),
-        State('add-mask-boundary', 'value'))
+        State('add-mask-boundary', 'value'),
+        State('quant-annotation-col', 'value'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
                                canvas_layout, annotations_dict, data_selection, cur_layers,
-                               mask_toggle, mask_selection, mask_blending_level, add_mask_boundary):
+                               mask_toggle, mask_selection, mask_blending_level, add_mask_boundary, annot_col):
         if create_annotation and None not in (annotation_title, annotation_body,
                                               canvas_layout, data_selection, cur_layers):
             if annotations_dict is None or len(annotations_dict) < 1:
@@ -2238,12 +2240,37 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = {'title': annotation_title, 'body': annotation_body,
                                                                'cell_type': annotation_cell_type, 'imported': False,
+                                                         'annotation_column': annot_col,
                                                             'type': value, 'channels': cur_layers,
                                                              'use_mask': mask_toggle,
                                                              'mask_selection': mask_selection,
                                                              'mask_blending_level': mask_blending_level,
                                                              'add_mask_boundary': add_mask_boundary}
             return Serverside(annotations_dict)
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('annotation-table', 'data'),
+                       Output('annotation-table', 'columns'),
+                       Input("annotations-dict", "data"),
+                       Input('data-collection', 'value'),
+                       prevent_initial_call=True)
+    def populate_annotations_table_preview(annotations_dict, dataset_selection):
+        if None not in (annotations_dict, dataset_selection):
+            try:
+                if len(annotations_dict[dataset_selection]) > 0:
+                    annotation_list = []
+                    for value in annotations_dict[dataset_selection].values():
+                        for sub_key, sub_value in value.items():
+                            value[sub_key] = str(sub_value)
+                        annotation_list.append(value)
+                    # columns = [{'id': p, 'name': p, 'editable': False} for p in annotations_dict[dataset_selection].keys()]
+                    columns = [{'id': p, 'name': p, 'editable': False} for p in list(pd.DataFrame(annotation_list).columns)]
+                    return annotation_list, columns
+                else:
+                    return [], []
+            except KeyError:
+                return [], []
         else:
             raise PreventUpdate
 
@@ -2304,3 +2331,32 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=True)]
     #     else:
     #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=False)]
+
+    @dash_app.callback(
+        Output("annotation-preview", "is_open"),
+        Input('show-annotation-table', 'n_clicks'),
+        [State("annotation-preview", "is_open")])
+    def toggle_annotation_table_modal(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(
+        Output("quant-annotation-col", "options"),
+        Input('add-annotation-col', 'n_clicks'),
+        State('new-annotation-col', 'value'),
+        State('quant-annotation-col', 'options'),
+        prevent_initial_call=True)
+    def add_new_annotation_column(nclicks, new_col, current_cols):
+        """
+        Add a new annotation column to the dropdown menu possibilities for quantification
+        """
+        if nclicks > 0 and new_col:
+            try:
+                assert isinstance(current_cols, list) and len(current_cols) > 0
+                current_cols.append(new_col)
+                return current_cols
+            except AssertionError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate

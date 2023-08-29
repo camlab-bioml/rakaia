@@ -50,12 +50,13 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('quantification-bar-mode', 'value'),
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
+                       State('quant-annotation-col', 'options'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings):
+                                               umap_layout, embeddings, annot_cols):
         zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
         return generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, zoom_keys, ctx.triggered_id)
+                                               umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols)
 
     @dash_app.callback(Output('umap-projection', 'data'),
                        Output('umap-projection-options', 'options'),
@@ -233,8 +234,33 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         if n_clicks > 0 and None not in (cur_annotation_dict, data_selection):
             try:
                 cur_annotation_dict[data_selection] = {}
-                return cur_annotation_dict
+                return Serverside(cur_annotation_dict)
             except KeyError:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("show-quant-dist-table", "is_open"),
+        Input('show-quant-dist', 'n_clicks'),
+        [State("show-quant-dist-table", "is_open")])
+    def toggle_show_quant_dist_modal(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(Output('quant-dist-table', 'data'),
+                       Output('quant-dist-table', 'columns'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
+                       Input("umap-projection-options", "value"),
+                       Input('quantification-dict', 'data'),
+                       prevent_initial_call=True)
+    def populate_quantification_distribution_table(umap_variable, quantification_dict):
+        # TODO: populate the frequency distribution table for a variable in the quantification results
+        if None not in (quantification_dict, umap_variable):
+            frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
+                columns={"index": "Value", 0: "Count"})
+            columns = [{'id': p, 'name': p, 'editable': False} for p in list(frame.columns)]
+            return frame.to_dict(orient="records"), columns, dash.no_update
         else:
             raise PreventUpdate
