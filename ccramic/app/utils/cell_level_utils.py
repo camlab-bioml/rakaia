@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import cv2
 import os
+import matplotlib.patches as mpatches
 
 def set_columns_to_drop():
     return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation']
@@ -211,7 +212,7 @@ def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=
     return cells_included
 
 def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection, mask_config,
-                                    aliases, dest_dir="/tmp/", output_file="annotations.pdf"):
+                                    aliases, dest_dir="/tmp/", output_file="annotations.pdf", blend_dict=None):
     """
     Generate a PDF output report with region images linked to annotations.
     The annotations are held in a dictionary with the title, description, shapes/coordinates, and channels used
@@ -258,27 +259,43 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
                                                range(int(x_min), int(x_max), 1))]).astype(np.uint8)
                 aspect_ratio = image.shape[1] / image.shape[0]
                 # set height based on the pixel number
-                height = 0.02 * image.shape[1] if 0.02 * image.shape[1] < 25 else 25
+                height = 0.02 * image.shape[1] if 0.02 * image.shape[1] < 30 else 30
                 width = height * aspect_ratio
                 # first value is the width, second is the height
                 fig = plt.figure(figsize=(width, height))
                 fig.tight_layout()
-                ax = fig.add_subplot(111)
+                # ax = fig.add_subplot(111)
+                # plt.axes((.1, .4, .8, .5))
+                ax = fig.add_axes((0, .4, 1, 0.5))
                 ax.imshow(region, interpolation='nearest')
-                ax.set_title(value['title'], fontsize=35)
+                ax.set_title(value['title'], fontsize=(width + 10))
                 ax.set_xticks([])
                 ax.set_yticks([])
                 x_dims = float(x_max) - float(x_min)
                 y_dims = float(y_max) - float(y_min)
-                channel_list = []
-                for image in value['channels']:
-                    if aliases is not None and image in aliases.keys():
-                        channel_list.append(aliases[image])
+                patches = []
+                for channel in value['channels']:
+                    label = aliases[channel] if channel in aliases.keys() else channel
+                    if blend_dict is not None:
+                        try:
+                            col_use = blend_dict[exp][slide][acq][channel]['color']
+                        except KeyError:
+                            col_use = 'white'
                     else:
-                        channel_list.append(image)
-                description = value['body'] + "\n" + f"Channels: {channel_list}" + \
-                              f"\nRegion dimensions: {int(x_dims)}x{int(y_dims)}"
-                ax.set_xlabel(description, fontsize=25)
+                        col_use = 'white'
+                    patches.append(mpatches.Patch(color=col_use, label=label))
+                body = str(value['body']).replace(r'\n', '\n')
+                description = "Description:\n" + body + "\n\n" + "" \
+                                "Region dimensions: " + str(int(x_dims)) + "x" + str(int(y_dims))
+                text_offset = .3 if height < 25 else .2
+                fig.text(.15, text_offset, description, fontsize=width)
+                fig.legend(handles=patches, fontsize=width, title='Channel List', title_fontsize=(width + 5))
+                # ax.set_xlabel(description, fontsize=25)
+                # y_offset = 0.95
+                # plt.figtext(0.01, 1, "Channels", size=16)
+                # for channel in channel_list:
+                #     plt.figtext(0.01, y_offset, channel, size=14)
+                #     y_offset -= 0.05
                 pdf.savefig()
         return file_output
     else:

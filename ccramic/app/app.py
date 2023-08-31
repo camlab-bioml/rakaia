@@ -450,7 +450,7 @@ def init_dashboard(server, authentic_id, config=None):
                                 value="", placeholder="Create annotation column",
                                 style={"width": "50%", "margin-right": "10px", "height": "50%"}),
                                 dbc.Button("Add new annotation column", id="add-annotation-col",
-                                className="me-1", style={"margin-top": "-10px", "width": "40%"})],
+                                className="me-1", style={"margin-top": "-10px"})],
                                                             style={"display": "flex"})], width=8),
                                 dbc.Col([dcc.Dropdown(id='quant-annotation-col',
                                 multi=False, options=['ccramic_cell_annotation'],

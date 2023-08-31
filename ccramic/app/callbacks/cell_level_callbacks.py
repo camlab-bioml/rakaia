@@ -192,15 +192,18 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('canvas-layers', 'data'),
         State('data-collection', 'value'),
         State('mask-dict', 'data'),
-        State('alias-dict', 'data'),)
+        State('alias-dict', 'data'),
+        State('blending_colours', 'data'))
     # @cache.memoize())
-    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers, data_selection, mask_config, aliases):
+    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers,
+                                 data_selection, mask_config, aliases, blend_dict):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             return dcc.send_file(generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection,
-                mask_config, aliases, dest_dir=dest_path, output_file="annotations.pdf"), type="application/pdf")
+                mask_config, aliases, blend_dict=blend_dict,
+                dest_dir=dest_path, output_file="annotations.pdf"), type="application/pdf")
         else:
             raise PreventUpdate
 

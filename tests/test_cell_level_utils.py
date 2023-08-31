@@ -224,3 +224,14 @@ def test_output_annotations_pdf():
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)
+
+        assert not os.path.exists(file_path)
+
+        blend_dict = {"exp1": {"slide0": {"roi_1": {"channel_1": {'color': '#FFFFFF'}}}}}
+
+        output_pdf = generate_annotations_output_pdf(annotations_dict, layers_dict, data_selection,
+                                                     mask_config=mask_config, aliases=aliases, dest_dir=tmpdirname,
+                                                     blend_dict=blend_dict)
+        assert os.path.exists(output_pdf)
+        if os.access(output_pdf, os.W_OK):
+            os.remove(output_pdf)
