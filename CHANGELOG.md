@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Frequency table for current UMAP selection #54
 - First draft of output report for annotations #53 (static)
 - Add version in header banner, right justified
+- Individual toggle buttons for the scalebar and legend to be
+toggle visible individually #55
 
 ### Fixed
 

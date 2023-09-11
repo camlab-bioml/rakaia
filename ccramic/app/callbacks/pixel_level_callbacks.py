@@ -672,7 +672,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('mask-dict', 'data'),
                        Input('apply-mask', 'value'),
                        Input('mask-options', 'value'),
-                       State('toggle-canvas-annotations', 'value'),
+                       State('toggle-canvas-legend', 'value'),
+                       State('toggle-canvas-scalebar', 'value'),
                        Input('mask-blending-slider', 'value'),
                        Input('add-mask-boundary', 'value'),
                        Input('channel-order', 'data'),
@@ -685,8 +686,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 cur_graph, cur_graph_layout, raw_data_dict,
                                                 show_each_channel_intensity,
                                                 canvas_children, param_dict,
-                                                mask_config, mask_toggle, mask_selection, show_canvas_legend,
-                                                mask_blending_level, add_mask_boundary,
+                                                mask_config, mask_toggle, mask_selection, toggle_legend,
+                                                toggle_scalebar, mask_blending_level, add_mask_boundary,
                                                 channel_order, legend_size, add_cell_id_hover):
 
         """
@@ -731,14 +732,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # fig.update(data=[{'customdata': )
                 image_shape = image.shape
                 fig.update_traces(hoverinfo="skip")
-                if show_canvas_legend:
-                    x_axis_placement = 0.00001 * image_shape[1]
-                    # make sure the placement is min 0.05 and max 0.1
-                    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
-                    # if the current graph already has an image, take the existing layout and apply it to the new figure
-                    # otherwise, set the uirevision for the first time
-                    # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
+                x_axis_placement = 0.00001 * image_shape[1]
+                # make sure the placement is min 0.05 and max 0.1
+                x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+                # if the current graph already has an image, take the existing layout and apply it to the new figure
+                # otherwise, set the uirevision for the first time
+                # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
                 # do not update if there is already a hover template as it will be too slow
+                # scalebar is y = 0.06
+                # legend is y = 0.05
                 hover_template_exists = 'data' in cur_graph and 'customdata' in cur_graph['data'] and \
                                         cur_graph['data']['customdata'] is not None
                 if 'layout' in cur_graph and 'uirevision' in cur_graph['layout'] and \
@@ -751,7 +753,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         if 'annotations' in cur_graph['layout'] and len(cur_graph['layout']['annotations']) > 0:
                             cur_graph['layout']['annotations'] = [annotation for annotation in \
                                                           cur_graph['layout']['annotations'] if \
-                                                                  annotation['y'] == 0.06 and show_canvas_legend]
+                                                                  annotation['y'] == 0.06 and toggle_scalebar]
                         if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']):
                             cur_graph['layout']['shapes'] = []
                         fig = cur_graph
@@ -760,7 +762,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     except KeyError:
                         fig['layout']['uirevision'] = True
 
-                        if show_canvas_legend:
+                        if toggle_scalebar:
                             fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
                                                             x_axis_left=x_axis_placement)
 
@@ -781,7 +783,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # if making the fig for the firs time, set the uirevision
                     fig['layout']['uirevision'] = True
 
-                    if show_canvas_legend:
+                    if toggle_scalebar:
                         fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
                                                         x_axis_left=x_axis_placement)
 
@@ -803,7 +805,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # set how far in from the lefthand corner the scale bar and colour legends should be
                 # higher values mean closer to the centre
                 # fig = canvas_layers[image_type][currently_selected[0]]
-                if legend_text != '' and show_canvas_legend:
+                if legend_text != '' and toggle_legend:
                     fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
                                            yref='paper',
                                            x=(1 - x_axis_placement),
@@ -815,7 +817,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                 # set the x-axis scale placement based on the size of the image
                 # for adding a scale bar
-                if show_canvas_legend:
+                if toggle_scalebar:
                     fig.add_shape(type="line",
                                   xref="paper", yref="paper",
                                   x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
@@ -1045,7 +1047,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
-                       Input('toggle-canvas-annotations', 'value'),
+                       Input('toggle-canvas-legend', 'value'),
+                       Input('toggle-canvas-scalebar', 'value'),
                        State('annotation_canvas', 'figure'),
                        State('annotation_canvas', 'relayoutData'),
                        State('image_layers', 'value'),
@@ -1056,78 +1059,98 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
                        prevent_initial_call=True)
-    def render_canvas_from_toggle_show_annotations(toggle_annotations, cur_canvas, cur_layout, currently_selected,
+    def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
+                                                   cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
                                                    channel_order, legend_size):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend)
         """
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
-            if not toggle_annotations:
-                if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout'] and \
-                        len(cur_canvas['layout']['annotations']) > 0:
-                    cur_canvas['layout']['annotations'] = []
-                if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout'] and \
-                        cur_canvas['layout']['shapes'] is not None and len(cur_canvas['layout']['shapes']) > 0:
-                    cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
-                                                      shape is not None and 'type' in shape and shape['type'] \
-                                                      in ['rect', 'path']]
-                return cur_canvas
+            # scalebar is y = 0.06
+            # legend is y = 0.05
+            split = split_string_at_pattern(data_selection)
+            exp, slide, acq = split[0], split[1], split[2]
+            first_image = list(image_dict[exp][slide][acq].keys())[0]
+            first_image = image_dict[exp][slide][acq][first_image]
+            image_shape = first_image.shape
+            x_axis_placement = 0.00001 * image_shape[1]
+            # make sure the placement is min 0.05 and max 0.1
+            x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+            if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
+                cur_annotations = cur_canvas['layout']['annotations'].copy()
             else:
-                split = split_string_at_pattern(data_selection)
-                exp, slide, acq = split[0], split[1], split[2]
-                legend_text = ''
-                cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
-                                                  shape is not None and 'label' in shape and \
-                                                  shape['label'] is not None and 'texttemplate' not in shape['label']]
+                cur_annotations = []
+            if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
+                cur_shapes = cur_canvas['layout']['shapes'].copy()
+            else:
+                cur_shapes = []
+            if ctx.triggered_id == "toggle-canvas-legend":
+                if not toggle_legend:
+                    cur_annotations = [annot for annot in cur_annotations if \
+                                       annot is not None and 'y' in annot and annot['y'] != 0.05]
+                    cur_canvas['layout']['annotations'] = cur_annotations
+                    return cur_canvas
+                else:
+                    legend_text = ''
+                    # cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
+                    #                                   shape is not None and 'label' in shape and \
+                    #                                   shape['label'] is not None and 'texttemplate' not in shape[
+                    #                                       'label']]
+                    for image in channel_order:
+                        # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
+                        label = aliases[image] if aliases is not None and image in aliases.keys() else image
+                        legend_text = legend_text + f'<span style="color:' \
+                                                        f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
+                                                        f'>{label}</span><br>'
 
-                fig = go.Figure(cur_canvas)
-                first_image = list(image_dict[exp][slide][acq].keys())[0]
-                first_image = image_dict[exp][slide][acq][first_image]
-                image_shape = first_image.shape
-                x_axis_placement = 0.00001 * image_shape[1]
-                # make sure the placement is min 0.05 and max 0.1
-                x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
-                for image in channel_order:
-                    # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
-                    label = aliases[image] if aliases is not None and image in aliases.keys() else image
-                    legend_text = legend_text + f'<span style="color:' \
-                                                    f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
-                                                    f'>{label}</span><br>'
+                    fig = go.Figure(cur_canvas)
+                    if legend_text != '':
+                        fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
+                                               yref='paper',
+                                               x=(1 - x_axis_placement),
+                                               # xanchor='right',
+                                               y=0.05,
+                                               # yanchor='bottom',
+                                               bgcolor="black",
+                                               showarrow=False)
+                    return fig
+            elif ctx.triggered_id == "toggle-canvas-scalebar":
+                if not toggle_scalebar:
+                    cur_shapes = [shape for shape in cur_shapes if \
+                                      shape is not None and 'type' in shape and shape['type'] \
+                                      in ['rect', 'path']]
+                    cur_annotations = [annot for annot in cur_annotations if \
+                                           annot is not None and 'y' in annot and annot['y'] != 0.06]
+                    cur_canvas['layout']['annotations'] = cur_annotations
+                    cur_canvas['layout']['shapes'] = cur_shapes
+                    return cur_canvas
+                else:
+                    fig = go.Figure(cur_canvas)
+                    fig.add_shape(type="line",
+                                  xref="paper", yref="paper",
+                                  x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
+                                  y1=0.05,
+                                  line=dict(
+                                      color="white",
+                                      width=2,
+                                  ),
+                                  )
 
-                if legend_text != '':
-                    fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
-                                           yref='paper',
-                                           x=(1 - x_axis_placement),
-                                           # xanchor='right',
-                                           y=0.05,
-                                           # yanchor='bottom',
-                                           bgcolor="black",
-                                           showarrow=False)
+                    try:
+                        high = max(cur_canvas['layout']['xaxis']['range'][1],
+                                   cur_canvas['layout']['xaxis']['range'][0])
+                        low = min(cur_canvas['layout']['xaxis']['range'][1],
+                                  cur_canvas['layout']['xaxis']['range'][0])
+                        x_range_high = math.ceil(int(high))
+                        x_range_low = math.floor(int(low))
+                        assert x_range_high >= x_range_low
+                        custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                    except KeyError:
+                        custom_scale_val = None
 
-                fig.add_shape(type="line",
-                              xref="paper", yref="paper",
-                              x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
-                              y1=0.05,
-                              line=dict(
-                                  color="white",
-                                  width=2,
-                              ),
-                              )
-
-                try:
-                   high = max(cur_canvas['layout']['xaxis']['range'][1],
-                                           cur_canvas['layout']['xaxis']['range'][0])
-                   low = min(cur_canvas['layout']['xaxis']['range'][1],
-                            cur_canvas['layout']['xaxis']['range'][0])
-                   x_range_high = math.ceil(int(high))
-                   x_range_low = math.floor(int(low))
-                   assert x_range_high >= x_range_low
-                   custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
-                except KeyError:
-                    custom_scale_val = None
-                fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                                                font_size=legend_size, x_axis_left=x_axis_placement)
+                    fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
+                                                    font_size=legend_size, x_axis_left=x_axis_placement)
                 return fig
         else:
             raise PreventUpdate
@@ -1844,7 +1867,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             exp, slide, acq = split[0], split[1], split[2]
             try:
                 fig, hist_max = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
-            except ValueError:
+            except (ValueError, TypeError):
                 fig = go.Figure()
 
             fig = fig if show_pixel_hist else dash.no_update
