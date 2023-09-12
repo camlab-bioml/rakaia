@@ -45,15 +45,15 @@ def test_umap_from_quantification_dict(get_current_dir):
     with pytest.raises(PreventUpdate):
         return_umap_dataframe_from_quantification_dict(None)
 
-def test_receive_alert_on_imcompatible_mask():
-    upload_dict = {"experiment0": {"slide0": {"acq0": {"channel_1": np.empty((50, 50))}}}}
+def test_receive_alert_on_incompatible_mask():
+    upload_dict = {"experiment0+++slide0+++acq0": {"channel_1": np.empty((50, 50))}}
     data_selection = "experiment0+++slide0+++acq0"
     mask_dict = {"mask": {"array": np.empty((50, 49))}}
     error = send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
     assert 'error' in error.keys()
     with pytest.raises(PreventUpdate):
         # if the masks are the same, do not send error
-        upload_dict = {"experiment0": {"slide0": {"acq0": {"channel_1": np.empty((50, 50))}}}}
+        upload_dict = {"experiment0+++slide0+++acq0": {"channel_1": np.empty((50, 50))}}
         data_selection = "experiment0+++slide0+++acq0"
         mask_dict = {"mask": {"array": np.empty((50, 50))}}
         send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
@@ -197,8 +197,8 @@ def test_output_annotations_pdf():
                                                              'mask_selection': None,
                                                              'mask_blending_level': 35,
                                                              'add_mask_boundary': False}}}
-        layers_dict = {"exp1": {"slide0": {"roi_1": {"channel_1":
-                    np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}}}
+        layers_dict = {"exp1+++slide0+++roi_1":
+                           {"channel_1": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}
         aliases = {"channel_1": "channel_1"}
         output_pdf = generate_annotations_output_pdf(annotations_dict, layers_dict, data_selection,
                                                      mask_config=None, aliases=aliases, dest_dir=tmpdirname)
@@ -227,7 +227,7 @@ def test_output_annotations_pdf():
 
         assert not os.path.exists(file_path)
 
-        blend_dict = {"exp1": {"slide0": {"roi_1": {"channel_1": {'color': '#FFFFFF'}}}}}
+        blend_dict = {"channel_1": {'color': '#FFFFFF'}}
 
         output_pdf = generate_annotations_output_pdf(annotations_dict, layers_dict, data_selection,
                                                      mask_config=mask_config, aliases=aliases, dest_dir=tmpdirname,

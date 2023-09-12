@@ -92,10 +92,8 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
 def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle):
     if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
-        split = split_string_at_pattern(data_selection)
-        exp, slide, acq = split[0], split[1], split[2]
-        first_image = list(upload_dict[exp][slide][acq].keys())[0]
-        first_image = upload_dict[exp][slide][acq][first_image]
+        first_image = list(upload_dict[data_selection].keys())[0]
+        first_image = upload_dict[data_selection][first_image]
         if first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
                 first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]:
             if error_config is None:
@@ -220,8 +218,7 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
     """
     # subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
     #                       range(int(x_range_low), int(x_range_high), 1))]
-    split = split_string_at_pattern(data_selection)
-    exp, slide, acq = split[0], split[1], split[2]
+
     # ensure that the annotations are taken from the current ROI
     file_output = os.path.join(dest_dir, output_file)
     if data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
@@ -234,9 +231,9 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
                     x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
                 elif value['type'] == "path":
                     x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
-                image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+                image = sum([np.asarray(canvas_layers[data_selection][elem]).astype(np.float32) for \
                              elem in value['channels'] if \
-                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                             elem in canvas_layers[data_selection].keys()]).astype(np.float32)
                 image = np.clip(image, 0, 255)
                 if value['use_mask'] and None not in (mask_config, value['mask_selection']) and len(mask_config) > 0:
                     if image.shape[0] == mask_config[value['mask_selection']]["array"].shape[0] and \
@@ -278,7 +275,7 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
                     label = aliases[channel] if channel in aliases.keys() else channel
                     if blend_dict is not None:
                         try:
-                            col_use = blend_dict[exp][slide][acq][channel]['color']
+                            col_use = blend_dict[data_selection][channel]['color']
                         except KeyError:
                             col_use = 'white'
                     else:

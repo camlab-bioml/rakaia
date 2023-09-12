@@ -87,12 +87,10 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
     Generate an additiive image from one or more channel arrays. Optionally, project a mask on top of the additive image
     using a specified blend ratio with cv2
     """
-    split = split_string_at_pattern(data_selection)
-    exp, slide, acq = split[0], split[1], split[2]
     try:
-        image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+        image = sum([np.asarray(canvas_layers[data_selection][elem]).astype(np.float32) for \
                  elem in currently_selected if \
-                 elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                 elem in canvas_layers[data_selection].keys()]).astype(np.float32)
         image = np.clip(image, 0, 255)
         if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
             if image.shape[0] == mask_config[mask_selection].shape[0] and \

@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Ensure scalebar value is always centered over the scalebar line
+- Changed nested hash tables for arrays and blend parameters to
+top level hash tables for better hierarchical representation #34
 
 ### Added
 

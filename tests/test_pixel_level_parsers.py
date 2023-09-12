@@ -7,14 +7,13 @@ def test_basic_parser_tiff_to_dict(get_current_dir):
     assert isinstance(uploaded, tuple)
     uploaded_dict = uploaded[0]
     assert len(uploaded_dict['metadata']) > 0
-    assert 'experiment0' in uploaded_dict.keys()
+    assert 'experiment0+++slide0+++acq0' in uploaded_dict.keys()
     assert not 'experiment1' in uploaded_dict.keys()
-    assert len(uploaded_dict['experiment0']['slide0']['acq0'].keys()) == 1
-
+    assert len(uploaded_dict['experiment0+++slide0+++acq0'].keys()) == 1
 
     blending_dict = create_new_blending_dict(uploaded_dict)
     assert all([elem in ['#FFFFFF', None] for elem in \
-                blending_dict['experiment0']['slide0']['acq0']['channel_1'].values()])
+                blending_dict['channel_1'].values()])
 
 def test_basic_parser_fake_mcd(get_current_dir):
     with pytest.raises(ValueError):

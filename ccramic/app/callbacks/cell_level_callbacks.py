@@ -35,10 +35,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def populate_quantification_table_from_upload(session_dict, error_config, upload_dict, data_selection):
         if None not in (data_selection, upload_dict):
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            first_image = list(upload_dict[exp][slide][acq].keys())[0]
-            image_for_validation = upload_dict[exp][slide][acq][first_image]
+            first_image = list(upload_dict[data_selection].keys())[0]
+            image_for_validation = upload_dict[data_selection][first_image]
         else:
             image_for_validation = None
         return parse_and_validate_measurements_csv(session_dict, error_config=error_config,

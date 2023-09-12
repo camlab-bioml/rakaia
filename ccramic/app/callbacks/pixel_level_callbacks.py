@@ -160,11 +160,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             datasets = []
             selection_return = None
             channels_return = None
-            for exp in uploaded.keys():
-                if "metadata" not in exp:
-                    for slide in uploaded[exp].keys():
-                        for acq in uploaded[exp][slide].keys():
-                            datasets.append(f"{exp}+++{slide}+++{acq}")
+            for roi in uploaded.keys():
+                if "metadata" not in roi:
+                    datasets.append(roi)
             if cur_data_selection is not None:
                 selection_return = cur_data_selection if cur_data_selection in datasets else None
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0:
@@ -220,26 +218,24 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         # set the default canvas to return without a load screen
         canvas_return = [render_default_annotation_canvas()]
         if image_dict and data_selection:
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
             # load the specific ROI requested into the dictionary
             # imp: use the channel label for the dropdown view and the name in the background to retrieve
             try:
                 image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
                                                      session_config=session_config)
                 # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
-                if all([image_dict[exp][slide][acq][elem] is not None for \
-                        elem in image_dict[exp][slide][acq].keys()]):
+                if all([image_dict[data_selection][elem] is not None for \
+                        elem in image_dict[data_selection].keys()]):
                     # get the first image in the ROI and check the dimensions
-                    first_image = list(image_dict[exp][slide][acq].keys())[0]
-                    first_image = image_dict[exp][slide][acq][first_image]
+                    first_image = list(image_dict[data_selection].keys())[0]
+                    first_image = image_dict[data_selection][first_image]
                     canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image)]
             except IndexError:
                 raise PreventUpdate
             try:
                 # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
                 if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
-                    all([elem in image_dict[exp][slide][acq].keys() for elem in currently_selected_channels]):
+                    all([elem in image_dict[data_selection].keys() for elem in currently_selected_channels]):
                     channels_selected = list(currently_selected_channels)
                 else:
                     channels_selected = []
@@ -307,67 +303,58 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         use_preset_condition = None not in (preset_selection, preset_dict)
         if add_to_layer is not None and current_blend_dict is not None:
             channel_modify = dash.no_update
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
             if param_dict is None or len(param_dict) < 1:
                 param_dict = {"current_roi": data_selection}
             if data_selection is not None:
                 if current_blend_dict is not None and "current_roi" in param_dict.keys() and \
                         data_selection != param_dict["current_roi"]:
-                    current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
-                                                                        data_selection)
+                    # current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
+                    #                                                     data_selection)
                     param_dict["current_roi"] = data_selection
                     if cur_image_in_mod_menu is not None and cur_image_in_mod_menu in \
-                        current_blend_dict[exp][slide][acq].keys():
+                        current_blend_dict.keys():
                         channel_modify = cur_image_in_mod_menu
                 else:
                     param_dict["current_roi"] = data_selection
             if all_layers is None:
                 all_layers = {}
-            if exp not in all_layers.keys():
-                all_layers[exp] = {}
-            if slide not in all_layers[exp].keys():
-                all_layers[exp][slide] = {}
-            if acq not in all_layers[exp][slide].keys():
-                all_layers[exp][slide][acq] = {}
+                all_layers[data_selection] = {}
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
-                if elem not in current_blend_dict[exp][slide][acq].keys():
-                    current_blend_dict[exp][slide][acq][elem] = {'color': None,
+                if elem not in current_blend_dict.keys():
+                    current_blend_dict[elem] = {'color': None,
                                                                  'x_lower_bound': 0,
                                                                  'x_upper_bound':
                                                                      get_default_channel_upper_bound_by_percentile(
-                                                                uploaded_w_data[exp][slide][acq][elem]),
+                                                                uploaded_w_data[data_selection][elem]),
                                                                  'filter_type': None,
                                                                  'filter_val': None}
-                    current_blend_dict[exp][slide][acq][elem]['color'] = '#FFFFFF'
+                    current_blend_dict[elem]['color'] = '#FFFFFF'
                     if use_preset_condition:
-                        current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
-                            current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
+                        current_blend_dict[elem] = apply_preset_to_blend_dict(
+                            current_blend_dict[elem], preset_dict[preset_selection])
                 # if the selected channel is in the current blend, check if a preset is used to override
-                elif elem in current_blend_dict[exp][slide][acq].keys() and use_preset_condition:
+                elif elem in current_blend_dict.keys() and use_preset_condition:
                     # do not override the colour of the curreht channel
-                    current_blend_dict[exp][slide][acq][elem] = apply_preset_to_blend_dict(
-                        current_blend_dict[exp][slide][acq][elem], preset_dict[preset_selection])
+                    current_blend_dict[elem] = apply_preset_to_blend_dict(
+                        current_blend_dict[elem], preset_dict[preset_selection])
                 else:
                     # create a nested dict with the image and all of the filters being used for it
                     # if the same blend parameters have been transferred from another ROI, apply them
                     # set a default upper bound for the channel if the value is None
-                    if current_blend_dict[exp][slide][acq][elem]['x_upper_bound'] is None:
-                        current_blend_dict[exp][slide][acq][elem]['x_upper_bound'] = \
+                    if current_blend_dict[elem]['x_upper_bound'] is None:
+                        current_blend_dict[elem]['x_upper_bound'] = \
                         get_default_channel_upper_bound_by_percentile(
-                        uploaded_w_data[exp][slide][acq][elem])
-                    if current_blend_dict[exp][slide][acq][elem]['x_lower_bound'] is None:
-                        current_blend_dict[exp][slide][acq][elem]['x_lower_bound'] = 0
+                        uploaded_w_data[data_selection][elem])
+                    if current_blend_dict[elem]['x_lower_bound'] is None:
+                        current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
                     #  present in the layers dictionary to save time
-                    if elem not in all_layers[exp][slide][acq].keys():
-                        array_preset = apply_preset_to_array(uploaded_w_data[exp][slide][acq][elem],
-                                                         current_blend_dict[exp][slide][acq][elem])
-                        all_layers[exp][slide][acq][elem] = np.array(recolour_greyscale(array_preset,
-                                                                                    current_blend_dict[exp][slide][
-                                                                                        acq][
-                                                                                        elem]['color'])).astype(
+                    if elem not in all_layers[data_selection].keys():
+                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
+                                                         current_blend_dict[elem])
+                        all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
+                                                            current_blend_dict[elem]['color'])).astype(
                         np.uint8)
             return current_blend_dict, Serverside(all_layers), param_dict, channel_modify
         else:
@@ -406,22 +393,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         if layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            array = uploaded_w_data[exp][slide][acq][layer]
 
-            if current_blend_dict[exp][slide][acq][layer]['color'] != colour['hex']:
+            array = uploaded_w_data[data_selection][layer]
+            if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
 
                     # if upper and lower bounds have been set before for this layer, use them before recolouring
 
-                    if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
-                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
+                    if current_blend_dict[layer]['x_lower_bound'] is not None and \
+                        current_blend_dict[layer]['x_upper_bound'] is not None:
                         array = filter_by_upper_and_lower_bound(array,
-                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                            float(current_blend_dict[layer][
                                                                       'x_lower_bound']),
-                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                            float(current_blend_dict[layer][
                                                                       'x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
@@ -435,8 +420,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                         # and \
                         # colour['hex'] not in ['#ffffff', '#FFFFFF']:
-                    current_blend_dict[exp][slide][acq][layer]['color'] = colour['hex']
-                    all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
+                    current_blend_dict[layer]['color'] = colour['hex']
+                    all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
                     return current_blend_dict, Serverside(all_layers)
                 else:
@@ -467,24 +452,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 slider_values = [int(float(elem)) for elem in slider_values]
                 lower_bound = min(slider_values)
                 upper_bound = max(slider_values)
-                split = split_string_at_pattern(data_selection)
-                exp, slide, acq = split[0], split[1], split[2]
-                if int(float(current_blend_dict[exp][slide][acq][layer]['x_lower_bound'])) == int(float(lower_bound)) and \
-                        int(float(current_blend_dict[exp][slide][acq][layer]['x_upper_bound'])) == int(float(upper_bound)):
+
+
+                if int(float(current_blend_dict[layer]['x_lower_bound'])) == int(float(lower_bound)) and \
+                        int(float(current_blend_dict[layer]['x_upper_bound'])) == int(float(upper_bound)):
                     raise PreventUpdate
                 else:
-                    current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = int(lower_bound)
-                    current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] = int(upper_bound)
+                    current_blend_dict[layer]['x_lower_bound'] = int(lower_bound)
+                    current_blend_dict[layer]['x_upper_bound'] = int(upper_bound)
 
-                    array = apply_preset_to_array(uploaded_w_data[exp][slide][acq][layer],
-                                  current_blend_dict[exp][slide][acq][layer])
+                    array = apply_preset_to_array(uploaded_w_data[data_selection][layer],
+                                  current_blend_dict[layer])
 
-                    all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                         current_blend_dict[exp][slide][acq][layer]['color']))
+                    all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
+                                                         current_blend_dict[layer]['color']))
 
                     return current_blend_dict, Serverside(all_layers)
-            except TypeError as e:
-                print(e)
+            except TypeError:
                 raise PreventUpdate
         else:
             raise PreventUpdate
@@ -508,16 +492,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
         if None not in (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            array = uploaded_w_data[exp][slide][acq][layer]
+
+
+            array = uploaded_w_data[data_selection][layer]
 
             for preset_val in preset_keys:
-                current_blend_dict[exp][slide][acq][layer][preset_val] = preset_dict[preset_selection][preset_val]
+                current_blend_dict[layer][preset_val] = preset_dict[preset_selection][preset_val]
 
             array = apply_preset_to_array(array, preset_dict[preset_selection])
-            all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                             current_blend_dict[exp][slide][acq][
+            all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
+                                                                             current_blend_dict[
                                                                                  layer][
                                                                                  'color']))
             return current_blend_dict, Serverside(all_layers)
@@ -553,19 +537,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers) and \
                 not only_options_changed:
 
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            array = uploaded[exp][slide][acq][layer]
+
+
+            array = uploaded[data_selection][layer]
 
             # condition where the current inputs are set to not have a filter, and the current blend dict matches
-            no_filter_in_both = current_blend_dict[exp][slide][acq][layer]['filter_type'] is None and \
-                                current_blend_dict[exp][slide][acq][layer]['filter_val'] is None and \
+            no_filter_in_both = current_blend_dict[layer]['filter_type'] is None and \
+                                current_blend_dict[layer]['filter_val'] is None and \
                                 len(filter_chosen) == 0
 
             # condition where toggling between two channels, and the first one has no filter and the second
             # has a filter. prevent the callback with no actual change
-            same_filter_params = current_blend_dict[exp][slide][acq][layer]['filter_type'] == filter_name and \
-                                 current_blend_dict[exp][slide][acq][layer]['filter_val'] == filter_value and \
+            same_filter_params = current_blend_dict[layer]['filter_type'] == filter_name and \
+                                 current_blend_dict[layer]['filter_val'] == filter_value and \
                                  len(filter_chosen) > 0
 
             if not no_filter_in_both and not same_filter_params:
@@ -573,12 +557,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in cur_layers for elem in blend_options]):
 
-                    if current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] is not None and \
-                        current_blend_dict[exp][slide][acq][layer]['x_upper_bound'] is not None:
+                    if current_blend_dict[layer]['x_lower_bound'] is not None and \
+                        current_blend_dict[layer]['x_upper_bound'] is not None:
                         array = filter_by_upper_and_lower_bound(array,
-                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                            float(current_blend_dict[layer][
                                                                       'x_lower_bound']),
-                                                            float(current_blend_dict[exp][slide][acq][layer][
+                                                            float(current_blend_dict[layer][
                                                                       'x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
@@ -587,15 +571,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         else:
                             array = gaussian_filter(array, int(filter_value))
 
-                        current_blend_dict[exp][slide][acq][layer]['filter_type'] = filter_name
-                        current_blend_dict[exp][slide][acq][layer]['filter_val'] = filter_value
+                        current_blend_dict[layer]['filter_type'] = filter_name
+                        current_blend_dict[layer]['filter_val'] = filter_value
 
                     else:
-                        current_blend_dict[exp][slide][acq][layer]['filter_type'] = None
-                        current_blend_dict[exp][slide][acq][layer]['filter_val'] = None
+                        current_blend_dict[layer]['filter_type'] = None
+                        current_blend_dict[layer]['filter_val'] = None
 
-                    all_layers[exp][slide][acq][layer] = np.array(recolour_greyscale(array,
-                                                                                 current_blend_dict[exp][slide][acq][
+                    all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
+                                                                                 current_blend_dict[
                                                                                      layer][
                                                                                      'color'])).astype(np.uint8)
 
@@ -629,10 +613,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     # @cache.memoize())
     def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
         if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            for key, value in current_blend_dict[exp][slide][acq].items():
-                current_blend_dict[exp][slide][acq][key] = apply_preset_to_blend_dict(value,
+
+
+            for key, value in current_blend_dict.items():
+                current_blend_dict[key] = apply_preset_to_blend_dict(value,
                                                                                       preset_dict[preset_selection])
             return current_blend_dict
         else:
@@ -723,19 +707,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 param_dict["current_roi"] == data_selection and len(channel_order) > 0:
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
+
+
             legend_text = ''
             for image in channel_order:
-                # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
+                # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
                 label = aliases[image] if aliases is not None and image in aliases.keys() else image
                 legend_text = legend_text + f'<span style="color:' \
-                                                f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
+                                                f'{blend_colour_dict[image]["color"]}"' \
                                                 f'>{label}</span><br>'
             try:
-                image = sum([canvas_layers[exp][slide][acq][elem].astype(np.float32) for \
+                image = sum([canvas_layers[data_selection][elem].astype(np.float32) for \
                              elem in currently_selected if \
-                             elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                             elem in canvas_layers[data_selection].keys()]).astype(np.float32)
                 image = np.clip(image, 0, 255)
                 if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
                     if image.shape[0] == mask_config[mask_selection]["array"].shape[0] and \
@@ -864,7 +848,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                 elif " show channel intensities on hover" in show_each_channel_intensity:
                     # fig.update(data=[{'customdata': None}])
-                    hover_stack = np.stack(tuple(raw_data_dict[exp][slide][acq][elem] for elem in currently_selected),
+                    hover_stack = np.stack(tuple(raw_data_dict[data_selection][elem] for elem in currently_selected),
                                            axis=-1)
                     fig.update(data=[{'customdata': hover_stack}])
                     # set the labels for the hover from the aliases
@@ -1090,10 +1074,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
             # scalebar is y = 0.06
             # legend is y = 0.05
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            first_image = list(image_dict[exp][slide][acq].keys())[0]
-            first_image = image_dict[exp][slide][acq][first_image]
+
+
+            first_image = list(image_dict[data_selection].keys())[0]
+            first_image = image_dict[data_selection][first_image]
             image_shape = first_image.shape
             x_axis_placement = 0.00001 * image_shape[1]
             # make sure the placement is min 0.05 and max 0.1
@@ -1119,10 +1103,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     #                                   shape['label'] is not None and 'texttemplate' not in shape[
                     #                                       'label']]
                     for image in channel_order:
-                        # if blend_colour_dict[exp][slide][acq][image]['color'] not in ['#ffffff', '#FFFFFF']:
+                        # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
                         label = aliases[image] if aliases is not None and image in aliases.keys() else image
                         legend_text = legend_text + f'<span style="color:' \
-                                                        f'{blend_colour_dict[exp][slide][acq][image]["color"]}"' \
+                                                        f'{blend_colour_dict[image]["color"]}"' \
                                                         f'>{label}</span><br>'
 
                     fig = go.Figure(cur_canvas)
@@ -1314,9 +1298,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
         if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
 
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
 
             # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
@@ -1343,38 +1324,24 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if hf is None:
                 hf = h5py.File(relative_filename, 'w')
             try:
-                for exp in list(uploaded.keys()):
-                    if 'metadata' in exp:
-                        meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
-                            pd.DataFrame(uploaded['metadata'])
-                        if 'columns' not in exp:
-                            for col in meta_to_write:
-                                meta_to_write[col] = meta_to_write[col].astype(str)
-                            hf.create_dataset('metadata', data=meta_to_write.to_numpy())
-                        else:
-                            hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
-                    else:
-                        # with lay loading, if there is no image to write, pass
-                        if exp not in hf:
-                            hf.create_group(exp)
-                        for slide in uploaded[exp].keys():
-                            if slide not in hf[exp]:
-                                hf[exp].create_group(slide)
-                            for acq_in in uploaded[exp][slide].keys():
-                                if acq_in == acq:
-                                    if acq_in not in hf[exp][slide]:
-                                        hf[exp][slide].create_group(acq_in)
-                                    for key, value in uploaded[exp][slide][acq_in].items():
-                                        if key not in hf[exp][slide][acq_in]:
-                                            hf[exp][slide][acq_in].create_group(key)
-                                        if 'image' not in hf[exp][slide][acq_in][key] and value is not None:
-                                            hf[exp][slide][acq_in][key].create_dataset('image', data=value)
-                                        if blend_dict is not None and key in blend_dict[exp][slide][acq_in].keys():
-                                            for blend_key, blend_val in blend_dict[exp][slide][acq_in][key].items():
-                                                data_write = blend_val if blend_val is not None else "None"
-                                                hf[exp][slide][acq_in][key].create_dataset(blend_key, data=data_write)
-                                else:
-                                    pass
+                meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
+                    pd.DataFrame(uploaded['metadata'])
+                for col in meta_to_write:
+                    meta_to_write[col] = meta_to_write[col].astype(str)
+                hf.create_dataset('metadata', data=meta_to_write.to_numpy())
+                hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
+                hf.create_group(data_selection)
+                for key, value in uploaded[data_selection].items():
+                    if key not in hf[data_selection]:
+                        hf[data_selection].create_group(key)
+                        if 'image' not in hf[data_selection][key] and value is not None:
+                            hf[data_selection][key].create_dataset('image', data=value)
+                            if blend_dict is not None and key in blend_dict.keys():
+                                for blend_key, blend_val in blend_dict[key].items():
+                                    data_write = str(blend_val) if blend_val is not None else "None"
+                                    hf[data_selection][key].create_dataset(blend_key, data=data_write)
+                            else:
+                                pass
                 try:
                     hf.close()
                 except:
@@ -1443,11 +1410,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 'dragmode' not in cur_graph_layout.keys() and 'shapes' not in cur_graph_layout.keys() and \
                 add_layer is not None and value is not None:
             try:
-                split = split_string_at_pattern(data_selection)
-                exp, slide, acq = split[0], split[1], split[2]
 
-                first_image = list(image_dict[exp][slide][acq].keys())[0]
-                first_image = image_dict[exp][slide][acq][first_image]
+
+
+                first_image = list(image_dict[data_selection].keys())[0]
+                first_image = image_dict[data_selection][first_image]
                 aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
             except (KeyError, AttributeError):
                 aspect_ratio = 1
@@ -1500,8 +1467,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
         if graph is not None and graph_layout is not None and data_selection is not None and \
                 nclicks and stats_table_open:
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
+
+
             # option 1: if shapes are drawn on the canvas
             if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
                 # these are for each sample
@@ -1527,7 +1494,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 assert y_range_high >= y_range_low
 
                                 mean_exp, max_xep, min_exp = get_area_statistics_from_rect(
-                                    upload[exp][slide][acq][layer],
+                                    upload[data_selection][layer],
                                     x_range_low,
                                     x_range_high,
                                     y_range_low, y_range_high)
@@ -1537,7 +1504,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             # option 2: if a closed form shape is drawn
                             elif shape['type'] == 'path' and 'path' in shape:
                                 mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
-                                    upload[exp][slide][acq][layer], shape['path'])
+                                    upload[data_selection][layer], shape['path'])
                                 shapes_mean.append(round(float(mean_exp), 2))
                                 shapes_max.append(round(float(max_xep), 2))
                                 shapes_min.append(round(float(min_exp), 2))
@@ -1572,7 +1539,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     min_panel = []
                     aliases = []
                     for layer in layers:
-                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[exp][slide][acq][layer],
+                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[data_selection][layer],
                                                                                    x_range_low,
                                                                                    x_range_high,
                                                                                    y_range_low, y_range_high)
@@ -1606,7 +1573,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     min_panel = []
                     aliases = []
                     for layer in layers:
-                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[exp][slide][acq][layer],
+                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[data_selection][layer],
                                                                                    x_range_low,
                                                                                    x_range_high,
                                                                                    y_range_low, y_range_high)
@@ -1634,7 +1601,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     for layer in layers:
                         for shape_path in graph_layout.values():
                             mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
-                                upload[exp][slide][acq][layer], shape_path)
+                                upload[data_selection][layer], shape_path)
                             mean_panel.append(round(float(mean_exp), 2))
                             max_panel.append(round(float(max_xep), 2))
                             min_panel.append(round(float(min_exp), 2))
@@ -1688,10 +1655,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 row_children = []
                 zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
                 views = None
-                if data_selection is not None:
-                    split = split_string_at_pattern(data_selection)
-                    exp, slide, acq = split[0], split[1], split[2]
-                    # maintain the original order of channels that is dictated by the metadata
+                # maintain the original order of channels that is dictated by the metadata
                 # decide if channel view or ROI view is selected
                 # channel view
                 blend_return = dash.no_update
@@ -1699,32 +1663,32 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     views = get_all_images_by_channel_name(gallery_data, channel_selected)
                     if toggle_scaling_gallery:
                         try:
-                            if blend_colour_dict[exp][slide][acq][channel_selected]['x_lower_bound'] is None:
-                                blend_colour_dict[exp][slide][acq][channel_selected]['x_lower_bound'] = 0
-                            if blend_colour_dict[exp][slide][acq][channel_selected]['x_upper_bound'] is None:
-                                blend_colour_dict[exp][slide][acq][channel_selected]['x_upper_bound'] = \
+                            if blend_colour_dict[channel_selected]['x_lower_bound'] is None:
+                                blend_colour_dict[channel_selected]['x_lower_bound'] = 0
+                            if blend_colour_dict[channel_selected]['x_upper_bound'] is None:
+                                blend_colour_dict[channel_selected]['x_upper_bound'] = \
                                 get_default_channel_upper_bound_by_percentile(
-                                    gallery_data[exp][slide][acq][channel_selected])
+                                    gallery_data[data_selection][channel_selected])
                             views = {key: apply_preset_to_array(resize_for_canvas(value),
-                                                        blend_colour_dict[exp][slide][acq][channel_selected]) for \
+                                                        blend_colour_dict[channel_selected]) for \
                                 key, value in views.items()}
                         except KeyError:
                             pass
                 else:
-                    views = {elem: gallery_data[exp][slide][acq][elem] for elem in list(aliases.keys())}
+                    views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
 
                 if views is not None:
                     for key, value in views.items():
                         if toggle_scaling_gallery:
                             try:
-                                if blend_colour_dict[exp][slide][acq][key]['x_lower_bound'] is None:
-                                    blend_colour_dict[exp][slide][acq][key]['x_lower_bound'] = 0
-                                if blend_colour_dict[exp][slide][acq][key]['x_upper_bound'] is None:
-                                    blend_colour_dict[exp][slide][acq][key]['x_upper_bound'] = \
+                                if blend_colour_dict[key]['x_lower_bound'] is None:
+                                    blend_colour_dict[key]['x_lower_bound'] = 0
+                                if blend_colour_dict[key]['x_upper_bound'] is None:
+                                    blend_colour_dict[key]['x_upper_bound'] = \
                                     get_default_channel_upper_bound_by_percentile(
-                                    gallery_data[exp][slide][acq][key])
+                                    gallery_data[data_selection][key])
                                 image_render = apply_preset_to_array(resize_for_canvas(value),
-                                                        blend_colour_dict[exp][slide][acq][key])
+                                                        blend_colour_dict[key])
                             except (KeyError, TypeError):
                                 image_render = resize_for_canvas(value)
                         else:
@@ -1778,14 +1742,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             in_blend = [aliases[elem] for elem in current_blend]
             cell_styling_conditions = []
             if blend_colours is not None and current_blend is not None and data_selection is not None:
-                split = split_string_at_pattern(data_selection)
-                exp, slide, acq = split[0], split[1], split[2]
                 try:
-                    for key, value in blend_colours[exp][slide][acq].items():
-                        if blend_colours[exp][slide][acq][key]['color'] != '#FFFFFF' and key in current_blend:
+                    for key, value in blend_colours[data_selection].items():
+                        if blend_colours[data_selection][key]['color'] != '#FFFFFF' and key in current_blend:
                             label = aliases[key] if aliases is not None and key in aliases.keys() else key
                             cell_styling_conditions.append( {"condition": f"params.value == '{label}'",
-                            "style": {"color": f"{blend_colours[exp][slide][acq][key]['color']}"}})
+                            "style": {"color": f"{blend_colours[data_selection][key]['color']}"}})
                 except KeyError:
                     pass
                 if len(in_blend) > 0:
@@ -1884,10 +1846,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Create pixel histogram and output the default percentiles
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
             try:
-                fig, hist_max = pixel_hist_from_array(uploaded[exp][slide][acq][selected_channel])
+                fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel])
             except (ValueError, TypeError):
                 fig = go.Figure()
 
@@ -1899,10 +1859,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if ctx.triggered_id == "images_in_blend":
                 try:
                     # if the current selection has already had a histogram bound on it, update the histogram with it
-                    if current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound'] is not None and \
-                            current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'] is not None:
-                        lower_bound = int(float(current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound']))
-                        upper_bound = int(float(current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound']))
+                    if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
+                            current_blend_dict[selected_channel]['x_upper_bound'] is not None:
+                        lower_bound = int(float(current_blend_dict[selected_channel]['x_lower_bound']))
+                        upper_bound = int(float(current_blend_dict[selected_channel]['x_upper_bound']))
                     else:
                         lower_bound = None
                         upper_bound = None
@@ -1949,11 +1909,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id == "images_in_blend" and not only_options_changed:
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
-            filter_type = current_blend_dict[exp][slide][acq][selected_channel]['filter_type']
-            filter_val = current_blend_dict[exp][slide][acq][selected_channel]['filter_val']
-            color = current_blend_dict[exp][slide][acq][selected_channel]['color']
+            filter_type = current_blend_dict[selected_channel]['filter_type']
+            filter_val = current_blend_dict[selected_channel]['filter_val']
+            color = current_blend_dict[selected_channel]['color']
             # evaluate the current states of the inputs. if they are the same as the new channel, do not update
             if ' apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val):
                 to_apply_filter = dash.no_update
@@ -1975,11 +1933,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
             filter_type = preset_dict[preset_selection]['filter_type']
             filter_val = preset_dict[preset_selection]['filter_val']
-            color = current_blend_dict[exp][slide][acq][selected_channel]['color']
+            color = current_blend_dict[selected_channel]['color']
             to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
@@ -2005,14 +1961,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 current_blend_dict, current_presets, cur_preset_chosen):
         if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer,
                                                                               current_blend_dict):
-            split = split_string_at_pattern(data_selection)
-            exp, slide, acq = split[0], split[1], split[2]
+
+
             if preset_name not in current_preset_options:
                 current_preset_options.append(preset_name)
 
             current_presets = {} if current_presets is None else current_presets
 
-            current_presets[preset_name] = current_blend_dict[exp][slide][acq][layer]
+            current_presets[preset_name] = current_blend_dict[layer]
 
             if cur_preset_chosen in current_preset_options:
                 set_preset = cur_preset_chosen

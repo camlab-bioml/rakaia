@@ -1,6 +1,7 @@
 from ccramic.app.inputs.pixel_level_inputs import *
 import numpy as np
 import plotly.graph_objs as go
+from dash_extensions.enrich import html
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()
@@ -32,13 +33,13 @@ def test_add_scalebar_to_canvas(get_current_dir):
 
 
 def test_basic_additive_image():
-    upload_dict = {"experiment0": {"slide0": {"acq0": {"DNA": np.zeros((600, 600, 3)),
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.zeros((600, 600, 3)),
                                                        "Nuclear": np.zeros((600, 600, 3)),
                                                        "Cytoplasm": np.zeros((600, 600, 3))},
-                                              "acq1": {"DNA": np.zeros((600, 600, 3)),
+                                              "experiment0+++slide0+++acq1": {"DNA": np.zeros((600, 600, 3)),
                                                        "Nuclear": np.zeros((600, 600, 3)),
                                                        "Cytoplasm": np.zeros((600, 600, 3))}
-                                              }}}
+                                              }
 
     # blend_dict = create_new_blending_dict(upload_dict)
 
@@ -54,4 +55,5 @@ def test_basic_additive_image():
 
 
 def test_basic_return_local_file_dialog():
-    pass
+    assert isinstance(add_local_file_dialog(use_local_dialog=True), dbc.Button)
+    assert isinstance(add_local_file_dialog(use_local_dialog=False), html.Div)
