@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0]
+## [0.7.0] - 2023-09-12
 
 ### Changed
 
@@ -22,10 +22,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add version in header banner, right justified
 - Individual toggle buttons for the scalebar and legend to be
 toggle visible individually #55
+- Toggle ability to read either local filepaths or read
+all of the files in a directory matching the appropriate image
+files #55
 
 ### Fixed
 
 - Fixed improper canvas resizing on layer change
+- Fixed improper update of inttensity slider from h5 due to improper
+string to int conversion
+- Fixed error in writing Nonetype to h5 arrays
 
 ## [0.6.0] - 2023-08-21
 

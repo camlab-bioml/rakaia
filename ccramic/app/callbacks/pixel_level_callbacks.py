@@ -1,3 +1,5 @@
+import os.path
+
 import dash.exceptions
 import dash_bootstrap_components as dbc
 import dash_uploader as du
@@ -38,25 +40,43 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('add-file-by-path', 'n_clicks'),
                        State('session_config', 'data'),
                        State('session_alert_config', 'data'),
+                       State('local-read-type', 'value'),
                        prevent_initial_call=True)
-    def get_session_uploads_from_filepath(filepath, clicks, cur_session, error_config):
-        if filepath is not None and clicks > 0:
+    def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, import_type):
+        if path is not None and clicks > 0:
             # TODO: fix ability to read in multiple files at different times
             session_config = cur_session if cur_session is not None and \
                                             len(cur_session['uploads']) > 0 else {'uploads': []}
             if error_config is None:
                 error_config = {"error": None}
             # session_config = {'uploads': []}
-            if os.path.isfile(filepath):
-                session_config['uploads'].append(filepath)
-                error_config["error"] = None
-                return session_config, error_config
-            else:
-                error_config["error"] = "Invalid filepath provided. Please verify the following: \n\n" \
+            if import_type == "filepath":
+                if os.path.isfile(path):
+                    session_config['uploads'].append(path)
+                    error_config["error"] = None
+                    return session_config, dash.no_update
+                else:
+                    error_config["error"] = "Invalid filepath provided. Please verify the following: \n\n" \
                                         "- That the file path provided is a valid local file \n" \
                                         "- If running using Docker or a web version, " \
                                         "local file paths will not be available."
-                return dash.no_update, error_config
+                    return dash.no_update, error_config
+            elif import_type == "directory":
+                if os.path.isdir(path):
+                    # valid_files = []
+                    extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5"]
+                    for extension in extensions:
+                        session_config['uploads'].extend(Path(path).glob(extension))
+                    session_config['uploads'] = [str(elem) for elem in session_config['uploads']]
+                    return session_config, dash.no_update
+                else:
+                    error_config["error"] = "Invalid directory provided. Please verify the following: \n\n" \
+                                            "- That the directory provided exists in the local filesystem \n" \
+                                            "- If running using Docker or a web version, " \
+                                            "local directories will not be available."
+                    return dash.no_update, error_config
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
@@ -444,13 +464,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 all([elem is not None for elem in slider_values]):
             # do not update if the range values in the slider match the curernt blend params:
             try:
-                slider_values = [int(elem) for elem in slider_values]
+                slider_values = [int(float(elem)) for elem in slider_values]
                 lower_bound = min(slider_values)
                 upper_bound = max(slider_values)
                 split = split_string_at_pattern(data_selection)
                 exp, slide, acq = split[0], split[1], split[2]
-                if int(current_blend_dict[exp][slide][acq][layer]['x_lower_bound']) == int(lower_bound) and \
-                        int(current_blend_dict[exp][slide][acq][layer]['x_upper_bound']) == int(upper_bound):
+                if int(float(current_blend_dict[exp][slide][acq][layer]['x_lower_bound'])) == int(float(lower_bound)) and \
+                        int(float(current_blend_dict[exp][slide][acq][layer]['x_upper_bound'])) == int(float(upper_bound)):
                     raise PreventUpdate
                 else:
                     current_blend_dict[exp][slide][acq][layer]['x_lower_bound'] = int(lower_bound)
@@ -463,7 +483,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                          current_blend_dict[exp][slide][acq][layer]['color']))
 
                     return current_blend_dict, Serverside(all_layers)
-            except TypeError:
+            except TypeError as e:
+                print(e)
                 raise PreventUpdate
         else:
             raise PreventUpdate
@@ -1346,7 +1367,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                     for key, value in uploaded[exp][slide][acq_in].items():
                                         if key not in hf[exp][slide][acq_in]:
                                             hf[exp][slide][acq_in].create_group(key)
-                                        if 'image' not in hf[exp][slide][acq_in][key]:
+                                        if 'image' not in hf[exp][slide][acq_in][key] and value is not None:
                                             hf[exp][slide][acq_in][key].create_dataset('image', data=value)
                                         if blend_dict is not None and key in blend_dict[exp][slide][acq_in].keys():
                                             for blend_key, blend_val in blend_dict[exp][slide][acq_in][key].items():
@@ -1880,8 +1901,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # if the current selection has already had a histogram bound on it, update the histogram with it
                     if current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound'] is not None and \
                             current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'] is not None:
-                        lower_bound = int(current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound'])
-                        upper_bound = int(current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound'])
+                        lower_bound = int(float(current_blend_dict[exp][slide][acq][selected_channel]['x_lower_bound']))
+                        upper_bound = int(float(current_blend_dict[exp][slide][acq][selected_channel]['x_upper_bound']))
                     else:
                         lower_bound = None
                         upper_bound = None

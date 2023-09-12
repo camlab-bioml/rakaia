@@ -158,8 +158,12 @@ def populate_upload_dict(uploaded_files):
                                     upload_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                                        'ccramic Label']
                                 else:
-                                    assert all(label in acq.channel_labels for label in channel_labels)
-                                    assert all(name in acq.channel_names for name in channel_names)
+                                    #TODO: establish within an MCD if the channel names should be exactly the same
+                                    # or if the length is sufficient
+                                    # i.e. how to handle minor spelling mistakes
+                                    # assert all(label in acq.channel_labels for label in channel_labels)
+                                    # assert all(name in acq.channel_names for name in channel_names)
+                                    assert len(acq.channel_labels) == len(channel_labels)
                                 # img = mcd_file.read_acquisition(acq)
                                 channel_index = 0
                                 for channel in acq.channel_names:
