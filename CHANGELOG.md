@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0] - 2023-09-12
+## [0.7.0] - 2023-09-13
 
 ### Changed
 
 - Ensure scalebar value is always centered over the scalebar line
 - Changed nested hash tables for arrays and blend parameters to
 top level hash tables for better hierarchical representation #34
+- Remove any previous ccramic cache dirs in the tmpdir prior to execution
 
 ### Added
 
@@ -27,11 +28,13 @@ toggle visible individually #55
 - Toggle ability to read either local filepaths or read
 all of the files in a directory matching the appropriate image
 files #55
+- Ability to export the panel blend parameters as JSON and re-import
+- New warning on file import if multiple file type extensions are detected
 
 ### Fixed
 
 - Fixed improper canvas resizing on layer change
-- Fixed improper update of inttensity slider from h5 due to improper
+- Fixed improper update of intensity slider from h5 due to improper
 string to int conversion
 - Fixed error in writing Nonetype to h5 arrays
 

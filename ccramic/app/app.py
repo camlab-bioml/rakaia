@@ -21,12 +21,19 @@ def init_dashboard(server, authentic_id, config=None):
         # set the serveroutput cache dir and clean it every time a new app session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
         if os.access("/tmp/", os.R_OK):
+            # TODO: establish cleaning the tmp dir for any sub directory that has ccramic cache in it
+            subdirs = [x[0] for x in os.walk('/tmp/') if 'ccramic_cache' in x[0]]
+            # remove any parent directory that has a ccramic cache in it
+            for dir in subdirs:
+                if os.access(os.path.dirname(dir), os.R_OK) and os.access(dir, os.R_OK):
+                    shutil.rmtree(os.path.dirname(dir))
             cache_dest = os.path.join("/tmp/", authentic_id, "ccramic_cache")
         else:
             cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), authentic_id,
                                       "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
+
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
                              update_title=None,
@@ -161,6 +168,13 @@ def init_dashboard(server, authentic_id, config=None):
                                       max_files=1, upload_id="upload-quantification",
                                       default_style={"margin-top": "20px", "height": "10%"}),
                             html.Br(),
+                            html.H5("Import ROI configuration"),
+                            du.Upload(id='upload-param-json', max_file_size=1000,
+                                      filetypes=['json'],
+                                      text='Import channel blend parameters in JSON format using drag and drop',
+                                      max_files=1, upload_id="upload-param-json",
+                                      default_style={"margin-top": "20px", "height": "10%"}),
+                            html.Br(),
                             html.H5("Downloads"),
                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
                                                                   style={"display": "inline-block",
@@ -171,13 +185,17 @@ def init_dashboard(server, authentic_id, config=None):
                             dbc.Tooltip(children="Open up the panel to get the download links.",
                                         target="open-download-collapse"),
                             html.Div(dbc.Collapse(
-                                dcc.Loading(html.Div([html.A(id='download-link', children='Download current session'),
+                                dcc.Loading(html.Div([html.A(id='download-link',
+                                                    children='Download current session in h5py'),
                                                       html.Br(),
                                                       html.A(id='download-link-canvas-tiff',
                                                              children='Download Canvas as tiff (no annotations)'),
                                                       html.Br(),
                                                       html.A(id='download-canvas-interactive-html',
-                                                             children='Download Canvas as as interactive HTML')
+                                                             children='Download Canvas as as interactive HTML'),
+                                                      html.Br(),
+                                                      html.A(id='download-blend-config',
+                                                             children='Download blend configuration as JSON')
                                                       ]),
                                             fullscreen=False, type="default"),
                                 id="download-collapse", is_open=False), style={"minHeight": "100px"})

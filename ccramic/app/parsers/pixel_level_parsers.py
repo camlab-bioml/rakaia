@@ -184,7 +184,7 @@ def populate_upload_dict(uploaded_files):
                                 assert all([elem in txt_channel_labels for elem in metadata_labels])
                             basename = str(Path(upload).stem)
                             roi = f"{str(basename)}+++slide{str(slide_index)}" \
-                                  f"+++{str(acq.description)}"
+                                  f"+++{str(acq_index)}"
                             upload_dict[roi] = {}
                             for image in acq:
                                 image_label = txt_channel_labels[image_index - 1]

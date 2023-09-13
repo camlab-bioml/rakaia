@@ -275,7 +275,7 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
                     label = aliases[channel] if channel in aliases.keys() else channel
                     if blend_dict is not None:
                         try:
-                            col_use = blend_dict[data_selection][channel]['color']
+                            col_use = blend_dict[channel]['color']
                         except KeyError:
                             col_use = 'white'
                     else:

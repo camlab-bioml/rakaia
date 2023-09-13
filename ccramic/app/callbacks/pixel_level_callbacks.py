@@ -15,6 +15,8 @@ from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
+import json
+import pathlib
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -31,6 +33,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         # IMP: ensure that the progress is up to 100% in the float before beginning to process
         if filenames and float(status.progress) == 1.0:
             return filenames
+        else:
+            raise PreventUpdate
+
+    @du.callback(Output('blending_colours', 'data', allow_duplicate=True),
+                 id='upload-param-json')
+    # @cache.memoize())
+    def get_param_json_from_drag_and_drop(status: du.UploadStatus):
+        filenames = [str(x) for x in status.uploaded_files]
+        # IMP: ensure that the progress is up to 100% in the float before beginning to process
+        if filenames and float(status.progress) == 1.0:
+            param_json = json.load(open(filenames[0]))
+            return param_json
         else:
             raise PreventUpdate
 
@@ -90,7 +104,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             app = wx.App(None)
             dialog = wx.FileDialog(None, 'Open', str(Path.home()),
                                    style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
-                                   wildcard="*.tiff;*.tif;*.mcd;*.txt|*.tiff;*.tif;*.mcd;*.txt")
+                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5|*.tiff;*.tif;*.mcd;*.txt;*.h5")
             if dialog.ShowModal() == wx.ID_OK:
                 filenames = dialog.GetPaths()
                 if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
@@ -133,17 +147,35 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('dataset-preview-table', 'columns'),
                        Output('dataset-preview-table', 'data'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('session_config', 'data'),
                        State('blending_colours', 'data'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
-    def create_upload_dict_from_filepath_string(session_dict, current_blend):
+    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config):
+        """
+        Create session variables from the list of importted file paths
+        Note that a message will be supplied if more than one type of file is passed
+        """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
+            unique_suffixes = []
+            for upload in session_dict['uploads']:
+                suffix = pathlib.Path(upload).suffix
+                if suffix not in unique_suffixes:
+                    unique_suffixes.append(suffix)
+            if len(unique_suffixes) > 1:
+                if error_config is None:
+                    error_config = {"error": None}
+                error_config["error"] = "Warning: Multiple different file types were detected on upload. " \
+                                        "This may cause problems during analysis. For best performance, " \
+                                        "it is recommended to analyze datasets all from the same file type extension " \
+                                        "and ensure that all imported datasets share the same panel."
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
             blend_return = blend_dict if current_blend is None or len(current_blend) == 0 else dash.no_update
-            return Serverside(upload_dict), session_dict, blend_return, columns, data
+            return Serverside(upload_dict), session_dict, blend_return, columns, data, error_config
         else:
             raise PreventUpdate
 
@@ -277,6 +309,36 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return current_blend_dict
             else:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(State('uploaded_dict', 'data'),
+                       Input('blending_colours', 'data'),
+                       State('data-collection', 'value'),
+                       State('image_layers', 'value'),
+                       State('canvas-layers', 'data'),
+                       State('images_in_blend', 'value'),
+                       Output('canvas-layers', 'data', allow_duplicate=True),
+                       # Output('session_alert_config', 'data', allow_duplicate=True),
+                       prevent_initial_call=True)
+    def update_blend_layers_on_new_blending_dict(uploaded_w_data, current_blend_dict, data_selection,
+                                               add_to_layer, all_layers, cur_channel_mod):
+        """
+        Update the currently selected canvas layers with a newly uploaded blend dictionary
+        Only applies to the channels that have already been selected: if channels are not in the current blend,
+        they will be modified on future selection
+        Requires that the channel modification menu be empty to make sure that parameters are updated properly
+        """
+        if None not in (uploaded_w_data, current_blend_dict, data_selection) and len(add_to_layer) > 0:
+            if all_layers is None:
+                all_layers = {data_selection: {}}
+            for elem in add_to_layer:
+                array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
+                                                     current_blend_dict[elem])
+                all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
+                                                                               current_blend_dict[elem][
+                                                                                   'color'])).astype(np.uint8)
+            return Serverside(all_layers)
         else:
             raise PreventUpdate
 
@@ -1279,6 +1341,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('download-link', 'href'),
                        Output('download-link-canvas-tiff', 'href'),
                        Output('download-canvas-interactive-html', 'href'),
+                       Output('download-blend-config', 'href'),
                        State('uploaded_dict', 'data'),
                        State('imc-metadata-editable', 'data'),
                        State('blending_colours', 'data'),
@@ -1364,7 +1427,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                   yaxis=YAxis(showticklabels=False),
                                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
                 fig.write_html(str(os.path.join(download_dir, "canvas.html")))
-                return str(relative_filename), dest_file, str(os.path.join(download_dir, "canvas.html"))
+                param_json = str(os.path.join(download_dir, 'param.json'))
+                with open(param_json, "w") as outfile:
+                    json.dump(blend_dict, outfile)
+
+                return str(relative_filename), dest_file, str(os.path.join(download_dir, "canvas.html")), param_json
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
                 raise PreventUpdate
@@ -1742,14 +1809,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             in_blend = [aliases[elem] for elem in current_blend]
             cell_styling_conditions = []
             if blend_colours is not None and current_blend is not None and data_selection is not None:
-                try:
-                    for key, value in blend_colours[data_selection].items():
-                        if blend_colours[data_selection][key]['color'] != '#FFFFFF' and key in current_blend:
+                for key in current_blend:
+                    try:
+                        if key in blend_colours.keys() and blend_colours[key]['color'] != '#FFFFFF':
                             label = aliases[key] if aliases is not None and key in aliases.keys() else key
                             cell_styling_conditions.append( {"condition": f"params.value == '{label}'",
-                            "style": {"color": f"{blend_colours[data_selection][key]['color']}"}})
-                except KeyError:
-                    pass
+                            "style": {"color": f"{blend_colours[key]['color']}"}})
+                    except KeyError as e:
+                        pass
                 if len(in_blend) > 0:
                     to_return = pd.DataFrame(in_blend, columns=["Channel"]).to_dict(orient="records")
                     return to_return , {"sortable": False, "filter": False,
@@ -1832,31 +1899,37 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('pixel-intensity-slider', 'max'),
                        Output('pixel-intensity-slider', 'value'),
                        Output('pixel-intensity-slider', 'marks'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       State('blending_colours', 'data'),
+                       Input('blending_colours', 'data'),
                        Input("pixel-hist-collapse", "is_open"),
+                       State('pixel-intensity-slider', 'value'),
                        prevent_initial_call=True)
                        # background=True,
                        # manager=cache_manager)
     # @cache.memoize())
-    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict, show_pixel_hist):
+    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict, show_pixel_hist,
+                               cur_slider_values):
         """
         Create pixel histogram and output the default percentiles
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
+            blend_return = dash.no_update
             try:
-                fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel])
+                if show_pixel_hist and ctx.triggered_id == "pixel-hist-collapse":
+                    fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel])
+                    fig.update_layout(showlegend=False, yaxis={'title': None},
+                                      xaxis={'title': None}, margin=dict(pad=0))
+                else:
+                    fig = dash.no_update
+                    hist_max = int(np.max(uploaded[data_selection][selected_channel]))
             except (ValueError, TypeError):
-                fig = go.Figure()
-
-            fig = fig if show_pixel_hist else dash.no_update
-            if show_pixel_hist:
-                fig.update_layout(showlegend=False, yaxis={'title': None},
-                              xaxis={'title': None}, margin=dict(pad=0))
-            # if the hist is triggered by the changing of a channel to modify
-            if ctx.triggered_id == "images_in_blend":
+                fig = dash.no_update
+                hist_max = 100
+            # if the hist is triggered by the changing of a channel to modify or a new blend dict
+            if ctx.triggered_id in ["images_in_blend"]:
                 try:
                     # if the current selection has already had a histogram bound on it, update the histogram with it
                     if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
@@ -1864,17 +1937,39 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         lower_bound = int(float(current_blend_dict[selected_channel]['x_lower_bound']))
                         upper_bound = int(float(current_blend_dict[selected_channel]['x_upper_bound']))
                     else:
-                        lower_bound = None
-                        upper_bound = None
+                        lower_bound = 0
+                        upper_bound = get_default_channel_upper_bound_by_percentile(
+                                        uploaded[data_selection][selected_channel])
+                        current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
+                        current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
+                        blend_return = current_blend_dict
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
                     spacing = int(hist_max/3)
                     tick_markers = dict([(round(i/10)*10,str(round(i/10)*10)) for i in range(0, hist_max, spacing)])
-                    return fig, hist_max, [lower_bound, upper_bound], tick_markers
+                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return
                 except (KeyError, ValueError):
-                    return {}, dash.no_update, dash.no_update, dash.no_update
+                    return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            elif ctx.triggered_id == 'blending_colours':
+                vals_return = dash.no_update
+                if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
+                        current_blend_dict[selected_channel]['x_upper_bound'] is not None:
+                    if int(float(current_blend_dict[selected_channel]['x_lower_bound'])) != cur_slider_values[0] or \
+                        int(float(current_blend_dict[selected_channel]['x_upper_bound'])) != cur_slider_values[1]:
+                        lower_bound = int(float(current_blend_dict[selected_channel]['x_lower_bound']))
+                        upper_bound = int(float(current_blend_dict[selected_channel]['x_upper_bound']))
+                        vals_return = [lower_bound, upper_bound]
+                else:
+                    lower_bound = 0
+                    upper_bound = get_default_channel_upper_bound_by_percentile(
+                        uploaded[data_selection][selected_channel])
+                    current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
+                    current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
+                    blend_return = current_blend_dict
+                    vals_return = [lower_bound, upper_bound]
+                return dash.no_update, dash.no_update, vals_return, dash.no_update, blend_return
             elif ctx.triggered_id == "pixel-hist-collapse":
-                return fig, dash.no_update, dash.no_update, dash.no_update
+                return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -1885,7 +1980,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       State('blending_colours', 'data'),
+                       Input('blending_colours', 'data'),
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        State('static-session-var', 'data'),
@@ -1898,9 +1993,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                      preset_selection, preset_dict, session_vars, cur_bool_filter, cur_filter_type,
                                      cur_filter_val, cur_colour):
         """
-        Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used
+        Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used,
+        or if the blend dict is updated
         """
-
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
             # do not update if the trigger is the channel options and the current selection hasn't changed
@@ -1908,7 +2003,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                    ctx.triggered[0]['value'] == session_vars["cur_channel"]
 
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
-                ctx.triggered_id == "images_in_blend" and not only_options_changed:
+                ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:
             filter_type = current_blend_dict[selected_channel]['filter_type']
             filter_val = current_blend_dict[selected_channel]['filter_val']
             color = current_blend_dict[selected_channel]['color']
