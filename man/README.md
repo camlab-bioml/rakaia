@@ -53,3 +53,13 @@ The user may choose to select the `Auto-fit` canvas button in order to try to re
 if the image appears too small or large compared to the window view, the user can use the `Canvas size` slider to make the image
 appear smaller or larger in the provided area. Lastly, the size of the scalebar an legend can be changed under
 `Advanced canvas options -> Configuration -> Adjust legend/scale size`
+
+## Q: I am receiving an unexpected error on the upload use drag and drop asking to reupload the file.
+
+If the error received looks something similar to this:
+
+<p align="center">
+    <img src="assets/upload_error.png">
+</p>
+
+Then the error is occurring within the dash upload drag and drop component on file copying. It is likely that there is not sufficient disk space for the component to copy the file to the tmp directory. In this instance, to user is required to free up disk space, as the component requires adequate disk space to make a local copy of the file before analysis.

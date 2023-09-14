@@ -159,6 +159,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             unique_suffixes = []
+            error_return = dash.no_update
             for upload in session_dict['uploads']:
                 suffix = pathlib.Path(upload).suffix
                 if suffix not in unique_suffixes:
@@ -170,12 +171,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                         "This may cause problems during analysis. For best performance, " \
                                         "it is recommended to analyze datasets all from the same file type extension " \
                                         "and ensure that all imported datasets share the same panel."
+                error_return = error_config
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
             blend_return = blend_dict if current_blend is None or len(current_blend) == 0 else dash.no_update
-            return Serverside(upload_dict), session_dict, blend_return, columns, data, error_config
+            return Serverside(upload_dict), session_dict, blend_return, columns, data, error_return
         else:
             raise PreventUpdate
 
@@ -331,13 +333,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         they will be modified on future selection
         Requires that the channel modification menu be empty to make sure that parameters are updated properly
         """
+        if error_config is None:
+            error_config = {"error": None}
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
-            if error_config is None:
-                error_config = {"error": None}
             # conditions where the blend dictionary is updated
             panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict)
-            no_current = current_blend_dict is None and len(uploaded_w_data[data_selection]) == len(new_blend_dict)
-            if panels_equal or no_current:
+            match_all = current_blend_dict is None and all([len(uploaded_w_data[roi]) == len(new_blend_dict) for \
+                                                             roi in uploaded_w_data.keys() if '+++' in roi])
+            if panels_equal or match_all:
                 current_blend_dict = new_blend_dict.copy()
                 if all_layers is None:
                     all_layers = {data_selection: {}}
@@ -360,6 +363,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 error_config["error"] = "Error: the blend parameters uploaded from JSON do not " \
                                         "match the current panel length. The update did not occur."
                 return dash.no_update, dash.no_update, error_config
+        elif data_selection is None:
+            error_config["error"] = "Please select an ROI before importing blend parameters from JSON."
+            return dash.no_update, dash.no_update, error_config
         else:
             raise PreventUpdate
 

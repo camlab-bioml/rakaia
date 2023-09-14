@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0] - 2023-09-13
+## [0.7.0] - 2023-09-14
 
 ### Changed
 
@@ -26,9 +26,8 @@ top level hash tables for better hierarchical representation #34
 - Individual toggle buttons for the scalebar and legend to be
 toggle visible individually #55
 - Toggle ability to read either local filepaths or read
-all of the files in a directory matching the appropriate image
-files #55
-- Ability to export the panel blend parameters as JSON and re-import
+all files in a directory matching the appropriate image file extensions
+- Ability to export the panel blend parameters as JSON and re-import (drag and drop)
 - New warning on file import if multiple file type extensions are detected
 
 ### Fixed
