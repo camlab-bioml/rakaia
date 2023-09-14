@@ -36,7 +36,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
-    @du.callback(Output('blending_colours', 'data', allow_duplicate=True),
+    @du.callback(Output('param_blend_config', 'data', allow_duplicate=True),
                  id='upload-param-json')
     # @cache.memoize())
     def get_param_json_from_drag_and_drop(status: du.UploadStatus):
@@ -313,32 +313,53 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(State('uploaded_dict', 'data'),
-                       Input('blending_colours', 'data'),
+                       Input('param_blend_config', 'data'),
                        State('data-collection', 'value'),
                        State('image_layers', 'value'),
                        State('canvas-layers', 'data'),
-                       State('images_in_blend', 'value'),
+                       State('blending_colours', 'data'),
+                       State('session_alert_config', 'data'),
                        Output('canvas-layers', 'data', allow_duplicate=True),
-                       # Output('session_alert_config', 'data', allow_duplicate=True),
+                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        prevent_initial_call=True)
-    def update_blend_layers_on_new_blending_dict(uploaded_w_data, current_blend_dict, data_selection,
-                                               add_to_layer, all_layers, cur_channel_mod):
+    def update_blend_layers_on_new_blending_dict(uploaded_w_data, new_blend_dict, data_selection,
+                                               add_to_layer, all_layers, current_blend_dict, error_config):
         """
         Update the currently selected canvas layers with a newly uploaded blend dictionary
         Only applies to the channels that have already been selected: if channels are not in the current blend,
         they will be modified on future selection
         Requires that the channel modification menu be empty to make sure that parameters are updated properly
         """
-        if None not in (uploaded_w_data, current_blend_dict, data_selection) and len(add_to_layer) > 0:
-            if all_layers is None:
-                all_layers = {data_selection: {}}
-            for elem in add_to_layer:
-                array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
+        if None not in (uploaded_w_data, new_blend_dict, data_selection):
+            if error_config is None:
+                error_config = {"error": None}
+            # conditions where the blend dictionary is updated
+            panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict)
+            no_current = current_blend_dict is None and len(uploaded_w_data[data_selection]) == len(new_blend_dict)
+            if panels_equal or no_current:
+                current_blend_dict = new_blend_dict.copy()
+                if all_layers is None:
+                    all_layers = {data_selection: {}}
+                for elem in add_to_layer:
+                    # make sure any bounds tat are stored as None are overwritten with the default scaling
+                    if current_blend_dict[elem]['x_upper_bound'] is None:
+                        current_blend_dict[elem]['x_upper_bound'] = \
+                        get_default_channel_upper_bound_by_percentile(
+                        uploaded_w_data[data_selection][elem])
+                    if current_blend_dict[elem]['x_lower_bound'] is None:
+                        current_blend_dict[elem]['x_lower_bound'] = 0
+                    array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                      current_blend_dict[elem])
-                all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
+                    all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                                                current_blend_dict[elem][
                                                                                    'color'])).astype(np.uint8)
-            return Serverside(all_layers)
+                error_config["error"] = "Blend parameters successfully updated from JSON."
+                return Serverside(all_layers), current_blend_dict, error_config
+            else:
+                error_config["error"] = "Error: the blend parameters uploaded from JSON do not " \
+                                        "match the current panel length. The update did not occur."
+                return dash.no_update, dash.no_update, error_config
         else:
             raise PreventUpdate
 
@@ -2023,8 +2044,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if color == cur_colour['hex']:
                 color_return = dash.no_update
             else:
-                color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
-                else dash.no_update
+                color_return = dict(hex=color) if color is not None else dash.no_update
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
@@ -2034,8 +2054,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
-            color_return = dict(hex=color) if color is not None and color not in ['#ffffff', '#FFFFFF'] \
-                else dash.no_update
+            color_return = dict(hex=color) if color is not None else dash.no_update
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         else:
             raise PreventUpdate

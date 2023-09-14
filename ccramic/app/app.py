@@ -626,6 +626,7 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="blending_colours"),
         dcc.Store(id="image_presets"),
         dcc.Store(id="metadata_config"),
+        dcc.Store(id="param_blend_config"),
         dcc.Store(id="anndata"),
         dcc.Store(id="image-metadata"),
         dcc.Store(id="canvas-layers"),
