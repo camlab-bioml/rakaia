@@ -46,6 +46,9 @@ def init_dashboard(server, authentic_id, config=None):
 
         du.configure_upload(dash_app, tmpdirname)
 
+    #TODO: for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
+    # useful when serverside components can cache large stores much more effectively
+
     # VALID_USERNAME_PASSWORD_PAIRS = {
     #     'ccramic_user': 'ccramic'
     # }

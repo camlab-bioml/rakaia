@@ -281,16 +281,26 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(Output('images_in_blend', 'options'),
+                       Output('images_in_blend', 'value'),
                        Input('image_layers', 'value'),
                        Input('alias-dict', 'data'),
+                       State('images_in_blend', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def create_dropdown_blend(chosen_for_blend, names):
+    def create_dropdown_blend(chosen_for_blend, names, cur_channel_mod):
+        """
+        Create the dropdown menu for the channel modification menu on layer changes
+        Auto-fill the value with the latest channel if it doesn't match the current value in the modification
+        """
         if chosen_for_blend is not None and len(chosen_for_blend) > 0:
             try:
                 assert all([elem in names.keys() for elem in chosen_for_blend])
-                return [{'label': names[i], 'value': i} for i in chosen_for_blend]
-            except AssertionError:
+                if chosen_for_blend[-1] != cur_channel_mod:
+                    channel_auto_fill = chosen_for_blend[-1]
+                else:
+                    channel_auto_fill = dash.no_update
+                return [{'label': names[i], 'value': i} for i in chosen_for_blend], channel_auto_fill
+            except (AssertionError, IndexError):
                 raise PreventUpdate
         else:
             raise PreventUpdate
@@ -451,7 +461,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
                        Output('swatch-color-picker', 'value'),
-                       Input('swatch-color-picker', 'value'))
+                       Input('swatch-color-picker', 'value'),
+                       prevent_initial_call=True)
     def update_colour_picker_from_swatch(swatch):
         if swatch is not None:
             return dict(hex=swatch), None
@@ -852,7 +863,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             cur_graph['layout']['shapes'] = []
                         fig = cur_graph
                         # del cur_graph
-                    # keywrror could happen if the canvas is reset with no layers, so rebuild from scratch
+                    # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
                     except KeyError:
                         fig['layout']['uirevision'] = True
 
@@ -1952,9 +1963,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 else:
                     fig = dash.no_update
                     hist_max = int(np.max(uploaded[data_selection][selected_channel]))
-            except (ValueError, TypeError):
+            except (ValueError, TypeError) as e:
                 fig = dash.no_update
                 hist_max = 100
+            spacing = int(hist_max / 3)
+            tick_markers = dict([(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, hist_max, spacing)])
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
@@ -1972,10 +1985,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         blend_return = current_blend_dict
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
-                    spacing = int(hist_max/3)
-                    tick_markers = dict([(round(i/10)*10,str(round(i/10)*10)) for i in range(0, hist_max, spacing)])
                     return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return
-                except (KeyError, ValueError):
+                except (KeyError, ValueError) as e:
                     return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'blending_colours':
                 vals_return = dash.no_update
@@ -1994,7 +2005,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
                     vals_return = [lower_bound, upper_bound]
-                return dash.no_update, dash.no_update, vals_return, dash.no_update, blend_return
+                return dash.no_update, hist_max, vals_return, tick_markers, blend_return
             elif ctx.triggered_id == "pixel-hist-collapse":
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         else:
@@ -2050,7 +2061,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if color == cur_colour['hex']:
                 color_return = dash.no_update
             else:
-                color_return = dict(hex=color) if color is not None else dash.no_update
+                color_return = dict(hex=color) if color is not None and color not in \
+                                                  ['#FFFFFF', '#ffffff'] else dash.no_update
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
@@ -2060,7 +2072,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
-            color_return = dict(hex=color) if color is not None else dash.no_update
+            color_return = dict(hex=color) if color is not None and color not in \
+                                                  ['#FFFFFF', '#ffffff'] else dash.no_update
             return to_apply_filter, filter_type_return, filter_val_return, color_return
         else:
             raise PreventUpdate

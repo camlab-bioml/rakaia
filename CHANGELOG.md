@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.7.0] - 2023-09-14
+## [0.7.0] - 2023-09-18
 
 ### Changed
 
@@ -15,6 +15,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed nested hash tables for arrays and blend parameters to
 top level hash tables for better hierarchical representation #34
 - Remove any previous ccramic cache dirs in the tmpdir prior to execution
+- Channel modification menu is automatically updated with the latest
+channel in the blend when the layers are updated. If a layer is removed,
+then the last channel in the queue is transferred to the mod menu #57
 
 ### Added
 
@@ -35,7 +38,7 @@ all files in a directory matching the appropriate image file extensions
 - Fixed improper canvas resizing on layer change
 - Fixed improper update of intensity slider from h5 due to improper
 string to int conversion
-- Fixed error in writing Nonetype to h5 arrays
+- Fixed error in writing Nonetype to h5 datasets
 
 ## [0.6.0] - 2023-08-21
 
@@ -158,8 +161,6 @@ percentile is at least 1 #49
 ### Removed
 
 ### Security
-
-
 
 ## [0.1.0] - 2023-05-29
 
