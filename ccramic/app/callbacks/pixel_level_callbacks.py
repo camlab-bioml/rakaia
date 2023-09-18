@@ -334,28 +334,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
+                       Output('image_layers', 'value', allow_duplicate=True),
                        prevent_initial_call=True)
-    def update_blend_layers_on_new_blending_dict(uploaded_w_data, new_blend_dict, data_selection,
+    def update_parameters_from_config_json(uploaded_w_data, new_blend_dict, data_selection,
                                                add_to_layer, all_layers, current_blend_dict, error_config):
         """
-        Update the currently selected canvas layers with a newly uploaded blend dictionary
+        Update the blend layer dictionary and currently selected channels from a JSON upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
         they will be modified on future selection
         Requires that the channel modification menu be empty to make sure that parameters are updated properly
         """
         if error_config is None:
             error_config = {"error": None}
+
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
-            panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict)
-            match_all = current_blend_dict is None and all([len(uploaded_w_data[roi]) == len(new_blend_dict) for \
-                                                             roi in uploaded_w_data.keys() if '+++' in roi])
+            panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict['channels'])
+            match_all = current_blend_dict is None and all([len(uploaded_w_data[roi]) == \
+                        len(new_blend_dict['channels']) for roi in uploaded_w_data.keys() if '+++' in roi])
             if panels_equal or match_all:
-                current_blend_dict = new_blend_dict.copy()
+                current_blend_dict = new_blend_dict['channels'].copy()
                 if all_layers is None:
                     all_layers = {data_selection: {}}
                 for elem in add_to_layer:
-                    # make sure any bounds tat are stored as None are overwritten with the default scaling
+                    # make sure any bounds that are stored as None are overwritten with the default scaling
                     if current_blend_dict[elem]['x_upper_bound'] is None:
                         current_blend_dict[elem]['x_upper_bound'] = \
                         get_default_channel_upper_bound_by_percentile(
@@ -368,14 +370,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                                current_blend_dict[elem][
                                                                                    'color'])).astype(np.uint8)
                 error_config["error"] = "Blend parameters successfully updated from JSON."
-                return Serverside(all_layers), current_blend_dict, error_config
+                channel_list_return = dash.no_update
+                if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
+                        current_blend_dict.keys() for elem in new_blend_dict['config']['blend']]):
+                    channel_list_return = new_blend_dict['config']['blend']
+                return Serverside(all_layers), current_blend_dict, error_config, channel_list_return
             else:
                 error_config["error"] = "Error: the blend parameters uploaded from JSON do not " \
                                         "match the current panel length. The update did not occur."
-                return dash.no_update, dash.no_update, error_config
+                return dash.no_update, dash.no_update, error_config, dash.no_update
         elif data_selection is None:
             error_config["error"] = "Please select an ROI before importing blend parameters from JSON."
-            return dash.no_update, dash.no_update, error_config
+            return dash.no_update, dash.no_update, error_config, dash.no_update
         else:
             raise PreventUpdate
 
@@ -1388,10 +1394,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('data-collection', 'value'),
                        State('current_canvas_image', 'data'),
                        State('annotation_canvas', 'figure'),
-                       State('annotation_canvas', 'style'))
+                       State('image_layers', 'value'))
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                current_image_tiff, current_canvas, canvas_style):
+                                current_image_tiff, current_canvas, blend_layers):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
@@ -1467,7 +1473,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 fig.write_html(str(os.path.join(download_dir, "canvas.html")))
                 param_json = str(os.path.join(download_dir, 'param.json'))
                 with open(param_json, "w") as outfile:
-                    json.dump(blend_dict, outfile)
+                    dict_write = {"channels": blend_dict, "config": {"blend": blend_layers}}
+                    json.dump(dict_write, outfile)
 
                 return str(relative_filename), dest_file, str(os.path.join(download_dir, "canvas.html")), param_json
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
