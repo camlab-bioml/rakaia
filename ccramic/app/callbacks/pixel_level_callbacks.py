@@ -154,30 +154,32 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config):
         """
-        Create session variables from the list of importted file paths
+        Create session variables from the list of imported file paths
         Note that a message will be supplied if more than one type of file is passed
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             unique_suffixes = []
-            error_return = dash.no_update
+            if error_config is None:
+                error_config = {"error": None}
+            message = "Read in the following files:\n"
             for upload in session_dict['uploads']:
                 suffix = pathlib.Path(upload).suffix
+                message = message + f"{upload}\n"
                 if suffix not in unique_suffixes:
                     unique_suffixes.append(suffix)
             if len(unique_suffixes) > 1:
-                if error_config is None:
-                    error_config = {"error": None}
                 error_config["error"] = "Warning: Multiple different file types were detected on upload. " \
                                         "This may cause problems during analysis. For best performance, " \
                                         "it is recommended to analyze datasets all from the same file type extension " \
-                                        "and ensure that all imported datasets share the same panel."
-                error_return = error_config
+                                        "and ensure that all imported datasets share the same panel.\n\n" + message
+            else:
+                error_config["error"] = message
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
             blend_return = blend_dict if current_blend is None or len(current_blend) == 0 else dash.no_update
-            return Serverside(upload_dict), session_dict, blend_return, columns, data, error_return
+            return Serverside(upload_dict), session_dict, blend_return, columns, data, error_config
         else:
             raise PreventUpdate
 
@@ -1394,15 +1396,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('data-collection', 'value'),
                        State('current_canvas_image', 'data'),
                        State('annotation_canvas', 'figure'),
-                       State('image_layers', 'value'))
+                       State('image_layers', 'value'),
+                       State('annotation_canvas', 'style'))
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                current_image_tiff, current_canvas, blend_layers):
+                                current_image_tiff, current_canvas, blend_layers, canvas_style):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
-
         if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
 
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
@@ -1453,24 +1455,26 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     hf.close()
                 except:
                     pass
-                # TODO: IMP: the legend will not appear to scale in the export because by default it will fill the whole page
                 # instead, give a measure at the bottom converting pixels to distance
-                aspect_ratio = float(current_image_tiff.shape[1] / current_image_tiff.shape[0])
+                # aspect_ratio = float(current_image_tiff.shape[1] / current_image_tiff.shape[0])
                 # only change the colour to black if the aspect ratio is not wide, otherwise the image will still
                 # fill the HTML so want to keep white
-                scale_update = 'black' if aspect_ratio < 1.75 else 'white'
-                for annotation in current_canvas['layout']['annotations']:
-                    if 'μm' in annotation['text']:
-                        annotation['text'] = f'<span style="color: {scale_update}">1 pixel = 1μm (unzoomed)</span><br>'
-                for shape in current_canvas['layout']['shapes']:
-                    if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
-                        current_canvas['layout']['shapes'].remove(shape)
+                # scale_update = 'black' if aspect_ratio < 1.75 else 'white'
+                # for annotation in current_canvas['layout']['annotations']:
+                #     if 'μm' in annotation['text']:
+                #         annotation['text'] = f'<span style="color: {scale_update}">1 pixel = 1μm (unzoomed)</span><br>'
+                # for shape in current_canvas['layout']['shapes']:
+                #     if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
+                #         current_canvas['layout']['shapes'].remove(shape)
+
+                # can set the canvas width and height from the ccanvas style to retain the in-app aspect ratio
                 fig = go.Figure(current_canvas)
-                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                  xaxis=XAxis(showticklabels=False),
-                                  yaxis=YAxis(showticklabels=False),
-                                  margin=dict(l=0, r=0, b=0, t=0, pad=0))
-                fig.write_html(str(os.path.join(download_dir, "canvas.html")))
+                # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                #                   xaxis=XAxis(showticklabels=False),
+                #                   yaxis=YAxis(showticklabels=False),
+                #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
+                fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
+                               default_height = canvas_style['height'])
                 param_json = str(os.path.join(download_dir, 'param.json'))
                 with open(param_json, "w") as outfile:
                     dict_write = {"channels": blend_dict, "config": {"blend": blend_layers}}

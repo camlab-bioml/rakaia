@@ -78,8 +78,8 @@ def init_dashboard(server, authentic_id, config=None):
 
     dash_app.layout = html.Div([
         # this is the generic error modal that will pop up on specific errors return by the alert dict
-        dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})]),
-                  id="alert-modal"),
+        dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})],),
+                  id="alert-modal", size='xl'),
         # this modal is for the fullscreen view and does not belong in a nested tab
         dbc.Modal(children=dbc.ModalBody([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
                                                                            fullscreen_mode=True)]),

@@ -7,6 +7,7 @@ import pandas as pd
 import plotly
 from ccramic.app.parsers.cell_level_parsers import *
 from dash.exceptions import PreventUpdate
+from itertools import repeat, chain
 
 def test_bar_graph_from_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -52,7 +53,16 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
                                                                                 {}, umap_dict, zoom_keys, "umap_plot")
     assert '(244 cells)' in interactive_umap['layout']['title']['text']
     subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 900, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
-    interactive_umap = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, {},
+    interactive_umap = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, subset_layout,
                                                                                 "mean", subset_layout,
-                                                                                umap_dict, zoom_keys, "umap_plot")
+                                                                        umap_dict, zoom_keys, "annotation_canvas")
     assert interactive_umap['layout']['uirevision']
+    assert '(61 cells)' in interactive_umap['layout']['title']['text']
+    umap_dict = {"UMAP1": list(range(900)), "UMAP2": list(range(900))}
+    subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
+    interactive_umap = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, subset_layout,
+                                                                                "mean", subset_layout,
+                                                                                umap_dict, zoom_keys,
+                                                                                "umap-plot")
+    assert interactive_umap['layout']['uirevision']
+    assert '(0 cells)' in interactive_umap['layout']['title']['text']

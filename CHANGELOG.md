@@ -32,6 +32,7 @@ toggle visible individually #55
 all files in a directory matching the appropriate image file extensions
 - Ability to export the panel blend parameters as JSON and re-import (drag and drop)
 - New warning on file import if multiple file type extensions are detected
+- Message after file import listing the file obtained
 
 ### Fixed
 
@@ -39,6 +40,7 @@ all files in a directory matching the appropriate image file extensions
 - Fixed improper update of intensity slider from h5 due to improper
 string to int conversion
 - Fixed error in writing Nonetype to h5 datasets
+- Fixed proportion/aspect ratio of interactive canvas export to HTML
 
 ## [0.6.0] - 2023-08-21
 
