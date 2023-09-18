@@ -1,3 +1,4 @@
+import pandas as pd
 
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
@@ -56,8 +57,11 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
         raise PreventUpdate
 
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, zoom_keys, triggered_id):
+                                               umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None):
     if quantification_dict is not None and len(quantification_dict) > 0:
+        frame = pd.DataFrame(quantification_dict)
+        if cols_drop is not None:
+            frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
         if all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
             try:
                 subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
@@ -66,10 +70,9 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
                            "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
             except UndefinedVariableError:
                 subset_zoom = None
-            fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
-                                                             subset_dict=subset_zoom, mode=mode_value))
+            fig = go.Figure(get_cell_channel_expression_plot(frame, subset_dict=subset_zoom, mode=mode_value))
         elif triggered_id == "umap-plot" and all([key in umap_layout for key in zoom_keys]):
-            subset_frame = subset_measurements_frame_from_umap_coordinates(pd.DataFrame(quantification_dict),
+            subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
                                                                            pd.DataFrame(embeddings,
                                                                                         columns=['UMAP1', 'UMAP2']),
                                                                            umap_layout)
@@ -77,7 +80,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
                                                              subset_dict=None, mode=mode_value))
         else:
             subset_zoom = None
-            fig = go.Figure(get_cell_channel_expression_plot(pd.DataFrame(quantification_dict),
+            fig = go.Figure(get_cell_channel_expression_plot(frame,
                                                              subset_dict=subset_zoom, mode=mode_value))
         fig['layout']['uirevision'] = True
         return fig

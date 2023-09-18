@@ -1,5 +1,5 @@
 import dash
-from dash_extensions.enrich import dcc
+from dash_extensions.enrich import dcc, html
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
 import plotly.graph_objs as go
@@ -7,6 +7,7 @@ import dash_draggable
 import math
 import cv2
 from plotly.graph_objs.layout import XAxis, YAxis
+import dash_bootstrap_components as dbc
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False):
@@ -56,7 +57,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     else:
         return render_default_annotation_canvas()
 
-def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12):
+def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -71,7 +72,7 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
     figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
-                       x=0.0875,
+                       x=float(x_axis_left + 0.0375),
                        xanchor='center',
                        y=0.06,
                        # yanchor='bottom',
@@ -86,12 +87,10 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
     Generate an additiive image from one or more channel arrays. Optionally, project a mask on top of the additive image
     using a specified blend ratio with cv2
     """
-    split = split_string_at_pattern(data_selection)
-    exp, slide, acq = split[0], split[1], split[2]
     try:
-        image = sum([np.asarray(canvas_layers[exp][slide][acq][elem]).astype(np.float32) for \
+        image = sum([np.asarray(canvas_layers[data_selection][elem]).astype(np.float32) for \
                  elem in currently_selected if \
-                 elem in canvas_layers[exp][slide][acq].keys()]).astype(np.float32)
+                 elem in canvas_layers[data_selection].keys()]).astype(np.float32)
         image = np.clip(image, 0, 255)
         if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
             if image.shape[0] == mask_config[mask_selection].shape[0] and \
@@ -155,3 +154,13 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
         return fig
     except KeyError:
         return dash.no_update
+
+
+def add_local_file_dialog(use_local_dialog=False, input_id="local-dialog-file"):
+    if use_local_dialog:
+        return dbc.Button(children=html.Span([html.I(className="fa-regular fa-folder-open",
+        style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+        html.Div("Browse/read local files")], style={"display": "flex"}),
+        id=input_id, className="mb-3", color=None, n_clicks=0, style={"margin-top": "10px"})
+    else:
+        return html.Div(id=input_id)

@@ -13,18 +13,27 @@ import os
 # from sd_material_ui import AutoComplete
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
-def init_dashboard(server, authentic_id):
+from plotly.graph_objs.layout import YAxis, XAxis
+from .entrypoint import __version__
+def init_dashboard(server, authentic_id, config=None):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new app session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
         if os.access("/tmp/", os.R_OK):
+            # TODO: establish cleaning the tmp dir for any sub directory that has ccramic cache in it
+            subdirs = [x[0] for x in os.walk('/tmp/') if 'ccramic_cache' in x[0]]
+            # remove any parent directory that has a ccramic cache in it
+            for dir in subdirs:
+                if os.access(os.path.dirname(dir), os.R_OK) and os.access(dir, os.R_OK):
+                    shutil.rmtree(os.path.dirname(dir))
             cache_dest = os.path.join("/tmp/", authentic_id, "ccramic_cache")
         else:
             cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), authentic_id,
                                       "ccramic_cache")
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
+
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
                              update_title=None,
@@ -36,6 +45,9 @@ def init_dashboard(server, authentic_id):
         server.config['APPLICATION_ROOT'] = "/ccramic"
 
         du.configure_upload(dash_app, tmpdirname)
+
+    #TODO: for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
+    # useful when serverside components can cache large stores much more effectively
 
     # VALID_USERNAME_PASSWORD_PAIRS = {
     #     'ccramic_user': 'ccramic'
@@ -66,8 +78,8 @@ def init_dashboard(server, authentic_id):
 
     dash_app.layout = html.Div([
         # this is the generic error modal that will pop up on specific errors return by the alert dict
-        dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})]),
-                  id="alert-modal"),
+        dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})],),
+                  id="alert-modal", size='xl'),
         # this modal is for the fullscreen view and does not belong in a nested tab
         dbc.Modal(children=dbc.ModalBody([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
                                                                            fullscreen_mode=True)]),
@@ -81,7 +93,8 @@ def init_dashboard(server, authentic_id):
         html.Header(
             className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
             children=[
-                html.A("ccramic", className="navbar-brand me-0 px-3", href="#")],
+                html.A("ccramic", className="navbar-brand me-0 px-3", href="#"),
+                html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#", style={"float": "right"})],
             style={"margin-bottom": "15px"}),
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', active_label_style={"color": "#FB79B3"},
                     children=[
@@ -103,14 +116,18 @@ def init_dashboard(server, authentic_id):
                         max_total_size=30000, max_files=200,
                         filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'], default_style={"margin-top": "20px",
                                                                                              "height": "10vh"}),
-                                  html.Br(),
+                        html.Br(),
                         dcc.Input(id="read-filepath", type="text",
-                        placeholder="Import imaging file using filepath (local runs only)", value=None,
-                                  style={"width": "100%", "height": "10%"}),
-                        dbc.Button("Add file by path", id="add-file-by-path",
-                        className="mb-3", color="primary", n_clicks=0,
-                        style={"margin-top": "10px"}),
-                                  html.Br(),
+                        placeholder="Import file(s) using filepath or directory (local runs only)",
+                        value=None, style={"width": "100%", "height": "10%"}),
+                        html.Div([dcc.RadioItems(['filepath', 'directory'], 'filepath',
+                        id="local-read-type", style={"margin-top": "10px", "margin-left": "15px", "margin-right": "15px"}),
+                        dbc.Button("Import local", id="add-file-by-path",
+                        className="mb-3", color="primary", n_clicks=0, style={"margin-top": "10px",
+                                    "margin-left": "15px"})], style={"display": "flex"}),
+                        add_local_file_dialog(use_local_dialog=config['use_local_dialog']),
+                        dbc.Tooltip("Browse the local file system using a dialog."
+                                " IMPORTANT: may not be compatible with the specific OS.", target="local-dialog-file"),
                         html.Div([html.Span([
                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-info",
                             style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
@@ -124,8 +141,7 @@ def init_dashboard(server, authentic_id):
                             "(IMPORTANT): cannot be undone.", target="remove-collection")], style={"width": "100%"}),
                             html.Br(),
                             html.Br(),
-                            html.H5("Choose data collection/ROI", style={'width': '65%',
-                                                                     }),
+                            html.H5("Choose data collection/ROI", style={'width': '65%'}),
                             dcc.Dropdown(id='data-collection', multi=False, options=[],
                                          style={'width': '100%'}),
                             html.Br(),
@@ -146,7 +162,21 @@ def init_dashboard(server, authentic_id):
                                       max_total_size=30000, max_files=1,
                                       chunk_size=100,
                                       filetypes=['tif', 'tiff'],
-                                      default_style={"margin-top": "20px", "height": "15%"}),
+                                      default_style={"margin-top": "20px", "height": "10%"}),
+                            html.Br(),
+                            html.H5("Import quantification results"),
+                            du.Upload(id='upload-quantification', max_file_size=5000,
+                                      filetypes=['h5ad', 'h5', 'csv'],
+                                      text='Import cell quantification results in CSV format using drag and drop',
+                                      max_files=1, upload_id="upload-quantification",
+                                      default_style={"margin-top": "20px", "height": "10%"}),
+                            html.Br(),
+                            html.H5("Import ROI configuration"),
+                            du.Upload(id='upload-param-json', max_file_size=1000,
+                                      filetypes=['json'],
+                                      text='Import channel blend parameters in JSON format using drag and drop',
+                                      max_files=1, upload_id="upload-param-json",
+                                      default_style={"margin-top": "20px", "height": "10%"}),
                             html.Br(),
                             html.H5("Downloads"),
                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
@@ -158,10 +188,18 @@ def init_dashboard(server, authentic_id):
                             dbc.Tooltip(children="Open up the panel to get the download links.",
                                         target="open-download-collapse"),
                             html.Div(dbc.Collapse(
-                                dcc.Loading(html.Div([html.A(id='download-link', children='Download current session'),
+                                dcc.Loading(html.Div([html.A(id='download-link',
+                                                    children='Download current session in h5py'),
                                                       html.Br(),
                                                       html.A(id='download-link-canvas-tiff',
-                                                             children='Download Canvas as tiff (no annotations)')]),
+                                                             children='Download Canvas as tiff (no annotations)'),
+                                                      html.Br(),
+                                                      html.A(id='download-canvas-interactive-html',
+                                                             children='Download Canvas as as interactive HTML'),
+                                                      html.Br(),
+                                                      html.A(id='download-blend-config',
+                                                             children='Download blend configuration as JSON')
+                                                      ]),
                                             fullscreen=False, type="default"),
                                 id="download-collapse", is_open=False), style={"minHeight": "100px"})
                         ],
@@ -259,8 +297,8 @@ def init_dashboard(server, authentic_id):
                                 "float": "center", "justify-content": "center"}),
                                  html.Div(dbc.Collapse(html.Div([html.H6("Pixel histogram", style={'width': '75%'}),
                                 html.Div([dcc.Loading(dcc.Graph(id="pixel-hist", figure={'layout': dict(
-                                xaxis_showgrid=False, yaxis_showgrid=False, xaxis=go.XAxis(showticklabels=False),
-                                yaxis=go.YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
+                                xaxis_showgrid=False, yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                                yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
                                 style={'width': '60vh', 'height': '30vh', 'margin-left': '-30px'},
                                 # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
                                 # keep zoom and pan bars to be able to modify the histogram view
@@ -298,10 +336,13 @@ def init_dashboard(server, authentic_id):
                                 children=[dbc.Tab(label="Configuration", tab_id='blend-config-tab',
                                 children=[
                                 html.Br(),
-                                html.Div([daq.ToggleSwitch(label='Toggle legend', id='toggle-canvas-annotations',
+                                html.Div([daq.ToggleSwitch(label='Toggle legend', id='toggle-canvas-legend',
                                 labelPosition='bottom', value=True, color="blue", style={"width": "75%",
                                 "margin-left": "-15px"}),
-                                html.Div([html.H6("Set custom scalebar value", style={'width': '110%'}),
+                                daq.ToggleSwitch(label='Toggle scalebar', id='toggle-canvas-scalebar',
+                                    labelPosition = 'bottom', value = True, color = "blue",
+                                    style = {"width": "75%", "margin-left": "-15px"}),
+                                    html.Div([html.H6("Set scalebar value", style={'width': '100%'}),
                                 dcc.Input(id="custom-scale-val", type="number", value=None,
                                     style={"width": "60%", "margin-left": "30px"})],
                                     style={"display": "block"})], style={"display": "flex"}),
@@ -377,8 +418,28 @@ def init_dashboard(server, authentic_id):
                                 html.Div("Add region annotation")], style={"display": "flex"}),
                                     id="region-annotation", className="mx-auto", color=None, n_clicks=0,
                                     disabled=True, style={"margin-top": "10px"}),
-                                          html.Br(),
-                                          html.Br(),
+                                #TODO: update the logic for the button that can clear annotation shapes
+                                html.Div([dbc.Button(children=html.Span([html.I(className="fa-solid fa-delete-left",
+                                style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
+                                html.Div("Clear annotation shapes")],style={"display": "flex"}),
+                                id="clear-region-annotation-shapes", className="mx-auto", color=None, n_clicks=0,
+                                disabled=False, style={"margin-top": "10px"}),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-delete-left",
+                                style={"display": "inline-block", "margin-right": "7.5px",
+                                "margin-top": "3px"}), html.Div("Clear ROI annotations")],
+                                style={"display": "flex"}), id="clear-annotation_dict",
+                                className="mx-auto", color=None, n_clicks=0, style={"margin-top": "10px", "width": "80%"})],
+                                style={"display": "flex", "width": "50%"}),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-rectangle-list",
+                                style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                html.Div("Show ROI annotations")], style={"display": "flex"}),
+                                id="show-annotation-table", className="mx-auto", color=None, n_clicks=0,
+                                style={"margin-top": "10px"}),
+                                dbc.Modal(children=dbc.ModalBody(
+                                [dash_table.DataTable(id='annotation-table', columns=[], data=None,
+                                editable=False, filter_action='native')]), id="annotation-preview", size='xl'),
+                                html.Br(),
+                                html.Br(),
                                           dbc.Button("Create preset", id="preset-button", className="me-1"),
                                           html.Br(),
                                           dbc.Popover(dcc.Input(id="set-preset", type="text",
@@ -402,23 +463,40 @@ def init_dashboard(server, authentic_id):
                                                      n_clicks=0,
                                                      style={"margin-top": "10px"}),
                                 dcc.Download(id="download-edited-annotations"),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
+                                html.Div("Download annotations report (PDF)")], style={"display": "flex"}),
+                                id="btn-download-annot-pdf", className="mx-auto", color=None, n_clicks=0,
+                                style={"margin-top": "10px"}),
+                                dcc.Download(id="download-annotation-pdf"),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dbc.Row([dbc.Col([html.H6("Create a region annotation")], width=8),
                                           dbc.Col([html.H6("Annotate with cell type")], width=4)]),
+                                 dbc.Row([dbc.Col([html.Div([dcc.Input(id="new-annotation-col", type="text",
+                                value="", placeholder="Create annotation column",
+                                style={"width": "50%", "margin-right": "10px", "height": "50%"}),
+                                dbc.Button("Add new annotation column", id="add-annotation-col",
+                                className="me-1", style={"margin-top": "-10px"})],
+                                                            style={"display": "flex"})], width=8),
+                                dbc.Col([dcc.Dropdown(id='quant-annotation-col',
+                                multi=False, options=['ccramic_cell_annotation'],
+                                    value="ccramic_cell_annotation")], width=4)]),
+                                html.Br(),
                                 dbc.Row([dbc.Col([html.Div([dcc.Input(id="region-annotation-name", type="text",
-                                value="annotation title", style={"width": "65%", "margin-right": "10px",
-                                        "height": "50%"}),
+                                value="", placeholder="Annotation title",
+                                style={"width": "65%", "margin-right": "10px", "height": "50%"}),
                                 dcc.Input(id="region-annotation-body", type="text",
-                                value="annotation body", style={"width": "65%", "margin-right": "10px",
-                                "height": "50%"})],
+                                value="", placeholder="Annotation description",
+                                          style={"width": "65%", "margin-right": "10px", "height": "50%"})],
                                 style={"display": "flex"})], width=8),
                                 dbc.Col([
                                 # dcc.Dropdown(id='region-annotation-cell-types',
                                 # multi=False, options=[], placeholder="Select a cell type")
                                 dcc.Input(id="region-annotation-cell-types", type="text",
-                                              value="new cell type", style={"width": "65%", "margin-right": "10px",
-                                                                              "height": "100%"})
+                                value="", placeholder="New cell type", style={"width": "65%", "margin-right": "10px",
+                                    "height": "100%"})
                                 ], width=4)]),
+                                dbc.Row(dbc.Col(html.Div([], style={"display": "flex"}))),
                                 dbc.Button("Create annotation", id="create-annotation",
                                 className="me-1", style={"margin-top": "10px"})]),
                                 id="region-annotation-modal", size='xl', style={"margin-left": "10px",
@@ -501,10 +579,6 @@ def init_dashboard(server, authentic_id):
                             width=3)])])]),
                           dbc.Tab(label="Quantification/Clustering",
                                   children=[
-                                      du.Upload(id='upload-quantification', max_file_size=5000,
-                                                filetypes=['h5ad', 'h5', 'csv'],
-                                                text='Import cell quantification results in CSV format using drag and drop',
-                                                max_files=1, upload_id="upload-quantification"),
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
                                                   html.H6("Cell-Level Marker Expression"),
@@ -513,29 +587,29 @@ def init_dashboard(server, authentic_id):
                                                   dcc.Graph(id="quantification-bar-full",
                                                             figure={'layout': dict(xaxis_showgrid=False,
                                                                                    yaxis_showgrid=False,
-                                                                                   xaxis=go.XAxis(
+                                                                                   xaxis=XAxis(
                                                                                        showticklabels=False),
-                                                                                   yaxis=go.YAxis(
+                                                                                   yaxis=YAxis(
                                                                                        showticklabels=False),
                                                                                    margin=dict(l=5, r=5, b=15,
                                                                                                t=20, pad=0)),
                                                                     })]), width=6),
                                     dbc.Col(html.Div([html.Br(),
-                                                      html.H6("Dimension Reduction"),
-                                                      dcc.Loading(
-                                                          dcc.Dropdown(id='umap-projection-options', multi=False,
-                                                                       options=[]),
-                                                          type="default", fullscreen=False),
-                                                      dcc.Graph(id="umap-plot",
-                                                                figure={'layout': dict(xaxis_showgrid=False,
-                                                                                       yaxis_showgrid=False,
-                                                                                       xaxis=go.XAxis(
-                                                                                           showticklabels=False),
-                                                                                       yaxis=go.YAxis(
-                                                                                           showticklabels=False),
-                                                                                       margin=dict(l=5, r=5, b=15,
-                                                                                                   t=20, pad=0)),
-                                                                        })]), width=6)
+                                    html.H6("Dimension Reduction"),
+                                    html.Div([dcc.Loading(dcc.Dropdown(id='umap-projection-options', multi=False,
+                                    options=[], style={"width": "175%"}), type="default", fullscreen=False),
+                                    dbc.Button(children=html.Span([html.I(className="fa-solid fa-table-list",
+                                    style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                    html.Div("Show distribution")], style={"display": "flex"}),
+                                    id="show-quant-dist", className="mx-auto", color=None, n_clicks=0)],
+                                    style={"display": "flex", "width": "135%"}),
+                                    dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='quant-dist-table',
+                                    columns=[], data=None, editable=False, filter_action='native')]),
+                                    id="show-quant-dist-table", size='l'),
+                                    dcc.Graph(id="umap-plot", figure={'layout': dict(xaxis_showgrid=False,
+                                    yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                                    yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,t=20, pad=0)),
+                                    })]), width=6)
                                       ])]),
                         dbc.Modal(children=dbc.ModalBody([html.H6("Select the cell type annotation column"),
                         dcc.Dropdown(id='cell-type-col-designation',
@@ -555,6 +629,7 @@ def init_dashboard(server, authentic_id):
         dcc.Store(id="blending_colours"),
         dcc.Store(id="image_presets"),
         dcc.Store(id="metadata_config"),
+        dcc.Store(id="param_blend_config"),
         dcc.Store(id="anndata"),
         dcc.Store(id="image-metadata"),
         dcc.Store(id="canvas-layers"),
@@ -575,6 +650,6 @@ def init_dashboard(server, authentic_id):
     dash_app.enable_dev_tools(debug=True)
 
     init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
-    init_cell_level_callbacks(dash_app)
+    init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
 
     return dash_app.server

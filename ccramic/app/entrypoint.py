@@ -9,17 +9,18 @@ from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWa
 import warnings
 
 _program = "ccramic"
-__version__ = "0.6.0"
+__version__ = "0.7.0"
 
 
 def get_current_dir():
     return str(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 
-def init_app():
+def init_app(cli_config):
     # suppress numba depreciation warnings from umap
     warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
     warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
+    warnings.simplefilter('ignore', category=DeprecationWarning)
     """Construct core Flask application with embedded Dash app."""
     # STATIC_DIR = os.path.dirname(os.path.join(get_current_dir(), "templates", "static"))
     app = Flask(__name__, instance_relative_config=False,
@@ -75,7 +76,7 @@ def init_app():
         from .app import init_dashboard
         # use a unique uuid for the session id I/O
         authentic_user = str(uuid.uuid1())
-        app = init_dashboard(app, authentic_user)
+        app = init_dashboard(app, authentic_user, config=cli_config)
         # init_callbacks(app)
 
         return app

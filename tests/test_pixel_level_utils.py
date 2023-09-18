@@ -124,41 +124,35 @@ def test_generate_histogram(get_current_dir):
 
 def test_basic_blend_dict_params():
 
-    upload_dict = {"experiment0": {"slide0": {"acq0": {"DNA": np.array([0, 0, 0, 0]),
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
                                                        "Nuclear": np.array([1, 1, 1, 1]),
                                                        "Cytoplasm": np.array([2, 2, 2, 2])},
-                                              "acq1": {"DNA": np.array([3, 3, 3, 3]),
+                    "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
                                                        "Nuclear": np.array([4, 4, 4, 4]),
                                                        "Cytoplasm": np.array([5, 5, 5, 5])}
-                                              }}}
+                                              }
 
     blend_dict = create_new_blending_dict(upload_dict)
-    assert len(upload_dict.keys()) == 1
-    for exp in upload_dict.keys():
-        assert len(upload_dict[exp].keys()) == 1
-        assert len(blend_dict[exp].keys()) == 1
-        for slide in upload_dict[exp].keys():
-            assert len(upload_dict[exp][slide].keys()) == 2
-            assert len(blend_dict[exp][slide].keys()) == 2
-            for acq in upload_dict[exp][slide].keys():
-                assert len(upload_dict[exp][slide][acq].keys()) == 3
-                assert len(blend_dict[exp][slide][acq].keys()) == 3
+    assert len(upload_dict.keys()) == 2
+    for roi in upload_dict.keys():
+        assert len(upload_dict[roi].keys()) == 3
 
-    blend_dict["experiment0"]['slide0']["acq0"]["DNA"] = {'color': '#BE4115',
+
+    blend_dict["DNA"] = {'color': '#BE4115',
                                                           'x_lower_bound': 200,
                                                           'x_upper_bound': 1000,
                                                           'y_ceiling': 12500,
                                                           'filter_type': 'gaussian',
                                                           'filter_val': 5}
 
-    blend_dict["experiment0"]['slide0']["acq0"]["Nuclear"] = {'color': '#15BEB0',
+    blend_dict["Nuclear"] = {'color': '#15BEB0',
                                                           'x_lower_bound': 0.25,
                                                           'x_upper_bound': 55,
                                                           'y_ceiling': 67000,
                                                           'filter_type': 'median',
                                                           'filter_val': 3}
 
-    blend_dict["experiment0"]['slide0']["acq0"]["Cytoplasm"] = {'color': '#BA15BE',
+    blend_dict["Cytoplasm"] = {'color': '#BA15BE',
                                                           'x_lower_bound': -0.4,
                                                           'x_upper_bound': 14,
                                                           'y_ceiling': 900,
@@ -169,88 +163,9 @@ def test_basic_blend_dict_params():
     possibilities = ['#FFFFFF', None]
 
     # assert that the first ROI has non default params
-    for channel in blend_dict["experiment0"]['slide0']["acq0"].keys():
-        for blend_param in blend_dict["experiment0"]['slide0']["acq0"][channel].values():
+    for channel in blend_dict.keys():
+        for blend_param in blend_dict[channel].values():
             assert blend_param not in possibilities
-
-    # assert that the default second ROI has default params
-    for channel in blend_dict["experiment0"]['slide0']["acq1"].keys():
-        for blend_param in blend_dict["experiment0"]['slide0']["acq1"][channel].values():
-            assert blend_param in possibilities
-
-    blend_dict = copy_values_within_nested_dict(blend_dict, "experiment0+++slide0+++acq0",
-                                                "experiment0+++slide0+++acq1")
-
-    # assert that the default parameters in the second ROi are overwritten
-    for channel in blend_dict["experiment0"]['slide0']["acq1"].keys():
-        for blend_param in blend_dict["experiment0"]['slide0']["acq1"][channel].values():
-            assert blend_param not in possibilities
-
-
-def test_basic_blend_dict_params_new_roi():
-
-    upload_dict = {"experiment0": {"slide0": {"acq0": {"DNA": np.array([0, 0, 0, 0]),
-                                                       "Nuclear": np.array([1, 1, 1, 1]),
-                                                       "Cytoplasm": np.array([2, 2, 2, 2])},
-                                              "acq1": {"DNA": np.array([3, 3, 3, 3]),
-                                                       "Nuclear": np.array([4, 4, 4, 4]),
-                                                       "Cytoplasm": np.array([5, 5, 5, 5])}
-                                              }}}
-
-    blend_dict = create_new_blending_dict(upload_dict)
-    assert len(upload_dict.keys()) == 1
-    for exp in upload_dict.keys():
-        assert len(upload_dict[exp].keys()) == 1
-        assert len(blend_dict[exp].keys()) == 1
-        for slide in upload_dict[exp].keys():
-            assert len(upload_dict[exp][slide].keys()) == 2
-            assert len(blend_dict[exp][slide].keys()) == 2
-            for acq in upload_dict[exp][slide].keys():
-                assert len(upload_dict[exp][slide][acq].keys()) == 3
-                assert len(blend_dict[exp][slide][acq].keys()) == 3
-
-    blend_dict["experiment0"]['slide0']["acq0"]["DNA"] = {'color': '#BE4115',
-                                                          'x_lower_bound': 200,
-                                                          'x_upper_bound': 1000,
-                                                          'y_ceiling': 12500,
-                                                          'filter_type': 'gaussian',
-                                                          'filter_val': 5}
-
-    blend_dict["experiment0"]['slide0']["acq0"]["Nuclear"] = {'color': '#15BEB0',
-                                                          'x_lower_bound': 0.25,
-                                                          'x_upper_bound': 55,
-                                                          'y_ceiling': 67000,
-                                                          'filter_type': 'median',
-                                                          'filter_val': 3}
-
-    blend_dict["experiment0"]['slide0']["acq0"]["Cytoplasm"] = {'color': '#BA15BE',
-                                                          'x_lower_bound': -0.4,
-                                                          'x_upper_bound': 14,
-                                                          'y_ceiling': 900,
-                                                          'filter_type': 'median',
-                                                          'filter_val': 7}
-
-    # check that the default values are either hex white or None
-    possibilities = ['#FFFFFF', None]
-
-    # assert that the first ROI has non default params
-    for channel in blend_dict["experiment0"]['slide0']["acq0"].keys():
-        for blend_param in blend_dict["experiment0"]['slide0']["acq0"][channel].values():
-            assert blend_param not in possibilities
-
-    # assert that the default second ROI has default params
-    for channel in blend_dict["experiment0"]['slide0']["acq1"].keys():
-        for blend_param in blend_dict["experiment0"]['slide0']["acq1"][channel].values():
-            assert blend_param in possibilities
-
-    blend_dict = copy_values_within_nested_dict(blend_dict, "experiment0+++slide0+++acq0",
-                                                "experiment1+++slide0+++acq0")
-
-    # assert that the default parameters in the second ROi are overwritten
-    for channel in blend_dict["experiment1"]['slide0']["acq0"].keys():
-        for blend_param in blend_dict["experiment1"]['slide0']["acq0"][channel].values():
-            assert blend_param not in possibilities
-
 
 def test_calculate_percentile_intensity(get_current_dir):
     array = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
@@ -274,13 +189,13 @@ def test_validation_of_channel_metadata(get_current_dir):
     assert validate_incoming_metadata_table(metadata, empty_upload_dict) is None
 
 def test_acquire_acq_images_for_gallery():
-    upload_dict = {"experiment0": {"slide0": {"acq0": {"DNA": np.array([0, 0, 0, 0]),
-                                                       "Nuclear": np.array([1, 1, 1, 1]),
-                                                       "Cytoplasm": np.array([2, 2, 2, 2])},
-                                              "acq1": {"DNA": np.array([3, 3, 3, 3]),
-                                                       "Nuclear": np.array([4, 4, 4, 4]),
-                                                       "Cytoplasm": np.array([5, 5, 5, 5])}
-                                              }}}
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
+                                                   "Nuclear": np.array([1, 1, 1, 1]),
+                                                   "Cytoplasm": np.array([2, 2, 2, 2])},
+                   "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
+                                                   "Nuclear": np.array([4, 4, 4, 4]),
+                                                   "Cytoplasm": np.array([5, 5, 5, 5])}
+                   }
     assert len(get_all_images_by_channel_name(upload_dict, "DNA")) == 2
     assert len(get_all_images_by_channel_name(upload_dict, "fake")) == 0
 

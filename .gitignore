@@ -5,6 +5,8 @@ ccramic_cache/
 
 *tutorials/
 
+htmlcov/
+
 *tutorial*
 
 .idea

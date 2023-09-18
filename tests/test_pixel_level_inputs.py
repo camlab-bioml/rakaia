@@ -1,6 +1,7 @@
 from ccramic.app.inputs.pixel_level_inputs import *
 import numpy as np
 import plotly.graph_objs as go
+from dash_extensions.enrich import html
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()
@@ -32,13 +33,13 @@ def test_add_scalebar_to_canvas(get_current_dir):
 
 
 def test_basic_additive_image():
-    upload_dict = {"experiment0": {"slide0": {"acq0": {"DNA": np.zeros((600, 600, 3)),
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.zeros((600, 600, 3)),
                                                        "Nuclear": np.zeros((600, 600, 3)),
                                                        "Cytoplasm": np.zeros((600, 600, 3))},
-                                              "acq1": {"DNA": np.zeros((600, 600, 3)),
+                                              "experiment0+++slide0+++acq1": {"DNA": np.zeros((600, 600, 3)),
                                                        "Nuclear": np.zeros((600, 600, 3)),
                                                        "Cytoplasm": np.zeros((600, 600, 3))}
-                                              }}}
+                                              }
 
     # blend_dict = create_new_blending_dict(upload_dict)
 
@@ -51,3 +52,21 @@ def test_basic_additive_image():
     assert image['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
     assert image['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
     assert image['layout']['uirevision']
+
+
+    mask_config = {"mask": np.zeros((600, 600, 3)).astype(np.uint8)}
+
+    image_mask = get_additive_image_with_masking(["DNA", "Nuclear"], data_selection="experiment0+++slide0+++acq0",
+                                            canvas_layers=upload_dict, mask_config=mask_config, mask_toggle=True,
+                                            mask_selection="mask", show_canvas_legend=True, mask_blending_level=1,
+                                            add_mask_boundary=True, legend_text='')
+    assert isinstance(image_mask, go.Figure)
+    assert image_mask['data'] is not None
+    assert image_mask['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
+    assert image_mask['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert image_mask['layout']['uirevision']
+
+
+def test_basic_return_local_file_dialog():
+    assert isinstance(add_local_file_dialog(use_local_dialog=True), dbc.Button)
+    assert isinstance(add_local_file_dialog(use_local_dialog=False), html.Div)
