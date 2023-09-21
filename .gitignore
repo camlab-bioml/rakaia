@@ -159,3 +159,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+*.tar.gz

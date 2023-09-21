@@ -1747,19 +1747,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('data-collection', 'value'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
-                       Input('preset-options', 'value'),
+                       State('preset-options', 'value'),
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
-                       Input('unique-channel-list', 'value'),
-                       Input('alias-dict', 'data'),
-                       Input('preset-button', 'n_clicks'),
+                       State('unique-channel-list', 'value'),
+                       State('alias-dict', 'data'),
+                       State('preset-button', 'n_clicks'),
                        State('blending_colours', 'data'),
                        Input('default-scaling-gallery', 'value'),
+                       State('pixel-level-analysis', 'active_tab'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          blend_colour_dict, toggle_scaling_gallery):
+                          blend_colour_dict, toggle_scaling_gallery, active_tab):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
@@ -1767,7 +1768,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         the session blend dictionary on an ROI change
         """
         try:
-            if gallery_data is not None:
+            # condition 1: if the data collection is changed, update with new images
+            # condition 2: if any other mods are made, ensure that the active tab is the gallery tab
+            new_collection = gallery_data is not None and ctx.triggered_id in ["data-collection", "uploaded_dict"]
+            gallery_mod_in_tab = gallery_data is not None and ctx.triggered_id not in \
+                          ["data-collection", "uploaded_dict", "annotation_canvas"] and \
+                active_tab == 'gallery-tab'
+            use_zoom = gallery_data is not None and ctx.triggered_id == 'annotation_canvas'
+            if new_collection or gallery_mod_in_tab or use_zoom:
                 row_children = []
                 zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
                 views = None
@@ -1795,6 +1803,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                 if views is not None:
                     for key, value in views.items():
+                        if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
+                            x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
+                            x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
+                            y_range_low = math.floor(int(canvas_layout['yaxis.range[1]']))
+                            y_range_high = math.floor(int(canvas_layout['yaxis.range[0]']))
+                            assert x_range_high >= x_range_low
+                            assert y_range_high >= y_range_low
+                            try:
+                                image_render = value[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+                                                           range(int(x_range_low), int(x_range_high), 1))]
+                            except IndexError as e:
+                                image_render = value
+                        else:
+                            image_render = resize_for_canvas(value)
                         if toggle_scaling_gallery:
                             try:
                                 if blend_colour_dict[key]['x_lower_bound'] is None:
@@ -1803,27 +1825,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                     blend_colour_dict[key]['x_upper_bound'] = \
                                     get_default_channel_upper_bound_by_percentile(
                                     gallery_data[data_selection][key])
-                                image_render = apply_preset_to_array(resize_for_canvas(value),
+                                image_render = apply_preset_to_array(image_render,
                                                         blend_colour_dict[key])
                             except (KeyError, TypeError):
-                                image_render = resize_for_canvas(value)
-                        else:
-                            image_render = resize_for_canvas(value)
-                        if None not in (preset_selection, preset_dict) and nclicks > 0:
-                            image_render = apply_preset_to_array(value, preset_dict[preset_selection])
-
-                        if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
-                            x_range_low = math.ceil(int(canvas_layout['xaxis.range[0]']))
-                            x_range_high = math.ceil(int(canvas_layout['xaxis.range[1]']))
-                            y_range_low = math.ceil(int(canvas_layout['yaxis.range[1]']))
-                            y_range_high = math.ceil(int(canvas_layout['yaxis.range[0]']))
-                            assert x_range_high >= x_range_low
-                            assert y_range_high >= y_range_low
-                            try:
-                                image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
-                                                           range(int(x_range_low), int(x_range_high), 1))]
-                            except IndexError:
                                 pass
+                        if None not in (preset_selection, preset_dict) and nclicks > 0:
+                            image_render = apply_preset_to_array(image_render, preset_dict[preset_selection])
 
                         label = aliases[key] if aliases is not None and key in aliases.keys() else key
                         row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(label, className="card-text")),
@@ -2502,5 +2509,45 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return current_cols
             except AssertionError:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("annotations-dict", "data", allow_duplicate=True),
+        Output('click-annotation-alert', 'children'),
+        Output('click-annotation-alert', 'is_open'),
+        Input('annotation_canvas', 'clickData'),
+        State('click-annotation-assignment', 'value'),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        State('quant-annotation-col', 'value'),
+        State('annotation_canvas', 'figure'),
+        State('enable_click_annotation', 'value'),
+        prevent_initial_call=True)
+    def add_annotation_to_dict_with_click(clickdata, annotation_cell_type, annotations_dict,
+                                          data_selection, annot_col, cur_figure, enable_click_annotation):
+
+        if None not in (clickdata, data_selection, cur_figure) and enable_click_annotation and 'points' in clickdata:
+            try:
+                if annotations_dict is None or len(annotations_dict) < 1:
+                    annotations_dict = {}
+                if data_selection not in annotations_dict.keys():
+                    annotations_dict[data_selection] = {}
+
+                x = clickdata['points'][0]['x']
+                y = clickdata['points'][0]['y']
+
+                annotations_dict[data_selection][str(clickdata)] = {'title': None, 'body': None,
+                                                 'cell_type': annotation_cell_type, 'imported': False,
+                                                 'annotation_column': annot_col,
+                                                 'type': "point", 'channels': None,
+                                                 'use_mask': None,
+                                                 'mask_selection': None,
+                                                 'mask_blending_level': None,
+                                                 'add_mask_boundary': None}
+                return annotations_dict, html.H6(f"Point {x, y} updated with "
+                                                 f"{annotation_cell_type} in {annot_col}"), True
+            except KeyError:
+                return dash.no_update, html.H6("Error in annotating point"), True
         else:
             raise PreventUpdate

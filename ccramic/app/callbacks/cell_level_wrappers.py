@@ -1,3 +1,5 @@
+import ast
+
 import dash
 import dash_uploader as du
 import pandas as pd
@@ -7,6 +9,7 @@ from ..parsers.cell_level_parsers import *
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
 from dash import dcc
+import ast
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                                       mask_config, mask_toggle, mask_selection):
@@ -48,6 +51,11 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                         quantification_frame = populate_cell_annotation_column_from_bounding_box(
                             quantification_frame, values_dict=dict(annotation),
                             cell_type=annotations[data_selection][annotation]['cell_type'], box_type="rect",
+                            annotation_column=annotations[data_selection][annotation]['annotation_column'])
+                    elif annotations[data_selection][annotation]['type'] == "point":
+                        quantification_frame = populate_cell_annotation_column_from_clickpoint(
+                            quantification_frame, values_dict=ast.literal_eval(annotation),
+                            cell_type=annotations[data_selection][annotation]['cell_type'],
                             annotation_column=annotations[data_selection][annotation]['annotation_column'])
                     annotations[data_selection][annotation]['imported'] = True
             return quantification_frame.to_dict(orient="records"), Serverside(annotations)

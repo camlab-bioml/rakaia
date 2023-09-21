@@ -1,3 +1,5 @@
+import collections
+
 import numpy as np
 import pytest
 from ccramic.app.utils.cell_level_utils import *
@@ -235,3 +237,24 @@ def test_output_annotations_pdf():
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)
+
+
+def test_basic_clickdata_cell_annotation(get_current_dir):
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+    clickdata = {'points': [{'x': -100, 'y': -100}]}
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new")
+    assert 'new' not in annotations['ccramic_cell_annotation'].tolist()
+
+    clickdata = {'points': [{'x': 53, 'y': 33}]}
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new")
+
+    assert 'new' in annotations['ccramic_cell_annotation'].tolist()
+    assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 1
+
+    clickdata = {'points': [{'x': 980, 'y': 19}]}
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new")
+
+    assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 2

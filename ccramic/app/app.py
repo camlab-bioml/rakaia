@@ -435,6 +435,18 @@ def init_dashboard(server, authentic_id, config=None):
                                 html.Div("Show ROI annotations")], style={"display": "flex"}),
                                 id="show-annotation-table", className="mx-auto", color=None, n_clicks=0,
                                 style={"margin-top": "10px"}),
+                                html.Br(),
+                                html.Div([daq.ToggleSwitch(label='Enable click annotation', id='enable_click_annotation',
+                                                                     labelPosition='bottom', value=False, color="blue",
+                                                                     style={"width": "75%",
+                                                                            "margin-left": "-15px"}),
+                                dcc.Input(id="click-annotation-assignment", type="text", value=None,
+                                          placeholder="Add a cell type for click annotation",
+                                    style={"width": "60%", "margin-left": "30px"})
+                                          ],
+                                         style={"display": "flex"}),
+                                html.Br(),
+                                dbc.Alert([], color='success', is_open=False, duration=1200, id='click-annotation-alert'),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dash_table.DataTable(id='annotation-table', columns=[], data=None,
                                 editable=False, filter_action='native')]), id="annotation-preview", size='xl'),
@@ -543,7 +555,7 @@ def init_dashboard(server, authentic_id, config=None):
 
                     ])])]),
 
-            dbc.Tab(label="Image Gallery", tab_id='gallery-tab',
+            dbc.Tab(label="Image Gallery", tab_id='gallery-tab', id='gallery-tab',
                         children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px",
                                                                                                "margin-top": "10px"}),
