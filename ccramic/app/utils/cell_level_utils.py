@@ -345,3 +345,7 @@ def subset_measurements_by_point(measurements, x, y):
         return measurements.query(f'x_min <= {x} & x_max >= {x} & y_min <= {y} & y_max >= {y}')
     except pd.errors.UndefinedVariableError:
         return None
+
+
+def validate_mask_shape_matches_image(mask, image):
+    return (mask.shape[0] == image.shape[0]) and (mask.shape[1] == image.shape[1])

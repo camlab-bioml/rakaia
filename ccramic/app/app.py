@@ -94,7 +94,16 @@ def init_dashboard(server, authentic_id, config=None):
             className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
             children=[
                 html.A("ccramic", className="navbar-brand me-0 px-3", href="#"),
-                html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#", style={"float": "right"})],
+                html.Div([
+                    # dbc.Button(
+                    # children=html.Span([html.I(className="fa-solid fa-gears",
+                    #                            style={"display": "inline-block",
+                    #                                   "margin-right": "3px"}),
+                    #                     html.Div("Session config"),
+                    #                     ]),
+                    # id="session-config-modal", className="navbar-brand me-0 px-3",
+                    # color='dark', n_clicks=0, style={"display": "flex"}),
+                html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
             style={"margin-bottom": "15px"}),
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', active_label_style={"color": "#FB79B3"},
                     children=[
@@ -481,6 +490,12 @@ def init_dashboard(server, authentic_id, config=None):
                                 id="btn-download-annot-pdf", className="mx-auto", color=None, n_clicks=0,
                                 style={"margin-top": "10px"}),
                                 dcc.Download(id="download-annotation-pdf"),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                html.Div("Download annotation masks (zip)")], style={"display": "flex"}),
+                                id="btn-download-annot-mask", className="mx-auto", color=None,
+                                n_clicks=0, style={"margin-top": "10px"}),
+                                dcc.Download(id="download-annotation-mask"),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dbc.Row([dbc.Col([html.H6("Create a region annotation")], width=8),
                                           dbc.Col([html.H6("Annotate with cell type")], width=4)]),

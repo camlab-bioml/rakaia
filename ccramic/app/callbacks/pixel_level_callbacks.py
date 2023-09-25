@@ -275,6 +275,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     channels_selected = list(currently_selected_channels)
                 else:
                     channels_selected = []
+                #TODO: establish whether or not to allow sorted channel lists
+                # sorted_dict = dict(sorted(names.items(), key=lambda x:x[1]))
                 return [{'label': names[i], 'value': i} for i in names.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return
             except AssertionError:
@@ -1984,8 +1986,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             except (ValueError, TypeError) as e:
                 fig = dash.no_update
                 hist_max = 100
-            spacing = int(hist_max / 3)
-            tick_markers = dict([(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, hist_max, spacing)])
+            try:
+                spacing = int(hist_max / 3)
+                tick_markers = dict([(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, hist_max, spacing)])
+            except ValueError:
+                hist_max = 100
+                tick_markers = dict(
+                    [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, 100, 25)])
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
@@ -2545,7 +2552,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                  'mask_selection': None,
                                                  'mask_blending_level': None,
                                                  'add_mask_boundary': None}
-                return annotations_dict, html.H6(f"Point {x, y} updated with "
+                return Serverside(annotations_dict), html.H6(f"Point {x, y} updated with "
                                                  f"{annotation_cell_type} in {annot_col}"), True
             except KeyError:
                 return dash.no_update, html.H6("Error in annotating point"), True

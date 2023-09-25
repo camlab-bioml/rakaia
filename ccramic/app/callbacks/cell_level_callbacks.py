@@ -8,6 +8,7 @@ from ..parsers.cell_level_parsers import *
 from ..inputs.cell_level_inputs import *
 from ..utils.cell_level_utils import *
 from .cell_level_wrappers import *
+from ..io.annotation_outputs import *
 from dash import dcc
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib
@@ -202,6 +203,38 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             return dcc.send_file(generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection,
                 mask_config, aliases, blend_dict=blend_dict,
                 dest_dir=dest_path, output_file="annotations.pdf"), type="application/pdf")
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("download-annotation-mask", "data"),
+        Input("btn-download-annot-mask", "n_clicks"),
+        State("annotations-dict", "data"),
+        State('canvas-layers', 'data'),
+        State('data-collection', 'value'),
+        State('uploaded_dict', 'data'),
+        State('mask-dict', 'data'),
+        State('apply-mask', 'value'),
+        State('mask-options', 'value'))
+    # @cache.memoize())
+    def download_annotations_masks(n_clicks, annotations_dict, canvas_layers,
+                                 data_selection, image_dict, mask_dict, apply_mask, mask_selection):
+        if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
+                data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
+            first_image = list(image_dict[data_selection].keys())[0]
+            first_image = image_dict[data_selection][first_image]
+            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+            # check that the mask is compatible with the current image
+            if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
+                                                                                mask_dict[mask_selection]['raw']):
+                mask_used = mask_dict[mask_selection]['raw']
+            else:
+                mask_used = None
+            return dcc.send_file(export_annotations_as_masks(annotations_dict, dest_path, data_selection,
+                                                             (first_image.shape[0], first_image.shape[1]),
+                                                             mask_used))
         else:
             raise PreventUpdate
 

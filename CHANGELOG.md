@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2023-09-25
+
+### Changed
+
+
+### Added
+
+- Ability to click a pixel on the canvas and annotate it
+with a cell type
+
+### Fixed
+
+- Fixed error in gallery zoom when the zoom box was outside
+of the subset dimensions
+- Fixed histogram tick marks for input channels with a max
+intensity below 3(divisor for the tick marks)
+
 ## [0.7.0] - 2023-09-18
 
 ### Changed

@@ -9,7 +9,7 @@ from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWa
 import warnings
 
 _program = "ccramic"
-__version__ = "0.7.0"
+__version__ = "0.8.0"
 
 
 def get_current_dir():
