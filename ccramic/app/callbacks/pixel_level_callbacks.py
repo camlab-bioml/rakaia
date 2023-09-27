@@ -244,43 +244,52 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('alias-dict', 'data'),
                        State('image_layers', 'value'),
                        State('session_config', 'data'),
+                       Input('sort-channels-alpha', 'value'),
                        prevent_initial_call=True)
-    def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config):
+    def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config,
+                                sort_channels):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
         if the dimensions are above 3000 for either axis
         """
         # set the default canvas to return without a load screen
-        canvas_return = [render_default_annotation_canvas()]
-        if image_dict and data_selection:
-            # load the specific ROI requested into the dictionary
-            # imp: use the channel label for the dropdown view and the name in the background to retrieve
-            try:
-                image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
+        #TODO: establish whether a change to the metadata names can be separated from the update of the ROI loading
+        if image_dict and data_selection and names:
+            if ' sorted' in sort_channels:
+                channels_return = dict(sorted(names.items(), key=lambda x: x[1]))
+            else:
+                channels_return = names
+            if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
+                canvas_return = [render_default_annotation_canvas()]
+                # load the specific ROI requested into the dictionary
+                # imp: use the channel label for the dropdown view and the name in the background to retrieve
+                try:
+                    image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
                                                      session_config=session_config)
-                # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
-                if all([image_dict[data_selection][elem] is not None for \
+                    # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
+                    if all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
-                    # get the first image in the ROI and check the dimensions
-                    first_image = list(image_dict[data_selection].keys())[0]
-                    first_image = image_dict[data_selection][first_image]
-                    canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image)]
-            except IndexError:
-                raise PreventUpdate
-            try:
-                # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
-                if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
+                        # get the first image in the ROI and check the dimensions
+                        first_image = list(image_dict[data_selection].keys())[0]
+                        first_image = image_dict[data_selection][first_image]
+                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image)]
+                except IndexError:
+                    raise PreventUpdate
+                try:
+                    # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
+                    if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
                     all([elem in image_dict[data_selection].keys() for elem in currently_selected_channels]):
-                    channels_selected = list(currently_selected_channels)
-                else:
-                    channels_selected = []
-                #TODO: establish whether or not to allow sorted channel lists
-                # sorted_dict = dict(sorted(names.items(), key=lambda x:x[1]))
-                return [{'label': names[i], 'value': i} for i in names.keys() if len(i) > 0 and \
+                        channels_selected = list(currently_selected_channels)
+                    else:
+                        channels_selected = []
+                    return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return
-            except AssertionError:
-                return [], [], Serverside(image_dict), canvas_return
+                except AssertionError:
+                    return [], [], Serverside(image_dict), canvas_return
+            elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
+                return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
+                        i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -1753,7 +1762,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
                        State('unique-channel-list', 'value'),
-                       State('alias-dict', 'data'),
+                       Input('alias-dict', 'data'),
                        State('preset-button', 'n_clicks'),
                        State('blending_colours', 'data'),
                        Input('default-scaling-gallery', 'value'),
@@ -1772,7 +1781,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         try:
             # condition 1: if the data collection is changed, update with new images
             # condition 2: if any other mods are made, ensure that the active tab is the gallery tab
-            new_collection = gallery_data is not None and ctx.triggered_id in ["data-collection", "uploaded_dict"]
+            new_collection = gallery_data is not None and ctx.triggered_id in ["data-collection", "uploaded_dict", "alias-dict"]
             gallery_mod_in_tab = gallery_data is not None and ctx.triggered_id not in \
                           ["data-collection", "uploaded_dict", "annotation_canvas"] and \
                 active_tab == 'gallery-tab'
@@ -1958,6 +1967,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('pixel-intensity-slider', 'value'),
                        Output('pixel-intensity-slider', 'marks'),
                        Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'step'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
@@ -2010,9 +2020,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         blend_return = current_blend_dict
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
-                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return
+                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, 1
                 except (KeyError, ValueError) as e:
-                    return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'blending_colours':
                 vals_return = dash.no_update
                 if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
@@ -2030,9 +2040,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
                     vals_return = [lower_bound, upper_bound]
-                return dash.no_update, hist_max, vals_return, tick_markers, blend_return
+                return dash.no_update, hist_max, vals_return, tick_markers, blend_return, 1
             elif ctx.triggered_id == "pixel-hist-collapse":
-                return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 

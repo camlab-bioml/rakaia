@@ -16,6 +16,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Ability to click a pixel on the canvas and annotate it
 with a cell type
+- Ability to sort channels alphanumerically in the channel
+selection dropdown (default is original channel order) #61
+- Add port input as CLI option (default is 5000)
 
 ### Fixed
 
