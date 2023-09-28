@@ -57,12 +57,12 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     else:
         return render_default_annotation_canvas()
 
-def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05):
+def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
     if scale_value is None:
-        scale_val = int(0.075 * image_shape[1])
+        scale_val = int(float(0.075 * image_shape[1]) * float(pixel_ratio))
     else:
         scale_val = scale_value
     scale_annot = str(scale_val) + "μm"

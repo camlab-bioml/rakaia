@@ -256,7 +256,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         # set the default canvas to return without a load screen
         #TODO: establish whether a change to the metadata names can be separated from the update of the ROI loading
         if image_dict and data_selection and names:
-            if ' sorted' in sort_channels:
+            if ' sort (A-z)' in sort_channels:
                 channels_return = dict(sorted(names.items(), key=lambda x: x[1]))
             else:
                 channels_return = names
@@ -803,6 +803,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
                        Input('add-cell-id-mask-hover', 'value'),
+                       State('pixel-size-ratio', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -812,7 +813,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 canvas_children, param_dict,
                                                 mask_config, mask_toggle, mask_selection, toggle_legend,
                                                 toggle_scalebar, mask_blending_level, add_mask_boundary,
-                                                channel_order, legend_size, add_cell_id_hover):
+                                                channel_order, legend_size, add_cell_id_hover, pixel_ratio):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -827,7 +828,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 param_dict["current_roi"] == data_selection and len(channel_order) > 0:
 
-
+            pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = ''
             for image in channel_order:
                 # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
@@ -888,7 +889,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                         if toggle_scalebar:
                             fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                                                            x_axis_left=x_axis_placement)
+                                                            x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio)
 
                         fig = go.Figure(fig)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -909,7 +910,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                     if toggle_scalebar:
                         fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                                                        x_axis_left=x_axis_placement)
+                                                        x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio)
 
                     fig = go.Figure(fig)
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -1023,10 +1024,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('set-y-auto-bound', 'value'),
                        State('window_config', 'data'),
                        Input('activate-coord', 'n_clicks'),
+                       State('pixel-size-ratio', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_coord_change(cur_graph, cur_graph_layout, x_request, y_request, current_window,
-                             nclicks_coord):
+                             nclicks_coord, pixel_ratio):
 
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
@@ -1038,6 +1040,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if cur_graph is not None and \
              'shapes' not in cur_graph_layout and cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and \
                 not bad_update:
+            pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             if ctx.triggered_id == "annotation_canvas":
                 try:
                     fig = go.Figure(cur_graph)
@@ -1068,7 +1071,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 assert x_range_high >= x_range_low
                                 # assert that all values must be above 0 for the scale value to render during panning
                                 # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
-                                scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                                scale_val = int(float(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1) * float(
+                                    pixel_ratio))
                                 scale_val = scale_val if scale_val > 0 else 1
                                 scale_annot = str(scale_val) + "μm"
                                 scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
@@ -1141,11 +1145,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('annotation_canvas', 'figure'),
                        State('annotation_canvas', 'relayoutData'),
                        Input('custom-scale-val', 'value'),
+                       Input('pixel-size-ratio', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def render_canvas_from_scalebar_change(cur_graph, cur_graph_layout, custom_scale_val):
-        if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}]:
+    def render_canvas_from_scalebar_change(cur_graph, cur_graph_layout, custom_scale_val, pixel_ratio):
+        # do not update the canvas if the pixel ratio is changed to None
+        pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
+        if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
             try:
+                pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                 for annotations in cur_graph['layout']['annotations']:
                     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
                     if annotations['y'] == 0.06:
@@ -1157,7 +1165,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             x_range_high = math.ceil(int(high))
                             x_range_low = math.floor(int(low))
                             assert x_range_high >= x_range_low
-                            custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                            custom_scale_val = int(float(math.ceil(int(0.075 *
+                                                (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
                         scale_annot = str(custom_scale_val) + "μm"
                         scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
                         # get the index of the list element corresponding to this text annotation
@@ -1182,11 +1191,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('uploaded_dict', 'data'),
                        State('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
+                       State('pixel-size-ratio', 'value'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
                                                    cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
-                                                   channel_order, legend_size):
+                                                   channel_order, legend_size, pixel_ratio):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend)
         """
@@ -1194,7 +1204,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             # scalebar is y = 0.06
             # legend is y = 0.05
 
-
+            pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             first_image = list(image_dict[data_selection].keys())[0]
             first_image = image_dict[data_selection][first_image]
             image_shape = first_image.shape
@@ -1269,7 +1279,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         x_range_high = math.ceil(int(high))
                         x_range_low = math.floor(int(low))
                         assert x_range_high >= x_range_low
-                        custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                        custom_scale_val = int(float(math.ceil(int(0.075 *
+                                                                   (x_range_high - x_range_low))) + 1) * float(
+                            pixel_ratio))
                     except KeyError:
                         custom_scale_val = None
 
@@ -1962,6 +1974,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Input('images_in_blend', 'value'),
+                       Output('custom-slider-max', 'value'),
+                       prevent_initial_call=True)
+    def reset_range_max_on_channel_switch(new_image_mod):
+        """
+        Reset the checkbox for a custom range slider max on channel changing. Prevents the slider bar from
+        having incorrect bounds for the upcoming channel
+        """
+        if new_image_mod is not None:
+            return []
+        else:
+            raise PreventUpdate
+
     @dash_app.callback(Output("pixel-hist", 'figure'),
                        Output('pixel-intensity-slider', 'max'),
                        Output('pixel-intensity-slider', 'value'),
@@ -1971,15 +1996,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       Input('blending_colours', 'data'),
+                       State('blending_colours', 'data'),
                        Input("pixel-hist-collapse", "is_open"),
                        State('pixel-intensity-slider', 'value'),
+                       Input('custom-slider-max', 'value'),
                        prevent_initial_call=True)
                        # background=True,
                        # manager=cache_manager)
     # @cache.memoize())
-    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict, show_pixel_hist,
-                               cur_slider_values):
+    def update_pixel_histogram_and_intensity_sliders(selected_channel, uploaded, data_selection,
+                                    current_blend_dict, show_pixel_hist, cur_slider_values, custom_max):
         """
         Create pixel histogram and output the default percentiles
         """
@@ -1993,12 +2019,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 else:
                     fig = dash.no_update
                     hist_max = int(np.max(uploaded[data_selection][selected_channel]))
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 fig = dash.no_update
                 hist_max = 100
             try:
                 spacing = int(hist_max / 3)
-                tick_markers = dict([(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, hist_max, spacing)])
+                tick_markers = dict([(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0,
+                                                                        int(hist_max), spacing)])
             except ValueError:
                 hist_max = 100
                 tick_markers = dict(
@@ -2018,10 +2045,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
+                    # if the upper bound is larger than the custom percentile, set it to the upper bound
+                    if ' set range max to current upper bound' in custom_max:
+                        hist_max = upper_bound
+                        spacing = int(hist_max / 3)
+                        tick_markers = dict(
+                            [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
                     return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, 1
-                except (KeyError, ValueError) as e:
+                except (KeyError, ValueError):
                     return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'blending_colours':
                 vals_return = dash.no_update
@@ -2040,11 +2073,32 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
                     vals_return = [lower_bound, upper_bound]
+                # if ' set range max to current upper bound' in custom_max:
+                #     hist_max = upper_bound
+                #     spacing = int(hist_max / 3)
+                #     tick_markers = dict(
+                #         [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
                 return dash.no_update, hist_max, vals_return, tick_markers, blend_return, 1
             elif ctx.triggered_id == "pixel-hist-collapse":
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            elif ctx.triggered_id == 'custom-slider-max':
+                try:
+                    if ' set range max to current upper bound' in custom_max:
+                        if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
+                            hist_max = int(cur_slider_values[1])
+                        else:
+                            hist_max = int(np.max(uploaded[data_selection][selected_channel]))
+                    else:
+                        hist_max = int(np.max(uploaded[data_selection][selected_channel]))
+                    spacing = int(hist_max / 3)
+                    tick_markers = dict(
+                        [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
+                    return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, 1
+                except IndexError:
+                    raise PreventUpdate
         else:
             raise PreventUpdate
+
 
     @dash_app.callback(Output('bool-apply-filter', 'value'),
                        Output('filter-type', 'value'),
