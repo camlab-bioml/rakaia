@@ -1511,19 +1511,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 #         current_canvas['layout']['shapes'].remove(shape)
 
                 # can set the canvas width and height from the ccanvas style to retain the in-app aspect ratio
-                fig = go.Figure(current_canvas)
-                # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                #                   xaxis=XAxis(showticklabels=False),
-                #                   yaxis=YAxis(showticklabels=False),
-                #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
-                fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
+                if not ' use graph subset on download' in graph_subset:
+                    fig = go.Figure(current_canvas)
+                    # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                    #                   xaxis=XAxis(showticklabels=False),
+                    #                   yaxis=YAxis(showticklabels=False),
+                    #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
+                    fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
                                default_height = canvas_style['height'])
+                    fig_return = str(os.path.join(download_dir, "canvas.html"))
+                else:
+                    fig_return = dash.no_update
                 param_json = str(os.path.join(download_dir, 'param.json'))
                 with open(param_json, "w") as outfile:
                     dict_write = {"channels": blend_dict, "config": {"blend": blend_layers}}
                     json.dump(dict_write, outfile)
 
-                return str(relative_filename), dest_file, str(os.path.join(download_dir, "canvas.html")), param_json
+                return str(relative_filename), dest_file, fig_return, param_json
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
                 raise PreventUpdate
