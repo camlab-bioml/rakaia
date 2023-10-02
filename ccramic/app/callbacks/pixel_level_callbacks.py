@@ -4,6 +4,7 @@ import dash.exceptions
 import dash_bootstrap_components as dbc
 import dash_uploader as du
 import flask
+import numpy as np
 import pandas as pd
 from dash import ctx
 from dash_extensions.enrich import Output, Input, State, html
@@ -1420,15 +1421,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('current_canvas_image', 'data'),
                        State('annotation_canvas', 'figure'),
                        State('image_layers', 'value'),
-                       State('annotation_canvas', 'style'))
+                       State('annotation_canvas', 'style'),
+                       State('annotation_canvas', 'relayoutData'),
+                       State('graph-subset-download', 'value'))
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                current_image_tiff, current_canvas, blend_layers, canvas_style):
+                                current_image_tiff, current_canvas, blend_layers, canvas_style, canvas_layout, graph_subset):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
         if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
+
+            first_image = list(uploaded[data_selection].keys())[0]
+            first_image = uploaded[data_selection][first_image]
 
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
 
@@ -1456,6 +1462,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if hf is None:
                 hf = h5py.File(relative_filename, 'w')
             try:
+                mask = None
+                if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
+                    for shape in canvas_layout['shapes']:
+                        if shape['type'] == 'path':
+                            path = shape['path']
+                            if mask is None:
+                                mask = path_to_mask(path, first_image.shape)
+                            else:
+                                new_mask = path_to_mask(path, first_image.shape)
+                                mask = np.logical_or(mask, new_mask)
+
                 meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
                     pd.DataFrame(uploaded['metadata'])
                 for col in meta_to_write:
@@ -1467,6 +1484,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     if key not in hf[data_selection]:
                         hf[data_selection].create_group(key)
                         if 'image' not in hf[data_selection][key] and value is not None:
+                            # iuse the mask if provided
+                            if mask is not None:
+                                value[~mask] = 0
                             hf[data_selection][key].create_dataset('image', data=value)
                             if blend_dict is not None and key in blend_dict.keys():
                                 for blend_key, blend_val in blend_dict[key].items():
@@ -2620,5 +2640,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                  f"{annotation_cell_type} in {annot_col}"), True
             except KeyError:
                 return dash.no_update, html.H6("Error in annotating point"), True
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("annotations-dict", "data", allow_duplicate=True),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        Input('undo-latest-annotation', 'n_clicks'),
+        prevent_initial_call=True)
+    def remove_latest_annotation(annotations, data_selection, nclicks):
+        if nclicks > 0 and None not in (annotations, data_selection):
+            try:
+                annot_dict = annotations.copy()
+                last = list(annot_dict[data_selection].keys())[-1]
+                del annot_dict[data_selection][last]
+                return annot_dict
+            except IndexError:
+                raise PreventUpdate
         else:
             raise PreventUpdate
