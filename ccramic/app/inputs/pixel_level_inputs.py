@@ -38,6 +38,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         id=input_id,
                             style=style_canvas,
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                               newshape = dict(line=dict(color="white")),
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False))})
 

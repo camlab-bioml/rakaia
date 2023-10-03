@@ -927,6 +927,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig.update_layout(hovermode="x")
 
                 fig = go.Figure(fig)
+                fig.update_layout(newshape=dict(line=dict(color="white")))
 
                 # set how far in from the lefthand corner the scale bar and colour legends should be
                 # higher values mean closer to the centre
@@ -1082,6 +1083,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 cur_graph['layout']['annotations'][index]['text'] = scale_text
 
                                 fig = go.Figure(cur_graph)
+                                fig.update_layout(newshape=dict(line=dict(color="white")))
 
                     return fig, cur_graph_layout
                 except (ValueError, KeyError, AssertionError):
@@ -1105,6 +1107,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig['layout']['annotations'] = None
                         fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
                                           yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
+                        fig.update_layout(newshape=dict(line=dict(color="white")))
                         # cur_graph['layout']['xaxis']['domain'] = [0, 1]
                         # cur_graph['layout']['dragmode'] = "zoom"
                         fig['layout']['shapes'] = shapes
@@ -1174,6 +1177,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         index = cur_graph['layout']['annotations'].index(annotations)
                         cur_graph['layout']['annotations'][index]['text'] = scale_text
                 fig = go.Figure(cur_graph)
+                fig.update_layout(newshape=dict(line=dict(color="white")))
             except (KeyError, AssertionError):
                 fig = dash.no_update
             return fig
@@ -1240,6 +1244,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                         f'>{label}</span><br>'
 
                     fig = go.Figure(cur_canvas)
+                    fig.update_layout(newshape=dict(line=dict(color="white")))
                     if legend_text != '':
                         fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
                                                yref='paper',
@@ -1288,6 +1293,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                     fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
                                                     font_size=legend_size, x_axis_left=x_axis_placement)
+                fig.update_layout(newshape=dict(line=dict(color="white")))
                 return fig
         else:
             raise PreventUpdate
@@ -1510,7 +1516,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 #     if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
                 #         current_canvas['layout']['shapes'].remove(shape)
 
-                # can set the canvas width and height from the ccanvas style to retain the in-app aspect ratio
+                # can set the canvas width and height from the canvas style to retain the in-app aspect ratio
                 if not ' use graph subset on download' in graph_subset:
                     fig = go.Figure(current_canvas)
                     # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -1538,13 +1544,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input('current_canvas_image', 'data'),
         Input('annotation_canvas', 'figure'),
         State("download-collapse", "is_open"),
+        Input('annotation_canvas', 'relayoutData'),
         Output("download-collapse", "is_open", allow_duplicate=True),
         prevent_initial_call=True)
-    def reset_canvas_layers_on_new_dataset(current_image, current_canvas, currently_open):
+    def reset_canvas_layers_on_new_dataset(current_image, current_canvas, currently_open, canvas_layout):
         """
         Close the collapsible download when an update is made to the canvas to prevent extraneous downloading
         """
-        if current_canvas is not None:
+        if None not in (current_canvas, canvas_layout):
             if currently_open:
                 return False
             else:
@@ -1570,12 +1577,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
         # only update the resolution if not using zoom or panning
         if all([elem not in cur_graph_layout for elem in zoom_keys]) and \
-                'dragmode' not in cur_graph_layout.keys() and 'shapes' not in cur_graph_layout.keys() and \
+                'dragmode' not in cur_graph_layout.keys() and \
                 add_layer is not None and value is not None:
             try:
-
-
-
                 first_image = list(image_dict[data_selection].keys())[0]
                 first_image = image_dict[data_selection][first_image]
                 aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
@@ -2115,6 +2119,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     else:
                         hist_max = int(np.max(uploaded[data_selection][selected_channel]))
                     spacing = int(hist_max / 3)
+                    spacing = spacing if spacing > 0 else 1
                     tick_markers = dict(
                         [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
                     return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, 1
