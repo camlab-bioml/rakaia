@@ -58,7 +58,8 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     else:
         return render_default_annotation_canvas()
 
-def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1):
+def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
+                              invert=False):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -70,10 +71,11 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
     scale_text = f'<span style="color: white">{scale_annot}</span><br>'
     figure = go.Figure(figure)
     # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
+    x = float((x_axis_left + 0.0375) if not invert else (x_axis_left - 0.0375))
     figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
-                       x=float(x_axis_left + 0.0375),
+                       x=x,
                        xanchor='center',
                        y=0.06,
                        # yanchor='bottom',

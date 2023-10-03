@@ -805,6 +805,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('legend-size-slider', 'value'),
                        Input('add-cell-id-mask-hover', 'value'),
                        State('pixel-size-ratio', 'value'),
+                       State('invert-annotations', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -814,7 +815,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 canvas_children, param_dict,
                                                 mask_config, mask_toggle, mask_selection, toggle_legend,
                                                 toggle_scalebar, mask_blending_level, add_mask_boundary,
-                                                channel_order, legend_size, add_cell_id_hover, pixel_ratio):
+                                                channel_order, legend_size, add_cell_id_hover, pixel_ratio, invert_annot):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -861,6 +862,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 x_axis_placement = 0.00001 * image_shape[1]
                 # make sure the placement is min 0.05 and max 0.1
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+                if invert_annot:
+                    x_axis_placement = 1 - x_axis_placement
                 # if the current graph already has an image, take the existing layout and apply it to the new figure
                 # otherwise, set the uirevision for the first time
                 # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
@@ -890,7 +893,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                         if toggle_scalebar:
                             fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                                                            x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio)
+                                x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio, invert=invert_annot)
 
                         fig = go.Figure(fig)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -911,7 +914,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                     if toggle_scalebar:
                         fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                                                        x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio)
+                                                        x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio,
+                                                        invert=invert_annot)
 
                     fig = go.Figure(fig)
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -945,15 +949,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # set the x-axis scale placement based on the size of the image
                 # for adding a scale bar
                 if toggle_scalebar:
+                    # set the x0 and x1 depending on if the bar is inverted or not
+                    x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
+                    x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
                     fig.add_shape(type="line",
                                   xref="paper", yref="paper",
-                                  x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
-                                  y1=0.05,
-                                  line=dict(
-                                      color="white",
-                                      width=2,
-                                  ),
-                                  )
+                                  x0=x_0, y0=0.05, x1=x_1,
+                                  y1=0.05, line=dict(color="white", width=2))
 
                 # set the custom hovertext if is is requested
                 # the masking mask ID get priority over the channel intensity hover
@@ -1197,11 +1199,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
                        State('pixel-size-ratio', 'value'),
+                       State('invert-annotations', 'value'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
                                                    cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
-                                                   channel_order, legend_size, pixel_ratio):
+                                                   channel_order, legend_size, pixel_ratio, invert_annot):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend)
         """
@@ -1216,6 +1219,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             x_axis_placement = 0.00001 * image_shape[1]
             # make sure the placement is min 0.05 and max 0.1
             x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+            if invert_annot:
+                x_axis_placement = 1 - x_axis_placement
             if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
                 cur_annotations = cur_canvas['layout']['annotations'].copy()
             else:
@@ -1267,15 +1272,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     return cur_canvas
                 else:
                     fig = go.Figure(cur_canvas)
+                    # set the x0 and x1 depending on if the bar is inverted or not
+                    x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
+                    x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
                     fig.add_shape(type="line",
                                   xref="paper", yref="paper",
-                                  x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
-                                  y1=0.05,
-                                  line=dict(
-                                      color="white",
-                                      width=2,
-                                  ),
-                                  )
+                                  x0=x_0, y0=0.05, x1=x_1,
+                                  y1=0.05, line=dict(color="white", width=2))
 
                     try:
                         high = max(cur_canvas['layout']['xaxis']['range'][1],
@@ -1292,9 +1295,42 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         custom_scale_val = None
 
                     fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                                                    font_size=legend_size, x_axis_left=x_axis_placement)
+                                                    font_size=legend_size, x_axis_left=x_axis_placement,
+                                                    invert=invert_annot)
                 fig.update_layout(newshape=dict(line=dict(color="white")))
                 return fig
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       State('annotation_canvas', 'figure'),
+                       State('annotation_canvas', 'relayoutData'),
+                       State('image_layers', 'value'),
+                       State('data-collection', 'value'),
+                       State('blending_colours', 'data'),
+                       Input('invert-annotations', 'value'),
+                       prevent_initial_call=True)
+    def render_canvas_from_invert_annotations(cur_canvas, cur_layout, currently_selected,
+                                            data_selection, blend_colour_dict, invert_annotations):
+        if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
+            if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
+                cur_annotations = cur_canvas['layout']['annotations'].copy()
+            else:
+                cur_annotations = []
+            if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
+                cur_shapes = cur_canvas['layout']['shapes'].copy()
+            else:
+                cur_shapes = []
+            for shape in cur_shapes:
+                if shape['y0'] == 0.05 and shape['y1'] == 0.05:
+                    shape['x0'] = 1 - shape['x0']
+                    shape['x1'] = 1 - shape['x1']
+            for annot in cur_annotations:
+                if annot['y'] in [0.05, 0.06]:
+                    annot['x'] = 1 - annot['x']
+            cur_canvas['layout']['annotations'] = cur_annotations
+            cur_canvas['layout']['shapes'] = cur_shapes
+            return cur_canvas
         else:
             raise PreventUpdate
 

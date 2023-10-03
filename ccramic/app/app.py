@@ -376,10 +376,13 @@ def init_dashboard(server, authentic_id, config=None):
                                     style={"display": "block"})
                                           ], style={"display": "flex"}),
                                     html.Br(),
-                                    html.Abbr(dcc.Checklist(options=[' show channel intensities on hover'],
-                                    value=[], id="channel-intensity-hover"),
+                                    html.Div([html.Abbr(dcc.Checklist(options=[' show channel intensities on hover'],
+                                    value=[], id="channel-intensity-hover", style={"width": "90%"}),
                                     title="WARNING: speed is significantly compromised with this feature, "
                                             "particularly for large images."),
+                                    daq.ToggleSwitch(label='Invert annotation placement', id='invert-annotations',
+                                        labelPosition='bottom', value=False, color="blue",
+                                    style={"width": "55%", "margin-left": "-15px"})], style={"display": "flex"}),
                                     html.Br(),
                                     html.H6("Adjust legend/scale size"),
                                     dcc.Slider(10, 24, 1, value=16,
