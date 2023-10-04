@@ -70,3 +70,26 @@ def test_basic_additive_image():
 def test_basic_return_local_file_dialog():
     assert isinstance(add_local_file_dialog(use_local_dialog=True), dbc.Button)
     assert isinstance(add_local_file_dialog(use_local_dialog=False), html.Div)
+
+def test_invert_annotations_figure():
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.zeros((600, 600, 3)),
+                                                   "Nuclear": np.zeros((600, 600, 3)),
+                                                   "Cytoplasm": np.zeros((600, 600, 3))},
+                   "experiment0+++slide0+++acq1": {"DNA": np.zeros((600, 600, 3)),
+                                                   "Nuclear": np.zeros((600, 600, 3)),
+                                                   "Cytoplasm": np.zeros((600, 600, 3))}
+                   }
+
+    # blend_dict = create_new_blending_dict(upload_dict)
+
+    image = get_additive_image_with_masking(["DNA", "Nuclear"], data_selection="experiment0+++slide0+++acq0",
+                                            canvas_layers=upload_dict, mask_config=None, mask_toggle=False,
+                                            mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
+                                            add_mask_boundary=False, legend_text='')
+
+    assert image['layout']['annotations'][0]['x'] == 0.0875
+    assert image['layout']['shapes'][0]['x0'] == 0.05
+
+    image = invert_annotations_figure(image)
+    assert image['layout']['annotations'][0]['x'] == (1 - 0.0875)
+    assert image['layout']['shapes'][0]['x0'] == (1 - 0.05)

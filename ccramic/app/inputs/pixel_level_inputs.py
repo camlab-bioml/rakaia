@@ -8,6 +8,7 @@ import math
 import cv2
 from plotly.graph_objs.layout import XAxis, YAxis
 import dash_bootstrap_components as dbc
+from copy import deepcopy
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False):
@@ -167,3 +168,32 @@ def add_local_file_dialog(use_local_dialog=False, input_id="local-dialog-file"):
         id=input_id, className="mb-3", color=None, n_clicks=0, style={"margin-top": "10px"})
     else:
         return html.Div(id=input_id)
+
+def invert_annotations_figure(cur_canvas: go.Figure):
+    """
+    Invert the annotations (scalebar and legend) on a canvas figure
+    """
+    if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
+        cur_annotations = deepcopy(cur_canvas['layout']['annotations'])
+    else:
+        cur_annotations = []
+    if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
+        cur_shapes = deepcopy(cur_canvas['layout']['shapes'])
+    else:
+        cur_shapes = []
+    for shape in cur_shapes:
+        try:
+            if 'y0' in shape and shape['y0'] == 0.05 and 'y1' in shape and shape['y1'] == 0.05:
+                shape['x0'] = 1 - shape['x0']
+                shape['x1'] = 1 - shape['x1']
+        except IndexError:
+            pass
+    for annot in cur_annotations:
+        try:
+            if annot['y'] in [0.05, 0.06]:
+                annot['x'] = 1 - annot['x']
+        except IndexError:
+            pass
+    cur_canvas['layout']['annotations'] = cur_annotations
+    cur_canvas['layout']['shapes'] = cur_shapes
+    return cur_canvas

@@ -884,7 +884,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                           cur_graph['layout']['annotations'] if \
                                                                   annotation['y'] == 0.06 and toggle_scalebar]
                         if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']):
-                            cur_graph['layout']['shapes'] = []
+                            cur_graph['layout']['shapes'] = [shape for shape in cur_graph['layout']['shapes'] if \
+                                                             shape['type'] != 'line']
                         fig = cur_graph
                         # del cur_graph
                     # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
@@ -1313,24 +1314,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def render_canvas_from_invert_annotations(cur_canvas, cur_layout, currently_selected,
                                             data_selection, blend_colour_dict, invert_annotations):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
-            if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
-                cur_annotations = cur_canvas['layout']['annotations'].copy()
-            else:
-                cur_annotations = []
-            if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
-                cur_shapes = cur_canvas['layout']['shapes'].copy()
-            else:
-                cur_shapes = []
-            for shape in cur_shapes:
-                if shape['y0'] == 0.05 and shape['y1'] == 0.05:
-                    shape['x0'] = 1 - shape['x0']
-                    shape['x1'] = 1 - shape['x1']
-            for annot in cur_annotations:
-                if annot['y'] in [0.05, 0.06]:
-                    annot['x'] = 1 - annot['x']
-            cur_canvas['layout']['annotations'] = cur_annotations
-            cur_canvas['layout']['shapes'] = cur_shapes
-            return cur_canvas
+            return invert_annotations_figure(cur_canvas)
         else:
             raise PreventUpdate
 
@@ -1651,7 +1635,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(
         Output("selected-area-table", "data"),
-        State('annotation_canvas', 'figure'),
+        Input('annotation_canvas', 'figure'),
         Input('annotation_canvas', 'relayoutData'),
         State('uploaded_dict', 'data'),
         State('image_layers', 'value'),
@@ -1670,7 +1654,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
         if graph is not None and graph_layout is not None and data_selection is not None and \
                 nclicks and stats_table_open:
-
 
             # option 1: if shapes are drawn on the canvas
             if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:

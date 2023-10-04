@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2023-09-25
+## [0.8.0] - 2023-10-04
 
 ### Changed
 
@@ -15,17 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Ability to click a pixel on the canvas and annotate it
-with a cell type
+with a cell type and export point annotations in CSV format
 - Ability to sort channels alphanumerically in the channel
 selection dropdown (default is original channel order) #61
 - Add port input as CLI option (default is 5000)
+- Ability to export annotations as masks (one tiff per
+annotation class/grouping)
+- Input ofr setting ratio of pixel to distance #62
+- Ability to invert annotations placement on x-axis
+- Ability to subset ROI based on freeform draw on export #65
+- Set range on pixel intensity slider to new maximum to
+make it easier to adjust pixels for channels with a very large
+intensity range #60
 
 ### Fixed
 
 - Fixed error in gallery zoom when the zoom box was outside
 of the subset dimensions
 - Fixed histogram tick marks for input channels with a max
-intensity below 3(divisor for the tick marks)
+intensity below 3 (divisor for the tick marks)
+- Fixed shape removal on new canvas modification when
+layers are added
+-
 
 ## [0.7.0] - 2023-09-18
 

@@ -304,24 +304,14 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input("btn-download-points-csv", "n_clicks"),
         State("annotations-dict", "data"),
         State('data-collection', 'value'),
+        State('mask-dict', 'data'),
+        State('apply-mask', 'value'),
+        State('mask-options', 'value'),
+        State('uploaded_dict', 'data'),
         prevent_initial_call=True)
     # @cache.memoize())
-    def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection):
-        if n_clicks > 0 and None not in (annotations_dict, data_selection):
-            points = {'x': [], 'y': [], 'annotation_col': [], 'annotation': []}
-            for key, value in annotations_dict[data_selection].items():
-                if value['type'] in ['point', 'points']:
-                    try:
-                        points['x'].append(eval(key)['points'][0]['x'])
-                        points['y'].append(eval(key)['points'][0]['y'])
-                        points['annotation_col'].append(value['annotation_column'])
-                        points['annotation'].append(value['cell_type'])
-                    except KeyError:
-                        pass
-            if len(points['x']) > 0:
-                frame = pd.DataFrame(points)
-                return dcc.send_data_frame(frame.to_csv, "point_annotations.csv", index=False)
-            else:
-                raise PreventUpdate
-        else:
-            raise PreventUpdate
+    def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
+                                          mask_dict, apply_mask, mask_selection, image_dict):
+        return export_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
+                                          mask_dict, apply_mask, mask_selection, image_dict,
+                                               authentic_id, tmpdirname)
