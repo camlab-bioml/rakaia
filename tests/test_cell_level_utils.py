@@ -11,6 +11,7 @@ from PIL import Image
 import dash_extensions
 import tempfile
 
+
 def test_basic_col_dropper(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
     assert "x_max" in measurements.columns
@@ -176,7 +177,7 @@ def test_basic_cell_annotation_col_pop_from_masking(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     assert "ccramic_cell_annotation" not in measurements.columns
     measurements = populate_cell_annotation_column_from_cell_id_list(measurements, cell_list=list(cells_included.keys()),
-                                                                     cell_type="new_cell_type")
+                                    cell_type="new_cell_type", sample_name="Dilution_series_1_1")
     assert "ccramic_cell_annotation" in measurements.columns
     assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 2
     assert list(measurements[measurements["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]

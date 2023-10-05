@@ -15,9 +15,18 @@ import os
 import matplotlib.patches as mpatches
 import ast
 
-def set_columns_to_drop():
-    return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
+def set_columns_to_drop(measurements_csv=None):
+    defaults = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
             'PhenoGraph_clusters', 'Labels']
+    if measurements_csv is None:
+        return defaults
+    else:
+        # drop every column from sample and after, as these don't represent channels
+        try:
+            cols = list(measurements_csv.columns)
+            return cols[cols.index('sample'): len(cols)]
+        except (ValueError, IndexError):
+            return defaults
 
 def set_mandatory_columns():
     return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
@@ -168,7 +177,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
                                                     annotation_column="ccramic_cell_annotation",
                                                     cell_identifier="cell_id",
-                                                    cell_type=None):
+                                                    cell_type=None, sample_name=None):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
@@ -176,7 +185,8 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
     if annotation_column not in measurements.columns:
         measurements[annotation_column] = "None"
 
-    measurements[annotation_column] = np.where(measurements[cell_identifier].isin(cell_list), cell_type,
+    measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
+                                               (measurements['sample'] == sample_name), cell_type,
                                                measurements[annotation_column])
     return measurements
 

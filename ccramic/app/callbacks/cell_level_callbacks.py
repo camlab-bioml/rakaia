@@ -138,38 +138,43 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
                                                 cur_mask_dict, derive_cell_boundary)
 
-    @dash_app.callback(
-        Output("quantification-config-modal", "is_open"),
-        Input('cell-type-col-designation', 'options'),
-        prevent_initial_call=True)
-    def toggle_annotation_col_modal(quantification_dict):
-        """
-        Toggle the annotation modal on or off when the quantification dataset
-        updates the possible cell type annotations
-        """
-        if quantification_dict is not None:
-            return True
-        else:
-            return False
+    # @dash_app.callback(
+    #     Output("quantification-config-modal", "is_open"),
+    #     Input('cell-type-col-designation', 'options'),
+    #     prevent_initial_call=True)
+    # def toggle_annotation_col_modal(quantification_dict):
+    #     """
+    #     Toggle the annotation modal on or off when the quantification dataset
+    #     updates the possible cell type annotations
+    #     """
+    #     if quantification_dict is not None:
+    #         return True
+    #     else:
+    #         return False
 
     @dash_app.callback(
         Input("annotations-dict", "data"),
         State('quantification-dict', 'data'),
         State('data-collection', 'value'),
+        State('data-collection', 'options'),
         State('mask-dict', 'data'),
         State('apply-mask', 'value'),
         State('mask-options', 'value'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True))
     def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection):
+                                                      data_dropdown_options, mask_config, mask_toggle, mask_selection):
         """
         Add a region annotation to the cells of a quantification data frame
         """
         # loop through all of the existing annotations
         # for annotations that have not yet been imported, import and set the import status to True
+        exp, slide, acq = split_string_at_pattern(data_selection)
+        # in the quantification sheet, the sample name is the experiment name nad the index of where it is
+        index = data_dropdown_options.index(data_selection) + 1
+        sample_name = f"{exp}_{index}"
         return callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection)
+                                                      mask_config, mask_toggle, mask_selection, sample_name=sample_name)
 
 
     @dash_app.callback(

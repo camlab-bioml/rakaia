@@ -13,6 +13,7 @@ import anndata
 
 def drop_columns_from_measurements_csv(measurements_csv,
                                        cols_to_drop=set_columns_to_drop()):
+    cols_to_drop = set_columns_to_drop(measurements_csv)
     try:
         for col in cols_to_drop:
             if col in measurements_csv.columns:
@@ -60,13 +61,14 @@ def validate_incoming_measurements_csv(measurements_csv, current_image=None, val
     """
     if not all([column in measurements_csv.columns for column in required_columns]):
         return None, None
-    # check the measurement CSV against an image to ensure that the dimensions match
-    elif validate_with_image and current_image is not None:
-        if float(current_image.shape[0]) != float(measurements_csv['x_max'].max()) or \
-            float(current_image.shape[1]) != float(measurements_csv['y_max'].max()):
-            return measurements_csv, "Warning: the dimensions of the current ROI do not match the quantification sheet."
-        else:
-            return measurements_csv, None
+    #TODO: find a different heuristic for validating the measurements CSV as it will contain multiple ROIs
+    # # check the measurement CSV against an image to ensure that the dimensions match
+    # elif validate_with_image and current_image is not None:
+    #     if float(current_image.shape[0]) != float(measurements_csv['x_max'].max()) or \
+    #         float(current_image.shape[1]) != float(measurements_csv['y_max'].max()):
+    #         return measurements_csv, "Warning: the dimensions of the current ROI do not match the quantification sheet."
+    #     else:
+    #         return measurements_csv, None
     else:
         return measurements_csv, None
 
