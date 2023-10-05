@@ -2528,14 +2528,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def populate_annotations_table_preview(annotations_dict, dataset_selection):
         if None not in (annotations_dict, dataset_selection):
             try:
+                columns_keep = ['title', 'body', 'cell_type', 'annotation_column', 'type']
                 if len(annotations_dict[dataset_selection]) > 0:
                     annotation_list = []
-                    for value in annotations_dict[dataset_selection].values():
+                    for key, value in annotations_dict[dataset_selection].items():
+                        value = dict((k, value[k]) for k in columns_keep)
                         for sub_key, sub_value in value.items():
                             value[sub_key] = str(sub_value)
                         annotation_list.append(value)
-                    # columns = [{'id': p, 'name': p, 'editable': False} for p in annotations_dict[dataset_selection].keys()]
-                    columns = [{'id': p, 'name': p, 'editable': False} for p in list(pd.DataFrame(annotation_list).columns)]
+                    columns = [{'id': p, 'name': p, 'editable': False} for p in columns_keep]
                     return annotation_list, columns
                 else:
                     return [], []
