@@ -1,12 +1,3 @@
-import dash
-import dash_uploader as du
-import numpy as np
-import pandas as pd
-from dash_extensions.enrich import Output, Input, State
-from dash import ctx
-from ..parsers.cell_level_parsers import *
-from ..inputs.cell_level_inputs import *
-from ..utils.cell_level_utils import *
 from .cell_level_wrappers import *
 from ..io.annotation_outputs import *
 from dash import dcc
@@ -50,10 +41,22 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
                        State('quant-annotation-col', 'options'),
+                       Input('umap-plot', 'restyleData'),
+                       State('umap-projection-options', 'value'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, annot_cols):
+                                               umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection):
+        #TODO: incorporate subsetting based on legend selection
+        # uses the restyledata for the current legend selection to figure out which selections have been made
+        # Example 1: user selected only the third legend item to view
+        # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+        # Example 2: user selects all but the the second item to view
+        # [{'visible': ['legendonly']}, [2]]
+        # print(restyle_data)
         zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
+        # print(ctx.triggered_id)
+        # print(restyle_data)
+        # print(umap_layout)
         return generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols)
 

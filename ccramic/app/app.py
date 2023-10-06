@@ -441,7 +441,7 @@ def init_dashboard(server, authentic_id, config=None):
                                 html.Div(dbc.Collapse(html.Div([html.H6("Selection information",
                                 style={'width': '75%'}),
                                 html.Div([dash_table.DataTable(id='selected-area-table',
-                                columns=[{'id': p, 'name': p} for p in ['Channel', 'Mean', 'Max', 'Min']],
+                                columns=[{'id': p, 'name': p} for p in ['Channel', 'Mean', 'Max', 'Min', 'Region']],
                                 data=None)], style={"width": "85%"})]),
                                 id="area-stats-collapse", is_open=False), style={"margin-bottom": "0px"}),
                                 html.Br(),

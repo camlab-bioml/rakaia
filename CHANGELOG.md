@@ -11,6 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Region statistics table now contains separate rows for each
+region drawn with a shape (retangle or freeform). Previously, all metrics were averaged across
+drawn regions
 
 ### Added
 
@@ -21,7 +24,7 @@ selection dropdown (default is original channel order) #61
 - Add port input as CLI option (default is 5000)
 - Ability to export annotations as masks (one tiff per
 annotation class/grouping)
-- Input ofr setting ratio of pixel to distance #62
+- Input for setting ratio of pixel to distance #62
 - Ability to invert annotations placement on x-axis
 - Ability to subset ROI based on freeform draw on export #65
 - Set range on pixel intensity slider to new maximum to
