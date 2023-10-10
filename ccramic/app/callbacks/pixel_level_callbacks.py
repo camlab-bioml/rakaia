@@ -8,12 +8,11 @@ import numpy as np
 import pandas as pd
 from dash import ctx
 from dash_extensions.enrich import Output, Input, State, html
-from numpy.core._exceptions import _ArrayMemoryError
 from tifffile import imwrite
-
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
+from ..io.display import generate_area_statistics_dataframe
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -1585,20 +1584,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input('annotation-canvas-size', 'value'),
         State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),
-        Input('autosize-canvas', 'n_clicks'),
         State('data-collection', 'value'),
         State('uploaded_dict', 'data'),
         Input('image_layers', 'value'),
         State('annotation_canvas', 'style'),
         prevent_initial_call=True)
-    def update_canvas_size(value, current_canvas, cur_graph_layout, nclicks, data_selection,
+    def update_canvas_size(value, current_canvas, cur_graph_layout, data_selection,
                            image_dict, add_layer, cur_sizing):
-        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-
+        # zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         # only update the resolution if not using zoom or panning
-        if all([elem not in cur_graph_layout for elem in zoom_keys]) and \
-                'dragmode' not in cur_graph_layout.keys() and \
-                add_layer is not None and value is not None:
+        # TODO: change the canvas sizing update to allow panning and zooming
+        # if all([elem not in cur_graph_layout for elem in zoom_keys]) and \
+        #         'dragmode' not in cur_graph_layout.keys() and \
+        #         add_layer is not None and value is not None:
+        if None not in (add_layer, value, data_selection, image_dict):
             try:
                 first_image = list(image_dict[data_selection].keys())[0]
                 first_image = image_dict[data_selection][first_image]
@@ -1648,164 +1647,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def update_area_information(graph, graph_layout, upload, layers, data_selection, aliases_dict, nclicks,
                                 stats_table_open):
         # these range keys correspond to the zoom feature
-        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+        # zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         # these keys are used if a shape has been created, then modified
-        modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
-
+        # modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
         if graph is not None and graph_layout is not None and data_selection is not None and \
                 nclicks and stats_table_open:
-
-            # option 1: if shapes are drawn on the canvas
-            if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
-                # these are for each sample
-                mean_panel = []
-                max_panel = []
-                min_panel = []
-                aliases = []
-                region = []
-                region_index = 1
-                shapes_keep = [shape for shape in graph_layout['shapes'] if shape['type'] not in ['line']]
-                for shape in shapes_keep:
-                    try:
-                        # option 1: if the shape is drawn with a rectangle
-                        if shape['type'] == 'rect':
-                            x_range_low = math.ceil(int(shape['x0']))
-                            x_range_high = math.ceil(int(shape['x1']))
-                            y_range_low = math.ceil(int(shape['y0']))
-                            y_range_high = math.ceil(int(shape['y1']))
-
-                            assert x_range_high >= x_range_low
-                            assert y_range_high >= y_range_low
-                            for layer in layers:
-                                mean_exp, max_xep, min_exp = get_area_statistics_from_rect(
-                                    upload[data_selection][layer],
-                                    x_range_low,
-                                    x_range_high,
-                                    y_range_low, y_range_high)
-                                mean_panel.append(round(float(mean_exp), 2))
-                                max_panel.append(round(float(max_xep), 2))
-                                min_panel.append(round(float(min_exp), 2))
-                                aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-                                region.append(region_index)
-                            # option 2: if a closed form shape is drawn
-                        elif shape['type'] == 'path' and 'path' in shape:
-                            for layer in layers:
-                                mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
-                                    upload[data_selection][layer], shape['path'])
-                                mean_panel.append(round(float(mean_exp), 2))
-                                max_panel.append(round(float(max_xep), 2))
-                                min_panel.append(round(float(min_exp), 2))
-                                aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-                                region.append(region_index)
-                        region_index += 1
-                        # mean_panel.append(round(sum(shapes_mean) / len(shapes_mean), 2))
-                        # max_panel.append(round(sum(shapes_max) / len(shapes_max), 2))
-                        # min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
-
-                    except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
-                            _ArrayMemoryError):
-                        pass
-
-                layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
-                              'Region': region}
-                return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-            # option 2: if the zoom is used
-            elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-                    all([elem in graph_layout for elem in zoom_keys]):
-
-                try:
-                    assert all([elem >= 0 for elem in graph_layout.keys() if isinstance(elem, float)])
-                    x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
-                    x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
-                    y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
-                    y_range_high = math.ceil(int(graph_layout['yaxis.range[0]']))
-                    assert x_range_high >= x_range_low
-                    assert y_range_high >= y_range_low
-
-                    mean_panel = []
-                    max_panel = []
-                    min_panel = []
-                    aliases = []
-                    for layer in layers:
-                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[data_selection][layer],
-                                                                                   x_range_low,
-                                                                                   x_range_high,
-                                                                                   y_range_low, y_range_high)
-                        mean_panel.append(round(float(mean_exp), 2))
-                        max_panel.append(round(float(max_xep), 2))
-                        min_panel.append(round(float(min_exp), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
-                    layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
-                    return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-                except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
-                    return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                         'Min': []}).to_dict(orient='records')
-
-            # option 3: if a shape has already been created and is modified
-            elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-                    all([elem in graph_layout for elem in modified_rect_keys]):
-                try:
-                    assert all([elem >= 0 for elem in graph_layout.keys() if isinstance(elem, float)])
-                    x_range_low = math.ceil(int(graph_layout['shapes[1].x0']))
-                    x_range_high = math.ceil(int(graph_layout['shapes[1].x1']))
-                    y_range_low = math.ceil(int(graph_layout['shapes[1].y0']))
-                    y_range_high = math.ceil(int(graph_layout['shapes[1].y1']))
-                    assert x_range_high >= x_range_low
-                    assert y_range_high >= y_range_low
-
-                    mean_panel = []
-                    max_panel = []
-                    min_panel = []
-                    aliases = []
-                    for layer in layers:
-                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[data_selection][layer],
-                                                                                   x_range_low,
-                                                                                   x_range_high,
-                                                                                   y_range_low, y_range_high)
-                        mean_panel.append(round(float(mean_exp), 2))
-                        max_panel.append(round(float(max_xep), 2))
-                        min_panel.append(round(float(min_exp), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
-                    layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
-                    return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-                except (AssertionError, ValueError, ZeroDivisionError, _ArrayMemoryError):
-                    return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                         'Min': []}).to_dict(orient='records')
-
-            # option 4: if an svg path has already been created and it is modified
-            elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-                    all(['shapes' in elem and 'path' in elem for elem in graph_layout.keys()]):
-                try:
-                    mean_panel = []
-                    max_panel = []
-                    min_panel = []
-                    aliases = []
-                    for layer in layers:
-                        for shape_path in graph_layout.values():
-                            mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
-                                upload[data_selection][layer], shape_path)
-                            mean_panel.append(round(float(mean_exp), 2))
-                            max_panel.append(round(float(max_xep), 2))
-                            min_panel.append(round(float(min_exp), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
-                    layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
-                    return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-                except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
-                    return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                         'Min': []}).to_dict(orient='records')
-            else:
-                return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                     'Min': []}).to_dict(orient='records')
+            return generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict)
         elif stats_table_open:
             return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
@@ -2688,6 +2535,31 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 last = list(annot_dict[data_selection].keys())[-1]
                 del annot_dict[data_selection][last]
                 return annot_dict
+            except IndexError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
+                       Input('prev-roi', 'n_clicks'),
+                       Input('next-roi', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('data-collection', 'options'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def click_to_new_roi(prev_roi, next_roi, cur_data_selection, cur_options):
+        """
+        Use the forward and backwards buttons to click to a new ROI
+        """
+        if None not in (cur_data_selection, cur_options):
+            cur_index = cur_options.index(cur_data_selection)
+            try:
+                if ctx.triggered_id == "prev-roi" and cur_index != 0 and prev_roi > 0:
+                    return cur_options[cur_index - 1]
+                elif ctx.triggered_id == "next-roi" and next_roi > 0:
+                    return cur_options[cur_index + 1]
+                else:
+                    raise PreventUpdate
             except IndexError:
                 raise PreventUpdate
         else:

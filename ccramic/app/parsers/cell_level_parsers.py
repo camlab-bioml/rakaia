@@ -172,3 +172,33 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
         return None, None
     else:
         return frame, None
+
+# def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation):
+#     """
+#     Parse the selected cell subtypes from the UMAP plot as selected by the legend
+#     if a subset is not found, return None
+#     """
+#     # Example 1: user selected only the third legend item to view
+#     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+#     # Example 2: user selects all but the the second item to view
+#     # [{'visible': ['legendonly']}, [2]]
+#     # print(restyle_data)
+#     if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0]:
+#         # get the total number of possible sub annotations and figure out which ones were selected
+#         quant_frame = pd.DataFrame(quantification_frame)
+#         tot_subtypes = list(quantification_frame[umap_col_annotation].unique())
+#         subtypes_keep = []
+#         # Case 1: if only one sub type if selected
+#         if len(restyledata[0]['visible']) == len(tot_subtypes):
+#             for selection in range(restyledata[0]['visible']):
+#                 if restyledata[0]['visible'][selection] != 'legendonly':
+#                     subtypes_keep.append(tot_subtypes[selection])
+#             return subtypes_keep
+#         # Case 2: if the user selects all but one of the sub types
+#         elif len(restyledata[0]['visible']) == 1 and len(restyledata[1] == 1):
+#             for selection in range(len(tot_subtypes)):
+#                 if selection not in restyledata[1]:
+#                     subtypes_keep.append(tot_subtypes[selection])
+#             return subtypes_keep
+#     else:
+#         return None

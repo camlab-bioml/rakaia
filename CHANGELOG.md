@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2023-10-04
+## [0.8.0] - 2023-10-10
 
 ### Changed
 
 - Region statistics table now contains separate rows for each
-region drawn with a shape (retangle or freeform). Previously, all metrics were averaged across
+region drawn with a shape (rectangle or freeform). Previously, all metrics were averaged across
 drawn regions
+- Permit the canvas to be resized when zoom or drawn shapes are applied
 
 ### Added
 
@@ -39,7 +40,7 @@ of the subset dimensions
 intensity below 3 (divisor for the tick marks)
 - Fixed shape removal on new canvas modification when
 layers are added
--
+
 
 ## [0.7.0] - 2023-09-18
 
