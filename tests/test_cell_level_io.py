@@ -62,16 +62,17 @@ def test_output_point_annotations_as_csv():
     # assert not os.path.exists(os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks', ''))
     image = np.zeros((600, 600))
     image_dict = {'Patient1+++slide0+++pos1_1': {'channel_1': image}}
-    point_annotations = export_point_annotations_as_csv(1, annotations_dict, 'Patient1+++slide0+++pos1_1',
+    point_annotations = export_point_annotations_as_csv(1, 'pos1_1', annotations_dict, 'Patient1+++slide0+++pos1_1',
                                     None, False, None, image_dict,
                                     authentic_id, tmpdirname)
-    assert point_annotations == {'content': 'x,y,annotation_col,annotation\n235,124,ccramic_cell_annotation,immune\n',
-                                 'filename': 'point_annotations.csv', 'type': None, 'base64': False}
+    assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
+            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'point_annotations.csv', 'type': None}
 
     mask_dict = {'mask': {'raw': image}}
 
-    point_annotations = export_point_annotations_as_csv(1, annotations_dict, 'Patient1+++slide0+++pos1_1',
+    point_annotations = export_point_annotations_as_csv(1, 'pos1_1', annotations_dict, 'Patient1+++slide0+++pos1_1',
                                                         mask_dict, True, 'mask', image_dict,
                                                         authentic_id, tmpdirname)
-    assert point_annotations == {'base64': False, 'content': 'x,y,annotation_col,annotation,mask\n'
-            '235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'point_annotations.csv', 'type': None}
+
+    assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation,mask_cell_id\n'
+            'pos1_1,235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'point_annotations.csv', 'type': None}

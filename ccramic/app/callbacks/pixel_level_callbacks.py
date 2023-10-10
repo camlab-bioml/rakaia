@@ -2241,6 +2241,35 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         return is_open
 
     @dash_app.callback(
+        Output("data-collection", "value", allow_duplicate=True),
+        Input('dataset-preview-table', 'selected_rows'),
+        State('data-collection', 'options'),
+        prevent_initial_call=True)
+    def select_roi_from_preview_table(active_selection, dataset_options):
+        if None not in (active_selection, dataset_options) and len(active_selection) > 0:
+            try:
+                return dataset_options[active_selection[0]]
+            except KeyError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output('dataset-preview-table', 'selected_rows'),
+        Input("data-collection", "value"),
+        State('data-collection', 'options'),
+        prevent_initial_call=True)
+    def update_selected_preview_row_on_roi_selection(data_selection, dataset_options):
+        if None not in (dataset_options, data_selection):
+            try:
+                return [dataset_options.index(data_selection)]
+            except KeyError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+
+    @dash_app.callback(
         Output("alert-modal", "is_open"),
         Output("alert-information", "children"),
         Input('session_alert_config', 'data'),

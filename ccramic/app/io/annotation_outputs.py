@@ -76,42 +76,46 @@ def export_annotations_as_masks(annotation_dict, output_dir, data_selection, mas
     return str(dest_path + ".zip")
 
 
-def export_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
+def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_selection,
                                     mask_dict, apply_mask, mask_selection, image_dict,
                                     authentic_id, tmpdirname):
     """
     Parse through the dictionary of annotations and export the point annotations to a CSV file
     """
     if n_clicks > 0 and None not in (annotations_dict, data_selection):
-        points = {'x': [], 'y': [], 'annotation_col': [], 'annotation': []}
-        first_image = list(image_dict[data_selection].keys())[0]
-        first_image = image_dict[data_selection][first_image]
-        dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
-        if not os.path.exists(dest_path):
-            os.makedirs(dest_path)
-        # check that the mask is compatible with the current image
-        if None not in (mask_dict, mask_selection) and apply_mask and \
-                validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
-            mask_used = mask_dict[mask_selection]['raw']
-            points[mask_selection] = []
-        else:
-            mask_used = None
-        for key, value in annotations_dict[data_selection].items():
-            if value['type'] in ['point', 'points']:
-                try:
-                    points['x'].append(eval(key)['points'][0]['x'])
-                    points['y'].append(eval(key)['points'][0]['y'])
-                    points['annotation_col'].append(value['annotation_column'])
-                    points['annotation'].append(value['cell_type'])
-                    if mask_used is not None:
-                        cell_id = mask_used[eval(key)['points'][0]['y'], eval(key)['points'][0]['x']].astype(int)
-                        points[mask_selection].append(cell_id)
-                except KeyError:
-                    pass
-        if len(points['x']) > 0:
-            frame = pd.DataFrame(points)
-            return dcc.send_data_frame(frame.to_csv, "point_annotations.csv", index=False)
-        else:
+        try:
+            points = {'ROI': [], 'x': [], 'y': [], 'annotation_col': [], 'annotation': []}
+            first_image = list(image_dict[data_selection].keys())[0]
+            first_image = image_dict[data_selection][first_image]
+            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+            # check that the mask is compatible with the current image
+            if None not in (mask_dict, mask_selection) and apply_mask and \
+                    validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
+                mask_used = mask_dict[mask_selection]['raw']
+                points[mask_selection + "_cell_id"] = []
+            else:
+                mask_used = None
+            for key, value in annotations_dict[data_selection].items():
+                if value['type'] in ['point', 'points']:
+                    try:
+                        points['x'].append(eval(key)['points'][0]['x'])
+                        points['y'].append(eval(key)['points'][0]['y'])
+                        points['annotation_col'].append(value['annotation_column'])
+                        points['annotation'].append(value['cell_type'])
+                        points['ROI'].append(roi_name)
+                        if mask_used is not None:
+                            cell_id = mask_used[eval(key)['points'][0]['y'], eval(key)['points'][0]['x']].astype(int)
+                            points[mask_selection + "_cell_id"].append(cell_id)
+                    except KeyError:
+                        pass
+            if len(points['x']) > 0:
+                frame = pd.DataFrame(points)
+                return dcc.send_data_frame(frame.to_csv, "point_annotations.csv", index=False)
+            else:
+                raise PreventUpdate
+        except KeyError:
             raise PreventUpdate
     else:
         raise PreventUpdate

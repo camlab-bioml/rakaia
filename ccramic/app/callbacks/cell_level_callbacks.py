@@ -320,6 +320,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     # @cache.memoize())
     def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
                                           mask_dict, apply_mask, mask_selection, image_dict):
-        return export_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
+        exp, slide, acq = split_string_at_pattern(data_selection)
+        return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection,
                                           mask_dict, apply_mask, mask_selection, image_dict,
                                                authentic_id, tmpdirname)

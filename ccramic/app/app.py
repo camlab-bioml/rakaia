@@ -88,7 +88,8 @@ def init_dashboard(server, authentic_id, config=None):
                               "max-width": "none", "max-height": "none"}),
         # modal for the dataset information
         dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='dataset-preview-table', columns=[], data=None,
-                                            editable=False, filter_action='native')]),
+                                            editable=False, filter_action='native', row_selectable='single',
+                                                               column_selectable='single')]),
                   id="dataset-preview", size='xl'),
         html.Header(
             className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
