@@ -257,7 +257,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         #TODO: establish whether a change to the metadata names can be separated from the update of the ROI loading
         if image_dict and data_selection and names:
             if ' sort (A-z)' in sort_channels:
-                channels_return = dict(sorted(names.items(), key=lambda x: x[1]))
+                channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
             else:
                 channels_return = names
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
@@ -1907,6 +1907,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Create pixel histogram and output the default percentiles
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
+            num_ticks = 4
             blend_return = dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id == "pixel-hist-collapse":
@@ -1920,13 +1921,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 fig = dash.no_update
                 hist_max = 100
             try:
-                spacing = int(hist_max / 3)
-                tick_markers = dict([(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0,
-                                                                        int(hist_max), spacing)])
+                if int(hist_max) < 3:
+                    num_ticks = int(hist_max) + 1
+                tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
             except ValueError:
                 hist_max = 100
-                tick_markers = dict(
-                    [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, 100, 25)])
+                tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
@@ -1945,9 +1945,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # if the upper bound is larger than the custom percentile, set it to the upper bound
                     if ' set range max to current upper bound' in custom_max:
                         hist_max = upper_bound
-                        spacing = int(hist_max / 3)
-                        tick_markers = dict(
-                            [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
+                        tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
                     return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, 1
@@ -1987,10 +1985,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             hist_max = int(np.max(uploaded[data_selection][selected_channel]))
                     else:
                         hist_max = int(np.max(uploaded[data_selection][selected_channel]))
-                    spacing = int(hist_max / 3)
-                    spacing = spacing if spacing > 0 else 1
-                    tick_markers = dict(
-                        [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
+                    tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
                     return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, 1
                 except IndexError:
                     raise PreventUpdate

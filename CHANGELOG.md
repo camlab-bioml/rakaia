@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2023-10-10
+## [0.8.0] - 2023-10-11
 
 ### Changed
 
@@ -42,6 +42,8 @@ of the subset dimensions
 intensity below 3 (divisor for the tick marks)
 - Fixed shape removal on new canvas modification when
 layers are added
+- Fix missing tick marks on range slider when switching to channels with
+lower bounds or numbers not easily divisible by 3
 
 
 ## [0.7.0] - 2023-09-18
