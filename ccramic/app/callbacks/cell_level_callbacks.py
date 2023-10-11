@@ -95,7 +95,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('mask-uploads', 'data'),
                        prevent_initial_call=True)
     def input_mask_name_on_upload(mask_uploads):
-        if mask_uploads is not None and len(mask_uploads) > 0:
+        if mask_uploads is not None and len(mask_uploads) > 0 and len(mask_uploads) == 1:
             return list(mask_uploads.keys())[0]
         else:
             raise PreventUpdate
@@ -131,15 +131,22 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('mask-dict', 'data'),
                        Output('mask-options', 'options'),
-                       State('mask-uploads', 'data'),
+                       Input('mask-uploads', 'data'),
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
                        State('mask-dict', 'data'),
                        State('derive-cell-boundary', 'value'),
                        prevent_initial_call=True)
     def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
-        return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
+        # cases where the callback should occur: if the mask dict is longer than 1 and triggered by the dictionary
+        # or, if there is a single mask and the trigger is setting the mask name
+        multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
+        single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
+        if multi_upload or single_upload:
+            return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
                                                 cur_mask_dict, derive_cell_boundary)
+        else:
+            raise PreventUpdate
 
     # @dash_app.callback(
     #     Output("quantification-config-modal", "is_open"),

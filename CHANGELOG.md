@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 region drawn with a shape (rectangle or freeform). Previously, all metrics were averaged across
 drawn regions
 - Permit the canvas to be resized when zoom or drawn shapes are applied
+- Allow bulk upload of masks, using default basenames as the labels
+when more than one mask is uploaded at once #59
 
 ### Added
 

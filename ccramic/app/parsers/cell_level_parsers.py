@@ -137,26 +137,42 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, image_t
 def parse_masks_from_filenames(status):
     filenames = [str(x) for x in status.uploaded_files]
     # IMP: ensure that the progress is up to 100% in the float before beginning to process
-    if len(filenames) == 1:
-        default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
-        return {default_mask_name: filenames[0]}
+    # TODO: establish multi mask import
+    # if len(filenames) == 1:
+    #     default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
+    #     return {default_mask_name: filenames[0]}
+    masks = {}
+    for mask_file in filenames:
+        default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
+        masks[default_mask_name] = mask_file
+    if len(masks) > 0:
+        return masks
     else:
         raise PreventUpdate
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
-    if set_mask > 0 and None not in (mask_uploads, chosen_mask_name):
+    #TODO: establish parsing for single mask upload and bulk
+    single_upload = len(mask_uploads) == 1 and set_mask > 0
+    multi_upload = len(mask_uploads) > 1
+    if single_upload or multi_upload:
+        if 0 < len(mask_uploads) <= 1:
+            single_mask_name = chosen_mask_name
+        else:
+            single_mask_name = None
         cur_mask_dict = {} if cur_mask_dict is None else cur_mask_dict
-        with TiffFile(str(mask_uploads[list(mask_uploads.keys())[0]])) as tif:
-            for page in tif.pages:
-                if derive_cell_boundary:
-                    mask_import = np.array(Image.fromarray(
+        for mask_name, mask_upload in mask_uploads.items():
+            with TiffFile(str(mask_upload)) as tif:
+                for page in tif.pages:
+                    if derive_cell_boundary:
+                        mask_import = np.array(Image.fromarray(
                         convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
-                    boundary_import = None
-                else:
-                    mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
-                    boundary_import = np.array(Image.fromarray(
-                        convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
-                cur_mask_dict[chosen_mask_name] = {"array": mask_import, "boundary": boundary_import,
+                        boundary_import = None
+                    else:
+                        mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
+                        boundary_import = np.array(Image.fromarray(
+                            convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+                    mask_name_use = single_mask_name if single_mask_name is not None else mask_name
+                    cur_mask_dict[mask_name_use] = {"array": mask_import, "boundary": boundary_import,
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
                                                                                     page.asarray().shape[1], 1)),
                                                    "raw": page.asarray()}

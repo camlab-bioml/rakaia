@@ -66,10 +66,6 @@ def test_parse_mask_filenames():
     mask_files = parse_masks_from_filenames(uploader)
     assert 'mask' in mask_files.keys()
     assert mask_files['mask'] == "mask.tiff"
-    with pytest.raises(PreventUpdate):
-        uploader = UploadStatus(uploaded_files=["mask.tiff", "second_mask.tiff"],
-                                n_total=2, uploaded_size_mb=1, total_size_mb=1)
-        parse_masks_from_filenames(uploader)
 
 def test_read_in_mask_from_filepath(get_current_dir):
     masks_dict = {"mask": os.path.join(get_current_dir, "mask.tiff")}
@@ -78,6 +74,14 @@ def test_read_in_mask_from_filepath(get_current_dir):
     assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
     assert isinstance(mask_return[1], list)
     assert 'mask' in mask_return[1]
+
+    masks_dict_2 = {"mask_1": os.path.join(get_current_dir, "mask.tiff"),
+                    "mask_2": os.path.join(get_current_dir, "mask.tiff")}
+    # TODO: validate the read_in_mask_array_from_filepath function
+    mask_return = read_in_mask_array_from_filepath(masks_dict_2, "mask", 1, None, True)
+    assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
+    assert isinstance(mask_return[1], list)
+    assert 'mask_2' in mask_return[1]
 
 def test_return_proper_cols_remove_validate():
     assert 'cell_id' in set_columns_to_drop()
