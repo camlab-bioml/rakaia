@@ -252,6 +252,7 @@ def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config):
         if file_path is not None:
             assert file_path.endswith('.mcd')
             with MCDFile(file_path) as mcd_file:
+                upload_dict = {dataset_selection: {}}
                 for slide_inside in mcd_file.slides:
                     for acq in slide_inside.acquisitions:
                         if acq.description == acq_name:

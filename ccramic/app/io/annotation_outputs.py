@@ -5,7 +5,7 @@ import os
 import tifffile
 import json
 import shutil
-import dash_core_components as dcc
+from dash import dcc
 def export_annotations_as_masks(annotation_dict, output_dir, data_selection, mask_shape, canvas_mask=None):
     """
     Export the annotations contained within a dictionary as mask tiffs

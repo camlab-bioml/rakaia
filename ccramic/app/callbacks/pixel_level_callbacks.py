@@ -435,8 +435,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 else:
                     param_dict["current_roi"] = data_selection
             if all_layers is None:
-                all_layers = {}
-                all_layers[data_selection] = {}
+                all_layers = {data_selection: {}}
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                 if elem not in current_blend_dict.keys():
@@ -715,7 +714,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
-        retain memory. Should be cleared on a new ROi selection
+        retain memory. Should be cleared on a new ROI selection
         """
         if data_selection is not None:
             return None, False

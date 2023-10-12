@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.8.0] - 2023-10-11
+## [0.8.0] - 2023-10-12
 
 ### Changed
 
@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 region drawn with a shape (rectangle or freeform). Previously, all metrics were averaged across
 drawn regions
 - Permit the canvas to be resized when zoom or drawn shapes are applied
-- Allow bulk upload of masks, using default basenames as the labels
+- Allow bulk upload of masks, using default base names as the labels
 when more than one mask is uploaded at once #59
 
 ### Added
@@ -33,6 +33,9 @@ annotation class/grouping)
 - Set range on pixel intensity slider to new maximum to
 make it easier to adjust pixels for channels with a very large
 intensity range #60
+- Buttons for previous and next ROI. #63
+- Output click point annotations in CSV format with cell ID (if a
+mask is applied) and ROI ID #64
 
 ### Fixed
 
