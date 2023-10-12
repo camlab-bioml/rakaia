@@ -85,7 +85,8 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
-                                        measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1")
+                                        measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
+                                        sample_name='Dilution_series_1_1')
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert len(quantification_frame[

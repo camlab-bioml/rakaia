@@ -75,6 +75,18 @@ The current version of ccramic can also be checked on the command line with the 
 ccramic -v
 ```
 
+### Custom Ports (v0.8.0 or later)
+
+As of ccramic v0.8.0, the user is able to specify a different port (default remains 5000).
+Suggested alternative ports are 8050 and 8080. The port can be specified in the CLI with:
+
+```commandline
+ccramic -p 8050
+```
+
+The local URL will then take the form of `http://127.0.0.1:{port}` such as
+`http://127.0.0.1:8050/
+
 ### Local file dialog (v0.7.0 or later)
 
 With ccramic v0.7.0 or later, the user has the option to use a

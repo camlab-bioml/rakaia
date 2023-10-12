@@ -8,6 +8,7 @@ import math
 import cv2
 from plotly.graph_objs.layout import XAxis, YAxis
 import dash_bootstrap_components as dbc
+from copy import deepcopy
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False):
@@ -38,6 +39,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         id=input_id,
                             style=style_canvas,
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
+                                               newshape = dict(line=dict(color="white")),
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False))})
 
@@ -57,22 +59,24 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     else:
         return render_default_annotation_canvas()
 
-def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05):
+def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
+                              invert=False):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
     if scale_value is None:
-        scale_val = int(0.075 * image_shape[1])
+        scale_val = int(float(0.075 * image_shape[1]) * float(pixel_ratio))
     else:
         scale_val = scale_value
     scale_annot = str(scale_val) + "μm"
     scale_text = f'<span style="color: white">{scale_annot}</span><br>'
     figure = go.Figure(figure)
     # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
+    x = float((x_axis_left + 0.0375) if not invert else (x_axis_left - 0.0375))
     figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
-                       x=float(x_axis_left + 0.0375),
+                       x=x,
                        xanchor='center',
                        y=0.06,
                        # yanchor='bottom',
@@ -164,3 +168,32 @@ def add_local_file_dialog(use_local_dialog=False, input_id="local-dialog-file"):
         id=input_id, className="mb-3", color=None, n_clicks=0, style={"margin-top": "10px"})
     else:
         return html.Div(id=input_id)
+
+def invert_annotations_figure(cur_canvas: go.Figure):
+    """
+    Invert the annotations (scalebar and legend) on a canvas figure
+    """
+    if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
+        cur_annotations = deepcopy(cur_canvas['layout']['annotations'])
+    else:
+        cur_annotations = []
+    if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
+        cur_shapes = deepcopy(cur_canvas['layout']['shapes'])
+    else:
+        cur_shapes = []
+    for shape in cur_shapes:
+        try:
+            if 'y0' in shape and shape['y0'] == 0.05 and 'y1' in shape and shape['y1'] == 0.05:
+                shape['x0'] = 1 - shape['x0']
+                shape['x1'] = 1 - shape['x1']
+        except IndexError:
+            pass
+    for annot in cur_annotations:
+        try:
+            if annot['y'] in [0.05, 0.06]:
+                annot['x'] = 1 - annot['x']
+        except IndexError:
+            pass
+    cur_canvas['layout']['annotations'] = cur_annotations
+    cur_canvas['layout']['shapes'] = cur_shapes
+    return cur_canvas

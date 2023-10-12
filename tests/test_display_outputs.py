@@ -1,0 +1,123 @@
+from ccramic.app.io.display import generate_area_statistics_dataframe
+import numpy as np
+import pandas as pd
+
+def test_generate_channel_statistics_dataframe():
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.full((1000, 1000), 100),
+                                                   "Nuclear": np.full((1000, 1000), 200),
+                                                   "Cytoplasm": np.full((1000, 1000), 300)}}
+    graph_layout = {'xaxis.range[1]': 650, 'xaxis.range[0]': 540,
+                                                  'yaxis.range[1]': 800, 'yaxis.range[0]': 900}
+
+    layers = ["DNA", "Cytoplasm"]
+    aliases = {"DNA": "DNA", "Cytoplasm": "Cytoplasm", "Nuclear": "Nuclear"}
+
+    # First stats option: when zoom is used for two channels
+
+    stats_1 = pd.DataFrame(generate_area_statistics_dataframe(graph_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                                 aliases))
+    assert len(stats_1) == 2
+    assert list(stats_1['Max'] == [100, 300])
+    assert list(stats_1['Min'] == [100, 300])
+    assert list(stats_1['Mean'] == [100, 300])
+
+
+    # Second Option: when svg path is used for one channel
+
+    graph_layout_2 = {'shapes': [{'line': {'color': 'white', 'width': 2},
+                                  'type': 'line', 'x0': 0.05, 'x1': 0.125, 'xref': 'paper', 'y0': 0.05,
+                                  'y1': 0.05, 'yref': 'paper'},
+                                 {'editable': True, 'label': {'text': ''},
+                                  'xref': 'x', 'yref': 'y', 'layer': 'above', 'opacity': 1,
+                                  'line': {'color': 'white', 'width': 4, 'dash': 'solid'},
+                                  'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd',
+                                  'type': 'path',
+                                  'path': 'M264.9191616766467,210.12874251497007L274.7994011976048,193.06287425149702L306.2365269461078,158.032934131736'
+                                          '54L299.9491017964072,145.45808383233532L276.59580838323353,114.91916167664671L265.8173652694611,'
+                                          '104.14071856287426L258.6317365269461,105.937125748503L254.14071856287427,113.12275449101796L246.'
+                                          '0568862275449,114.91916167664671L238.87125748502996,111.32634730538922L228.99101796407186,'
+                                          '99.6497005988024L223.60179640718565,86.17664670658682L206.53592814371257,'
+                                          '59.23053892215569L194.85928143712576,56.53592814371258L186.7754491017964,'
+                                          '57.43413173652695L158.03293413173654,76.29640718562874L149.05089820359282,'
+                                          '98.75149700598803L146.3562874251497,117.61377245508982L144.55988023952096,'
+                                          '160.72754491017963L139.17065868263472,186.7754491017964L139.17065868263472,'
+                                          '233.48203592814372L144.55988023952096,257.73353293413174L154.44011976047904,'
+                                          '279.29041916167665L162.5239520958084,284.6796407185629L202.9431137724551,'
+                                          '283.7814371257485L219.1107784431138,277.4940119760479Z'}]}
+
+    stats_2 = pd.DataFrame(
+        generate_area_statistics_dataframe(graph_layout_2, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
+                                           aliases))
+    assert len(stats_2) == 1
+    assert list(stats_2['Min']) == [200]
+
+    # Option 3: when two rectangles are drawn for two channels
+
+    graph_layout_3 = {'shapes': [{'line': {'color': 'white', 'width': 2},
+                                  'type': 'line', 'x0': 0.05, 'x1': 0.125, 'xref': 'paper',
+                                  'y0': 0.05, 'y1': 0.05, 'yref': 'paper'},
+                                 {'editable': True, 'label': {'text': ''}, 'xref': 'x', 'yref': 'y',
+                                  'layer': 'above', 'opacity': 1, 'line': {'color': 'white', 'width': 4,
+                                'dash': 'solid'}, 'fillcolor': 'rgba(0,0,0,0)',
+                                'fillrule': 'evenodd', 'type': 'rect', 'x0': 127.4940119760479,
+                                  'y0': 127.04491017964072, 'x1': 290.06886227544913, 'y1': 232.13473053892216},
+                                 {'editable': True, 'label': {'text': ''}, 'xref': 'x', 'yref': 'y',
+                                  'layer': 'above', 'opacity': 1,
+                                  'line': {'color': 'white', 'width': 4, 'dash': 'solid'},
+                                  'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd', 'type':
+                                'rect', 'x0': 397.8532934131737, 'y0': 262.6736526946108,
+                                  'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
+
+    stats_3 = pd.DataFrame(
+        generate_area_statistics_dataframe(graph_layout_3, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+
+    assert len(stats_3) == 4
+    assert list(stats_3['Max'] == [100, 300, 100, 300])
+    assert list(stats_3['Min'] == [100, 300, 100, 300])
+    assert list(stats_3['Mean'] == [100, 300, 100, 300])
+
+
+    # Option 4: when an existing svg path is edited
+
+    graph_layout_4 = {'shapes[1].path': 'M349.3502994011976,346.2065868263473L366.4161676646707,'
+                                        '266.26646706586826L267.6137724550898,'
+                                        '275.248502994012L257.73353293413174,277.04491017964074L234.3802395209581,'
+                                        '308.4820359281437L210.12874251497004,327.3443113772455L186.7754491017964,'
+                                        '336.3263473053892L184.0808383233533,339.9191616766467L185.87724550898204,'
+                                        '372.2544910179641L190.3682634730539,389.32035928143716L214.6197604790419,'
+                                        '428.84131736526945L244.26047904191617,454.88922155688624L287.374251497006,'
+                                        '480.93712574850304L290.9670658682635,480.93712574850304L294.55988023952096,'
+                                        '465.6676646706587L329.5898203592814,395.60778443113776L338.57185628742513,'
+                                        '392.0149700598802L343.062874251497,392.0149700598802Z'}
+
+    stats_4 = pd.DataFrame(
+        generate_area_statistics_dataframe(graph_layout_4, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
+                                           aliases))
+    assert len(stats_4) == 1
+    assert list(stats_4['Min']) == [200]
+
+
+    # Option 5: when an existing rectangle is updated
+
+    graph_layout_5 = {'shapes[1].x0': 253.2425149700599, 'shapes[1].x1': 350.248502994012,
+                      'shapes[1].y0': 111.32634730538922, 'shapes[1].y1': 311.62574850299404}
+
+    stats_5 = pd.DataFrame(
+        generate_area_statistics_dataframe(graph_layout_5, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+
+    assert len(stats_5) == 2
+    assert list(stats_5['Max'] == [100, 300])
+    assert list(stats_5['Min'] == [100, 300])
+    assert list(stats_5['Mean'] == [100, 300])
+
+
+    # Option 6: when none of the above are called, return an empty frame
+
+    empty_layout = {'display': None}
+
+    stats_6 = pd.DataFrame(
+        generate_area_statistics_dataframe(empty_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+    assert len(stats_6) == 0

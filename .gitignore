@@ -1,4 +1,6 @@
 
+sandbox*
+
 file_system_store/
 
 ccramic_cache/
@@ -159,3 +161,5 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+*.tar.gz

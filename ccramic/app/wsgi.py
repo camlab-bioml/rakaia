@@ -27,6 +27,10 @@ def argparser():
     parser.add_argument('-l', "--use-local-dialog", action="store_true",
                         help="Enable a local file dialog with wxPython to browse and read local files. Default: False",
                         dest="use_local_dialog")
+    parser.add_argument('-p', "--port", action="store",
+                        help="Set the port for ccramic on local runs. Default: 5000. Other options to consider are "
+                             "8050, 8080",
+                        dest="port", default=5000, type=int)
 
     return parser
 
@@ -37,17 +41,16 @@ def main(sysargs = sys.argv[1:]):
     args = parser.parse_args(sysargs)
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
-            webbrowser.open_new(f'http://127.0.0.1:5000/')
+            webbrowser.open_new(f'http://127.0.0.1:{args.port}/')
 
     # establish the cli config
 
     CLI_CONFIG = {"use_local_dialog": args.use_local_dialog}
 
     app = init_app(cli_config=CLI_CONFIG)
-    port = 5000
     if args.auto_open:
         Timer(1, open_browser).start()
-    app.run(host='0.0.0.0', debug=True, threaded=True, port=port)
+    app.run(host='0.0.0.0', debug=True, threaded=True, port=args.port)
 
 if __name__ == "__main__":
     main()

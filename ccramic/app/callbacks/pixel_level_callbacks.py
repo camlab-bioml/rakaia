@@ -4,15 +4,15 @@ import dash.exceptions
 import dash_bootstrap_components as dbc
 import dash_uploader as du
 import flask
+import numpy as np
 import pandas as pd
 from dash import ctx
 from dash_extensions.enrich import Output, Input, State, html
-from numpy.core._exceptions import _ArrayMemoryError
 from tifffile import imwrite
-
 from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
+from ..io.display import generate_area_statistics_dataframe
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -244,41 +244,52 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('alias-dict', 'data'),
                        State('image_layers', 'value'),
                        State('session_config', 'data'),
+                       Input('sort-channels-alpha', 'value'),
                        prevent_initial_call=True)
-    def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config):
+    def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config,
+                                sort_channels):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
         if the dimensions are above 3000 for either axis
         """
         # set the default canvas to return without a load screen
-        canvas_return = [render_default_annotation_canvas()]
-        if image_dict and data_selection:
-            # load the specific ROI requested into the dictionary
-            # imp: use the channel label for the dropdown view and the name in the background to retrieve
-            try:
-                image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
+        #TODO: establish whether a change to the metadata names can be separated from the update of the ROI loading
+        if image_dict and data_selection and names:
+            if ' sort (A-z)' in sort_channels:
+                channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
+            else:
+                channels_return = names
+            if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
+                canvas_return = [render_default_annotation_canvas()]
+                # load the specific ROI requested into the dictionary
+                # imp: use the channel label for the dropdown view and the name in the background to retrieve
+                try:
+                    image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
                                                      session_config=session_config)
-                # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
-                if all([image_dict[data_selection][elem] is not None for \
+                    # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
+                    if all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
-                    # get the first image in the ROI and check the dimensions
-                    first_image = list(image_dict[data_selection].keys())[0]
-                    first_image = image_dict[data_selection][first_image]
-                    canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image)]
-            except IndexError:
-                raise PreventUpdate
-            try:
-                # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
-                if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
+                        # get the first image in the ROI and check the dimensions
+                        first_image = list(image_dict[data_selection].keys())[0]
+                        first_image = image_dict[data_selection][first_image]
+                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image)]
+                except IndexError:
+                    raise PreventUpdate
+                try:
+                    # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
+                    if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
                     all([elem in image_dict[data_selection].keys() for elem in currently_selected_channels]):
-                    channels_selected = list(currently_selected_channels)
-                else:
-                    channels_selected = []
-                return [{'label': names[i], 'value': i} for i in names.keys() if len(i) > 0 and \
+                        channels_selected = list(currently_selected_channels)
+                    else:
+                        channels_selected = []
+                    return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return
-            except AssertionError:
-                return [], [], Serverside(image_dict), canvas_return
+                except AssertionError:
+                    return [], [], Serverside(image_dict), canvas_return
+            elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
+                return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
+                        i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -424,8 +435,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 else:
                     param_dict["current_roi"] = data_selection
             if all_layers is None:
-                all_layers = {}
-                all_layers[data_selection] = {}
+                all_layers = {data_selection: {}}
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                 if elem not in current_blend_dict.keys():
@@ -704,7 +714,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
-        retain memory. Should be cleared on a new ROi selection
+        retain memory. Should be cleared on a new ROI selection
         """
         if data_selection is not None:
             return None, False
@@ -792,6 +802,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
                        Input('add-cell-id-mask-hover', 'value'),
+                       State('pixel-size-ratio', 'value'),
+                       State('invert-annotations', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -801,7 +813,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 canvas_children, param_dict,
                                                 mask_config, mask_toggle, mask_selection, toggle_legend,
                                                 toggle_scalebar, mask_blending_level, add_mask_boundary,
-                                                channel_order, legend_size, add_cell_id_hover):
+                                                channel_order, legend_size, add_cell_id_hover, pixel_ratio, invert_annot):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -816,7 +828,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 param_dict["current_roi"] == data_selection and len(channel_order) > 0:
 
-
+            pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = ''
             for image in channel_order:
                 # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
@@ -848,6 +860,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 x_axis_placement = 0.00001 * image_shape[1]
                 # make sure the placement is min 0.05 and max 0.1
                 x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+                if invert_annot:
+                    x_axis_placement = 1 - x_axis_placement
                 # if the current graph already has an image, take the existing layout and apply it to the new figure
                 # otherwise, set the uirevision for the first time
                 # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
@@ -868,7 +882,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                           cur_graph['layout']['annotations'] if \
                                                                   annotation['y'] == 0.06 and toggle_scalebar]
                         if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']):
-                            cur_graph['layout']['shapes'] = []
+                            cur_graph['layout']['shapes'] = [shape for shape in cur_graph['layout']['shapes'] if \
+                                                             shape['type'] != 'line']
                         fig = cur_graph
                         # del cur_graph
                     # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
@@ -877,7 +892,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                         if toggle_scalebar:
                             fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                                                            x_axis_left=x_axis_placement)
+                                x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio, invert=invert_annot)
 
                         fig = go.Figure(fig)
                         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -898,7 +913,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                     if toggle_scalebar:
                         fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                                                        x_axis_left=x_axis_placement)
+                                                        x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio,
+                                                        invert=invert_annot)
 
                     fig = go.Figure(fig)
                     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -914,6 +930,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     fig.update_layout(hovermode="x")
 
                 fig = go.Figure(fig)
+                fig.update_layout(newshape=dict(line=dict(color="white")))
 
                 # set how far in from the lefthand corner the scale bar and colour legends should be
                 # higher values mean closer to the centre
@@ -931,15 +948,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 # set the x-axis scale placement based on the size of the image
                 # for adding a scale bar
                 if toggle_scalebar:
+                    # set the x0 and x1 depending on if the bar is inverted or not
+                    x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
+                    x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
                     fig.add_shape(type="line",
                                   xref="paper", yref="paper",
-                                  x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
-                                  y1=0.05,
-                                  line=dict(
-                                      color="white",
-                                      width=2,
-                                  ),
-                                  )
+                                  x0=x_0, y0=0.05, x1=x_1,
+                                  y1=0.05, line=dict(color="white", width=2))
 
                 # set the custom hovertext if is is requested
                 # the masking mask ID get priority over the channel intensity hover
@@ -1012,10 +1027,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('set-y-auto-bound', 'value'),
                        State('window_config', 'data'),
                        Input('activate-coord', 'n_clicks'),
+                       State('pixel-size-ratio', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_coord_change(cur_graph, cur_graph_layout, x_request, y_request, current_window,
-                             nclicks_coord):
+                             nclicks_coord, pixel_ratio):
 
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
@@ -1027,6 +1043,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if cur_graph is not None and \
              'shapes' not in cur_graph_layout and cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and \
                 not bad_update:
+            pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             if ctx.triggered_id == "annotation_canvas":
                 try:
                     fig = go.Figure(cur_graph)
@@ -1057,7 +1074,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 assert x_range_high >= x_range_low
                                 # assert that all values must be above 0 for the scale value to render during panning
                                 # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
-                                scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                                scale_val = int(float(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1) * float(
+                                    pixel_ratio))
                                 scale_val = scale_val if scale_val > 0 else 1
                                 scale_annot = str(scale_val) + "μm"
                                 scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
@@ -1066,6 +1084,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 cur_graph['layout']['annotations'][index]['text'] = scale_text
 
                                 fig = go.Figure(cur_graph)
+                                fig.update_layout(newshape=dict(line=dict(color="white")))
 
                     return fig, cur_graph_layout
                 except (ValueError, KeyError, AssertionError):
@@ -1089,6 +1108,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig['layout']['annotations'] = None
                         fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
                                           yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
+                        fig.update_layout(newshape=dict(line=dict(color="white")))
                         # cur_graph['layout']['xaxis']['domain'] = [0, 1]
                         # cur_graph['layout']['dragmode'] = "zoom"
                         fig['layout']['shapes'] = shapes
@@ -1130,11 +1150,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('annotation_canvas', 'figure'),
                        State('annotation_canvas', 'relayoutData'),
                        Input('custom-scale-val', 'value'),
+                       Input('pixel-size-ratio', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def render_canvas_from_scalebar_change(cur_graph, cur_graph_layout, custom_scale_val):
-        if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}]:
+    def render_canvas_from_scalebar_change(cur_graph, cur_graph_layout, custom_scale_val, pixel_ratio):
+        # do not update the canvas if the pixel ratio is changed to None
+        pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
+        if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
             try:
+                pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                 for annotations in cur_graph['layout']['annotations']:
                     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
                     if annotations['y'] == 0.06:
@@ -1146,13 +1170,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             x_range_high = math.ceil(int(high))
                             x_range_low = math.floor(int(low))
                             assert x_range_high >= x_range_low
-                            custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                            custom_scale_val = int(float(math.ceil(int(0.075 *
+                                                (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
                         scale_annot = str(custom_scale_val) + "μm"
                         scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
                         # get the index of the list element corresponding to this text annotation
                         index = cur_graph['layout']['annotations'].index(annotations)
                         cur_graph['layout']['annotations'][index]['text'] = scale_text
                 fig = go.Figure(cur_graph)
+                fig.update_layout(newshape=dict(line=dict(color="white")))
             except (KeyError, AssertionError):
                 fig = dash.no_update
             return fig
@@ -1171,11 +1197,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('uploaded_dict', 'data'),
                        State('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
+                       State('pixel-size-ratio', 'value'),
+                       State('invert-annotations', 'value'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
                                                    cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
-                                                   channel_order, legend_size):
+                                                   channel_order, legend_size, pixel_ratio, invert_annot):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend)
         """
@@ -1183,13 +1211,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             # scalebar is y = 0.06
             # legend is y = 0.05
 
-
+            pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             first_image = list(image_dict[data_selection].keys())[0]
             first_image = image_dict[data_selection][first_image]
             image_shape = first_image.shape
             x_axis_placement = 0.00001 * image_shape[1]
             # make sure the placement is min 0.05 and max 0.1
             x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+            if invert_annot:
+                x_axis_placement = 1 - x_axis_placement
             if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
                 cur_annotations = cur_canvas['layout']['annotations'].copy()
             else:
@@ -1218,6 +1248,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                         f'>{label}</span><br>'
 
                     fig = go.Figure(cur_canvas)
+                    fig.update_layout(newshape=dict(line=dict(color="white")))
                     if legend_text != '':
                         fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
                                                yref='paper',
@@ -1240,15 +1271,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     return cur_canvas
                 else:
                     fig = go.Figure(cur_canvas)
+                    # set the x0 and x1 depending on if the bar is inverted or not
+                    x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
+                    x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
                     fig.add_shape(type="line",
                                   xref="paper", yref="paper",
-                                  x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
-                                  y1=0.05,
-                                  line=dict(
-                                      color="white",
-                                      width=2,
-                                  ),
-                                  )
+                                  x0=x_0, y0=0.05, x1=x_1,
+                                  y1=0.05, line=dict(color="white", width=2))
 
                     try:
                         high = max(cur_canvas['layout']['xaxis']['range'][1],
@@ -1258,13 +1287,32 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         x_range_high = math.ceil(int(high))
                         x_range_low = math.floor(int(low))
                         assert x_range_high >= x_range_low
-                        custom_scale_val = int(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1)
+                        custom_scale_val = int(float(math.ceil(int(0.075 *
+                                                                   (x_range_high - x_range_low))) + 1) * float(
+                            pixel_ratio))
                     except KeyError:
                         custom_scale_val = None
 
                     fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                                                    font_size=legend_size, x_axis_left=x_axis_placement)
+                                                    font_size=legend_size, x_axis_left=x_axis_placement,
+                                                    invert=invert_annot)
+                fig.update_layout(newshape=dict(line=dict(color="white")))
                 return fig
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       State('annotation_canvas', 'figure'),
+                       State('annotation_canvas', 'relayoutData'),
+                       State('image_layers', 'value'),
+                       State('data-collection', 'value'),
+                       State('blending_colours', 'data'),
+                       Input('invert-annotations', 'value'),
+                       prevent_initial_call=True)
+    def render_canvas_from_invert_annotations(cur_canvas, cur_layout, currently_selected,
+                                            data_selection, blend_colour_dict, invert_annotations):
+        if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
+            return invert_annotations_figure(cur_canvas)
         else:
             raise PreventUpdate
 
@@ -1397,15 +1445,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('current_canvas_image', 'data'),
                        State('annotation_canvas', 'figure'),
                        State('image_layers', 'value'),
-                       State('annotation_canvas', 'style'))
+                       State('annotation_canvas', 'style'),
+                       State('annotation_canvas', 'relayoutData'),
+                       State('graph-subset-download', 'value'))
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                current_image_tiff, current_canvas, blend_layers, canvas_style):
+                                current_image_tiff, current_canvas, blend_layers, canvas_style, canvas_layout, graph_subset):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
         if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
+
+            first_image = list(uploaded[data_selection].keys())[0]
+            first_image = uploaded[data_selection][first_image]
 
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
 
@@ -1433,6 +1486,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if hf is None:
                 hf = h5py.File(relative_filename, 'w')
             try:
+                mask = None
+                if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
+                    for shape in canvas_layout['shapes']:
+                        if shape['type'] == 'path':
+                            path = shape['path']
+                            if mask is None:
+                                mask = path_to_mask(path, first_image.shape)
+                            else:
+                                new_mask = path_to_mask(path, first_image.shape)
+                                mask = np.logical_or(mask, new_mask)
+
                 meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
                     pd.DataFrame(uploaded['metadata'])
                 for col in meta_to_write:
@@ -1444,6 +1508,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     if key not in hf[data_selection]:
                         hf[data_selection].create_group(key)
                         if 'image' not in hf[data_selection][key] and value is not None:
+                            # iuse the mask if provided
+                            if mask is not None:
+                                value[~mask] = 0
                             hf[data_selection][key].create_dataset('image', data=value)
                             if blend_dict is not None and key in blend_dict.keys():
                                 for blend_key, blend_val in blend_dict[key].items():
@@ -1467,20 +1534,24 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 #     if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
                 #         current_canvas['layout']['shapes'].remove(shape)
 
-                # can set the canvas width and height from the ccanvas style to retain the in-app aspect ratio
-                fig = go.Figure(current_canvas)
-                # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                #                   xaxis=XAxis(showticklabels=False),
-                #                   yaxis=YAxis(showticklabels=False),
-                #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
-                fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
+                # can set the canvas width and height from the canvas style to retain the in-app aspect ratio
+                if not ' use graph subset on download' in graph_subset:
+                    fig = go.Figure(current_canvas)
+                    # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                    #                   xaxis=XAxis(showticklabels=False),
+                    #                   yaxis=YAxis(showticklabels=False),
+                    #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
+                    fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
                                default_height = canvas_style['height'])
+                    fig_return = str(os.path.join(download_dir, "canvas.html"))
+                else:
+                    fig_return = dash.no_update
                 param_json = str(os.path.join(download_dir, 'param.json'))
                 with open(param_json, "w") as outfile:
                     dict_write = {"channels": blend_dict, "config": {"blend": blend_layers}}
                     json.dump(dict_write, outfile)
 
-                return str(relative_filename), dest_file, str(os.path.join(download_dir, "canvas.html")), param_json
+                return str(relative_filename), dest_file, fig_return, param_json
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
                 raise PreventUpdate
@@ -1491,13 +1562,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input('current_canvas_image', 'data'),
         Input('annotation_canvas', 'figure'),
         State("download-collapse", "is_open"),
+        Input('annotation_canvas', 'relayoutData'),
         Output("download-collapse", "is_open", allow_duplicate=True),
         prevent_initial_call=True)
-    def reset_canvas_layers_on_new_dataset(current_image, current_canvas, currently_open):
+    def reset_canvas_layers_on_new_dataset(current_image, current_canvas, currently_open, canvas_layout):
         """
         Close the collapsible download when an update is made to the canvas to prevent extraneous downloading
         """
-        if current_canvas is not None:
+        if None not in (current_canvas, canvas_layout):
             if currently_open:
                 return False
             else:
@@ -1511,24 +1583,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input('annotation-canvas-size', 'value'),
         State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),
-        Input('autosize-canvas', 'n_clicks'),
         State('data-collection', 'value'),
         State('uploaded_dict', 'data'),
         Input('image_layers', 'value'),
         State('annotation_canvas', 'style'),
         prevent_initial_call=True)
-    def update_canvas_size(value, current_canvas, cur_graph_layout, nclicks, data_selection,
+    def update_canvas_size(value, current_canvas, cur_graph_layout, data_selection,
                            image_dict, add_layer, cur_sizing):
-        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-
+        # zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         # only update the resolution if not using zoom or panning
-        if all([elem not in cur_graph_layout for elem in zoom_keys]) and \
-                'dragmode' not in cur_graph_layout.keys() and 'shapes' not in cur_graph_layout.keys() and \
-                add_layer is not None and value is not None:
+        # TODO: change the canvas sizing update to allow panning and zooming
+        # if all([elem not in cur_graph_layout for elem in zoom_keys]) and \
+        #         'dragmode' not in cur_graph_layout.keys() and \
+        #         add_layer is not None and value is not None:
+        if None not in (add_layer, value, data_selection, image_dict):
             try:
-
-
-
                 first_image = list(image_dict[data_selection].keys())[0]
                 first_image = image_dict[data_selection][first_image]
                 aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
@@ -1564,7 +1633,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(
         Output("selected-area-table", "data"),
-        State('annotation_canvas', 'figure'),
+        Input('annotation_canvas', 'figure'),
         Input('annotation_canvas', 'relayoutData'),
         State('uploaded_dict', 'data'),
         State('image_layers', 'value'),
@@ -1577,162 +1646,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def update_area_information(graph, graph_layout, upload, layers, data_selection, aliases_dict, nclicks,
                                 stats_table_open):
         # these range keys correspond to the zoom feature
-        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+        # zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         # these keys are used if a shape has been created, then modified
-        modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
-
+        # modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
         if graph is not None and graph_layout is not None and data_selection is not None and \
                 nclicks and stats_table_open:
-
-
-            # option 1: if shapes are drawn on the canvas
-            if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
-                # these are for each sample
-                mean_panel = []
-                max_panel = []
-                min_panel = []
-                aliases = []
-                for layer in layers:
-                    try:
-                        # for each layer we store the values for each shape
-                        shapes_mean = []
-                        shapes_max = []
-                        shapes_min = []
-                        for shape in graph_layout['shapes']:
-                            # option 1: if the shape is drawn with a rectangle
-                            if shape['type'] == 'rect':
-                                x_range_low = math.ceil(int(shape['x0']))
-                                x_range_high = math.ceil(int(shape['x1']))
-                                y_range_low = math.ceil(int(shape['y0']))
-                                y_range_high = math.ceil(int(shape['y1']))
-
-                                assert x_range_high >= x_range_low
-                                assert y_range_high >= y_range_low
-
-                                mean_exp, max_xep, min_exp = get_area_statistics_from_rect(
-                                    upload[data_selection][layer],
-                                    x_range_low,
-                                    x_range_high,
-                                    y_range_low, y_range_high)
-                                shapes_mean.append(round(float(mean_exp), 2))
-                                shapes_max.append(round(float(max_xep), 2))
-                                shapes_min.append(round(float(min_exp), 2))
-                            # option 2: if a closed form shape is drawn
-                            elif shape['type'] == 'path' and 'path' in shape:
-                                mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
-                                    upload[data_selection][layer], shape['path'])
-                                shapes_mean.append(round(float(mean_exp), 2))
-                                shapes_max.append(round(float(max_xep), 2))
-                                shapes_min.append(round(float(min_exp), 2))
-
-                        mean_panel.append(round(sum(shapes_mean) / len(shapes_mean), 2))
-                        max_panel.append(round(sum(shapes_max) / len(shapes_max), 2))
-                        min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
-                    except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
-                            _ArrayMemoryError):
-                        pass
-
-                layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-                return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-            # option 2: if the zoom is used
-            elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-                    all([elem in graph_layout for elem in zoom_keys]):
-
-                try:
-                    assert all([elem >= 0 for elem in graph_layout.keys() if isinstance(elem, float)])
-                    x_range_low = math.ceil(int(graph_layout['xaxis.range[0]']))
-                    x_range_high = math.ceil(int(graph_layout['xaxis.range[1]']))
-                    y_range_low = math.ceil(int(graph_layout['yaxis.range[1]']))
-                    y_range_high = math.ceil(int(graph_layout['yaxis.range[0]']))
-                    assert x_range_high >= x_range_low
-                    assert y_range_high >= y_range_low
-
-                    mean_panel = []
-                    max_panel = []
-                    min_panel = []
-                    aliases = []
-                    for layer in layers:
-                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[data_selection][layer],
-                                                                                   x_range_low,
-                                                                                   x_range_high,
-                                                                                   y_range_low, y_range_high)
-                        mean_panel.append(round(float(mean_exp), 2))
-                        max_panel.append(round(float(max_xep), 2))
-                        min_panel.append(round(float(min_exp), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
-                    layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
-                    return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-                except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
-                    return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                         'Min': []}).to_dict(orient='records')
-
-            # option 3: if a shape has already been created and is modified
-            elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-                    all([elem in graph_layout for elem in modified_rect_keys]):
-                try:
-                    assert all([elem >= 0 for elem in graph_layout.keys() if isinstance(elem, float)])
-                    x_range_low = math.ceil(int(graph_layout['shapes[1].x0']))
-                    x_range_high = math.ceil(int(graph_layout['shapes[1].x1']))
-                    y_range_low = math.ceil(int(graph_layout['shapes[1].y0']))
-                    y_range_high = math.ceil(int(graph_layout['shapes[1].y1']))
-                    assert x_range_high >= x_range_low
-                    assert y_range_high >= y_range_low
-
-                    mean_panel = []
-                    max_panel = []
-                    min_panel = []
-                    aliases = []
-                    for layer in layers:
-                        mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[data_selection][layer],
-                                                                                   x_range_low,
-                                                                                   x_range_high,
-                                                                                   y_range_low, y_range_high)
-                        mean_panel.append(round(float(mean_exp), 2))
-                        max_panel.append(round(float(max_xep), 2))
-                        min_panel.append(round(float(min_exp), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
-                    layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
-                    return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-                except (AssertionError, ValueError, ZeroDivisionError, _ArrayMemoryError):
-                    return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                         'Min': []}).to_dict(orient='records')
-
-            # option 4: if an svg path has already been created and it is modified
-            elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-                    all(['shapes' in elem and 'path' in elem for elem in graph_layout.keys()]):
-                try:
-                    mean_panel = []
-                    max_panel = []
-                    min_panel = []
-                    aliases = []
-                    for layer in layers:
-                        for shape_path in graph_layout.values():
-                            mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
-                                upload[data_selection][layer], shape_path)
-                            mean_panel.append(round(float(mean_exp), 2))
-                            max_panel.append(round(float(max_xep), 2))
-                            min_panel.append(round(float(min_exp), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
-                    layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
-                    return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-                except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
-                    return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                         'Min': []}).to_dict(orient='records')
-            else:
-                return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                     'Min': []}).to_dict(orient='records')
+            return generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict)
         elif stats_table_open:
             return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
@@ -1747,19 +1666,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('data-collection', 'value'),
                        Input('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
-                       Input('preset-options', 'value'),
+                       State('preset-options', 'value'),
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
-                       Input('unique-channel-list', 'value'),
+                       State('unique-channel-list', 'value'),
                        Input('alias-dict', 'data'),
-                       Input('preset-button', 'n_clicks'),
+                       State('preset-button', 'n_clicks'),
                        State('blending_colours', 'data'),
                        Input('default-scaling-gallery', 'value'),
+                       State('pixel-level-analysis', 'active_tab'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          blend_colour_dict, toggle_scaling_gallery):
+                          blend_colour_dict, toggle_scaling_gallery, active_tab):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
@@ -1767,7 +1687,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         the session blend dictionary on an ROI change
         """
         try:
-            if gallery_data is not None:
+            # condition 1: if the data collection is changed, update with new images
+            # condition 2: if any other mods are made, ensure that the active tab is the gallery tab
+            new_collection = gallery_data is not None and ctx.triggered_id in ["data-collection", "uploaded_dict", "alias-dict"]
+            gallery_mod_in_tab = gallery_data is not None and ctx.triggered_id not in \
+                          ["data-collection", "uploaded_dict", "annotation_canvas"] and \
+                active_tab == 'gallery-tab'
+            use_zoom = gallery_data is not None and ctx.triggered_id == 'annotation_canvas'
+            if new_collection or gallery_mod_in_tab or use_zoom:
                 row_children = []
                 zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
                 views = None
@@ -1795,6 +1722,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
                 if views is not None:
                     for key, value in views.items():
+                        if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
+                            x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
+                            x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
+                            y_range_low = math.floor(int(canvas_layout['yaxis.range[1]']))
+                            y_range_high = math.floor(int(canvas_layout['yaxis.range[0]']))
+                            assert x_range_high >= x_range_low
+                            assert y_range_high >= y_range_low
+                            try:
+                                image_render = value[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+                                                           range(int(x_range_low), int(x_range_high), 1))]
+                            except IndexError as e:
+                                image_render = value
+                        else:
+                            image_render = resize_for_canvas(value)
                         if toggle_scaling_gallery:
                             try:
                                 if blend_colour_dict[key]['x_lower_bound'] is None:
@@ -1803,27 +1744,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                     blend_colour_dict[key]['x_upper_bound'] = \
                                     get_default_channel_upper_bound_by_percentile(
                                     gallery_data[data_selection][key])
-                                image_render = apply_preset_to_array(resize_for_canvas(value),
+                                image_render = apply_preset_to_array(image_render,
                                                         blend_colour_dict[key])
                             except (KeyError, TypeError):
-                                image_render = resize_for_canvas(value)
-                        else:
-                            image_render = resize_for_canvas(value)
-                        if None not in (preset_selection, preset_dict) and nclicks > 0:
-                            image_render = apply_preset_to_array(value, preset_dict[preset_selection])
-
-                        if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
-                            x_range_low = math.ceil(int(canvas_layout['xaxis.range[0]']))
-                            x_range_high = math.ceil(int(canvas_layout['xaxis.range[1]']))
-                            y_range_low = math.ceil(int(canvas_layout['yaxis.range[1]']))
-                            y_range_high = math.ceil(int(canvas_layout['yaxis.range[0]']))
-                            assert x_range_high >= x_range_low
-                            assert y_range_high >= y_range_low
-                            try:
-                                image_render = image_render[np.ix_(range(int(y_range_low), int(y_range_high), 1),
-                                                           range(int(x_range_low), int(x_range_high), 1))]
-                            except IndexError:
                                 pass
+                        if None not in (preset_selection, preset_dict) and nclicks > 0:
+                            image_render = apply_preset_to_array(image_render, preset_dict[preset_selection])
 
                         label = aliases[key] if aliases is not None and key in aliases.keys() else key
                         row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(label, className="card-text")),
@@ -1944,27 +1870,43 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Input('images_in_blend', 'value'),
+                       Output('custom-slider-max', 'value'),
+                       prevent_initial_call=True)
+    def reset_range_max_on_channel_switch(new_image_mod):
+        """
+        Reset the checkbox for a custom range slider max on channel changing. Prevents the slider bar from
+        having incorrect bounds for the upcoming channel
+        """
+        if new_image_mod is not None:
+            return []
+        else:
+            raise PreventUpdate
+
     @dash_app.callback(Output("pixel-hist", 'figure'),
                        Output('pixel-intensity-slider', 'max'),
                        Output('pixel-intensity-slider', 'value'),
                        Output('pixel-intensity-slider', 'marks'),
                        Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'step'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       Input('blending_colours', 'data'),
+                       State('blending_colours', 'data'),
                        Input("pixel-hist-collapse", "is_open"),
                        State('pixel-intensity-slider', 'value'),
+                       Input('custom-slider-max', 'value'),
                        prevent_initial_call=True)
                        # background=True,
                        # manager=cache_manager)
     # @cache.memoize())
-    def create_pixel_histogram(selected_channel, uploaded, data_selection, current_blend_dict, show_pixel_hist,
-                               cur_slider_values):
+    def update_pixel_histogram_and_intensity_sliders(selected_channel, uploaded, data_selection,
+                                    current_blend_dict, show_pixel_hist, cur_slider_values, custom_max):
         """
         Create pixel histogram and output the default percentiles
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
+            num_ticks = 4
             blend_return = dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id == "pixel-hist-collapse":
@@ -1974,11 +1916,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 else:
                     fig = dash.no_update
                     hist_max = int(np.max(uploaded[data_selection][selected_channel]))
-            except (ValueError, TypeError) as e:
+            except (ValueError, TypeError):
                 fig = dash.no_update
                 hist_max = 100
-            spacing = int(hist_max / 3)
-            tick_markers = dict([(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, hist_max, spacing)])
+            try:
+                if int(hist_max) < 3:
+                    num_ticks = int(hist_max) + 1
+                tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
+            except ValueError:
+                hist_max = 100
+                tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
@@ -1994,11 +1941,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
+                    # if the upper bound is larger than the custom percentile, set it to the upper bound
+                    if ' set range max to current upper bound' in custom_max:
+                        hist_max = upper_bound
+                        tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
-                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return
-                except (KeyError, ValueError) as e:
-                    return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, 1
+                except (KeyError, ValueError):
+                    return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'blending_colours':
                 vals_return = dash.no_update
                 if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
@@ -2016,11 +1967,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
                     vals_return = [lower_bound, upper_bound]
-                return dash.no_update, hist_max, vals_return, tick_markers, blend_return
+                # if ' set range max to current upper bound' in custom_max:
+                #     hist_max = upper_bound
+                #     spacing = int(hist_max / 3)
+                #     tick_markers = dict(
+                #         [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
+                return dash.no_update, hist_max, vals_return, tick_markers, blend_return, 1
             elif ctx.triggered_id == "pixel-hist-collapse":
-                return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            elif ctx.triggered_id == 'custom-slider-max':
+                try:
+                    if ' set range max to current upper bound' in custom_max:
+                        if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
+                            hist_max = int(cur_slider_values[1])
+                        else:
+                            hist_max = int(np.max(uploaded[data_selection][selected_channel]))
+                    else:
+                        hist_max = int(np.max(uploaded[data_selection][selected_channel]))
+                    tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
+                    return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, 1
+                except IndexError:
+                    raise PreventUpdate
         else:
             raise PreventUpdate
+
 
     @dash_app.callback(Output('bool-apply-filter', 'value'),
                        Output('filter-type', 'value'),
@@ -2265,6 +2235,35 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         return is_open
 
     @dash_app.callback(
+        Output("data-collection", "value", allow_duplicate=True),
+        Input('dataset-preview-table', 'selected_rows'),
+        State('data-collection', 'options'),
+        prevent_initial_call=True)
+    def select_roi_from_preview_table(active_selection, dataset_options):
+        if None not in (active_selection, dataset_options) and len(active_selection) > 0:
+            try:
+                return dataset_options[active_selection[0]]
+            except KeyError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output('dataset-preview-table', 'selected_rows'),
+        Input("data-collection", "value"),
+        State('data-collection', 'options'),
+        prevent_initial_call=True)
+    def update_selected_preview_row_on_roi_selection(data_selection, dataset_options):
+        if None not in (dataset_options, data_selection):
+            try:
+                return [dataset_options.index(data_selection)]
+            except KeyError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+
+    @dash_app.callback(
         Output("alert-modal", "is_open"),
         Output("alert-information", "children"),
         Input('session_alert_config', 'data'),
@@ -2402,14 +2401,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def populate_annotations_table_preview(annotations_dict, dataset_selection):
         if None not in (annotations_dict, dataset_selection):
             try:
+                columns_keep = ['title', 'body', 'cell_type', 'annotation_column', 'type']
                 if len(annotations_dict[dataset_selection]) > 0:
                     annotation_list = []
-                    for value in annotations_dict[dataset_selection].values():
+                    for key, value in annotations_dict[dataset_selection].items():
+                        value = dict((k, value[k]) for k in columns_keep)
                         for sub_key, sub_value in value.items():
                             value[sub_key] = str(sub_value)
                         annotation_list.append(value)
-                    # columns = [{'id': p, 'name': p, 'editable': False} for p in annotations_dict[dataset_selection].keys()]
-                    columns = [{'id': p, 'name': p, 'editable': False} for p in list(pd.DataFrame(annotation_list).columns)]
+                    columns = [{'id': p, 'name': p, 'editable': False} for p in columns_keep]
                     return annotation_list, columns
                 else:
                     return [], []
@@ -2501,6 +2501,89 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 current_cols.append(new_col)
                 return current_cols
             except AssertionError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("annotations-dict", "data", allow_duplicate=True),
+        Output('click-annotation-alert', 'children'),
+        Output('click-annotation-alert', 'is_open'),
+        Input('annotation_canvas', 'clickData'),
+        State('click-annotation-assignment', 'value'),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        State('quant-annotation-col', 'value'),
+        State('annotation_canvas', 'figure'),
+        State('enable_click_annotation', 'value'),
+        prevent_initial_call=True)
+    def add_annotation_to_dict_with_click(clickdata, annotation_cell_type, annotations_dict,
+                                          data_selection, annot_col, cur_figure, enable_click_annotation):
+
+        if None not in (clickdata, data_selection, cur_figure) and enable_click_annotation and 'points' in clickdata:
+            try:
+                if annotations_dict is None or len(annotations_dict) < 1:
+                    annotations_dict = {}
+                if data_selection not in annotations_dict.keys():
+                    annotations_dict[data_selection] = {}
+
+                x = clickdata['points'][0]['x']
+                y = clickdata['points'][0]['y']
+
+                annotations_dict[data_selection][str(clickdata)] = {'title': None, 'body': None,
+                                                 'cell_type': annotation_cell_type, 'imported': False,
+                                                 'annotation_column': annot_col,
+                                                 'type': "point", 'channels': None,
+                                                 'use_mask': None,
+                                                 'mask_selection': None,
+                                                 'mask_blending_level': None,
+                                                 'add_mask_boundary': None}
+                return Serverside(annotations_dict), html.H6(f"Point {x, y} updated with "
+                                                 f"{annotation_cell_type} in {annot_col}"), True
+            except KeyError:
+                return dash.no_update, html.H6("Error in annotating point"), True
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("annotations-dict", "data", allow_duplicate=True),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        Input('undo-latest-annotation', 'n_clicks'),
+        prevent_initial_call=True)
+    def remove_latest_annotation(annotations, data_selection, nclicks):
+        if nclicks > 0 and None not in (annotations, data_selection):
+            try:
+                annot_dict = annotations.copy()
+                last = list(annot_dict[data_selection].keys())[-1]
+                del annot_dict[data_selection][last]
+                return annot_dict
+            except IndexError:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
+                       Input('prev-roi', 'n_clicks'),
+                       Input('next-roi', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('data-collection', 'options'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def click_to_new_roi(prev_roi, next_roi, cur_data_selection, cur_options):
+        """
+        Use the forward and backwards buttons to click to a new ROI
+        """
+        if None not in (cur_data_selection, cur_options):
+            cur_index = cur_options.index(cur_data_selection)
+            try:
+                if ctx.triggered_id == "prev-roi" and cur_index != 0 and prev_roi > 0:
+                    return cur_options[cur_index - 1]
+                elif ctx.triggered_id == "next-roi" and next_roi > 0:
+                    return cur_options[cur_index + 1]
+                else:
+                    raise PreventUpdate
+            except IndexError:
                 raise PreventUpdate
         else:
             raise PreventUpdate

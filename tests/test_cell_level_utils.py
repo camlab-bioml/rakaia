@@ -1,12 +1,16 @@
+import collections
+
 import numpy as np
 import pytest
 from ccramic.app.utils.cell_level_utils import *
 from ccramic.app.parsers.cell_level_parsers import *
 from ccramic.app.inputs.cell_level_inputs import *
+from ccramic.app.io.annotation_outputs import *
 import os
 from PIL import Image
 import dash_extensions
 import tempfile
+
 
 def test_basic_col_dropper(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -173,7 +177,7 @@ def test_basic_cell_annotation_col_pop_from_masking(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     assert "ccramic_cell_annotation" not in measurements.columns
     measurements = populate_cell_annotation_column_from_cell_id_list(measurements, cell_list=list(cells_included.keys()),
-                                                                     cell_type="new_cell_type")
+                                    cell_type="new_cell_type", sample_name="Dilution_series_1_1")
     assert "ccramic_cell_annotation" in measurements.columns
     assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 2
     assert list(measurements[measurements["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]
@@ -235,3 +239,27 @@ def test_output_annotations_pdf():
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)
+
+
+def test_basic_clickdata_cell_annotation(get_current_dir):
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+    clickdata = {'points': [{'x': -100, 'y': -100}]}
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new")
+    assert 'new' not in annotations['ccramic_cell_annotation'].tolist()
+
+    clickdata = {'points': [{'x': 53, 'y': 33}]}
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new")
+
+    assert 'new' in annotations['ccramic_cell_annotation'].tolist()
+    assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 1
+
+    clickdata = {'points': [{'x': 980, 'y': 19}]}
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new")
+
+    assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 2
+
+    subset = subset_measurements_by_point(measurements, 53, 33)
+    assert len(subset) == 1

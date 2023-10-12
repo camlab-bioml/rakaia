@@ -63,3 +63,13 @@ If the error received looks something similar to this:
 </p>
 
 Then the error is occurring within the dash upload drag and drop component on file copying. It is likely that there is not sufficient disk space for the component to copy the file to the tmp directory. In this instance, to user is required to free up disk space, as the component requires adequate disk space to make a local copy of the file before analysis.
+
+## Q: I am receiving a module not found error after updating the version. The error looks something like `Module not found: io`
+
+In certain instances, installing in the editable version may cause problems when trying to reinstall in a non-editable mode.
+If the installation was done using `pip install .`, try uninstalling and them installing in editable mode:
+
+```commandline
+pip uninstall ccramic
+pip install -e .
+```

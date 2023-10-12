@@ -1,13 +1,5 @@
-import dash
-import dash_uploader as du
-import numpy as np
-import pandas as pd
-from dash_extensions.enrich import Output, Input, State
-from dash import ctx
-from ..parsers.cell_level_parsers import *
-from ..inputs.cell_level_inputs import *
-from ..utils.cell_level_utils import *
 from .cell_level_wrappers import *
+from ..io.annotation_outputs import *
 from dash import dcc
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib
@@ -49,10 +41,22 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
                        State('quant-annotation-col', 'options'),
+                       Input('umap-plot', 'restyleData'),
+                       State('umap-projection-options', 'value'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, annot_cols):
+                                               umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection):
+        #TODO: incorporate subsetting based on legend selection
+        # uses the restyledata for the current legend selection to figure out which selections have been made
+        # Example 1: user selected only the third legend item to view
+        # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+        # Example 2: user selects all but the the second item to view
+        # [{'visible': ['legendonly']}, [2]]
+        # print(restyle_data)
         zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
+        # print(ctx.triggered_id)
+        # print(restyle_data)
+        # print(umap_layout)
         return generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols)
 
@@ -91,7 +95,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('mask-uploads', 'data'),
                        prevent_initial_call=True)
     def input_mask_name_on_upload(mask_uploads):
-        if mask_uploads is not None and len(mask_uploads) > 0:
+        if mask_uploads is not None and len(mask_uploads) > 0 and len(mask_uploads) == 1:
             return list(mask_uploads.keys())[0]
         else:
             raise PreventUpdate
@@ -127,48 +131,60 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('mask-dict', 'data'),
                        Output('mask-options', 'options'),
-                       State('mask-uploads', 'data'),
+                       Input('mask-uploads', 'data'),
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
                        State('mask-dict', 'data'),
                        State('derive-cell-boundary', 'value'),
                        prevent_initial_call=True)
     def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
-        return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
+        # cases where the callback should occur: if the mask dict is longer than 1 and triggered by the dictionary
+        # or, if there is a single mask and the trigger is setting the mask name
+        multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
+        single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
+        if multi_upload or single_upload:
+            return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
                                                 cur_mask_dict, derive_cell_boundary)
-
-    @dash_app.callback(
-        Output("quantification-config-modal", "is_open"),
-        Input('cell-type-col-designation', 'options'),
-        prevent_initial_call=True)
-    def toggle_annotation_col_modal(quantification_dict):
-        """
-        Toggle the annotation modal on or off when the quantification dataset
-        updates the possible cell type annotations
-        """
-        if quantification_dict is not None:
-            return True
         else:
-            return False
+            raise PreventUpdate
+
+    # @dash_app.callback(
+    #     Output("quantification-config-modal", "is_open"),
+    #     Input('cell-type-col-designation', 'options'),
+    #     prevent_initial_call=True)
+    # def toggle_annotation_col_modal(quantification_dict):
+    #     """
+    #     Toggle the annotation modal on or off when the quantification dataset
+    #     updates the possible cell type annotations
+    #     """
+    #     if quantification_dict is not None:
+    #         return True
+    #     else:
+    #         return False
 
     @dash_app.callback(
         Input("annotations-dict", "data"),
         State('quantification-dict', 'data'),
         State('data-collection', 'value'),
+        State('data-collection', 'options'),
         State('mask-dict', 'data'),
         State('apply-mask', 'value'),
         State('mask-options', 'value'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True))
     def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection):
+                                                      data_dropdown_options, mask_config, mask_toggle, mask_selection):
         """
         Add a region annotation to the cells of a quantification data frame
         """
         # loop through all of the existing annotations
         # for annotations that have not yet been imported, import and set the import status to True
+        exp, slide, acq = split_string_at_pattern(data_selection)
+        # in the quantification sheet, the sample name is the experiment name nad the index of where it is
+        index = data_dropdown_options.index(data_selection) + 1
+        sample_name = f"{exp}_{index}"
         return callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection)
+                                                      mask_config, mask_toggle, mask_selection, sample_name=sample_name)
 
 
     @dash_app.callback(
@@ -202,6 +218,38 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             return dcc.send_file(generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection,
                 mask_config, aliases, blend_dict=blend_dict,
                 dest_dir=dest_path, output_file="annotations.pdf"), type="application/pdf")
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("download-annotation-mask", "data"),
+        Input("btn-download-annot-mask", "n_clicks"),
+        State("annotations-dict", "data"),
+        State('canvas-layers', 'data'),
+        State('data-collection', 'value'),
+        State('uploaded_dict', 'data'),
+        State('mask-dict', 'data'),
+        State('apply-mask', 'value'),
+        State('mask-options', 'value'))
+    # @cache.memoize())
+    def download_annotations_masks(n_clicks, annotations_dict, canvas_layers,
+                                 data_selection, image_dict, mask_dict, apply_mask, mask_selection):
+        if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
+                data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
+            first_image = list(image_dict[data_selection].keys())[0]
+            first_image = image_dict[data_selection][first_image]
+            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
+            if not os.path.exists(dest_path):
+                os.makedirs(dest_path)
+            # check that the mask is compatible with the current image
+            if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
+                                                                                mask_dict[mask_selection]['raw']):
+                mask_used = mask_dict[mask_selection]['raw']
+            else:
+                mask_used = None
+            return dcc.send_file(export_annotations_as_masks(annotations_dict, dest_path, data_selection,
+                                                             (first_image.shape[0], first_image.shape[1]),
+                                                             mask_used))
         else:
             raise PreventUpdate
 
@@ -265,3 +313,21 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             return frame.to_dict(orient="records"), columns, dash.no_update
         else:
             raise PreventUpdate
+
+    @dash_app.callback(
+        Output("download-point-csv", "data"),
+        Input("btn-download-points-csv", "n_clicks"),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        State('mask-dict', 'data'),
+        State('apply-mask', 'value'),
+        State('mask-options', 'value'),
+        State('uploaded_dict', 'data'),
+        prevent_initial_call=True)
+    # @cache.memoize())
+    def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
+                                          mask_dict, apply_mask, mask_selection, image_dict):
+        exp, slide, acq = split_string_at_pattern(data_selection)
+        return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection,
+                                          mask_dict, apply_mask, mask_selection, image_dict,
+                                               authentic_id, tmpdirname)

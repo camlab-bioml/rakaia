@@ -1,3 +1,5 @@
+import collections
+
 import dash
 from dash_extensions.enrich import Serverside
 from sklearn.preprocessing import StandardScaler
@@ -11,9 +13,20 @@ from matplotlib.backends.backend_pdf import PdfPages
 import cv2
 import os
 import matplotlib.patches as mpatches
+import ast
 
-def set_columns_to_drop():
-    return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation']
+def set_columns_to_drop(measurements_csv=None):
+    defaults = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
+            'PhenoGraph_clusters', 'Labels']
+    if measurements_csv is None:
+        return defaults
+    else:
+        # drop every column from sample and after, as these don't represent channels
+        try:
+            cols = list(measurements_csv.columns)
+            return cols[cols.index('sample'): len(cols)]
+        except (ValueError, IndexError):
+            return defaults
 
 def set_mandatory_columns():
     return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
@@ -164,7 +177,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
                                                     annotation_column="ccramic_cell_annotation",
                                                     cell_identifier="cell_id",
-                                                    cell_type=None):
+                                                    cell_type=None, sample_name=None):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
@@ -172,10 +185,43 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
     if annotation_column not in measurements.columns:
         measurements[annotation_column] = "None"
 
-    measurements[annotation_column] = np.where(measurements[cell_identifier].isin(cell_list), cell_type,
+    measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
+                                               (measurements['sample'] == sample_name), cell_type,
                                                measurements[annotation_column])
     return measurements
 
+
+def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
+                                                    annotation_column="ccramic_cell_annotation",
+                                                    values_dict=None,
+                                                    cell_type=None):
+    """
+    Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
+    """
+    try:
+        if annotation_column not in measurements.columns:
+            measurements[annotation_column] = "None"
+
+        if coord_dict is None:
+            coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
+
+        x = values_dict['points'][0]['x']
+        y = values_dict['points'][0]['y']
+
+        measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
+                                                        float(x)) &
+                                               (measurements[str(f"{coord_dict['x_max']}")] >=
+                                                float(x)) &
+                                               (measurements[str(f"{coord_dict['y_min']}")] <=
+                                                float(y)) &
+                                               (measurements[str(f"{coord_dict['y_max']}")] >=
+                                                float(y)),
+                                                        cell_type,
+                                                    measurements[annotation_column])
+        return measurements
+    except (KeyError, AssertionError):
+        pass
+    return measurements
 
 def process_mask_array_for_hovertemplate(mask_array):
     """
@@ -297,3 +343,19 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
         return file_output
     else:
         raise PreventUpdate
+
+def subset_measurements_by_point(measurements, x, y):
+    """
+    Subset a measurements CSV by using a single xy coordinate. Assumes that only one entry in the measurements
+    query is possible
+    """
+    #TODO: convert the query into a numpy where statement to fill in the cell type annotation in a new column
+    # while preserving the existing data frame structure
+    try:
+        return measurements.query(f'x_min <= {x} & x_max >= {x} & y_min <= {y} & y_max >= {y}')
+    except pd.errors.UndefinedVariableError:
+        return None
+
+
+def validate_mask_shape_matches_image(mask, image):
+    return (mask.shape[0] == image.shape[0]) and (mask.shape[1] == image.shape[1])

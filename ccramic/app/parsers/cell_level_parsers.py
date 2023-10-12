@@ -8,9 +8,12 @@ from dash_extensions.enrich import Serverside
 from PIL import Image
 from ..utils.cell_level_utils import set_columns_to_drop
 from ..utils.cell_level_utils import *
+from pathlib import Path
+import anndata
 
 def drop_columns_from_measurements_csv(measurements_csv,
                                        cols_to_drop=set_columns_to_drop()):
+    cols_to_drop = set_columns_to_drop(measurements_csv)
     try:
         for col in cols_to_drop:
             if col in measurements_csv.columns:
@@ -58,13 +61,14 @@ def validate_incoming_measurements_csv(measurements_csv, current_image=None, val
     """
     if not all([column in measurements_csv.columns for column in required_columns]):
         return None, None
-    # check the measurement CSV against an image to ensure that the dimensions match
-    elif validate_with_image and current_image is not None:
-        if float(current_image.shape[0]) != float(measurements_csv['x_max'].max()) or \
-            float(current_image.shape[1]) != float(measurements_csv['y_max'].max()):
-            return measurements_csv, "Warning: the dimensions of the current ROI do not match the quantification sheet."
-        else:
-            return measurements_csv, None
+    #TODO: find a different heuristic for validating the measurements CSV as it will contain multiple ROIs
+    # # check the measurement CSV against an image to ensure that the dimensions match
+    # elif validate_with_image and current_image is not None:
+    #     if float(current_image.shape[0]) != float(measurements_csv['x_max'].max()) or \
+    #         float(current_image.shape[1]) != float(measurements_csv['y_max'].max()):
+    #         return measurements_csv, "Warning: the dimensions of the current ROI do not match the quantification sheet."
+    #     else:
+    #         return measurements_csv, None
     else:
         return measurements_csv, None
 
@@ -108,8 +112,13 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, image_t
     Use percentile filtering for removing hot pixel cells
     """
     if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-        quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
+        if str(session_dict['uploads'][0]).endswith('.csv'):
+            quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
                                             current_image=image_to_validate, validate_with_image=True)
+        elif str(session_dict['uploads'][0]).endswith('.h5ad'):
+            quantification_worksheet, warning = validate_quantification_from_anndata(session_dict['uploads'][0])
+        else:
+            quantification_worksheet, warning = None, "Error: could not find a valid quantification sheet."
         # TODO: establish where to use the percentile filtering on the measurements
         measurements_return = filter_measurements_csv_by_channel_percentile(
             quantification_worksheet).to_dict(orient="records") if use_percentile else \
@@ -120,7 +129,7 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, image_t
                 error_config = {"error": None}
             error_config["error"] = warning
             warning_return = error_config
-        return measurements_return, list(pd.read_csv(session_dict['uploads'][0]).columns), warning_return
+        return measurements_return, quantification_worksheet.columns, warning_return
     else:
         raise PreventUpdate
 
@@ -128,29 +137,84 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, image_t
 def parse_masks_from_filenames(status):
     filenames = [str(x) for x in status.uploaded_files]
     # IMP: ensure that the progress is up to 100% in the float before beginning to process
-    if len(filenames) == 1:
-        default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
-        return {default_mask_name: filenames[0]}
+    # TODO: establish multi mask import
+    # if len(filenames) == 1:
+    #     default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
+    #     return {default_mask_name: filenames[0]}
+    masks = {}
+    for mask_file in filenames:
+        default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
+        masks[default_mask_name] = mask_file
+    if len(masks) > 0:
+        return masks
     else:
         raise PreventUpdate
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
-    if set_mask > 0 and None not in (mask_uploads, chosen_mask_name):
+    #TODO: establish parsing for single mask upload and bulk
+    single_upload = len(mask_uploads) == 1 and set_mask > 0
+    multi_upload = len(mask_uploads) > 1
+    if single_upload or multi_upload:
+        if 0 < len(mask_uploads) <= 1:
+            single_mask_name = chosen_mask_name
+        else:
+            single_mask_name = None
         cur_mask_dict = {} if cur_mask_dict is None else cur_mask_dict
-        with TiffFile(str(mask_uploads[list(mask_uploads.keys())[0]])) as tif:
-            for page in tif.pages:
-                if derive_cell_boundary:
-                    mask_import = np.array(Image.fromarray(
+        for mask_name, mask_upload in mask_uploads.items():
+            with TiffFile(str(mask_upload)) as tif:
+                for page in tif.pages:
+                    if derive_cell_boundary:
+                        mask_import = np.array(Image.fromarray(
                         convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
-                    boundary_import = None
-                else:
-                    mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
-                    boundary_import = np.array(Image.fromarray(
-                        convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
-                cur_mask_dict[chosen_mask_name] = {"array": mask_import, "boundary": boundary_import,
+                        boundary_import = None
+                    else:
+                        mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
+                        boundary_import = np.array(Image.fromarray(
+                            convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+                    mask_name_use = single_mask_name if single_mask_name is not None else mask_name
+                    cur_mask_dict[mask_name_use] = {"array": mask_import, "boundary": boundary_import,
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
                                                                                     page.asarray().shape[1], 1)),
                                                    "raw": page.asarray()}
         return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
     else:
         raise PreventUpdate
+
+
+def validate_quantification_from_anndata(anndata_obj, required_columns=set_mandatory_columns()):
+    obj = anndata.read_h5ad(anndata_obj)
+    frame = pd.DataFrame(obj.obs)
+    if not all([column in frame.columns for column in required_columns]):
+        return None, None
+    else:
+        return frame, None
+
+# def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation):
+#     """
+#     Parse the selected cell subtypes from the UMAP plot as selected by the legend
+#     if a subset is not found, return None
+#     """
+#     # Example 1: user selected only the third legend item to view
+#     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+#     # Example 2: user selects all but the the second item to view
+#     # [{'visible': ['legendonly']}, [2]]
+#     # print(restyle_data)
+#     if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0]:
+#         # get the total number of possible sub annotations and figure out which ones were selected
+#         quant_frame = pd.DataFrame(quantification_frame)
+#         tot_subtypes = list(quantification_frame[umap_col_annotation].unique())
+#         subtypes_keep = []
+#         # Case 1: if only one sub type if selected
+#         if len(restyledata[0]['visible']) == len(tot_subtypes):
+#             for selection in range(restyledata[0]['visible']):
+#                 if restyledata[0]['visible'][selection] != 'legendonly':
+#                     subtypes_keep.append(tot_subtypes[selection])
+#             return subtypes_keep
+#         # Case 2: if the user selects all but one of the sub types
+#         elif len(restyledata[0]['visible']) == 1 and len(restyledata[1] == 1):
+#             for selection in range(len(tot_subtypes)):
+#                 if selection not in restyledata[1]:
+#                     subtypes_keep.append(tot_subtypes[selection])
+#             return subtypes_keep
+#     else:
+#         return None
