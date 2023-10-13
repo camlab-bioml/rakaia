@@ -6,7 +6,7 @@ import dash_uploader as du
 import flask
 import numpy as np
 import pandas as pd
-from dash import ctx
+from dash import ctx, MATCH, ALL
 from dash_extensions.enrich import Output, Input, State, html
 from tifffile import imwrite
 from ..inputs.pixel_level_inputs import *
@@ -1752,10 +1752,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             image_render = apply_preset_to_array(image_render, preset_dict[preset_selection])
 
                         label = aliases[key] if aliases is not None and key in aliases.keys() else key
-                        row_children.append(dbc.Col(dbc.Card([dbc.CardBody(html.P(label, className="card-text")),
-                                                          dbc.CardImg(
-                                                              src=Image.fromarray(image_render).convert('RGB'),
-                                                              bottom=True)]), width=3))
+                        row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
+                        html.Br(), dbc.Button("Add to canvas", id={'type': 'gallery-channel', 'index': key},
+                        outline=True, color="dark", className="me-1", size="sm", style={"margin-top": "15px"})]),
+                        dbc.CardImg(src=Image.fromarray(image_render).convert('RGB'), bottom=True)]), width=3))
                 return row_children, blend_return
             else:
                 raise PreventUpdate
@@ -2587,3 +2587,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 raise PreventUpdate
         else:
             raise PreventUpdate
+
+    @dash_app.callback(
+        Output('image_layers', 'value', allow_duplicate=True),
+        Output('pixel-level-analysis', 'active_tab'),
+        Input({'type': 'gallery-channel', "index": ALL}, "n_clicks"),
+        State('image_layers', 'options'),
+        State('image_layers', 'value'),
+        State('alias-dict', 'data'),
+        prevent_initial_call=True)
+    # @cache.memoize())
+    def add_channel_layer_through_gallery_click(value, layer_options, current_blend, aliases):
+        if not all([elem is None for elem in value]) and None not in (layer_options, current_blend, aliases):
+            values = [i["value"] for i in layer_options]
+            index_from = ctx.triggered_id["index"]
+            if index_from in values and index_from not in current_blend:
+                current_blend.append(index_from)
+                return current_blend, "pixel-analysis"
+            else:
+                raise PreventUpdate
+        raise PreventUpdate

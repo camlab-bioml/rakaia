@@ -110,7 +110,7 @@ def init_dashboard(server, authentic_id, config=None):
                     children=[
                 html.Div([dbc.Tabs(id='pixel-level-analysis',
                 children=[dbc.Tab(# label_class_name="fa-regular fa-file-image",
-                                  label="Image analysis",
+                                  label="Image Analysis",
                                   # label_style={"text-transform": "capitalize", "font-weight": "normal"},
                 tab_id='pixel-analysis',
                 children=[
@@ -684,7 +684,20 @@ def init_dashboard(server, authentic_id, config=None):
                             multi=False, options=[], style={'width': '100%'})]),
                         id="quantification-config-modal", size='l', style={"margin-left": "10px",
                             "margin-top": "15px"})],
-                                  )])
+                                  ),
+            dbc.Tab(label="Dataset Query", tab_id='dataset-query', children=[
+                html.H6("Set Number of ROIs to return", style={"margin-top": "15px"}),
+                html.Div([dcc.Input(id="dataset-query-number", type="number",
+                        placeholder="NUmber of ROIs to return",
+                        value=10, style={"height": "25%"}),
+                        dbc.Button(children=html.Span([html.I(className="fa-solid fa-bolt",
+                        style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                        html.Div("Execute query")], style={"display": "flex"}), id="execute-dataset-query",
+                        className="mb-3", color="primary", n_clicks=0, style={"margin-left": "10px", "margin-top": "-3px"}),
+                          ],
+                         style={"display": "flex", "margin-top": "15px"})
+            ])
+                ])
                           ])], id='tab-annotation'),
         dcc.Loading(dcc.Store(id="uploaded_dict"), type="default", fullscreen=True),
         # use a blank template for the lazy loading
