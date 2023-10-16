@@ -93,3 +93,10 @@ def test_invert_annotations_figure():
     image = invert_annotations_figure(image)
     assert image['layout']['annotations'][0]['x'] == (1 - 0.0875)
     assert image['layout']['shapes'][0]['x0'] == (1 - 0.05)
+
+
+def test_tick_marker_spacing_range_slider():
+
+    assert len(set_range_slider_tick_markers(3)) == 4
+    assert len(set_range_slider_tick_markers(2)) == 3
+    assert set_range_slider_tick_markers(100) == {0: '0', 33: '33', 66: '66', 100: '100'}

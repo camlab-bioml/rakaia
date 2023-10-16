@@ -1906,7 +1906,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Create pixel histogram and output the default percentiles
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
-            num_ticks = 4
             blend_return = dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id == "pixel-hist-collapse":
@@ -1920,12 +1919,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 fig = dash.no_update
                 hist_max = 100
             try:
-                if int(hist_max) < 3:
-                    num_ticks = int(hist_max) + 1
-                tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
+                tick_markers = set_range_slider_tick_markers(hist_max)
             except ValueError:
                 hist_max = 100
-                tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
+                tick_markers = set_range_slider_tick_markers(hist_max)
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
@@ -1944,7 +1941,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # if the upper bound is larger than the custom percentile, set it to the upper bound
                     if ' set range max to current upper bound' in custom_max:
                         hist_max = upper_bound
-                        tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
+                        tick_markers = set_range_slider_tick_markers(hist_max)
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
                     return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, 1
@@ -1984,10 +1981,45 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             hist_max = int(np.max(uploaded[data_selection][selected_channel]))
                     else:
                         hist_max = int(np.max(uploaded[data_selection][selected_channel]))
-                    tick_markers = dict([(int(i), str(int(i))) for i in list(np.linspace(0,hist_max,num_ticks))])
+                    tick_markers = set_range_slider_tick_markers(hist_max)
                     return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, 1
                 except IndexError:
                     raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('pixel-intensity-slider', 'max', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'value', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'marks', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'step', allow_duplicate=True),
+                       Output('custom-slider-max', 'value', allow_duplicate=True),
+                       State('images_in_blend', 'value'),
+                       State('uploaded_dict', 'data'),
+                       State('data-collection', 'value'),
+                       State('blending_colours', 'data'),
+                       State('pixel-intensity-slider', 'value'),
+                       Input('set-default-rangeslider', 'n_clicks'),
+                       State('custom-slider-max', 'value'),
+                       prevent_initial_call=True)
+    # background=True,
+    # manager=cache_manager)
+    # @cache.memoize())
+    def reset_intensity_slider_to_default(selected_channel, uploaded, data_selection,
+                                                     current_blend_dict, cur_slider_values, reset, cur_max):
+        """
+        Reset the range slider for the current channel to the default values (min of 0 and max of 99th pixel
+        percentile)
+        """
+        if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and reset > 0:
+            hist_max = int(np.max(uploaded[data_selection][selected_channel]))
+            upper_bound = int(get_default_channel_upper_bound_by_percentile(
+                uploaded[data_selection][selected_channel]))
+            if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
+                vals_return = [0, upper_bound]
+                tick_markers = set_range_slider_tick_markers(hist_max)
+                return hist_max, vals_return, tick_markers, 1, []
+            else:
+                raise PreventUpdate
         else:
             raise PreventUpdate
 
