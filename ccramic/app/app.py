@@ -7,6 +7,7 @@ import dash_daq as daq
 import dash_bootstrap_components as dbc
 from .callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from .callbacks.cell_level_callbacks import init_cell_level_callbacks
+from .callbacks.roi_level_callbacks import init_roi_level_callbacks
 from .inputs.pixel_level_inputs import *
 import shutil
 import os
@@ -40,7 +41,7 @@ def init_dashboard(server, authentic_id, config=None):
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
                          external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                          server=server,
-                         routes_pathname_prefix="/ccramic/")
+                         routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True)
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
 
@@ -692,14 +693,16 @@ def init_dashboard(server, authentic_id, config=None):
             dbc.Tab(label="Dataset Query", tab_id='dataset-query', children=[
                 html.H6("Set Number of ROIs to return", style={"margin-top": "15px"}),
                 html.Div([dcc.Input(id="dataset-query-number", type="number",
-                        placeholder="NUmber of ROIs to return",
+                        placeholder="Number of ROIs to return",
                         value=10, style={"height": "25%"}),
                         dbc.Button(children=html.Span([html.I(className="fa-solid fa-bolt",
                         style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
                         html.Div("Execute query")], style={"display": "flex"}), id="execute-dataset-query",
                         className="mb-3", color="primary", n_clicks=0, style={"margin-left": "10px", "margin-top": "-3px"}),
                           ],
-                         style={"display": "flex", "margin-top": "15px"})
+                         style={"display": "flex", "margin-top": "15px"}),
+                html.Div(id="dataset-query-gallery", children=[
+                    dbc.Row(id="dataset-query-gallery-row")], style={"margin-top": "15px"}),
             ])
                 ])
                           ])], id='tab-annotation'),
@@ -730,11 +733,13 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="umap-projection"),
         dcc.Store(id="annotations-dict"),
         dcc.Store(id="channel-order"),
+        dcc.Store(id="umap-legend-categories"),
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 
     dash_app.enable_dev_tools(debug=True)
 
     init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
     init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_roi_level_callbacks(dash_app, tmpdirname, authentic_id)
 
     return dash_app.server

@@ -8,7 +8,7 @@ from pandas.errors import UndefinedVariableError
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                      subset_dict=None, drop_cols=True):
     """
-    Generate a barplot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
+    Generate a bar plot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
     Ensure that the non-numeric columns are dropped prior to plotting
     """
 
@@ -57,9 +57,13 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
         raise PreventUpdate
 
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None):
+                                               umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
+                                                category_column=None, category_subset=None):
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame(quantification_dict)
+        # IMP: perform category subsetting before removing columns
+        if None not in (category_column, category_subset):
+            frame = frame[frame[category_column].isin(category_subset)]
         if cols_drop is not None:
             frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
         if all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
