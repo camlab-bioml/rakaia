@@ -6,9 +6,10 @@ import os
 from ..utils.pixel_level_utils import *
 from readimc import MCDFile, TXTFile
 import random
+import numpy as np
 
 def generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict,
-                                         currently_selected_channels, dataset_options, num_queries=5):
+                                         currently_selected_channels, num_queries=5):
     """
     Generate a gallery of images for multiple ROIs using the current parameters of the current ROI
     Important: ignores the current ROI
@@ -16,44 +17,56 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
     try:
         roi_images = {}
         split = split_string_at_pattern(dataset_selection)
-        basename, slide, acq_name = split[0], split[1], split[2]
+        acq_name = split[2]
         # get the index of the file from the experiment number in the event that there are multiple uploads
-        file_path = None
-        for files_uploaded in session_config['uploads']:
-            if str(Path(files_uploaded).stem) == basename:
-                file_path = files_uploaded
-        if file_path is not None:
-            with MCDFile(file_path) as mcd_file:
-                queries_obtained = 0
-                # generate a random number of roi indices to query
-                # query_length = min(len(dataset_options), num_queries)
-                # queries = random.sample(range(0, len(dataset_options)), query_length)
-                slide_index = 0
-                for slide_inside in mcd_file.slides:
-                    for acq in slide_inside.acquisitions:
-                        if acq.description != acq_name:
-                            channel_names = acq.channel_names
-                            channel_index = 0
-                            img = mcd_file.read_acquisition(acq)
-                            acq_image = []
-                            for channel in img:
-                                # if the channel is in the current blend, use it
-                                if channel_names[channel_index] in currently_selected_channels and \
+        # file_path = None
+        # for files_uploaded in session_config['uploads']:
+        #     if str(Path(files_uploaded).stem) == basename:
+        #         file_path = files_uploaded
+        files = [file for file in session_config['uploads'] if str(file).endswith('.mcd')]
+        if files is not None and len(files) > 0:
+            queries_obtained = 0
+            for file_path in files:
+                basename = str(Path(file_path).stem)
+                with MCDFile(file_path) as mcd_file:
+                    # generate a random number of roi indices to query
+                    # query_length = min(len(dataset_options), num_queries)
+                    # queries = random.sample(range(0, len(dataset_options)), query_length)
+                    slide_index = 0
+                    for slide_inside in mcd_file.slides:
+                        if num_queries > len(slide_inside.acquisitions):
+                            query_selection = range(0, len(slide_inside.acquisitions))
+                        else:
+                            query_selection = random.sample(range(0, len(slide_inside.acquisitions)), num_queries)
+                        for query in query_selection:
+                            acq = slide_inside.acquisitions[query]
+                            if dataset_selection != f"{basename}+++slide{slide_index}+++{acq.description}":
+                                channel_names = acq.channel_names
+                                channel_index = 0
+                                img = mcd_file.read_acquisition(acq)
+                                acq_image = []
+                                for channel in img:
+                                    # if the channel is in the current blend, use it
+                                    if channel_names[channel_index] in currently_selected_channels and \
                                         channel_names[channel_index] in blend_dict.keys():
-                                    with_preset = apply_preset_to_array(channel,
+                                        with_preset = apply_preset_to_array(channel,
                                                         blend_dict[channel_names[channel_index]])
-                                    recoloured = np.array(recolour_greyscale(with_preset,
+                                        recoloured = np.array(recolour_greyscale(with_preset,
                                                                     blend_dict[channel_names[channel_index]][
-                                                                        'color']))
-                                    acq_image.append(recoloured)
-                                channel_index += 1
-                            summed_image = sum([image.astype(np.float32) for image in acq_image]).astype(np.uint8)
-                            label = f"{basename}+++slide{slide_index}+++{acq.description}"
-                            roi_images[label] = summed_image
-                            queries_obtained += 1
-                            if queries_obtained >= num_queries:
-                                break
-                    slide_index += 1
-        return roi_images
+                                                                        'color'])).astype(np.uint8)
+                                        acq_image.append(recoloured)
+                                    channel_index += 1
+                                summed_image = sum([image for image in acq_image]).astype(np.uint8)
+                                label = f"{basename}+++slide{slide_index}+++{acq.description}"
+                                roi_images[label] = summed_image
+                                queries_obtained += 1
+                                if queries_obtained == num_queries:
+                                    break
+                            else:
+                                num_queries += 1
+                        slide_index += 1
+                if queries_obtained >= num_queries:
+                    break
+            return roi_images
     except (KeyError, AssertionError):
         return None

@@ -107,6 +107,7 @@ def init_dashboard(server, authentic_id, config=None):
                     # color='dark', n_clicks=0, style={"display": "flex"}),
                 html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
             style={"margin-bottom": "15px"}),
+            html.H6(id="current-roi-ha", style={"float": "right"}),
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', active_label_style={"color": "#FB79B3"},
                     children=[
                 html.Div([dbc.Tabs(id='pixel-level-analysis',
@@ -734,6 +735,7 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="annotations-dict"),
         dcc.Store(id="channel-order"),
         dcc.Store(id="umap-legend-categories"),
+        dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 
     dash_app.enable_dev_tools(debug=True)

@@ -239,6 +239,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('image_layers', 'value', allow_duplicate=True),
                        Output('uploaded_dict', 'data', allow_duplicate=True),
                        Output('canvas-div-holder', 'children'),
+                       Output('current-roi-ha', 'children'),
                        State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'),
@@ -284,12 +285,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     else:
                         channels_selected = []
                     return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return
+                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return, \
+                        f"Current ROI: {split_string_at_pattern(data_selection)[2]}"
                 except AssertionError:
-                    return [], [], Serverside(image_dict), canvas_return
+                    return [], [], Serverside(image_dict), canvas_return, \
+                        f"Current ROI: {split_string_at_pattern(data_selection)[2]}"
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update
+                        i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -416,7 +419,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                param_dict, all_layers, preset_selection, preset_dict,
                                                cur_image_in_mod_menu):
         """
-        Update the blend dictionary when a new channel is added to the multi-channel selector
+        Update the blend dictionary when a new channel is added to the multichannel selector
         """
         use_preset_condition = None not in (preset_selection, preset_dict)
         if add_to_layer is not None and current_blend_dict is not None:
@@ -1908,7 +1911,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
             blend_return = dash.no_update
             try:
-                if show_pixel_hist and ctx.triggered_id == "pixel-hist-collapse":
+                if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend"]:
                     fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel])
                     fig.update_layout(showlegend=False, yaxis={'title': None},
                                       xaxis={'title': None}, margin=dict(pad=0))
