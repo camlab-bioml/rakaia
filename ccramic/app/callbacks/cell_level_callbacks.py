@@ -39,7 +39,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('quantification-bar-full', 'figure'),
                        Output('umap-legend-categories', 'data'),
                        Input('quantification-dict', 'data'),
-                       Input('annotation_canvas', 'relayoutData'),
+                       State('annotation_canvas', 'relayoutData'),
                        Input('quantification-bar-mode', 'value'),
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
@@ -47,10 +47,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('umap-plot', 'restyleData'),
                        State('umap-projection-options', 'value'),
                        State('umap-legend-categories', 'data'),
+                       State('pixel-level-analysis', 'active_tab'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection,
-                                               prev_categories):
+                                               prev_categories, active_tab):
         #TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
@@ -58,17 +59,18 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         # Example 2: user selects all but the the second item to view
         # [{'visible': ['legendonly']}, [2]]
         # print(restyle_data)
-        # print(restyle_data)
-        # print(prev_categories)
-        zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
-        subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
+        if quantification_dict is not None:
+            # print(restyle_data)
+            # print(prev_categories)
+            zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
+            subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
                                                               prev_categories)
-        # print(subtypes)
-        # print(keep)
-        return generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
+            return generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols,
-                                                                        umap_col_selection, subtypes),\
-            keep
+                                                                        umap_col_selection, subtypes), keep
+        else:
+            raise PreventUpdate
+
 
     @dash_app.callback(Output('umap-projection', 'data'),
                        Output('umap-projection-options', 'options'),

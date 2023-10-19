@@ -88,3 +88,24 @@ def test_return_proper_cols_remove_validate():
     assert 'x_min' in set_columns_to_drop()
     assert not 'x_min' in set_mandatory_columns()
     assert len(set_columns_to_drop()) != len(set_mandatory_columns())
+
+def test_parse_restyledata_from_legend_change():
+    """
+    test that the dictionary from a legend restyle change in the dcc.Graph can be registered properly
+    """
+    test_frame = {"category": ["one", "two", "three", "four", "five", "six", "seven"],
+                 "value": [1, 2, 3, 4, 5, 6, 7]}
+    # case 1: when all categories are selected
+    restyle_1 = [{'visible': ['legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly', 'legendonly']},
+                 [0, 1, 2, 3, 4, 5, 6]]
+
+    types_return_1 = parse_cell_subtypes_from_restyledata(restyle_1, test_frame, "category", None)
+    assert types_return_1 == (['two'], [1])
+
+    restyle_2 = [{'visible': [True]}, [6]]
+    types_return_2 = parse_cell_subtypes_from_restyledata(restyle_2, test_frame, "category", [1])
+    assert types_return_2 == (['two', 'seven'], [1, 6])
+
+    restyle_3 = [{'visible': ['legendonly']}, [3]]
+    types_return_3 = parse_cell_subtypes_from_restyledata(restyle_3, test_frame, "category", [0, 1, 2, 3])
+    assert types_return_3 == (['one', 'two', 'three'], [0, 1, 2])

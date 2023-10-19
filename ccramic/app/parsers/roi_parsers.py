@@ -17,7 +17,6 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
     try:
         roi_images = {}
         split = split_string_at_pattern(dataset_selection)
-        acq_name = split[2]
         # get the index of the file from the experiment number in the event that there are multiple uploads
         # file_path = None
         # for files_uploaded in session_config['uploads']:
@@ -53,17 +52,18 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
                                                         blend_dict[channel_names[channel_index]])
                                         recoloured = np.array(recolour_greyscale(with_preset,
                                                                     blend_dict[channel_names[channel_index]][
-                                                                        'color'])).astype(np.uint8)
+                                                                        'color'])).astype(np.float32)
                                         acq_image.append(recoloured)
                                     channel_index += 1
-                                summed_image = sum([image for image in acq_image]).astype(np.uint8)
+                                summed_image = sum([image for image in acq_image]).astype(np.float32)
+                                summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
                                 label = f"{basename}+++slide{slide_index}+++{acq.description}"
                                 roi_images[label] = summed_image
                                 queries_obtained += 1
-                                if queries_obtained == num_queries:
-                                    break
                             else:
                                 num_queries += 1
+                            if queries_obtained == num_queries:
+                                break
                         slide_index += 1
                 if queries_obtained >= num_queries:
                     break

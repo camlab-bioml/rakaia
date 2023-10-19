@@ -30,15 +30,19 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
             for key, value in images.items():
                 # add the dimensions to the label as a list to provide a line break
                 label = [f"{key}: ", html.Br(), f"{value.shape[1]}x{value.shape[0]}"]
+                aspect_ratio = int(value.shape[1]) / int(value.shape[0])
+                # implement a cap on very tall images to avoid a lot of white space
+                if aspect_ratio < 0.8:
+                    style = {"height": "28rem", "width": f"{28 * aspect_ratio}rem", "justifyContent": "center"}
+                else:
+                    style = None
                 row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                                                                html.Br(), dbc.Button("Load in canvas",
-                                                                                      id={'type': 'data-query-gallery',
-                                                                                          'index': key},
-                                                                                      outline=True, color="dark",
-                                                                                      className="me-1", size="sm",
-                                                                                      style={"margin-top": "15px"})]),
-                                                  dbc.CardImg(src=Image.fromarray(value).convert('RGB'),
-                                                              bottom=True)]), width=4))
+                                                    html.Br(), dbc.Button("Load in canvas",
+                                                    id={'type': 'data-query-gallery', 'index': key},
+                                                    outline=True, color="dark", className="me-1", size="sm",
+                                                style={"margin-top": "15px"})]),
+                                                  dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
+                                            bottom=True, style = style, className = 'align-self-center')]), width=4))
             return row_children, num_queries
         else:
             raise PreventUpdate

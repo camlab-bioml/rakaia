@@ -10,6 +10,7 @@ from ..utils.cell_level_utils import set_columns_to_drop
 from ..utils.cell_level_utils import *
 from pathlib import Path
 import anndata
+import gc
 
 def drop_columns_from_measurements_csv(measurements_csv,
                                        cols_to_drop=set_columns_to_drop()):
@@ -206,10 +207,12 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
         subtypes_keep = []
         # Case 1: if only one sub type is selected
         if len(restyledata[0]['visible']) == len(tot_subtypes):
+            indices_use = []
             for selection in range(len(restyledata[0]['visible'])):
                 if restyledata[0]['visible'][selection] != 'legendonly':
                     subtypes_keep.append(tot_subtypes[selection])
-            return subtypes_keep, None
+                    indices_use.append(selection)
+            return subtypes_keep, indices_use
         # TODO: different options for single select (include or not)
         # Case 2: if the user has already added or excluded one sub type
 
@@ -222,22 +225,25 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
             # case 2.1: When the current and previous indices are to be ignored
             # [{'visible': ['legendonly']}, [3]]
             if restyledata[0]['visible'][0] == 'legendonly':
-                indices_remove = existing_cats.copy() if existing_cats is not None else []
-                for elem in restyledata[1]:
-                    indices_remove.append(elem)
+                # existing indices will be ones to keep
+                indices_keep = existing_cats.copy() if existing_cats is not None else range(len(tot_subtypes))
+                if restyledata[1][0] in indices_keep:
+                    indices_keep.remove(restyledata[1][0])
                 for selection in range(len(tot_subtypes)):
-                    if selection not in indices_remove:
+                    if selection in indices_keep:
                         subtypes_keep.append(tot_subtypes[selection])
-                return subtypes_keep, indices_remove
+                return subtypes_keep, indices_keep
             # Case 2.2: when the current and previous indices are to be kept
             # [{'visible': [True]}, [3]]
             elif restyledata[0]['visible'][0]:
                 indices_keep = existing_cats.copy() if existing_cats is not None else []
                 for elem in restyledata[1]:
-                    indices_keep.append(elem)
+                    if elem not in indices_keep:
+                        indices_keep.append(elem)
                 for selection in range(len(tot_subtypes)):
                     if selection in indices_keep:
                         subtypes_keep.append(tot_subtypes[selection])
                 return subtypes_keep, indices_keep
+        gc.collect()
     else:
         return None, None

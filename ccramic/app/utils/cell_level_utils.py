@@ -94,10 +94,15 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
     try:
         assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
                                                           'yaxis.range[0]', 'yaxis.range[1]']])
+        if len(measurements) != len(umap_frame):
+            umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
+            umap_frame.reset_index()
+            measurements.reset_index()
         query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                          f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                          f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
-                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
+                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')\
+            .reset_index()
         return measurements.loc[umap_frame.index[query.index.tolist()]]
     except AssertionError:
         return None

@@ -651,7 +651,7 @@ def init_dashboard(server, authentic_id, config=None):
                         html.Button("Download Edited metadata", id="btn-download-metadata"),
                         dcc.Download(id="download-edited-table")]),
                             width=3)])])]),
-                          dbc.Tab(label="Quantification/Clustering",
+                          dbc.Tab(label="Quantification/Clustering", tab_id='quantification-tab',
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
