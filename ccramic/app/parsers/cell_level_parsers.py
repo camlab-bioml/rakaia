@@ -226,7 +226,8 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
             # [{'visible': ['legendonly']}, [3]]
             if restyledata[0]['visible'][0] == 'legendonly':
                 # existing indices will be ones to keep
-                indices_keep = existing_cats.copy() if existing_cats is not None else range(len(tot_subtypes))
+                indices_keep = existing_cats.copy() if existing_cats is not None else \
+                    [ind for ind in range(0, len(tot_subtypes))]
                 if restyledata[1][0] in indices_keep:
                     indices_keep.remove(restyledata[1][0])
                 for selection in range(len(tot_subtypes)):

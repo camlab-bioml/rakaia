@@ -13,6 +13,7 @@ from ..inputs.pixel_level_inputs import *
 from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
 from ..io.display import generate_area_statistics_dataframe
+from ..io.gallery_outputs import generate_channel_tile_gallery_children
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -1698,7 +1699,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 active_tab == 'gallery-tab'
             use_zoom = gallery_data is not None and ctx.triggered_id == 'annotation_canvas'
             if new_collection or gallery_mod_in_tab or use_zoom:
-                row_children = []
                 zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
                 views = None
                 # maintain the original order of channels that is dictated by the metadata
@@ -1724,41 +1724,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
 
                 if views is not None:
-                    for key, value in views.items():
-                        if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
-                            x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
-                            x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
-                            y_range_low = math.floor(int(canvas_layout['yaxis.range[1]']))
-                            y_range_high = math.floor(int(canvas_layout['yaxis.range[0]']))
-                            assert x_range_high >= x_range_low
-                            assert y_range_high >= y_range_low
-                            try:
-                                image_render = value[np.ix_(range(int(y_range_low), int(y_range_high), 1),
-                                                           range(int(x_range_low), int(x_range_high), 1))]
-                            except IndexError as e:
-                                image_render = value
-                        else:
-                            image_render = resize_for_canvas(value)
-                        if toggle_scaling_gallery:
-                            try:
-                                if blend_colour_dict[key]['x_lower_bound'] is None:
-                                    blend_colour_dict[key]['x_lower_bound'] = 0
-                                if blend_colour_dict[key]['x_upper_bound'] is None:
-                                    blend_colour_dict[key]['x_upper_bound'] = \
-                                    get_default_channel_upper_bound_by_percentile(
-                                    gallery_data[data_selection][key])
-                                image_render = apply_preset_to_array(image_render,
-                                                        blend_colour_dict[key])
-                            except (KeyError, TypeError):
-                                pass
-                        if None not in (preset_selection, preset_dict) and nclicks > 0:
-                            image_render = apply_preset_to_array(image_render, preset_dict[preset_selection])
-
-                        label = aliases[key] if aliases is not None and key in aliases.keys() else key
-                        row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                        html.Br(), dbc.Button("Add to canvas", id={'type': 'gallery-channel', 'index': key},
-                        outline=True, color="dark", className="me-1", size="sm", style={"margin-top": "15px"})]),
-                        dbc.CardImg(src=Image.fromarray(image_render).convert('RGB'), bottom=True)]), width=3))
+                    row_children = generate_channel_tile_gallery_children(gallery_data, views, canvas_layout, zoom_keys,
+                                blend_colour_dict, data_selection, preset_selection, preset_dict, aliases, nclicks,
+                                    toggle_gallery_zoom, toggle_scaling_gallery)
+                else:
+                    row_children = []
                 return row_children, blend_return
             else:
                 raise PreventUpdate

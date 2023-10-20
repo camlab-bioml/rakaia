@@ -75,7 +75,8 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
             except UndefinedVariableError:
                 subset_zoom = None
             fig = go.Figure(get_cell_channel_expression_plot(frame, subset_dict=subset_zoom, mode=mode_value))
-        elif triggered_id == "umap-plot" and all([key in umap_layout for key in zoom_keys]):
+        elif triggered_id in ["umap-plot", "umap-projection-options"] and \
+                all([key in umap_layout for key in zoom_keys]):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
                                                                            pd.DataFrame(embeddings,
                                                                                         columns=['UMAP1', 'UMAP2']),

@@ -5,6 +5,8 @@ from ..io.annotation_outputs import *
 from dash import dcc
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib
+from werkzeug.exceptions import BadRequest
+
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -45,13 +47,12 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('umap-projection', 'data'),
                        State('quant-annotation-col', 'options'),
                        Input('umap-plot', 'restyleData'),
-                       State('umap-projection-options', 'value'),
+                       Input('umap-projection-options', 'value'),
                        State('umap-legend-categories', 'data'),
-                       State('pixel-level-analysis', 'active_tab'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection,
-                                               prev_categories, active_tab):
+                                               prev_categories):
         #TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
@@ -60,11 +61,12 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         # [{'visible': ['legendonly']}, [2]]
         # print(restyle_data)
         if quantification_dict is not None:
-            # print(restyle_data)
-            # print(prev_categories)
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
-            subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
+            if ctx.triggered_id not in ["umap-projection-options"]:
+                subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
                                                               prev_categories)
+            else:
+                subtypes, keep = None, None
             return generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols,
                                                                         umap_col_selection, subtypes), keep
@@ -95,7 +97,10 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
-        return generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+        try:
+            return generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+        except BadRequest:
+            raise PreventUpdate
 
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
