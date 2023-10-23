@@ -62,8 +62,10 @@ def generate_roi_query_gallery_children(image_dict, col_width=4, max_size=28, ma
     """
     Return a series of columns and rows for across dataset ROi queries. Each element will be a dbc Card preview
     of the ROI image from the current blend dictionary with the option to click to load into the canvas
+    Additionally returns a list of the queried ROI names to avoid overlap with additional queries
     """
     row_children = []
+    roi_list = []
     if image_dict is not None and len(image_dict) > 0:
         for key, value in image_dict.items():
             # add the dimensions to the label as a list to provide a line break
@@ -84,4 +86,5 @@ def generate_roi_query_gallery_children(image_dict, col_width=4, max_size=28, ma
                                               dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
                                                           bottom=True, style=style, className='align-self-center')]),
                                     width=col_width))
-    return row_children
+            roi_list.append(key)
+    return row_children, roi_list

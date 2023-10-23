@@ -97,6 +97,9 @@ def test_invert_annotations_figure():
 
 def test_tick_marker_spacing_range_slider():
 
-    assert len(set_range_slider_tick_markers(3)) == 4
-    assert len(set_range_slider_tick_markers(2)) == 3
-    assert set_range_slider_tick_markers(100) == {0: '0', 33: '33', 66: '66', 100: '100'}
+    assert len(set_range_slider_tick_markers(3)[0]) == 4
+    assert len(set_range_slider_tick_markers(2)[0]) == 3
+    assert set_range_slider_tick_markers(100)[0] == {0: '0', 33: '33', 66: '66', 100: '100'}
+    low_range, small_step = set_range_slider_tick_markers(0.3)
+    assert len(low_range) == 2
+    assert small_step == 0.03

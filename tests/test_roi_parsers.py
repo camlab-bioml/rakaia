@@ -18,8 +18,8 @@ def test_roi_query_parser(get_current_dir):
                   "Ir193": {"color": "#FF0000", "x_lower_bound": 0, "x_upper_bound": 1, "filter_type": None, "filter_val": None},
                   "Pb208": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None}}
 
-    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 4)
+    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 4, [])
     assert len(roi_query) == 4
     assert dataset_selection not in roi_query.keys()
-    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 20)
+    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 20, [])
     assert len(roi_query) == 6

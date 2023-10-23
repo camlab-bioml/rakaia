@@ -571,17 +571,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 all([elem is not None for elem in slider_values]):
             # do not update if the range values in the slider match the curernt blend params:
             try:
-                slider_values = [int(float(elem)) for elem in slider_values]
+                slider_values = [float(elem) for elem in slider_values]
                 lower_bound = min(slider_values)
                 upper_bound = max(slider_values)
 
 
-                if int(float(current_blend_dict[layer]['x_lower_bound'])) == int(float(lower_bound)) and \
-                        int(float(current_blend_dict[layer]['x_upper_bound'])) == int(float(upper_bound)):
+                if float(current_blend_dict[layer]['x_lower_bound']) == float(lower_bound) and \
+                        float(current_blend_dict[layer]['x_upper_bound']) == float(upper_bound):
                     raise PreventUpdate
                 else:
-                    current_blend_dict[layer]['x_lower_bound'] = int(lower_bound)
-                    current_blend_dict[layer]['x_upper_bound'] = int(upper_bound)
+                    current_blend_dict[layer]['x_lower_bound'] = float(lower_bound)
+                    current_blend_dict[layer]['x_upper_bound'] = float(upper_bound)
 
                     array = apply_preset_to_array(uploaded_w_data[data_selection][layer],
                                   current_blend_dict[layer])
@@ -1887,23 +1887,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                       xaxis={'title': None}, margin=dict(pad=0))
                 else:
                     fig = dash.no_update
-                    hist_max = int(np.max(uploaded[data_selection][selected_channel]))
+                    hist_max = float(np.max(uploaded[data_selection][selected_channel]))
             except (ValueError, TypeError):
                 fig = dash.no_update
                 hist_max = 100
             try:
-                tick_markers = set_range_slider_tick_markers(hist_max)
+                tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             except ValueError:
                 hist_max = 100
-                tick_markers = set_range_slider_tick_markers(hist_max)
+                tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
+            # set the min of the hist max to be 1 for very low images
+            hist_max = hist_max if hist_max > 1 else 1
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
                     # if the current selection has already had a histogram bound on it, update the histogram with it
                     if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
                             current_blend_dict[selected_channel]['x_upper_bound'] is not None:
-                        lower_bound = int(float(current_blend_dict[selected_channel]['x_lower_bound']))
-                        upper_bound = int(float(current_blend_dict[selected_channel]['x_upper_bound']))
+                        lower_bound = float(current_blend_dict[selected_channel]['x_lower_bound'])
+                        upper_bound = float(current_blend_dict[selected_channel]['x_upper_bound'])
                     else:
                         lower_bound = 0
                         upper_bound = get_default_channel_upper_bound_by_percentile(
@@ -1914,20 +1916,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # if the upper bound is larger than the custom percentile, set it to the upper bound
                     if ' set range max to current upper bound' in custom_max:
                         hist_max = upper_bound
-                        tick_markers = set_range_slider_tick_markers(hist_max)
+                        tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     # set tick spacing between marks on the rangeslider
                     # have 4 tick markers
-                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, 1
+                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, step_size
                 except (KeyError, ValueError):
                     return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'blending_colours':
                 vals_return = dash.no_update
                 if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
                         current_blend_dict[selected_channel]['x_upper_bound'] is not None:
-                    if int(float(current_blend_dict[selected_channel]['x_lower_bound'])) != cur_slider_values[0] or \
-                        int(float(current_blend_dict[selected_channel]['x_upper_bound'])) != cur_slider_values[1]:
-                        lower_bound = int(float(current_blend_dict[selected_channel]['x_lower_bound']))
-                        upper_bound = int(float(current_blend_dict[selected_channel]['x_upper_bound']))
+                    if float(current_blend_dict[selected_channel]['x_lower_bound']) != float(cur_slider_values[0]) or \
+                        float(current_blend_dict[selected_channel]['x_upper_bound']) != float(cur_slider_values[1]):
+                        lower_bound = float(current_blend_dict[selected_channel]['x_lower_bound'])
+                        upper_bound = float(current_blend_dict[selected_channel]['x_upper_bound'])
                         vals_return = [lower_bound, upper_bound]
                 else:
                     lower_bound = 0
@@ -1939,23 +1941,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     vals_return = [lower_bound, upper_bound]
                 # if ' set range max to current upper bound' in custom_max:
                 #     hist_max = upper_bound
-                #     spacing = int(hist_max / 3)
+                #     spacing = float(hist_max / 3)
                 #     tick_markers = dict(
-                #         [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, int(hist_max), spacing)])
-                return dash.no_update, hist_max, vals_return, tick_markers, blend_return, 1
+                #         [(round(i / 10) * 10, str(round(i / 10) * 10)) for i in range(0, float(hist_max), spacing)])
+                return dash.no_update, hist_max, vals_return, tick_markers, blend_return, step_size
             elif ctx.triggered_id == "pixel-hist-collapse":
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'custom-slider-max':
                 try:
                     if ' set range max to current upper bound' in custom_max:
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
-                            hist_max = int(cur_slider_values[1])
+                            hist_max = float(cur_slider_values[1])
                         else:
-                            hist_max = int(np.max(uploaded[data_selection][selected_channel]))
+                            hist_max = float(np.max(uploaded[data_selection][selected_channel]))
                     else:
-                        hist_max = int(np.max(uploaded[data_selection][selected_channel]))
-                    tick_markers = set_range_slider_tick_markers(hist_max)
-                    return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, 1
+                        hist_max = float(np.max(uploaded[data_selection][selected_channel]))
+                    tick_markers, step_size = set_range_slider_tick_markers(hist_max)
+                    return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, step_size
                 except IndexError:
                     raise PreventUpdate
         else:
@@ -1984,13 +1986,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         percentile)
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and reset > 0:
-            hist_max = int(np.max(uploaded[data_selection][selected_channel]))
-            upper_bound = int(get_default_channel_upper_bound_by_percentile(
+            hist_max = float(np.max(uploaded[data_selection][selected_channel]))
+            upper_bound = float(get_default_channel_upper_bound_by_percentile(
                 uploaded[data_selection][selected_channel]))
             if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
                 vals_return = [0, upper_bound]
-                tick_markers = set_range_slider_tick_markers(hist_max)
-                return hist_max, vals_return, tick_markers, 1, []
+                tick_markers, step_size = set_range_slider_tick_markers(hist_max)
+                return hist_max, vals_return, tick_markers, step_size, []
             else:
                 raise PreventUpdate
         else:

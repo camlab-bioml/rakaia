@@ -703,7 +703,12 @@ def init_dashboard(server, authentic_id, config=None):
                           ],
                          style={"display": "flex", "margin-top": "15px"}),
                 html.Div(id="dataset-query-gallery", children=[
-                    dbc.Row(id="dataset-query-gallery-row")], style={"margin-top": "15px"}),
+                    dbc.Row(id="dataset-query-gallery-row"),
+                    html.Br(),
+                    dbc.Button("Load more...", id="dataset-query-additional-load", className="d-grid gap-2 col-3 mx-auto",
+                               outline=True, color="dark",
+                    style={"justifyContent": "center"}),
+                    html.Br()], style={"margin-top": "15px", "display": "none"}),
             ])
                 ])
                           ])], id='tab-annotation'),
@@ -735,6 +740,7 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="annotations-dict"),
         dcc.Store(id="channel-order"),
         dcc.Store(id="umap-legend-categories"),
+        dcc.Store(id="dataset-query-gallery-list"),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 

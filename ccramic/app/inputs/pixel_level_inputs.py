@@ -198,15 +198,17 @@ def invert_annotations_figure(cur_canvas: go.Figure):
     cur_canvas['layout']['shapes'] = cur_shapes
     return cur_canvas
 
-def set_range_slider_tick_markers(max_value):
+def set_range_slider_tick_markers(max_value, num_ticks=4):
     """
     Set the number and spacing of the tick markers used for the pixel range slider using the histogram maximum
     Note: the slider minimum is always set to 0
     """
-    # set the default number of tick marks to 4
-    num_ticks = 4
-    # if the maximum value is less than 3, reduce the number of ticks accordingly
-    if int(max_value) < 3:
-        num_ticks = int(max_value) + 1
-    # sets the dictionary for the string and int values to be shown in the pixel intensity range slider
-    return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))])
+    if float(max_value) < 1:
+        return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 10), 2))
+    else:
+        # set the default number of tick marks to 4
+        # if the maximum value is less than 3, reduce the number of ticks accordingly
+        if int(max_value) < 3:
+            num_ticks = int(max_value) + 1
+        # sets the dictionary for the string and int values to be shown in the pixel intensity range slider
+        return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1

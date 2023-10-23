@@ -42,8 +42,9 @@ def test_generate_roi_gallery_children():
     test that the ROI query function returns a list of children comprised of dbc columns and cards
     """
     roi_dict = {"roi_1": np.zeros((100, 100, 3)), "roi_2": np.zeros((1000, 1000)), "roi_3": np.zeros((1000, 100, 3))}
-    gallery_children = generate_roi_query_gallery_children(roi_dict)
+    gallery_children, roi_list = generate_roi_query_gallery_children(roi_dict)
     assert len(gallery_children) == len(roi_dict)
     for elem in gallery_children:
         assert isinstance(elem, dbc.Col)
         assert isinstance(elem.children, dbc.Card)
+    assert all([elem in roi_list for elem in roi_dict.keys()])

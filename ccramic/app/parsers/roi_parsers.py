@@ -9,11 +9,13 @@ import random
 import numpy as np
 
 def generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict,
-                                         currently_selected_channels, num_queries=5):
+                                         currently_selected_channels, num_queries=5, rois_exclude=None):
     """
     Generate a gallery of images for multiple ROIs using the current parameters of the current ROI
     Important: ignores the current ROI
     """
+    if rois_exclude is None:
+        rois_exclude = []
     try:
         roi_images = {}
         split = split_string_at_pattern(dataset_selection)
@@ -39,7 +41,7 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
                             query_selection = random.sample(range(0, len(slide_inside.acquisitions)), num_queries)
                         for query in query_selection:
                             acq = slide_inside.acquisitions[query]
-                            if dataset_selection != f"{basename}+++slide{slide_index}+++{acq.description}":
+                            if f"{basename}+++slide{slide_index}+++{acq.description}" not in rois_exclude:
                                 channel_names = acq.channel_names
                                 channel_index = 0
                                 img = mcd_file.read_acquisition(acq)
