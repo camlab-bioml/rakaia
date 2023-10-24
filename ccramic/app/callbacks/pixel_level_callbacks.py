@@ -1718,6 +1718,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             views = {key: apply_preset_to_array(resize_for_canvas(value),
                                                         blend_colour_dict[channel_selected]) for \
                                 key, value in views.items()}
+
                         except KeyError:
                             pass
                 else:
@@ -1897,7 +1898,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 hist_max = 100
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
-            # set the min of the hist max to be 1 for very low images
+            # set the min of the hist max to be 1 for very low images to also match the min for the pixel hist max
             hist_max = hist_max if hist_max > 1 else 1
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
@@ -2516,6 +2517,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Output("annotations-dict", "data", allow_duplicate=True),
         Output('click-annotation-alert', 'children'),
         Output('click-annotation-alert', 'is_open'),
+        Output('annotation_canvas', 'figure', allow_duplicate=True),
         Input('annotation_canvas', 'clickData'),
         State('click-annotation-assignment', 'value'),
         State("annotations-dict", "data"),
@@ -2523,9 +2525,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('quant-annotation-col', 'value'),
         State('annotation_canvas', 'figure'),
         State('enable_click_annotation', 'value'),
+        State('click-annotation-add-circle', 'value'),
         prevent_initial_call=True)
     def add_annotation_to_dict_with_click(clickdata, annotation_cell_type, annotations_dict,
-                                          data_selection, annot_col, cur_figure, enable_click_annotation):
+                                          data_selection, annot_col, cur_figure, enable_click_annotation, add_circle):
 
         if None not in (clickdata, data_selection, cur_figure) and enable_click_annotation and 'points' in clickdata:
             try:
@@ -2545,10 +2548,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                  'mask_selection': None,
                                                  'mask_blending_level': None,
                                                  'add_mask_boundary': None}
+
+                if ' add circle on click' in add_circle:
+                    # add a circle where the annotation occurred
+                    fig = go.Figure(cur_figure)
+                    fig.add_shape(type="circle",
+                              xref="x", yref="y",
+                              x0=(x - 4), y0=(y - 4), x1=(x + 4), y1=(y + 4),
+                              line_color="white", editable=True)
+                else:
+                    fig = dash.no_update
+
                 return Serverside(annotations_dict), html.H6(f"Point {x, y} updated with "
-                                                 f"{annotation_cell_type} in {annot_col}"), True
+                                                 f"{annotation_cell_type} in {annot_col}"), True, fig
             except KeyError:
-                return dash.no_update, html.H6("Error in annotating point"), True
+                return dash.no_update, html.H6("Error in annotating point"), True, dash.no_update
         else:
             raise PreventUpdate
 

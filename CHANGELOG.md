@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2023-10-24
+
+### Changed
+
+- Click annotations now have a circle surrounding the pixel by default
+  (radius of 4 pixels) that is editable
+- Channel image gallery is now clickable through pattern matching:
+channels can be added to the canvas through a gallery click
+
+### Added
+
+- Dataset query: mcd files can now be queried across ROIs to get
+clickable thumbnails for different ROIs that can then be loaded into
+the canvas
+- ROI name is now visible in the session outside of the dropdown menu
+
+### Fixed
+
+- Edits to the pixel histogram and range slider for images
+with pixel ranges between 0 and 1
+
 ## [0.8.0] - 2023-10-12
 
 ### Changed

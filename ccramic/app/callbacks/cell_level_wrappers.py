@@ -73,7 +73,8 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
         if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
             try:
                 cur_canvas['layout']['shapes'] = [elem for elem in cur_canvas['layout']['shapes'] if \
-                                              elem['type'] not in ['rect', 'path']]
+                                                  'type' in elem and \
+                                                  elem['type'] not in ['rect', 'path', 'circle']]
             except KeyError:
                 pass
             return cur_canvas, dash.no_update

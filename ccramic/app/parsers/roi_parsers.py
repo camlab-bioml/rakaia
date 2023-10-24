@@ -18,7 +18,6 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
         rois_exclude = []
     try:
         roi_images = {}
-        split = split_string_at_pattern(dataset_selection)
         # get the index of the file from the experiment number in the event that there are multiple uploads
         # file_path = None
         # for files_uploaded in session_config['uploads']:
@@ -39,6 +38,7 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
                             query_selection = range(0, len(slide_inside.acquisitions))
                         else:
                             query_selection = random.sample(range(0, len(slide_inside.acquisitions)), num_queries)
+                            print(query_selection)
                         for query in query_selection:
                             acq = slide_inside.acquisitions[query]
                             if f"{basename}+++slide{slide_index}+++{acq.description}" not in rois_exclude:
@@ -64,11 +64,18 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
                                 queries_obtained += 1
                             else:
                                 num_queries += 1
-                            if queries_obtained == num_queries:
+                            if len(roi_images) == num_queries:
                                 break
-                        slide_index += 1
-                if queries_obtained >= num_queries:
+                        else:
+                            slide_index += 1
+                            continue
+                        break
+                    else:
+                        continue
                     break
             return roi_images
+        else:
+            return None
+    # return roi_images
     except (KeyError, AssertionError):
         return None
