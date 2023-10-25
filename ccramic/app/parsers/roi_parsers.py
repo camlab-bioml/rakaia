@@ -24,6 +24,7 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
         #     if str(Path(files_uploaded).stem) == basename:
         #         file_path = files_uploaded
         files = [file for file in session_config['uploads'] if str(file).endswith('.mcd')]
+        random.shuffle(files)
         if files is not None and len(files) > 0:
             queries_obtained = 0
             for file_path in files:

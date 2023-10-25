@@ -263,3 +263,16 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
 
     subset = subset_measurements_by_point(measurements, 53, 33)
     assert len(subset) == 1
+
+
+def test_generate_grid_overlay():
+    """
+    test that the greyscale grid overlay is generated for the correct dimensions
+    """
+    normal_grid = generate_greyscale_grid_array((1000, 1000))
+    assert np.min(normal_grid) == 0
+    assert np.max(normal_grid) == 255
+
+    normal_grid = generate_greyscale_grid_array((75, 75))
+    assert np.min(normal_grid) == 0
+    assert np.max(normal_grid) == 0

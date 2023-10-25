@@ -364,3 +364,27 @@ def subset_measurements_by_point(measurements, x, y):
 
 def validate_mask_shape_matches_image(mask, image):
     return (mask.shape[0] == image.shape[0]) and (mask.shape[1] == image.shape[1])
+
+
+def generate_greyscale_grid_array(array_shape, dim=100):
+    """
+    Generate a greyscale grid array defined as white lines with a black background, with the square dimensions
+    given by the dim parameter
+    """
+    empty = np.zeros(array_shape)
+    rows_num = int(empty.shape[0] / dim)
+    cols_num = int(empty.shape[1] / dim)
+
+    cols_spacing = [int(i) for i in np.linspace(0, (empty.shape[1] - 1), cols_num)]
+    rows_spacing = [int(i) for i in np.linspace(0, (empty.shape[0] - 1), rows_num)]
+
+    # only create the grid lines if the image is sufficiently large: 2x the dimension of the box or greater
+    if empty.shape[0] >= (2 * dim):
+        for row in rows_spacing:
+            empty[row] = 255
+
+    if empty.shape[1] >= (2 * dim):
+        for col in cols_spacing:
+            empty[:, col] = 255
+
+    return np.array(Image.fromarray(empty).convert('RGB')).astype(np.uint8)

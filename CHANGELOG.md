@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2023-10-24
+## [0.9.0] - 2023-10-25
 
 ### Changed
 
@@ -21,7 +21,11 @@ channels can be added to the canvas through a gallery click
 - Dataset query: mcd files can now be queried across ROIs to get
 clickable thumbnails for different ROIs that can then be loaded into
 the canvas
-- ROI name is now visible in the session outside of the dropdown menu
+- ROI name is now visible in the session outside the dropdown menu
+- Additional session configuration variables in top right corner:
+can now switch on scroll zoom on the canvas (default is not enabled)
+- Ability to overlay grid on canvas with white lines to assist in
+cell counting
 
 ### Fixed
 

@@ -247,9 +247,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('image_layers', 'value'),
                        State('session_config', 'data'),
                        Input('sort-channels-alpha', 'value'),
+                       State('enable-canvas-scroll-zoom', 'value'),
                        prevent_initial_call=True)
     def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config,
-                                sort_channels):
+                                sort_channels, enable_zoom):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
@@ -263,7 +264,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             else:
                 channels_return = names
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
-                canvas_return = [render_default_annotation_canvas()]
+                canvas_return = [render_default_annotation_canvas(fullscreen_mode=enable_zoom)]
                 # load the specific ROI requested into the dictionary
                 # imp: use the channel label for the dropdown view and the name in the background to retrieve
                 try:
@@ -275,7 +276,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         # get the first image in the ROI and check the dimensions
                         first_image = list(image_dict[data_selection].keys())[0]
                         first_image = image_dict[data_selection][first_image]
-                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image)]
+                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=enable_zoom)]
                 except IndexError:
                     raise PreventUpdate
                 try:
@@ -808,16 +809,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('add-cell-id-mask-hover', 'value'),
                        State('pixel-size-ratio', 'value'),
                        State('invert-annotations', 'value'),
+                       Input('overlay-grid-canvas', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
                                                 data_selection, blend_colour_dict, aliases,
                                                 cur_graph, cur_graph_layout, raw_data_dict,
                                                 show_each_channel_intensity,
-                                                canvas_children, param_dict,
-                                                mask_config, mask_toggle, mask_selection, toggle_legend,
-                                                toggle_scalebar, mask_blending_level, add_mask_boundary,
-                                                channel_order, legend_size, add_cell_id_hover, pixel_ratio, invert_annot):
+                                                canvas_children, param_dict, mask_config, mask_toggle,
+                                                mask_selection, toggle_legend, toggle_scalebar, mask_blending_level,
+                                                add_mask_boundary, channel_order, legend_size, add_cell_id_hover,
+                                                pixel_ratio, invert_annot, overlay_grid):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -856,6 +858,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                             # add the border of the mask after converting back to greyscale to derive the conversion
                             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                                     mask_config[mask_selection]["boundary"].astype(np.uint8), 1, 0)
+
+                if ' overlay grid' in overlay_grid:
+                    image = cv2.addWeighted(image.astype(np.uint8), 1,
+                                        generate_greyscale_grid_array((image.shape[0], image.shape[1])), 1, 0)
 
                 fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
                 # fig.update(data=[{'customdata': )
@@ -1621,8 +1627,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 except (KeyError, ZeroDivisionError):
                     aspect_ratio = 1
 
-            width = value * aspect_ratio
-            height = value
+            width = float(value * aspect_ratio)
+            height = float(value)
             try:
                 if cur_sizing['height'] != f'{height}vh' and cur_sizing['width'] != f'{width}vh':
                     return {'width': f'{width}vh', 'height': f'{height}vh'}
@@ -2628,3 +2634,29 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             else:
                 raise PreventUpdate
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("session-config-modal", "is_open"),
+        Input('session-config-modal-button', 'n_clicks'),
+        [State("session-config-modal", "is_open")])
+    def toggle_general_config_modal(n1, is_open):
+        """
+        Open the modal for general session variables
+        """
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(Output('annotation_canvas', 'config', allow_duplicate=True),
+                       Input('enable-canvas-scroll-zoom', 'value'),
+                       State('annotation_canvas', 'config'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def toggle_scroll_zoom_on_canvas(enable_zoom, cur_config):
+        """
+        Toggle the ability to use scroll zoom on the annotation canvas using the input from the
+        session configuration modal. Default value is not enabled
+        """
+        cur_config = cur_config.copy()
+        cur_config['scrollZoom'] = enable_zoom
+        return cur_config

@@ -97,14 +97,19 @@ def init_dashboard(server, authentic_id, config=None):
             children=[
                 html.A("ccramic", className="navbar-brand me-0 px-3", href="#"),
                 html.Div([
-                    # dbc.Button(
-                    # children=html.Span([html.I(className="fa-solid fa-gears",
-                    #                            style={"display": "inline-block",
-                    #                                   "margin-right": "3px"}),
-                    #                     html.Div("Session config"),
-                    #                     ]),
-                    # id="session-config-modal", className="navbar-brand me-0 px-3",
-                    # color='dark', n_clicks=0, style={"display": "flex"}),
+                    dbc.Button(
+                    children=html.Span([html.I(className="fa-solid fa-gears",
+                                               style={"display": "inline-block"}),
+                                        ]),
+                    id="session-config-modal-button", className="navbar-brand me-0 px-3",
+                    color=None, n_clicks=0, style={"display": "flex"}, outline=True),
+                dbc.Modal(children=dbc.ModalBody([
+                    html.H6("Set additional session variables"),
+                    daq.ToggleSwitch(label='Enable canvas scroll zoom', id='enable-canvas-scroll-zoom',
+                                     labelPosition='bottom', color="blue", value=False)
+                ]),
+                        id="session-config-modal", size='l',
+                        style={"margin-left": "10px", "margin-top": "15px"}),
                 html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
             style={"margin-bottom": "15px"}),
             html.H6(id="current-roi-ha", style={"float": "right"}),
@@ -502,6 +507,8 @@ def init_dashboard(server, authentic_id, config=None):
                                           placeholder="Add a cell type for click",
                                     style={"width": "65%", "margin-left": "1px"})],
                                          style={"display": "flex"}),
+                                dcc.Checklist(options=[' overlay grid'], value=[],
+                                id="overlay-grid-canvas", style={"margin-top": "12px"}),
                                 html.Br(),
                                 dbc.Alert([], color='success', is_open=False, duration=1200, id='click-annotation-alert'),
                                 dbc.Modal(children=dbc.ModalBody(
