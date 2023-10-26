@@ -9,7 +9,8 @@ import random
 import numpy as np
 
 def generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict,
-                                         currently_selected_channels, num_queries=5, rois_exclude=None):
+                                         currently_selected_channels, num_queries=5, rois_exclude=None,
+                                         predefined_indices=None):
     """
     Generate a gallery of images for multiple ROIs using the current parameters of the current ROI
     Important: ignores the current ROI
@@ -35,11 +36,13 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
                     # queries = random.sample(range(0, len(dataset_options)), query_length)
                     slide_index = 0
                     for slide_inside in mcd_file.slides:
-                        if num_queries > len(slide_inside.acquisitions):
-                            query_selection = range(0, len(slide_inside.acquisitions))
+                        if predefined_indices is not None:
+                            query_selection = predefined_indices
                         else:
-                            query_selection = random.sample(range(0, len(slide_inside.acquisitions)), num_queries)
-                            print(query_selection)
+                            if num_queries > len(slide_inside.acquisitions):
+                                query_selection = range(0, len(slide_inside.acquisitions))
+                            else:
+                                query_selection = random.sample(range(0, len(slide_inside.acquisitions)), num_queries)
                         for query in query_selection:
                             acq = slide_inside.acquisitions[query]
                             if f"{basename}+++slide{slide_index}+++{acq.description}" not in rois_exclude:

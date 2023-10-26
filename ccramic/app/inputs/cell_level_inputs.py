@@ -52,6 +52,7 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
             fig['layout']['uirevision'] = True
         else:
             fig['layout'] = cur_umap_fig['layout']
+            fig['layout']['uirevision'] = True
         return fig
     else:
         raise PreventUpdate
@@ -61,6 +62,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
                                                 category_column=None, category_subset=None):
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame(quantification_dict)
+        frame_return = frame
         # IMP: perform category subsetting before removing columns
         if None not in (category_column, category_subset):
             frame = frame[frame[category_column].isin(category_subset)]
@@ -75,6 +77,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
             except UndefinedVariableError:
                 subset_zoom = None
             fig = go.Figure(get_cell_channel_expression_plot(frame, subset_dict=subset_zoom, mode=mode_value))
+            frame_return = frame
         elif triggered_id in ["umap-plot", "umap-projection-options"] and \
                 all([key in umap_layout for key in zoom_keys]):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
@@ -83,11 +86,13 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
                                                                            umap_layout)
             fig = go.Figure(get_cell_channel_expression_plot(subset_frame,
                                                              subset_dict=None, mode=mode_value))
+            frame_return = subset_frame
         else:
             subset_zoom = None
             fig = go.Figure(get_cell_channel_expression_plot(frame,
                                                              subset_dict=subset_zoom, mode=mode_value))
+            frame_return = frame
         fig['layout']['uirevision'] = True
-        return fig
+        return fig, frame_return
     else:
         raise PreventUpdate

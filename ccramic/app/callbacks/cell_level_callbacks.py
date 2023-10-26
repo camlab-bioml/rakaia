@@ -1,4 +1,5 @@
 import dash
+import pandas as pd
 
 from .cell_level_wrappers import *
 from ..io.annotation_outputs import *
@@ -40,6 +41,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('quantification-bar-full', 'figure'),
                        Output('umap-legend-categories', 'data'),
+                       Output('quantification-query-indices', 'data'),
+                       Output('cur-umap-subset-category-counts', 'data'),
                        Input('quantification-dict', 'data'),
                        State('annotation_canvas', 'relayoutData'),
                        Input('quantification-bar-mode', 'value'),
@@ -60,16 +63,33 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         # Example 2: user selects all but the the second item to view
         # [{'visible': ['legendonly']}, [2]]
         # print(restyle_data)
-        if quantification_dict is not None:
+
+        # TODO: fix when umap layout resets after tab switch
+        # do not update if the tab is switched and the umap layout is reset to the default
+        # tab_switch = ctx.triggered_id == "umap-plot" and umap_layout in [{"autosize": True}]
+        if None not in (quantification_dict, umap_layout):
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id not in ["umap-projection-options"]:
                 subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
                                                               prev_categories)
             else:
                 subtypes, keep = None, None
-            return generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
+            fig, frame = generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols,
-                                                                        umap_col_selection, subtypes), keep
+                                                                        umap_col_selection, subtypes)
+            if frame is not None:
+                # get the merged frames to pull the sample names in the subset
+                full_frame = pd.DataFrame(quantification_dict)
+                merged = frame.merge(full_frame, how = "inner", on=frame.columns.tolist())
+                roi_counts = merged['sample'].value_counts().to_dict()
+                indices_query = [int(i.split("_")[1]) -1 for i in list(roi_counts.keys())]
+                # also return the current count of the uamp category selected to update the distribution table
+                freq_counts_cat = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
+                    not None else None
+            else:
+                indices_query = None
+                freq_counts_cat = None
+            return fig, keep, indices_query, freq_counts_cat
         else:
             raise PreventUpdate
 
@@ -320,12 +340,18 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Input("umap-projection-options", "value"),
                        Input('quantification-dict', 'data'),
+                       Input('cur-umap-subset-category-counts', 'data'),
                        prevent_initial_call=True)
-    def populate_quantification_distribution_table(umap_variable, quantification_dict):
+    def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
         # TODO: populate the frequency distribution table for a variable in the quantification results
         if None not in (quantification_dict, umap_variable):
-            frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
-                columns={"index": "Value", 0: "Count"})
+            if subset_cur_cat is None:
+                frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
+                    columns={"index": "Value", 0: "Count"})
+            else:
+                frame = pd.DataFrame(zip(list(subset_cur_cat.keys()),
+                                         list(subset_cur_cat.values())), columns=["Value", "Counts"])
+            # frame.reset_index().rename(columns={"index": "Value", 0: "Count"})
             columns = [{'id': p, 'name': p, 'editable': False} for p in list(frame.columns)]
             return frame.to_dict(orient="records"), columns, dash.no_update
         else:

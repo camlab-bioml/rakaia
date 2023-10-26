@@ -28,8 +28,11 @@ def set_columns_to_drop(measurements_csv=None):
         except (ValueError, IndexError):
             return defaults
 
-def set_mandatory_columns():
-    return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
+def set_mandatory_columns(only_sample=True):
+    if only_sample:
+        return ['sample']
+    else:
+        return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
 def get_pixel(mask, i, j):
     if len(mask.shape) > 2:
@@ -96,14 +99,16 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
                                                           'yaxis.range[0]', 'yaxis.range[1]']])
         if len(measurements) != len(umap_frame):
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
-            umap_frame.reset_index()
-            measurements.reset_index()
+        #     umap_frame.reset_index()
+        #     measurements.reset_index()
         query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                          f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                          f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
-                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')\
-            .reset_index()
-        return measurements.loc[umap_frame.index[query.index.tolist()]]
+                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
+        # if len(measurements) != len(umap_frame):
+        #     query.reset_index()
+        subset = measurements.loc[query.index.tolist()]
+        return subset
     except AssertionError:
         return None
 
