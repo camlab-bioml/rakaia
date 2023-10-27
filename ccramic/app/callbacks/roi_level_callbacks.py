@@ -39,7 +39,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
         # do not execute query if triggered from the quantification tab and no sample indices exist
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
         if None not in (currently_selected, data_selection, blend_colour_dict,
-                                                         session_config) and not quant_empty:
+                        session_config) and not quant_empty and len(currently_selected) > 0:
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
                 rois_decided = query_from_quantification
                 rois_exclude = []

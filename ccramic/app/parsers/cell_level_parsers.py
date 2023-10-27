@@ -248,3 +248,27 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
         gc.collect()
     else:
         return None, None
+
+
+def parse_roi_query_indices_from_quantification_subset(quantification_dict, subset_frame, umap_col_selection=None):
+    """
+    Parse the ROIs included in a view of a subset quantification sheet
+    """
+    # get the merged frames to pull the sample names in the subset
+    full_frame = pd.DataFrame(quantification_dict)
+    merged = subset_frame.merge(full_frame, how="inner", on=subset_frame.columns.tolist())
+    # get the roi names from either the description or the sample name
+    if 'description' in list(merged.columns):
+        indices_query = {'names': list(merged['description'].value_counts().to_dict().keys())}
+    else:
+        try:
+            roi_counts = merged['sample'].value_counts().to_dict()
+            indices_query = {'indices': [int(i.split("_")[-1]) - 1 for i in list(roi_counts.keys())]}
+        except ValueError:
+            # may occur if the split doesn't give integers i.e. if there are other underscores in the name
+            indices_query = None
+
+    freq_counts = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
+                    not None else None
+
+    return indices_query, freq_counts

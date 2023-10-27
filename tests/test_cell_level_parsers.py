@@ -110,3 +110,20 @@ def test_parse_restyledata_from_legend_change():
     restyle_3 = [{'visible': ['legendonly']}, [3]]
     types_return_3 = parse_cell_subtypes_from_restyledata(restyle_3, test_frame, "category", [0, 1, 2, 3])
     assert types_return_3 == (['one', 'two', 'three'], [0, 1, 2])
+
+def test_valid_parse_for_indices_for_query(get_current_dir):
+    """
+    test that the parser for the measurements CSV is able to generate a list of valid indices
+    """
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    expression = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'], axis=1)
+    indices, counts = parse_roi_query_indices_from_quantification_subset(measurements_csv, expression, "sample")
+    assert 'indices' in indices
+    assert indices['indices'] == [0, 1]
+    assert len(counts) == 2
+    measurements_csv.rename(columns={"sample": "description"}, inplace=True)
+    assert 'description' in measurements_csv.columns
+    indices, counts = parse_roi_query_indices_from_quantification_subset(measurements_csv, expression, None)
+    assert 'names' in indices
+    assert indices['names'] == ['test_1', 'test_2']
+    assert counts is None

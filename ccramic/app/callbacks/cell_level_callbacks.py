@@ -39,6 +39,20 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         return parse_and_validate_measurements_csv(session_dict, error_config=error_config,
                                                    image_to_validate=image_for_validation)
 
+    @du.callback(Output('umap-projection', 'data'),
+                 id='upload-umap-coordinates')
+    # @cache.memoize())
+    def get_quantification_upload_from_drag_and_drop(status: du.UploadStatus):
+        filenames = [str(x) for x in status.uploaded_files]
+        if filenames and float(status.progress) == 1.0:
+            frame = pd.read_csv(filenames[0])
+            print(frame)
+            if len(frame.columns) == 2:
+                frame.columns = ['UMAP1', 'UMAP2']
+                return frame.to_dict(orient="records")
+            else:
+                raise PreventUpdate
+
     @dash_app.callback(Output('quantification-bar-full', 'figure'),
                        Output('umap-legend-categories', 'data'),
                        Output('quantification-query-indices', 'data'),
@@ -52,10 +66,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('umap-plot', 'restyleData'),
                        Input('umap-projection-options', 'value'),
                        State('umap-legend-categories', 'data'),
+                       State('dynamic-update-barplot', 'value'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection,
-                                               prev_categories):
+                                               prev_categories, dynamic_update):
         #TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
@@ -67,25 +82,31 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         # TODO: fix when umap layout resets after tab switch
         # do not update if the tab is switched and the umap layout is reset to the default
         # tab_switch = ctx.triggered_id == "umap-plot" and umap_layout in [{"autosize": True}]
-        if None not in (quantification_dict, umap_layout):
+        if quantification_dict is not None:
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id not in ["umap-projection-options"]:
-                subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
+                try:
+                    subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
                                                               prev_categories)
+                except TypeError:
+                    subtypes, keep = None, None
             else:
                 subtypes, keep = None, None
-            fig, frame = generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
+
+            try:
+                # do not update the expression barplot if the feature is turned off
+                if not (ctx.triggered_id == "umap-layout" and len(dynamic_update) <= 0):
+                    fig, frame = generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols,
                                                                         umap_col_selection, subtypes)
+                else:
+                    fig, frame = dash.no_update, dash.no_update
+            except (BadRequest, IndexError):
+                raise PreventUpdate
             if frame is not None:
-                # get the merged frames to pull the sample names in the subset
-                full_frame = pd.DataFrame(quantification_dict)
-                merged = frame.merge(full_frame, how = "inner", on=frame.columns.tolist())
-                roi_counts = merged['sample'].value_counts().to_dict()
-                indices_query = [int(i.split("_")[1]) -1 for i in list(roi_counts.keys())]
-                # also return the current count of the uamp category selected to update the distribution table
-                freq_counts_cat = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
-                    not None else None
+                indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
+                    quantification_dict, frame, umap_col_selection)
+                    # also return the current count of the uamp category selected to update the distribution table
             else:
                 indices_query = None
                 freq_counts_cat = None
@@ -94,26 +115,33 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
 
-    @dash_app.callback(Output('umap-projection', 'data'),
+    @dash_app.callback(Output('umap-projection', 'data', allow_duplicate=True),
                        Output('umap-projection-options', 'options'),
                        Input('quantification-dict', 'data'),
                        State('umap-projection', 'data'),
+                       Input('execute-umap-button', 'n_clicks'),
                        prevent_initial_call=True)
-    def generate_umap_from_measurements_csv(quantification_dict, current_umap):
+    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks):
         """
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
         """
-        try:
-            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
-                                                                  current_umap=current_umap)
-        except ValueError:
+        if ctx.triggered_id == "quantification-dict":
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
+        else:
+            try:
+                if n_clicks > 0:
+                    return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
+                                                                  current_umap=current_umap)
+                else:
+                    raise PreventUpdate
+            except ValueError:
+                return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
 
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
-                       Input('quantification-dict', 'data'),
+                       State('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
@@ -374,3 +402,27 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection,
                                           mask_dict, apply_mask, mask_selection, image_dict,
                                                authentic_id, tmpdirname)
+
+    @dash_app.callback(
+        Output("download-umap-projection", "data"),
+        Input("btn-download-umap-projection", "n_clicks"),
+        State('umap-projection', 'data'),
+        prevent_initial_call=True)
+    def download_umap_projection_csv(execute_download, umap_projection):
+        """
+        Download the current UMAP coordinates (UMAP1 and 2) in CSV format
+        """
+        if execute_download > 0 and umap_projection is not None:
+            return dcc.send_data_frame(pd.DataFrame(umap_projection, columns=['UMAP1', 'UMAP2']).to_csv,
+                                "umap_coordinates.csv", index=False)
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("umap-config-modal", "is_open"),
+        Input('umap-config-button', 'n_clicks'),
+        [State("umap-config-modal", "is_open")])
+    def toggle_show_umap_config_modal(n1, is_open):
+        if n1:
+            return not is_open
+        return is_open

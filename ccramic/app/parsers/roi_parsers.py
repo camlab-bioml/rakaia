@@ -15,6 +15,10 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
     Generate a gallery of images for multiple ROIs using the current parameters of the current ROI
     Important: ignores the current ROI
     """
+    # if the indices are predefined, do not cap
+    # num_queries = num_queries if predefined_indices is None else len(predefined_indices)
+    if predefined_indices is not None:
+        query_selection = predefined_indices
     if rois_exclude is None:
         rois_exclude = []
     try:
@@ -25,7 +29,8 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
         #     if str(Path(files_uploaded).stem) == basename:
         #         file_path = files_uploaded
         files = [file for file in session_config['uploads'] if str(file).endswith('.mcd')]
-        random.shuffle(files)
+        if predefined_indices is None:
+            random.shuffle(files)
         if files is not None and len(files) > 0:
             queries_obtained = 0
             for file_path in files:
@@ -36,13 +41,20 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
                     # queries = random.sample(range(0, len(dataset_options)), query_length)
                     slide_index = 0
                     for slide_inside in mcd_file.slides:
-                        if predefined_indices is not None:
-                            query_selection = predefined_indices
-                        else:
+                        if predefined_indices is None:
                             if num_queries > len(slide_inside.acquisitions):
                                 query_selection = range(0, len(slide_inside.acquisitions))
                             else:
                                 query_selection = random.sample(range(0, len(slide_inside.acquisitions)), num_queries)
+                        if isinstance(query_selection, dict):
+                            if 'indices' in query_selection:
+                                num_queries = len(query_selection['indices'])
+                                query_selection = [i for i in query_selection['indices'] if \
+                                                   len(slide_inside.acquisitions) > i >= 0]
+                            elif 'names' in query_selection:
+                                acq_names = [acq.description for acq in slide_inside.acquisitions]
+                                num_queries = len(query_selection['names'])
+                                query_selection = [acq_names.index(name) for name in query_selection['names']]
                         for query in query_selection:
                             acq = slide_inside.acquisitions[query]
                             if f"{basename}+++slide{slide_index}+++{acq.description}" not in rois_exclude:

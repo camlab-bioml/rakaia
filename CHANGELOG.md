@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2023-10-25
+## [0.9.0] - 2023-10-27
 
 ### Changed
 
@@ -26,11 +26,15 @@ the canvas
 can now switch on scroll zoom on the canvas (default is not enabled)
 - Ability to overlay grid on canvas with white lines to assist in
 cell counting
+- Link between subsetting cells on the UMAP and sending a query to
+the query tab to display relevant ROIs by descending cell count
 
 ### Fixed
 
 - Edits to the pixel histogram and range slider for images
 with pixel ranges between 0 and 1
+- Added additional logic to parse for ROI names in quantification
+sheet #69
 
 ## [0.8.0] - 2023-10-12
 
