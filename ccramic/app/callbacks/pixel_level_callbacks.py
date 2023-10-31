@@ -773,13 +773,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     #         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
+                       Output('mask-options', 'value', allow_duplicate=True),
                        Input('data-collection', 'value'),
                        # State('image_layers', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def clear_canvas_on_new_dataset(new_selection):
+    def clear_canvas_and_mask_on_new_dataset(new_selection):
+        """
+        Reset the canvas to blank on an ROI change and remove the current mask selection
+        """
         if new_selection is not None:
-            return go.Figure()
+            return go.Figure(), None
         else:
             raise PreventUpdate
 

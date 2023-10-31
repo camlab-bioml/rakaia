@@ -20,6 +20,7 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                                         f'y_max <= {subset_dict["y_max"]}')
         except (KeyError, UndefinedVariableError):
             pass
+
     if drop_cols:
         dropped = drop_columns_from_measurements_csv(measurement_frame)
     else:
@@ -39,7 +40,7 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
         return None
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
-    if embeddings is not None:
+    if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
         df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
         if channel_overlay is not None:
@@ -79,7 +80,8 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
                 subset_zoom = None
             fig = go.Figure(get_cell_channel_expression_plot(frame, subset_dict=subset_zoom, mode=mode_value))
             frame_return = frame
-        elif triggered_id in ["umap-plot", "umap-projection-options"] and umap_layout is not None and \
+        elif triggered_id in ["umap-plot", "umap-projection-options", "quantification-bar-mode"] and \
+                umap_layout is not None and \
                 all([key in umap_layout for key in zoom_keys]):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
                                                                            pd.DataFrame(embeddings,

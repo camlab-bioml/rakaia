@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2023-10-27
+## [0.9.0] - 2023-10-31
 
 ### Changed
 
@@ -15,6 +15,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (radius of 4 pixels) that is editable
 - Channel image gallery is now clickable through pattern matching:
 channels can be added to the canvas through a gallery click
+- Reset the mask option to None on an ROI switch to avoid the
+assumption that the current mask should be applied to a different image
+- Cache the quantification measurements CSV and UMAP coordinates
+as Serverside objects to speed up interactive UMAP for large datasets
 
 ### Added
 
@@ -35,6 +39,8 @@ the query tab to display relevant ROIs by descending cell count
 with pixel ranges between 0 and 1
 - Added additional logic to parse for ROI names in quantification
 sheet #69
+- Edited callback triggers for the expression bar plot to update
+properly on a mode change when a subset is being used
 
 ## [0.8.0] - 2023-10-12
 

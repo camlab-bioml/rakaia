@@ -36,8 +36,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             image_for_validation = upload_dict[data_selection][first_image]
         else:
             image_for_validation = None
-        return parse_and_validate_measurements_csv(session_dict, error_config=error_config,
+        quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config,
                                                    image_to_validate=image_for_validation)
+        return Serverside(quant_dict), cols, alert
 
     @du.callback(Output('umap-projection', 'data'),
                  id='upload-umap-coordinates')
@@ -46,10 +47,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         filenames = [str(x) for x in status.uploaded_files]
         if filenames and float(status.progress) == 1.0:
             frame = pd.read_csv(filenames[0])
-            print(frame)
             if len(frame.columns) == 2:
                 frame.columns = ['UMAP1', 'UMAP2']
-                return frame.to_dict(orient="records")
+                return Serverside(frame.to_dict(orient="records"))
             else:
                 raise PreventUpdate
 
