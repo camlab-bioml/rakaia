@@ -245,24 +245,48 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     clickdata = {'points': [{'x': -100, 'y': -100}]}
     annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new")
+                                                                  cell_type="new", sample="Dilution_series_1_1")
     assert 'new' not in annotations['ccramic_cell_annotation'].tolist()
 
     clickdata = {'points': [{'x': 53, 'y': 33}]}
     annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new")
+                                                                  cell_type="new", sample="Dilution_series_1_1")
 
     assert 'new' in annotations['ccramic_cell_annotation'].tolist()
     assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 1
 
     clickdata = {'points': [{'x': 980, 'y': 19}]}
     annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new")
+                                                                  cell_type="new", sample="Dilution_series_1_1")
 
     assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 2
 
     subset = subset_measurements_by_point(measurements, 53, 33)
     assert len(subset) == 1
+
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv")).drop(['x_min', 'y_min'],
+                                                                                                 axis=1)
+
+    clickdata = {'points': [{'x': 53, 'y': 33}]}
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new", sample="Dilution_series_1_1")
+
+    assert 'new' not in annotations['ccramic_cell_annotation'].tolist()
+
+    mask = np.zeros((1000, 1000))
+    mask[33, 53] = 45
+
+    mask_dict = {"roi_1": {"raw": mask}}
+
+    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                  cell_type="new", sample="Dilution_series_1_1",
+                                                                  mask_dict=mask_dict, mask_selection="roi_1",
+                                                                  mask_toggle=True)
+
+    assert 'new' in annotations['ccramic_cell_annotation'].tolist()
+
+
+
 
 
 def test_generate_grid_overlay():

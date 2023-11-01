@@ -77,14 +77,15 @@ def populate_upload_dict(uploaded_files):
                                 assert all(len(value) == len(tif.pages) for value in \
                                            list(upload_dict['metadata'].values()))
 
-                            file__name, file_extension = os.path.splitext(tiff_path)
+                            file_name, file_extension = os.path.splitext(tiff_path)
                             # set different image labels based on the basename of the file (ome.tiff vs .tiff)
                             # if "ome" in upload:
                             #     basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
                             # else:
                             #     basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
                             multi_channel_index = 1
-                            roi = f"experiment{str(experiment_index)}+++slide{str(slide_index)}+++acq{str(acq_index)}"
+                            basename = str(Path(upload).stem)
+                            roi = f"{basename}+++slide{str(slide_index)}+++acq{str(acq_index)}"
                             # treat each tiff as a its own ROI and increment the acq index for each one
                             upload_dict[roi] = {}
                             for page in tif.pages:

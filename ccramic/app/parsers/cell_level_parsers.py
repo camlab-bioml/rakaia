@@ -272,3 +272,40 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
                     not None else None
 
     return indices_query, freq_counts
+
+
+def match_mask_name_with_roi(data_selection, mask_options, roi_options):
+    """"
+    Attempt to match a mask name to the currently selected ROI.
+    Heuristics order:
+    1. If the data selection experiment name is in the list of mask options, return it
+    2. If the data selection ROI name is in the list of mask options, return it
+    3. If any of the mask names have indices in them, return the ROI name at that index
+    4. If None of those exist, return None
+    """
+    mask_return = None
+    if mask_options is not None and data_selection in mask_options:
+        mask_return = data_selection
+    else:
+        if "+++" in data_selection:
+            exp, slide, acq = split_string_at_pattern(data_selection)
+            if mask_options is not None and exp in mask_options:
+                mask_return = exp
+            elif mask_options is not None and acq in mask_options:
+                mask_return = acq
+
+        # if the return value is still None, look for indices
+        if mask_return is None and mask_options is not None:
+            # try to match the index of the data selection to an index in the mask options
+            data_index = roi_options.index(data_selection)
+            for mask in mask_options:
+                try:
+                    # mask naming fro the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
+                    # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
+                    split_1 = mask.split("_ac_IA_mask")[0]
+                    index = int(split_1.split("_")[-1].replace("a", "")) - 1
+                    if index == data_index:
+                        mask_return = mask
+                except (TypeError, IndexError):
+                    pass
+    return mask_return

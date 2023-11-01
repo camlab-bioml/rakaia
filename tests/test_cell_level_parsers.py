@@ -127,3 +127,25 @@ def test_valid_parse_for_indices_for_query(get_current_dir):
     assert 'names' in indices
     assert indices['names'] == ['test_1', 'test_2']
     assert counts is None
+
+def test_mask_match_to_roi_name():
+    data_selection = "MCD1+++slide0+++roi_1"
+    mask_options = ["roi_1", "roi_2"]
+    assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1"
+
+    data_selection_2 = "roi_1+++slide0+++roi_1"
+    assert match_mask_name_with_roi(data_selection_2, mask_options, None) == "roi_1"
+
+    dataset_options = ["round_1", "round_2", "round_3", "round_4"]
+    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
+
+    assert match_mask_name_with_roi("round_3", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+
+    dataset_options = ["round_1", "round_2", "MCD1+++slide0+++roi_1", "round_4"]
+    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
+
+    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+
+    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", None, dataset_options) is None
+
+    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options) is None

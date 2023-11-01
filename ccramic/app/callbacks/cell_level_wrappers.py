@@ -57,7 +57,9 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                         quantification_frame = populate_cell_annotation_column_from_clickpoint(
                             quantification_frame, values_dict=ast.literal_eval(annotation),
                             cell_type=annotations[data_selection][annotation]['cell_type'],
-                            annotation_column=annotations[data_selection][annotation]['annotation_column'])
+                            annotation_column=annotations[data_selection][annotation]['annotation_column'],
+                            mask_toggle=mask_toggle, mask_dict=mask_config, mask_selection=mask_selection,
+                            sample=sample_name)
                     annotations[data_selection][annotation]['imported'] = True
             return quantification_frame.to_dict(orient="records"), Serverside(annotations)
         else:

@@ -14,6 +14,7 @@ from ..parsers.pixel_level_parsers import *
 from ..utils.cell_level_utils import *
 from ..io.display import generate_area_statistics_dataframe
 from ..io.gallery_outputs import generate_channel_tile_gallery_children
+from ..parsers.cell_level_parsers import *
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -259,6 +260,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         # set the default canvas to return without a load screen
         #TODO: establish whether a change to the metadata names can be separated from the update of the ROI loading
         if image_dict and data_selection and names:
+            exp, slide, roi_name = split_string_at_pattern(data_selection)
+            roi_name = str(roi_name) + f" ({str(exp)})" if "acq" in str(roi_name) else str(roi_name)
             if ' sort (A-z)' in sort_channels:
                 channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
             else:
@@ -288,10 +291,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         channels_selected = []
                     return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return, \
-                        f"Current ROI: {split_string_at_pattern(data_selection)[2]}"
+                        f"Current ROI: {roi_name}"
                 except AssertionError:
                     return [], [], Serverside(image_dict), canvas_return, \
-                        f"Current ROI: {split_string_at_pattern(data_selection)[2]}"
+                        f"Current ROI: {roi_name}"
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -775,15 +778,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
                        Output('mask-options', 'value', allow_duplicate=True),
                        Input('data-collection', 'value'),
+                       State('data-collection', 'options'),
+                       State('mask-options', 'options'),
                        # State('image_layers', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def clear_canvas_and_mask_on_new_dataset(new_selection):
+    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options):
         """
-        Reset the canvas to blank on an ROI change and remove the current mask selection
+        Reset the canvas to blank on an ROI change
+        Will attempt to set the new mask based on the ROI name and the list of mask options
         """
         if new_selection is not None:
-            return go.Figure(), None
+            return go.Figure(), match_mask_name_with_roi(new_selection, mask_options, dataset_options)
         else:
             raise PreventUpdate
 

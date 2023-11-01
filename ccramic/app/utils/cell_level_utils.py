@@ -115,16 +115,19 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
 def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle):
     if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
-        first_image = list(upload_dict[data_selection].keys())[0]
-        first_image = upload_dict[data_selection][first_image]
-        if first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
-                first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]:
-            if error_config is None:
-                error_config = {"error": None}
-            error_config["error"] = "Warning: the current mask does not have " \
+        try:
+            first_image = list(upload_dict[data_selection].keys())[0]
+            first_image = upload_dict[data_selection][first_image]
+            if first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
+                    first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]:
+                if error_config is None:
+                    error_config = {"error": None}
+                error_config["error"] = "Warning: the current mask does not have " \
                                     "the same dimensions as the current ROI."
-            return error_config
-        else:
+                return error_config
+            else:
+                raise PreventUpdate
+        except KeyError:
             raise PreventUpdate
     else:
         raise PreventUpdate
@@ -203,8 +206,9 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
 
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
                                                     annotation_column="ccramic_cell_annotation",
-                                                    values_dict=None,
-                                                    cell_type=None):
+                                                    cell_identifier="cell_id",
+                                                    values_dict=None, cell_type=None, mask_toggle=True,
+                                                    mask_dict=None, mask_selection=None, sample=None):
     """
     Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
@@ -218,14 +222,25 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
         x = values_dict['points'][0]['x']
         y = values_dict['points'][0]['y']
 
-        measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
+        if mask_toggle and None not in (mask_dict, mask_selection) and len(mask_dict) > 0:
+
+            # get the cell ID at that position to match
+            mask_used = mask_dict[mask_selection]['raw']
+            cell_id = mask_used[y, x].astype(int)
+
+            measurements[annotation_column] = np.where((measurements[cell_identifier]== cell_id) &
+                                                   (measurements['sample'] == sample), cell_type,
+                                                   measurements[annotation_column])
+        else:
+            measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
                                                         float(x)) &
                                                (measurements[str(f"{coord_dict['x_max']}")] >=
                                                 float(x)) &
                                                (measurements[str(f"{coord_dict['y_min']}")] <=
                                                 float(y)) &
                                                (measurements[str(f"{coord_dict['y_max']}")] >=
-                                                float(y)),
+                                                float(y)) &
+                                                (measurements['sample'] == sample),
                                                         cell_type,
                                                     measurements[annotation_column])
         return measurements
