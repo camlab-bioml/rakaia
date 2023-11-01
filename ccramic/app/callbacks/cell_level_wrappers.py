@@ -12,7 +12,8 @@ from dash import dcc
 import ast
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection, sample_name=None):
+                                                      mask_config, mask_toggle, mask_selection, sample_name=None,
+                                                        id_column='sample'):
     # loop through all of the existing annotations
     # for annotations that have not yet been imported, import and set the import status to True
     if None not in (annotations, quantification_frame) and len(quantification_frame) > 0 and len(annotations) > 0:
@@ -38,7 +39,9 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                             quantification_frame = populate_cell_annotation_column_from_cell_id_list(
                                 quantification_frame, cell_list=list(cells_included.keys()),
                                 cell_type=annotations[data_selection][annotation]['cell_type'],
-                            sample_name=sample_name, annotation_column=annotations[data_selection][annotation]['annotation_column'])
+                            sample_name=sample_name,
+                                annotation_column=annotations[data_selection][annotation]['annotation_column'],
+                                id_column=id_column)
                         # option 2: convex envelope bounding box
                         else:
                             x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
@@ -59,7 +62,7 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                             cell_type=annotations[data_selection][annotation]['cell_type'],
                             annotation_column=annotations[data_selection][annotation]['annotation_column'],
                             mask_toggle=mask_toggle, mask_dict=mask_config, mask_selection=mask_selection,
-                            sample=sample_name)
+                            sample=sample_name, id_column=id_column)
                     annotations[data_selection][annotation]['imported'] = True
             return quantification_frame.to_dict(orient="records"), Serverside(annotations)
         else:

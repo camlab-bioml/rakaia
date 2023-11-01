@@ -1,6 +1,7 @@
 import collections
 
 import dash
+import pandas as pd
 from dash_extensions.enrich import Serverside
 from sklearn.preprocessing import StandardScaler
 import sys
@@ -190,7 +191,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
                                                     annotation_column="ccramic_cell_annotation",
                                                     cell_identifier="cell_id",
-                                                    cell_type=None, sample_name=None):
+                                                    cell_type=None, sample_name=None, id_column='sample'):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
@@ -198,17 +199,20 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
     if annotation_column not in measurements.columns:
         measurements[annotation_column] = "None"
 
-    measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
-                                               (measurements['sample'] == sample_name), cell_type,
+    try:
+        measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
+                                               (measurements[id_column] == sample_name), cell_type,
                                                measurements[annotation_column])
+    except KeyError as e:
+        pass
     return measurements
 
 
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
                                                     annotation_column="ccramic_cell_annotation",
-                                                    cell_identifier="cell_id",
-                                                    values_dict=None, cell_type=None, mask_toggle=True,
-                                                    mask_dict=None, mask_selection=None, sample=None):
+                                                    cell_identifier="cell_id", values_dict=None, cell_type=None,
+                                                    mask_toggle=True, mask_dict=None, mask_selection=None,
+                                                    sample=None, id_column='sample'):
     """
     Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
@@ -229,7 +233,7 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
             cell_id = mask_used[y, x].astype(int)
 
             measurements[annotation_column] = np.where((measurements[cell_identifier]== cell_id) &
-                                                   (measurements['sample'] == sample), cell_type,
+                                                   (measurements[id_column] == sample), cell_type,
                                                    measurements[annotation_column])
         else:
             measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
@@ -408,3 +412,24 @@ def generate_greyscale_grid_array(array_shape, dim=100):
             empty[:, col] = 255
 
     return np.array(Image.fromarray(empty).convert('RGB')).astype(np.uint8)
+
+
+def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options):
+    """
+    Parse the quantification sheet and current ROI name to identify the column name to use to match
+    the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
+    prioritized as the name of the ROI, and sample is the fiel name with a 1-indxed counter such as {file_name}_1
+    """
+    quantification_frame = pd.DataFrame(quantification_frame)
+    exp, slide, acq = split_string_at_pattern(data_selection)
+    if 'description' in quantification_frame.columns and acq in quantification_frame['description'].tolist():
+        return acq, 'description'
+    elif 'sample' in quantification_frame.columns:
+        try:
+            index = dataset_options.index(data_selection) + 1
+            sample_name = f"{exp}_{index}"
+            return sample_name, 'sample'
+        except IndexError:
+            return None, None
+    else:
+        return None, None

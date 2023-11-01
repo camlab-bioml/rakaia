@@ -300,3 +300,30 @@ def test_generate_grid_overlay():
     normal_grid = generate_greyscale_grid_array((75, 75))
     assert np.min(normal_grid) == 0
     assert np.max(normal_grid) == 0
+
+def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
+    """
+    Test that the parser for identifying which column and value in the quantification sheet should be used
+    to match the current ROI to the entries in the quantification sheet
+    """
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+    assert 'sample' in measurements.columns
+
+    dataset_options = ["roi_1", "mcd1+++slide0+++Dilution_series_1_1", "roi_3"]
+    data_selection = "mcd1+++slide0+++Dilution_series_1_1"
+    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
+    assert name == "mcd1_2"
+    assert column == "sample"
+
+    measurements.rename(columns={"sample": "description"}, inplace=True)
+    dataset_options = ["roi_1", "mcd1+++slide0+++Dilution_series_1_1", "roi_3"]
+    data_selection = "mcd1+++slide0+++Dilution_series_1_1"
+    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
+    assert name == "Dilution_series_1_1"
+    assert column == "description"
+
+    dataset_options = ["roi_1", "mcd1+++slide0+++roi_1", "roi_3"]
+    data_selection = "mcd1+++slide0+++roi_1"
+    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
+    assert name is None
+    assert column is None

@@ -242,14 +242,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         Add a region annotation to the cells of a quantification data frame
         """
-        # loop through all of the existing annotations
-        # for annotations that have not yet been imported, import and set the import status to True
-        exp, slide, acq = split_string_at_pattern(data_selection)
-        # in the quantification sheet, the sample name is the experiment name nad the index of where it is
-        index = data_dropdown_options.index(data_selection) + 1
-        sample_name = f"{exp}_{index}"
+        sample_name, id_column = identify_column_matching_roi_to_quantification(
+            data_selection, quantification_frame, data_dropdown_options)
         return callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection, sample_name=sample_name)
+                                                      mask_config, mask_toggle, mask_selection, sample_name=sample_name,
+                                                        id_column=id_column)
 
 
     @dash_app.callback(
