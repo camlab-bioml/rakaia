@@ -306,6 +306,6 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                     index = int(split_1.split("_")[-1].replace("a", "")) - 1
                     if index == data_index:
                         mask_return = mask
-                except (TypeError, IndexError):
+                except (TypeError, IndexError, ValueError):
                     pass
     return mask_return

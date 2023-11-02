@@ -185,9 +185,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(
         Output("mask-name-modal", "is_open"),
         Input('input-mask-name', 'value'),
-        Input('set-mask-name', 'n_clicks'))
-    def toggle_mask_name_input_modal(new_mask_name, mask_clicks):
-        if new_mask_name and ctx.triggered_id == "input-mask-name":
+        Input('set-mask-name', 'n_clicks'),
+        State('mask-uploads', 'data'))
+    def toggle_mask_name_input_modal(new_mask_name, mask_clicks, mask_uploads):
+        # only show the modal if the mask uploads len is 1
+        if new_mask_name and ctx.triggered_id == "input-mask-name" and len(mask_uploads) == 1:
             return True
         elif ctx.triggered_id == "set-mask-name" and mask_clicks > 0:
             return False
