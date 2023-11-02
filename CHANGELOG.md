@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2023-11-01
+## [0.9.0] - 2023-11-02
 
 ### Changed
 
 - Click annotations now have a circle surrounding the pixel by default
-  (radius of 4 pixels) that is editable
+  (radius of 4 pixels) that is editable with adjustable radius size
 - Channel image gallery is now clickable through pattern matching:
 channels can be added to the canvas through a gallery click
 - Reset the mask option to None on an ROI switch to avoid the
@@ -21,6 +21,10 @@ assumption that the current mask should be applied to a different image
 as Serverside objects to speed up interactive UMAP for large datasets
 - Annotations linked to quantification sheets are parsed to identify
 which column should be used to match the annotation to the ROI
+- Set the default drag mode to zoom on a canvas export to HTML
+  (prevents spurious shapes from being drawn offline)
+- Cast all return values for the quantification frame as Serverside
+objects to speed up manual annotations for large data frames
 
 ### Added
 
@@ -32,7 +36,7 @@ the canvas
 can now switch on scroll zoom on the canvas (default is not enabled)
 - Ability to overlay grid on canvas with white lines to assist in
 cell counting
-- Link between subsetting cells on the UMAP and sending a query to
+- Link between sub-setting cells on the UMAP and sending a query to
 the query tab to display relevant ROIs by descending cell count
 - Pattern matching on mask and ROI names to automatically find the
 proper mask on an ROI change

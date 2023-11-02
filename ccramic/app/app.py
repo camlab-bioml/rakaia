@@ -106,7 +106,12 @@ def init_dashboard(server, authentic_id, config=None):
                 dbc.Modal(children=dbc.ModalBody([
                     html.H6("Set additional session variables"),
                     daq.ToggleSwitch(label='Enable canvas scroll zoom', id='enable-canvas-scroll-zoom',
-                                     labelPosition='bottom', color="blue", value=False)
+                                     labelPosition='bottom', color="blue", value=False),
+                    html.Br(),
+                    html.Div([html.H6("Set annotation circle radius", style={"margin-right": "20px"}),
+                    dcc.Input(id='annotation-circle-size', type='number', value=4, style={"width": "25%",
+                            "margin-top": "-3px"})],
+                    style={"display": "flex"}),
                 ]),
                         id="session-config-modal", size='l',
                         style={"margin-left": "10px", "margin-top": "15px"}),

@@ -1561,6 +1561,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     #                   xaxis=XAxis(showticklabels=False),
                     #                   yaxis=YAxis(showticklabels=False),
                     #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
+                    fig.update_layout(dragmode="zoom")
                     fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
                                default_height = canvas_style['height'])
                     fig_return = str(os.path.join(download_dir, "canvas.html"))
@@ -2542,9 +2543,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('annotation_canvas', 'figure'),
         State('enable_click_annotation', 'value'),
         State('click-annotation-add-circle', 'value'),
+        State('annotation-circle-size', 'value'),
         prevent_initial_call=True)
     def add_annotation_to_dict_with_click(clickdata, annotation_cell_type, annotations_dict,
-                                          data_selection, annot_col, cur_figure, enable_click_annotation, add_circle):
+                                          data_selection, annot_col, cur_figure, enable_click_annotation,
+                                          add_circle, circle_size):
 
         if None not in (clickdata, data_selection, cur_figure) and enable_click_annotation and 'points' in clickdata:
             try:
@@ -2568,9 +2571,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 if ' add circle on click' in add_circle:
                     # add a circle where the annotation occurred
                     fig = go.Figure(cur_figure)
+                    circle_size = int(circle_size)
                     fig.add_shape(type="circle",
                               xref="x", yref="y",
-                              x0=(x - 4), y0=(y - 4), x1=(x + 4), y1=(y + 4),
+                              x0=(x - circle_size), y0=(y - circle_size), x1=(x + circle_size), y1=(y + circle_size),
                               line_color="white", editable=True)
                 else:
                     fig = dash.no_update

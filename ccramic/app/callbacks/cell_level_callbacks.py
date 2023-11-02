@@ -244,9 +244,10 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         sample_name, id_column = identify_column_matching_roi_to_quantification(
             data_selection, quantification_frame, data_dropdown_options)
-        return callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection, sample_name=sample_name,
-                                                        id_column=id_column)
+        quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
+                                quantification_frame, data_selection, mask_config, mask_toggle,
+                                mask_selection, sample_name=sample_name, id_column=id_column)
+        return Serverside(quant_frame), annotations
 
 
     @dash_app.callback(
