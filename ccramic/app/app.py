@@ -789,6 +789,7 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="dataset-query-gallery-list"),
         dcc.Store(id="quantification-query-indices"),
         dcc.Store(id='cur-umap-subset-category-counts'),
+        dcc.Store(id='cur_roi_dimensions'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 

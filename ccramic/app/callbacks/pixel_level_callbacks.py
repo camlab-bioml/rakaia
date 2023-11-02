@@ -232,7 +232,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     # @cache.memoize())
     def reset_canvas_on_new_upload(uploaded, cur_fig):
         if None not in (uploaded, cur_fig) and 'data' in cur_fig:
-            return {}
+            fig = go.Figure()
+            fig['layout']['uirevision'] = True
+            return fig
         else:
             raise PreventUpdate
 
@@ -242,6 +244,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('uploaded_dict', 'data', allow_duplicate=True),
                        Output('canvas-div-holder', 'children'),
                        Output('current-roi-ha', 'children'),
+                       Output('cur_roi_dimensions', 'data'),
                        State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'),
@@ -249,9 +252,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('session_config', 'data'),
                        Input('sort-channels-alpha', 'value'),
                        State('enable-canvas-scroll-zoom', 'value'),
+                       State('cur_roi_dimensions', 'data'),
                        prevent_initial_call=True)
     def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config,
-                                sort_channels, enable_zoom):
+                                sort_channels, enable_zoom, cur_dimensions):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
@@ -279,7 +283,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         # get the first image in the ROI and check the dimensions
                         first_image = list(image_dict[data_selection].keys())[0]
                         first_image = image_dict[data_selection][first_image]
-                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=enable_zoom)]
+                        dim_return = (first_image.shape[0], first_image.shape[1])
+                        # if the new dimensions match, do not update the canvas child
+                        if cur_dimensions is not None and (first_image.shape[0] == cur_dimensions[0]) and \
+                                (first_image.shape[1] == cur_dimensions[1]):
+                           canvas_return = dash.no_update
+                        else:
+                            canvas_return = [
+                                wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=enable_zoom)]
+                    else:
+                        canvas_return = dash.no_update
+                        dim_return = None
                 except IndexError:
                     raise PreventUpdate
                 try:
@@ -291,13 +305,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         channels_selected = []
                     return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return, \
-                        f"Current ROI: {roi_name}"
+                        f"Current ROI: {roi_name}", dim_return
                 except AssertionError:
                     return [], [], Serverside(image_dict), canvas_return, \
                         f"Current ROI: {roi_name}"
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                        i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update, \
+                    dash.no_update
         else:
             raise PreventUpdate
 
@@ -781,15 +796,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('data-collection', 'options'),
                        State('mask-options', 'options'),
                        # State('image_layers', 'value'),
+                       State('annotation_canvas', 'figure'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options):
+    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options, cur_graph):
         """
         Reset the canvas to blank on an ROI change
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
         if new_selection is not None:
-            return go.Figure(), match_mask_name_with_roi(new_selection, mask_options, dataset_options)
+            cur_graph['data'] = []
+            return cur_graph, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
         else:
             raise PreventUpdate
 
@@ -1056,7 +1073,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
         """
-
         bad_update = cur_graph_layout in [{"autosize": True}]
 
         # update the scale bar with and without zooming
