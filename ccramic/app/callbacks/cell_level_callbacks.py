@@ -150,6 +150,29 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         except BadRequest:
             raise PreventUpdate
 
+    @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
+                       Input('create-annotation-umap', 'n_clicks'),
+                       State('quantification-dict', 'data'),
+                       State('umap-projection', 'data'),
+                       State('umap-plot', 'relayoutData'),
+                       State('quant-annotation-col-in-tab', 'value'),
+                       State('annotation-cell-types-quantification', 'value'),
+                       prevent_initial_call=True)
+    def add_annotation_column_using_umap_subsetting(add_annotation, measurements, embeddings,
+                                                    umap_layout, annot_col, annot_value):
+        """
+        Add an annotation column to the quantification frame using interactive UMAp subsetting. The annotation will
+        be applied to the current cells in the UMAP frame
+        """
+        if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation > 0:
+            return Serverside(populate_quantification_frame_column_from_umap_subsetting(
+                            pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col,
+                annot_value).to_dict(orient='records'))
+        else:
+            raise PreventUpdate
+
+
+
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
     # @cache.memoize())

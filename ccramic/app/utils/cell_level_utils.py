@@ -113,6 +113,40 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
     except AssertionError:
         return None
 
+
+def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
+                                        annotation_column="ccramic_cell_annotation", annotation_value="None"):
+    """
+    Populate a new column in the quantification frame with a column annotation with a value as subset using the
+    interactive UMAP
+    this is similar but differs from the annotation from the canvas as the coordinates represent UMAP dimensions
+    and not pixels from an image it the coordinates dict
+    """
+    try:
+        umap_frame.columns = ['UMAP1', 'UMAP2']
+        assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']])
+        if len(measurements) != len(umap_frame):
+            umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
+        #     umap_frame.reset_index()
+        #     measurements.reset_index()
+        query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
+                         f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
+                         f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
+                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
+
+        list_indices = query.index.tolist()
+
+        if annotation_column not in measurements.columns:
+            measurements[annotation_column] = "None"
+
+        measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
+                                                   annotation_value, measurements[annotation_column])
+
+    except (KeyError, AssertionError):
+        pass
+    return measurements
+
 def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle):
     if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:

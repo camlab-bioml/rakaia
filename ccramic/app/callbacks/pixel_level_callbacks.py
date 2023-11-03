@@ -490,7 +490,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
                     #  present in the layers dictionary to save time
-                    if elem not in all_layers[data_selection].keys():
+                    if data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys():
                         array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
@@ -1026,8 +1026,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 fig.update_traces(hovertemplate=new_hover)
                 # fig.update_layout(dragmode="zoom")
                 return fig, Serverside(image)
-            except (ValueError, AttributeError):
-                return dash.no_update
+            except (ValueError, AttributeError, KeyError, IndexError):
+                raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
@@ -2528,6 +2528,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(
         Output("quant-annotation-col", "options"),
+        Output('quant-annotation-col-in-tab', 'options'),
         Input('add-annotation-col', 'n_clicks'),
         State('new-annotation-col', 'value'),
         State('quant-annotation-col', 'options'),
@@ -2535,12 +2536,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def add_new_annotation_column(nclicks, new_col, current_cols):
         """
         Add a new annotation column to the dropdown menu possibilities for quantification
+        Will add the category to both the dropdown in the canvas annotation and quantification tab
         """
         if nclicks > 0 and new_col:
             try:
                 assert isinstance(current_cols, list) and len(current_cols) > 0
                 current_cols.append(new_col)
-                return current_cols
+                return current_cols, current_cols
             except AssertionError:
                 raise PreventUpdate
         else:

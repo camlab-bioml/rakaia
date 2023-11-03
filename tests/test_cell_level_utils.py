@@ -327,3 +327,23 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
     assert name is None
     assert column is None
+
+def test_annotation_column_from_umap_(get_current_dir):
+    measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    umap_frame = pd.read_csv(os.path.join(get_current_dir, "umap_coordinates_for_measurements.csv"))
+
+    layout = {'xaxis.range[0]': 7.73432730097818, 'xaxis.range[1]': 9.547373230248308,
+                        'yaxis.range[0]': 7.02148605737705, 'yaxis.range[1]': 9.10655368032787}
+
+    indices_in = [16, 23, 26, 29, 30, 57, 63, 64, 67, 82, 87, 89, 138, 153, 157, 160,
+                  172, 178, 197, 201, 205, 206, 215, 219, 225, 229, 234, 235, 237, 239]
+
+    measurements = populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, layout,
+                                                                             annotation_column="broad_class",
+                                                                             annotation_value="test_cell_type")
+
+    for index in range(len(measurements)):
+        if index in indices_in:
+            assert measurements["broad_class"].tolist()[index] == "test_cell_type"
+        else:
+            assert measurements["broad_class"].tolist()[index] == "None"
