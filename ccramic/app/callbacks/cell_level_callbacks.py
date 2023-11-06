@@ -161,7 +161,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     def add_annotation_column_using_umap_subsetting(add_annotation, measurements, embeddings,
                                                     umap_layout, annot_col, annot_value):
         """
-        Add an annotation column to the quantification frame using interactive UMAp subsetting. The annotation will
+        Add an annotation column to the quantification frame using interactive UMAP subsetting. The annotation will
         be applied to the current cells in the UMAP frame
         """
         if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation > 0:

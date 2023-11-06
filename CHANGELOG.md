@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2023-11-03
+## [0.9.0] - 2023-11-06
 
 ### Changed
 
@@ -27,6 +27,8 @@ which column should be used to match the annotation to the ROI
 objects to speed up manual annotations for large data frames
 - Current zoom is retained on ROI change if the dimensions of the new
 ROI match exactly. Otherwise, a canvas refresh is made
+- Annotation categories can now be created in both the canvas
+side tab and the quantification option tab
 
 ### Added
 
@@ -43,7 +45,9 @@ the query tab to display relevant ROIs by descending cell count
 - Pattern matching on mask and ROI names to automatically find the
 proper mask on an ROI change
 - Users can now annotate quantification sheets from interactive
-UMAP subsetting in addition to annotations on the canvas
+UMAP subsetting in addition to annotations on the canvas. Annotation
+category options are the same as the options listed for canvas-derived
+annotations
 
 ### Fixed
 

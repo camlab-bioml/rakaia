@@ -2532,17 +2532,29 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Input('add-annotation-col', 'n_clicks'),
         State('new-annotation-col', 'value'),
         State('quant-annotation-col', 'options'),
+        Input('add-annot-col-quantification', 'n_clicks'),
+        State('annotation-col-quantification', 'value'),
+        State('quant-annotation-col-in-tab', 'options'),
         prevent_initial_call=True)
-    def add_new_annotation_column(nclicks, new_col, current_cols):
+    def add_new_annotation_column(add_new_col_canvas, new_col_canvas, current_cols_canvas,
+                                  add_new_col_quant, new_col_quant, current_cols_quant):
         """
         Add a new annotation column to the dropdown menu possibilities for quantification
         Will add the category to both the dropdown in the canvas annotation and quantification tab
+        Both dropdown outputs will always have the same columns
         """
-        if nclicks > 0 and new_col:
+        # Cases where the callback will occur: if either button is clicked and the corresponding input field is not empty
+        trigger_canvas = ctx.triggered_id == "add-annotation-col" and add_new_col_canvas > 0 and new_col_canvas
+        trigger_quant = ctx.triggered_id == "add-annot-col-quantification" and add_new_col_quant > 0 and new_col_quant
+        if trigger_canvas or trigger_quant:
             try:
-                assert isinstance(current_cols, list) and len(current_cols) > 0
-                current_cols.append(new_col)
-                return current_cols, current_cols
+                assert set(current_cols_canvas) == set(current_cols_quant)
+                col_to_add = new_col_canvas if ctx.triggered_id == "add-annotation-col" else new_col_quant
+                cur_cols = current_cols_canvas.copy()
+                assert isinstance(cur_cols, list) and len(cur_cols) > 0
+                if col_to_add not in cur_cols:
+                    cur_cols.append(col_to_add)
+                return cur_cols, cur_cols
             except AssertionError:
                 raise PreventUpdate
         else:
