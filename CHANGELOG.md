@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.9.0] - 2023-11-06
+## [0.9.0] - 2023-11-07
 
 ### Changed
 
@@ -29,13 +29,17 @@ objects to speed up manual annotations for large data frames
 ROI match exactly. Otherwise, a canvas refresh is made
 - Annotation categories can now be created in both the canvas
 side tab and the quantification option tab
+- Improved heuristics for matching the quantification sheet
+columns to the current ROI name using either description or sample. #69
 
 ### Added
 
 - Dataset query: mcd files can now be queried across ROIs to get
 clickable thumbnails for different ROIs that can then be loaded into
 the canvas
-- ROI name is now visible in the session outside the dropdown menu
+- ROI name is now visible in the session outside the dropdown menu #68
+- Button to reset current channel percentile scaling to the default
+of the 99th percentile. #67
 - Additional session configuration variables in top right corner:
 can now switch on scroll zoom on the canvas (default is not enabled)
 - Ability to overlay grid on canvas with white lines to assist in

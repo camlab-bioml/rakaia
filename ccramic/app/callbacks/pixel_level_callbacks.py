@@ -202,7 +202,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 if "metadata" not in roi:
                     datasets.append(roi)
             if cur_data_selection is not None:
-                selection_return = cur_data_selection if cur_data_selection in datasets else None
+                selection_return = dash.no_update if cur_data_selection in datasets else None
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0:
                     channels_return = cur_layers_selected
             return datasets, selection_return, channels_return
@@ -271,12 +271,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             else:
                 channels_return = names
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
-                canvas_return = [render_default_annotation_canvas(fullscreen_mode=enable_zoom)]
+                # canvas_return = [render_default_annotation_canvas(fullscreen_mode=enable_zoom)]
                 # load the specific ROI requested into the dictionary
                 # imp: use the channel label for the dropdown view and the name in the background to retrieve
                 try:
                     image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
                                                      session_config=session_config)
+                    assert data_selection in image_dict.keys()
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
@@ -289,12 +290,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 (first_image.shape[1] == cur_dimensions[1]):
                            canvas_return = dash.no_update
                         else:
-                            canvas_return = [
-                                wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=enable_zoom)]
+                            canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,
+                                                                            enable_zoom=enable_zoom)]
                     else:
                         canvas_return = dash.no_update
                         dim_return = None
-                except IndexError:
+                except (IndexError, AssertionError):
                     raise PreventUpdate
                 try:
                     # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
@@ -308,7 +309,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         f"Current ROI: {roi_name}", dim_return
                 except AssertionError:
                     return [], [], Serverside(image_dict), canvas_return, \
-                        f"Current ROI: {roi_name}"
+                        f"Current ROI: {roi_name}", dim_return
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update, \
@@ -457,7 +458,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         channel_modify = cur_image_in_mod_menu
                 else:
                     param_dict["current_roi"] = data_selection
-            if all_layers is None:
+            if all_layers is None or data_selection not in all_layers.keys():
                 all_layers = {data_selection: {}}
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
@@ -494,8 +495,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
-                                                            current_blend_dict[elem]['color'])).astype(
-                        np.uint8)
+                                                            current_blend_dict[elem]['color'])).astype(np.uint8)
             return current_blend_dict, Serverside(all_layers), param_dict, channel_modify
         else:
             raise PreventUpdate
@@ -859,7 +859,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
-                param_dict["current_roi"] == data_selection and len(channel_order) > 0:
+                len(channel_order) > 0:
 
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = ''
@@ -2279,11 +2279,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Output("data-collection", "value", allow_duplicate=True),
         Input('dataset-preview-table', 'selected_rows'),
         State('data-collection', 'options'),
+        State('data-collection', 'value'),
         prevent_initial_call=True)
-    def select_roi_from_preview_table(active_selection, dataset_options):
+    def select_roi_from_preview_table(active_selection, dataset_options, cur_selection):
         if None not in (active_selection, dataset_options) and len(active_selection) > 0:
             try:
-                return dataset_options[active_selection[0]]
+                # if the selection is the current one, do nothing
+                to_return = dataset_options[active_selection[0]] if \
+                    dataset_options[active_selection[0]] != cur_selection else dash.no_update
+                return to_return
             except KeyError:
                 raise PreventUpdate
         else:
@@ -2649,9 +2653,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             cur_index = cur_options.index(cur_data_selection)
             try:
                 if ctx.triggered_id == "prev-roi" and cur_index != 0 and prev_roi > 0:
-                    return cur_options[cur_index - 1]
+                    return cur_options[cur_index - 1] if cur_options[cur_index - 1] != cur_data_selection else dash.no_update
                 elif ctx.triggered_id == "next-roi" and next_roi > 0:
-                    return cur_options[cur_index + 1]
+                    return cur_options[cur_index + 1] if cur_options[cur_index + 1] != cur_data_selection else dash.no_update
                 else:
                     raise PreventUpdate
             except IndexError:
