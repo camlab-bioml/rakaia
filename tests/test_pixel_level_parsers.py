@@ -1,6 +1,5 @@
 import pytest
-
-from ccramic.app.parsers.pixel_level_parsers import *
+from ccramic.parsers.pixel_level_parsers import *
 
 def test_basic_parser_tiff_to_dict(get_current_dir):
     uploaded = populate_upload_dict([os.path.join(get_current_dir, "for_recolour.tiff")])

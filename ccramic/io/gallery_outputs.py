@@ -4,8 +4,8 @@ from dash import html
 from PIL import Image
 import numpy as np
 import math
-from ..inputs.pixel_level_inputs import *
-from ..utils.cell_level_utils import *
+from ccramic.inputs.pixel_level_inputs import *
+from ccramic.utils.cell_level_utils import *
 
 
 def generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,

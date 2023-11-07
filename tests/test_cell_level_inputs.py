@@ -1,13 +1,12 @@
 import pytest
 
-from ccramic.app.inputs.cell_level_inputs import *
 import os
 import plotly.graph_objs as go
 import pandas as pd
 import plotly
-from ccramic.app.parsers.cell_level_parsers import *
 from dash.exceptions import PreventUpdate
-from itertools import repeat, chain
+from ccramic.inputs.cell_level_inputs import *
+
 
 def test_bar_graph_from_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

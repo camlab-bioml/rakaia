@@ -1,5 +1,5 @@
 import numpy as np
-from ccramic.app.io.gallery_outputs import generate_roi_query_gallery_children, generate_channel_tile_gallery_children
+from ccramic.io.gallery_outputs import generate_roi_query_gallery_children, generate_channel_tile_gallery_children
 import dash_bootstrap_components as dbc
 
 

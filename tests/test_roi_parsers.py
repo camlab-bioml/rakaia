@@ -1,4 +1,5 @@
-from ccramic.app.parsers.roi_parsers import *
+
+from ccramic.parsers.roi_parsers import *
 
 def test_roi_query_parser(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")

@@ -7,10 +7,10 @@ import socket
 import platform
 import os
 from subprocess import Popen, PIPE
-from ccramic.app.wsgi import argparser, main
-from ccramic.app.entrypoint import init_app
-from ccramic.app.app import init_dashboard
-from ccramic.app.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
+from ccramic.wsgi import argparser, main
+from ccramic.entrypoint import init_app
+from ccramic.app import init_dashboard
+from ccramic.app import init_pixel_level_callbacks
 import time
 import signal
 from flask import Flask
@@ -52,6 +52,8 @@ def recursive_wait_for_elem(app, elem, duration):
 
 
 @skip_on(SessionNotCreatedException, "Selenium version is not compatible")
+@pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
+                    reason="Only test the connection in a GA workflow due to passwordless sudo")
 def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
     credentials = base64.b64encode(b"ccramic_user:ccramic-1").decode('utf-8')
     assert str(type(ccramic_flask_test_app)) == "<class 'flask.app.Flask'>"

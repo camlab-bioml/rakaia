@@ -5,9 +5,9 @@ import dash_uploader as du
 import pandas as pd
 from dash_extensions.enrich import Output, Input, State
 from dash import ctx
-from ..parsers.cell_level_parsers import *
-from ..inputs.cell_level_inputs import *
-from ..utils.cell_level_utils import *
+from ccramic.parsers.cell_level_parsers import *
+from ccramic.inputs.cell_level_inputs import *
+from ccramic.utils.cell_level_utils import *
 from dash import dcc
 import ast
 

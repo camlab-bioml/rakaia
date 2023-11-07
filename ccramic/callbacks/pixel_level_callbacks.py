@@ -9,12 +9,12 @@ import pandas as pd
 from dash import ctx, MATCH, ALL
 from dash_extensions.enrich import Output, Input, State, html
 from tifffile import imwrite
-from ..inputs.pixel_level_inputs import *
-from ..parsers.pixel_level_parsers import *
-from ..utils.cell_level_utils import *
-from ..io.display import generate_area_statistics_dataframe
-from ..io.gallery_outputs import generate_channel_tile_gallery_children
-from ..parsers.cell_level_parsers import *
+from ccramic.inputs.pixel_level_inputs import *
+from ccramic.parsers.pixel_level_parsers import *
+from ccramic.utils.cell_level_utils import *
+from ccramic.io.display import generate_area_statistics_dataframe
+from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
+from ccramic.parsers.cell_level_parsers import *
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -1570,7 +1570,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 #     if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
                 #         current_canvas['layout']['shapes'].remove(shape)
 
-                # can set the canvas width and height from the canvas style to retain the in-app aspect ratio
+                # can set the canvas width and height from the canvas style to retain the in-dash aspect ratio
                 if not ' use graph subset on download' in graph_subset:
                     fig = go.Figure(current_canvas)
                     # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,

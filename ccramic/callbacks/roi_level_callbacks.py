@@ -1,8 +1,8 @@
 import dash
 
 from .cell_level_wrappers import *
-from ..parsers.roi_parsers import *
-from ..io.gallery_outputs import *
+from ccramic.parsers.roi_parsers import *
+from ccramic.io.gallery_outputs import *
 import dash_bootstrap_components as dbc
 from dash import html, ALL
 

@@ -3,7 +3,7 @@ import h5py
 from pathlib import Path
 from tifffile import TiffFile
 import os
-from ..utils.pixel_level_utils import *
+from ccramic.utils.pixel_level_utils import *
 from readimc import MCDFile, TXTFile
 import random
 import numpy as np

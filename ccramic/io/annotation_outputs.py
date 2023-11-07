@@ -1,6 +1,6 @@
 import numpy as np
-from ..utils.cell_level_utils import *
-from ..utils.pixel_level_utils import *
+from ccramic.utils.cell_level_utils import *
+from ccramic.utils.pixel_level_utils import *
 import os
 import tifffile
 import json

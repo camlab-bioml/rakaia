@@ -1,10 +1,9 @@
 import pytest
 
-from ccramic.app.callbacks.cell_level_wrappers import *
 import os
 from dash_extensions.enrich import Serverside
 import tifffile
-import plotly.graph_objects as go
+from ccramic.callbacks.cell_level_wrappers import *
 
 def test_basic_callback_import_annotations_quantification_frame(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))

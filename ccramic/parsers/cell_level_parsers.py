@@ -6,8 +6,8 @@ from tifffile import TiffFile
 import numpy as np
 from dash_extensions.enrich import Serverside
 from PIL import Image
-from ..utils.cell_level_utils import set_columns_to_drop
-from ..utils.cell_level_utils import *
+from ccramic.utils.cell_level_utils import set_columns_to_drop
+from ccramic.utils.cell_level_utils import *
 from pathlib import Path
 import anndata
 import gc

@@ -1,4 +1,4 @@
-from ccramic.app.entrypoint import init_app, __version__
+from ccramic.entrypoint import init_app, __version__
 import argparse
 import sys
 import webbrowser
@@ -22,7 +22,7 @@ def argparser():
                         help="Show the help output and exit.",
                         dest="help")
     parser.add_argument('-a', "--auto-open", action="store_true",
-                        help="automatically open the browser when the app is called. Default: False",
+                        help="automatically open the browser when the dash is called. Default: False",
                         dest="auto_open")
     parser.add_argument('-l', "--use-local-dialog", action="store_true",
                         help="Enable a local file dialog with wxPython to browse and read local files. Default: False",

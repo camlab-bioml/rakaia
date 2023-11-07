@@ -5,7 +5,7 @@ import pandas as pd
 from dash_extensions.enrich import Serverside
 from sklearn.preprocessing import StandardScaler
 import sys
-from ..utils.pixel_level_utils import *
+from ccramic.utils.pixel_level_utils import *
 from dash.exceptions import PreventUpdate
 from os import system
 import tifffile

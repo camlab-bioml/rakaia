@@ -2,14 +2,12 @@ import collections
 
 import numpy as np
 import pytest
-from ccramic.app.utils.cell_level_utils import *
-from ccramic.app.parsers.cell_level_parsers import *
-from ccramic.app.inputs.cell_level_inputs import *
-from ccramic.app.io.annotation_outputs import *
 import os
 from PIL import Image
 import dash_extensions
 import tempfile
+from ccramic.utils.cell_level_utils import *
+from ccramic.parsers.cell_level_parsers import *
 
 
 def test_basic_col_dropper(get_current_dir):

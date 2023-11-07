@@ -1,8 +1,9 @@
 import os
 import pytest
 import plotly
-from ccramic.app.parsers.pixel_level_parsers import create_new_blending_dict
-from ccramic.app.utils.pixel_level_utils import *
+from ccramic.utils.pixel_level_utils import *
+from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
+from PIL import Image
 
 def test_basic_recolour_non_white(get_current_dir):
     greyscale = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))

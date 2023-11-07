@@ -5,21 +5,22 @@ import dash_uploader as du
 from dash_extensions.enrich import DashProxy, html, ServersideOutputTransform, FileSystemBackend
 import dash_daq as daq
 import dash_bootstrap_components as dbc
-from .callbacks.pixel_level_callbacks import init_pixel_level_callbacks
-from .callbacks.cell_level_callbacks import init_cell_level_callbacks
-from .callbacks.roi_level_callbacks import init_roi_level_callbacks
-from .inputs.pixel_level_inputs import *
+from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
+from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
+from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
+from ccramic.inputs.pixel_level_inputs import *
 import shutil
 import os
 # from sd_material_ui import AutoComplete
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
 from plotly.graph_objs.layout import YAxis, XAxis
-from .entrypoint import __version__
+from ccramic.entrypoint import __version__
+import dash_core_components as dcc
 def init_dashboard(server, authentic_id, config=None):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        # set the serveroutput cache dir and clean it every time a new app session is started
+        # set the serveroutput cache dir and clean it every time a new dash session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
         if os.access("/tmp/", os.R_OK):
             # TODO: establish cleaning the tmp dir for any sub directory that has ccramic cache in it
@@ -746,7 +747,15 @@ def init_dashboard(server, authentic_id, config=None):
                                         html.Div("Download UMAP projection")],
                                         style={"display": "flex"}), id="btn-download-umap-projection", className="mx-auto",
                                         color=None, n_clicks=0, style={"margin-top": "10px"}),
-                                    dcc.Download(id="download-umap-projection")]), width=6),
+                                    dcc.Download(id="download-umap-projection"),
+                                    dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                    style={"display": "inline-block", "margin-right": "7.5px",
+                                    "margin-top": "3px"}), html.Div("Download quantification CSV")],
+                                    style={"display": "flex"}),
+                                    id="btn-download-annotations", className="mx-auto",
+                                    color=None, n_clicks=0, style={"margin-top": "10px"}),
+                                    dcc.Download(id="download-edited-annotations"),
+                                    ]), width=6),
                                     html.Br()
                                       ])]),
                         dbc.Modal(children=dbc.ModalBody([html.H6("Select the cell type annotation column"),

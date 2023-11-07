@@ -1,8 +1,8 @@
 import pandas as pd
 
-from ..inputs.cell_level_inputs import *
-from ..utils.cell_level_utils import *
-from ..parsers.cell_level_parsers import *
+from ccramic.inputs.cell_level_inputs import *
+from ccramic.utils.cell_level_utils import *
+from ccramic.parsers.cell_level_parsers import *
 from pandas.errors import UndefinedVariableError
 
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",

@@ -1,7 +1,7 @@
-from ccramic.app.inputs.pixel_level_inputs import *
 import numpy as np
 import plotly.graph_objs as go
 from dash_extensions.enrich import html
+from ccramic.inputs.pixel_level_inputs import *
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()

@@ -1,10 +1,10 @@
 import numpy as np
 
-from ccramic.app.io.annotation_outputs import *
 import os
 import tempfile
 import pytest
 import platform
+from ccramic.io.annotation_outputs import *
 
 def test_output_annotations_masks():
     with tempfile.TemporaryDirectory() as tmpdirname:

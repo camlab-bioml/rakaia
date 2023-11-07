@@ -1,6 +1,6 @@
 import pytest
 import os
-from ccramic.app.entrypoint import init_app
+from ccramic.entrypoint import init_app
 from functools import wraps
 
 @pytest.fixture(scope="module")

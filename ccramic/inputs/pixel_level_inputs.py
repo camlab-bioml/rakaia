@@ -1,7 +1,7 @@
 import dash
 from dash_extensions.enrich import dcc, html
-from ..parsers.pixel_level_parsers import *
-from ..utils.cell_level_utils import *
+from ccramic.parsers.pixel_level_parsers import *
+from ccramic.utils.cell_level_utils import *
 import plotly.graph_objs as go
 import dash_draggable
 import math
