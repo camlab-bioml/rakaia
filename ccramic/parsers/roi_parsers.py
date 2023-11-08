@@ -6,7 +6,7 @@ import os
 from ccramic.utils.pixel_level_utils import *
 from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
 from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
-from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
+from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi, match_mask_name_to_quantification_sheet_roi
 from readimc import MCDFile, TXTFile
 import random
 import numpy as np
@@ -80,8 +80,6 @@ def generate_multi_roi_images_from_query(session_config, blend_dict,
                                     channel_index += 1
                                 label = f"{basename}+++slide{slide_index}+++{acq.description}"
                                 matched_mask = match_mask_name_with_roi(label, mask_dict, dataset_options)
-                                print(label)
-                                print(matched_mask)
                                 summed_image = sum([image for image in acq_image]).astype(np.float32)
                                 summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
                                 # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
@@ -91,12 +89,20 @@ def generate_multi_roi_images_from_query(session_config, blend_dict,
                                     # for each ROI
                                     # requires reverse matching the sample or description to the ROI name in the app
                                     # if the query cell is list exists, subset the mask
-                                    # if query_cell_id_lists is not None:
-                                    #     mask_to_use = subset_mask_outline_using_cell_id_list(
-                                    #         mask_dict[matched_mask]["raw"], mask_dict[matched_mask]["boundary"],
-                                    #     query_cell_id_lists[])
+                                    if query_cell_id_lists is not None:
+                                        sam_names = list(query_cell_id_lists.keys())
+                                        # match the sample name in te quant sheet to the matched mask name
+                                        sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
+                                        if sam_name is not None:
+                                            mask_to_use = subset_mask_outline_using_cell_id_list(
+                                            mask_dict[matched_mask]["boundary"], mask_dict[matched_mask]["raw"],
+                                            query_cell_id_lists[sam_name])
+                                        else:
+                                            mask_to_use = mask_dict[matched_mask]["boundary"]
+                                    else:
+                                        mask_to_use = mask_dict[matched_mask]["boundary"]
                                     summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
-                                            mask_dict[matched_mask]["boundary"].astype(np.uint8), 1, 0).astype(np.uint8)
+                                            mask_to_use.astype(np.uint8), 1, 0).astype(np.uint8)
                                 roi_images[label] = summed_image
                                 queries_obtained += 1
                             else:

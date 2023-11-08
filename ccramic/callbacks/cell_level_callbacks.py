@@ -114,7 +114,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                     full_frame = pd.DataFrame(quantification_dict)
                     merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
                     cell_id_dict = generate_dict_of_roi_cell_ids(merged)
-                    print(cell_id_dict)
                 else:
                     cell_id_dict = None
             else:

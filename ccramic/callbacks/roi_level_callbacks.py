@@ -58,7 +58,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
                 rois_exclude = [data_selection]
                 row_children = []
             images = generate_multi_roi_images_from_query(session_config, blend_colour_dict,
-                    currently_selected, int(num_queries), rois_exclude, rois_decided, mask_dict, dataset_options)
+                    currently_selected, int(num_queries), rois_exclude, rois_decided, mask_dict, dataset_options,
+                                                          query_cell_id_lists)
             new_row_children, roi_list = generate_roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load":

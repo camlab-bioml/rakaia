@@ -275,7 +275,7 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
 
 
 def match_mask_name_with_roi(data_selection, mask_options, roi_options):
-    """"
+    """
     Attempt to match a mask name to the currently selected ROI.
     Heuristics order:
     1. If the data selection experiment name is in the list of mask options, return it
@@ -309,3 +309,22 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                 except (TypeError, IndexError, ValueError):
                     pass
     return mask_return
+
+
+def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sample_col_id="sample"):
+    """
+    Match a mask name to a sample ID in the quantification sheet, either in the `description` or `sample` table
+    Example: query_s0_a2_ac_IA_mask will match to query_2 in the quantification sheet
+    """
+    sam_id = None
+    split_1 = mask_selection.split("_ac_IA_mask")[0]
+    # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
+    index = int(split_1.split("_")[-1].replace("a", ""))
+    for sample in sorted(cell_id_list):
+        if sample == mask_selection:
+            sam_id = sample
+        elif sample_col_id == "sample":
+            split = sample.split("_")
+            if int(split[1]) == int(index):
+                sam_id = sample
+    return sam_id
