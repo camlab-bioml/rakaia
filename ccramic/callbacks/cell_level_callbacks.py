@@ -1,12 +1,14 @@
 import dash
 import pandas as pd
 
-from .cell_level_wrappers import *
-from ..io.annotation_outputs import *
+from ccramic.callbacks.cell_level_wrappers import *
+from ccramic.io.annotation_outputs import *
+from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
 from dash import dcc
 from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib
 from werkzeug.exceptions import BadRequest
+
 
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
@@ -57,6 +59,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('umap-legend-categories', 'data'),
                        Output('quantification-query-indices', 'data'),
                        Output('cur-umap-subset-category-counts', 'data'),
+                       Output('query-cell-id-lists', 'data'),
                        Input('quantification-dict', 'data'),
                        State('annotation_canvas', 'relayoutData'),
                        Input('quantification-bar-mode', 'value'),
@@ -79,12 +82,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         # [{'visible': ['legendonly']}, [2]]
         # print(restyle_data)
 
-        # TODO: fix when umap layout resets after tab switch
         # do not update if the tab is switched and the umap layout is reset to the default
         # tab_switch = ctx.triggered_id == "umap-plot" and umap_layout in [{"autosize": True}]
         if quantification_dict is not None:
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
-            if ctx.triggered_id not in ["umap-projection-options"]:
+            if ctx.triggered_id not in ["umap-projection-options"] and umap_layout is not None:
                 try:
                     subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
                                                               prev_categories)
@@ -106,11 +108,20 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             if frame is not None:
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
-                    # also return the current count of the uamp category selected to update the distribution table
+                    # also return the current count of the umap category selected to update the distribution table
+                # only store the cell id lists if zoom subsetting is used
+                if umap_layout is not None and all([key in umap_layout.keys() for key in zoom_keys]):
+                    full_frame = pd.DataFrame(quantification_dict)
+                    merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
+                    cell_id_dict = generate_dict_of_roi_cell_ids(merged)
+                    print(cell_id_dict)
+                else:
+                    cell_id_dict = None
             else:
                 indices_query = None
                 freq_counts_cat = None
-            return fig, keep, indices_query, freq_counts_cat
+                cell_id_dict = None
+            return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict)
         else:
             raise PreventUpdate
 

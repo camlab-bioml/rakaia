@@ -19,11 +19,11 @@ def test_roi_query_parser(get_current_dir):
                   "Ir193": {"color": "#FF0000", "x_lower_bound": 0, "x_upper_bound": 1, "filter_type": None, "filter_val": None},
                   "Pb208": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None}}
 
-    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 4,
+    roi_query = generate_multi_roi_images_from_query(session_config, blend_dict, channels, 4,
                                                      [dataset_selection])
     assert len(roi_query) == 4
     assert dataset_selection not in roi_query.keys()
-    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 20, [])
+    roi_query = generate_multi_roi_images_from_query(session_config, blend_dict, channels, 20, [])
     assert len(roi_query) == 6
 
 
@@ -46,15 +46,25 @@ def test_roi_query_parser_predefined(get_current_dir):
                   "Pb208": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None}}
 
 
-
     defined_indices = {'indices': [0, 1]}
-    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 4, [],
+    roi_query = generate_multi_roi_images_from_query(session_config, blend_dict, channels, 4, [],
                                                      predefined_indices=defined_indices)
     assert len(roi_query) == 2
     assert dataset_selection in roi_query.keys()
 
     defined_names = {'names': ['PAP']}
-    roi_query = generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict, channels, 4, [],
+    roi_query = generate_multi_roi_images_from_query(session_config, blend_dict, channels, 4, [],
                                                      predefined_indices=defined_names)
     assert len(roi_query) == 1
     assert dataset_selection in roi_query.keys()
+
+    mask_roi_dict = {"PAP": {"boundary": np.full((100, 100, 3), 7)},
+                     "HIER": {"boundary": np.full((100, 100, 3), 0)},
+                     "roi_3": {"boundary": np.zeros((100, 100))}}
+
+    defined_names = {'names': ['PAP']}
+    roi_query_w_mask = generate_multi_roi_images_from_query(session_config, blend_dict, channels, 4, [],
+                            predefined_indices=defined_names, mask_dict=mask_roi_dict, dataset_options=None)
+    assert len(roi_query) == 1
+    assert dataset_selection in roi_query.keys()
+    assert not np.array_equal(roi_query['query+++slide0+++PAP'], roi_query_w_mask['query+++slide0+++PAP'])

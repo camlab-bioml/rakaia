@@ -1,6 +1,6 @@
 import dash
 
-from .cell_level_wrappers import *
+from ccramic.callbacks.cell_level_wrappers import *
 from ccramic.parsers.roi_parsers import *
 from ccramic.io.gallery_outputs import *
 import dash_bootstrap_components as dbc
@@ -27,10 +27,14 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('dataset-query-gallery-row', 'children'),
                        Input('quantification-query-link', 'n_clicks'),
                        State('quantification-query-indices', 'data'),
+                       State('mask-dict', 'data'),
+                       State('data-collection', 'options'),
+                       State('query-cell-id-lists', 'data'),
                        prevent_initial_call=True)
     def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
-                                    existing_gallery, execute_quant_query, query_from_quantification):
+                                    existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
+                                    dataset_options, query_cell_id_lists):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -53,8 +57,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
             elif ctx.triggered_id == "execute-dataset-query" and execute_query > 0:
                 rois_exclude = [data_selection]
                 row_children = []
-            images = generate_multi_roi_images_from_query(data_selection, session_config, blend_colour_dict,
-                                                    currently_selected, int(num_queries), rois_exclude, rois_decided)
+            images = generate_multi_roi_images_from_query(session_config, blend_colour_dict,
+                    currently_selected, int(num_queries), rois_exclude, rois_decided, mask_dict, dataset_options)
             new_row_children, roi_list = generate_roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load":

@@ -4,13 +4,18 @@ from pathlib import Path
 from tifffile import TiffFile
 import os
 from ccramic.utils.pixel_level_utils import *
+from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
+from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
+from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
 from readimc import MCDFile, TXTFile
 import random
 import numpy as np
+import cv2
 
-def generate_multi_roi_images_from_query(dataset_selection, session_config, blend_dict,
+def generate_multi_roi_images_from_query(session_config, blend_dict,
                                          currently_selected_channels, num_queries=5, rois_exclude=None,
-                                         predefined_indices=None):
+                                         predefined_indices=None, mask_dict=None, dataset_options=None,
+                                         query_cell_id_lists=None):
     """
     Generate a gallery of images for multiple ROIs using the current parameters of the current ROI
     Important: ignores the current ROI
@@ -73,9 +78,25 @@ def generate_multi_roi_images_from_query(dataset_selection, session_config, blen
                                                                         'color'])).astype(np.float32)
                                         acq_image.append(recoloured)
                                     channel_index += 1
+                                label = f"{basename}+++slide{slide_index}+++{acq.description}"
+                                matched_mask = match_mask_name_with_roi(label, mask_dict, dataset_options)
+                                print(label)
+                                print(matched_mask)
                                 summed_image = sum([image for image in acq_image]).astype(np.float32)
                                 summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
-                                label = f"{basename}+++slide{slide_index}+++{acq.description}"
+                                # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
+                                if matched_mask is not None and matched_mask in mask_dict.keys() and \
+                                validate_mask_shape_matches_image(summed_image, mask_dict[matched_mask]["boundary"]):
+                                    # TODO: establish the ability to subset the mask to just the cells from the query
+                                    # for each ROI
+                                    # requires reverse matching the sample or description to the ROI name in the app
+                                    # if the query cell is list exists, subset the mask
+                                    # if query_cell_id_lists is not None:
+                                    #     mask_to_use = subset_mask_outline_using_cell_id_list(
+                                    #         mask_dict[matched_mask]["raw"], mask_dict[matched_mask]["boundary"],
+                                    #     query_cell_id_lists[])
+                                    summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
+                                            mask_dict[matched_mask]["boundary"].astype(np.uint8), 1, 0).astype(np.uint8)
                                 roi_images[label] = summed_image
                                 queries_obtained += 1
                             else:

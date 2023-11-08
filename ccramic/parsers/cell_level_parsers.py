@@ -295,7 +295,7 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                 mask_return = acq
 
         # if the return value is still None, look for indices
-        if mask_return is None and mask_options is not None:
+        if mask_return is None and mask_options is not None and roi_options is not None:
             # try to match the index of the data selection to an index in the mask options
             data_index = roi_options.index(data_selection)
             for mask in mask_options:

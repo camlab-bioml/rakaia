@@ -158,5 +158,5 @@ pytest --headless --cov ccramic
 Conversely, without app installation:
 
 ```
-python ccramic/app/wsgi.py
+python ccramic/wsgi.py
 ```
