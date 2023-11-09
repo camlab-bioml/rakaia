@@ -39,6 +39,23 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
     else:
         return None
 
+def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True):
+    """
+    Generate a heatmap of the current quantification frame (total or subset)
+    """
+    measurements = pd.DataFrame(measurements)
+    if drop_cols:
+        measurements = drop_columns_from_measurements_csv(measurements)
+    if cols_include is not None and len(cols_include) > 0 and \
+            all([elem in measurements.columns for elem in cols_include]):
+        try:
+            measurements = measurements[cols_include]
+        except (IndexError, ValueError):
+            pass
+    return px.imshow(measurements, x=measurements.columns, y=measurements.index,
+                    labels=dict(x="Channel", y="Cells", color="Cell Channel Mean"),
+                    title=f"Channel expression per cell ({len(measurements)} cells)")
+
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
     if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
@@ -97,5 +114,37 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
             frame_return = frame
         fig['layout']['uirevision'] = True
         return fig, frame_return
+    else:
+        raise PreventUpdate
+
+
+def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings, zoom_keys,
+                                                triggered_id, cols_drop=None,
+                                                category_column=None, category_subset=None, cols_include=None):
+    """
+    Generate a heatmap of thw quantification frame, trimmed to only the channel columns, based on an interactive
+    subset from the UMAP graph
+    """
+    if quantification_dict is not None and len(quantification_dict) > 0:
+        frame = pd.DataFrame(quantification_dict)
+        # IMP: perform category subsetting before removing columns
+        if None not in (category_column, category_subset):
+            frame = frame[frame[category_column].isin(category_subset)]
+        if cols_drop is not None:
+            frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
+        if umap_layout is not None and \
+                all([key in umap_layout for key in zoom_keys]):
+            subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
+                        pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2']), umap_layout)
+        else:
+            subset_frame = frame
+        subset_frame = subset_frame.reset_index(drop=True)
+        fig = generate_channel_heatmap(subset_frame, cols_include=cols_include)
+        if triggered_id == "quantification-dict":
+            cols_return, cols_selected = list(subset_frame.columns), \
+                list(subset_frame.columns)
+        else:
+            cols_return, cols_selected = dash.no_update, dash.no_update
+        return fig, cols_return, cols_selected
     else:
         raise PreventUpdate

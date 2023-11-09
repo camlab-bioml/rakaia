@@ -165,6 +165,8 @@ def init_dashboard(server, authentic_id, config=None):
                             html.Br(),
                             html.Br(),
                             html.H5("Choose data collection/ROI", style={'width': '65%'}),
+                            # TODO: set dropdown height based on length
+                            # https://community.plotly.com/t/long-dropdown-values-overlap/14843
                             dcc.Dropdown(id='data-collection', multi=False, options=[],
                                          style={'width': '100%'}),
                             html.Br(),
@@ -671,18 +673,43 @@ def init_dashboard(server, authentic_id, config=None):
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
                                 html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
-                                                  dcc.RadioItems(['max', 'mean', 'min'], 'mean',
-                                                                 inline=True, id="quantification-bar-mode"),
-                                                  dcc.Graph(id="quantification-bar-full",
-                                                            figure={'layout': dict(xaxis_showgrid=False,
-                                                                                   yaxis_showgrid=False,
-                                                                                   xaxis=XAxis(
-                                                                                       showticklabels=False),
-                                                                                   yaxis=YAxis(
-                                                                                       showticklabels=False),
-                                                                                   margin=dict(l=5, r=5, b=15,
-                                                                                               t=20, pad=0)),
-                                                                    })]), width=6),
+                                dbc.Tabs(id='cell-quant-tabs', children=[
+                                dbc.Tab(label='Bar plot', id='cell-quant-barplot', tab_id="cell-quant-barplot", children=[
+                                    html.Br(),
+                                    dcc.RadioItems(['max', 'mean', 'min'], 'mean',
+                                                   inline=True, id="quantification-bar-mode"),
+                                    dcc.Graph(id="quantification-bar-full",
+                                              figure={'layout': dict(xaxis_showgrid=False,
+                                                                     yaxis_showgrid=False,
+                                                                     xaxis=XAxis(
+                                                                         showticklabels=False),
+                                                                     yaxis=YAxis(
+                                                                         showticklabels=False),
+                                                                     margin=dict(l=5, r=5, b=15,
+                                                                                 t=20, pad=0)),
+                                                      })
+                                ]),
+                                dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
+                                children=[
+                                    html.Br(),
+                                    dcc.Graph(id="quantification-heatmap-full",
+                                              figure={'layout': dict(xaxis_showgrid=False,
+                                                                     yaxis_showgrid=False,
+                                                                     xaxis=XAxis(
+                                                                         showticklabels=False),
+                                                                     yaxis=YAxis(
+                                                                         showticklabels=False),
+                                                                     margin=dict(l=5, r=5, b=15,
+                                                                                 t=20, pad=0)),
+                                                      }),
+                                    dcc.Checklist(options=[], value=[], id="quant-heatmap-channel-list",
+                                    style={"margin-top": "12px"},
+                                    inline=True, labelStyle= {"margin":"0.12rem"}),
+                                    html.Br(),
+                                    html.Br()
+                                ])
+                                ]),
+                                ]), width=6),
                                     dbc.Col(html.Div([html.Br(),
                                     html.Div([html.H6("Dimension Reduction"),
                                     dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
@@ -756,6 +783,7 @@ def init_dashboard(server, authentic_id, config=None):
                                     color=None, n_clicks=0, style={"margin-top": "10px"}),
                                     dcc.Download(id="download-edited-annotations"),
                                     ]), width=6),
+                                    html.Br(),
                                     html.Br()
                                       ])]),
                         dbc.Modal(children=dbc.ModalBody([html.H6("Select the cell type annotation column"),
@@ -785,7 +813,7 @@ def init_dashboard(server, authentic_id, config=None):
             ])
                 ])
                           ])], id='tab-annotation'),
-        dcc.Loading(dcc.Store(id="uploaded_dict"), type="default", fullscreen=True),
+        dcc.Store(id="uploaded_dict"),
         # use a blank template for the lazy loading
         dcc.Loading(dcc.Store(id="uploaded_dict_template"), type="default", fullscreen=True),
         dcc.Store(id="session_config"),

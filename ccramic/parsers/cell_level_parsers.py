@@ -325,6 +325,9 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sa
             sam_id = sample
         elif sample_col_id == "sample":
             split = sample.split("_")
-            if int(split[1]) == int(index):
-                sam_id = sample
+            try:
+                if int(split[-1]) == int(index):
+                    sam_id = sample
+            except ValueError:
+                pass
     return sam_id

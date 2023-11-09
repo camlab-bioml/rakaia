@@ -71,7 +71,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('umap-legend-categories', 'data'),
                        State('dynamic-update-barplot', 'value'),
                        prevent_initial_call=True)
-    def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
+    def get_cell_channel_expression_barplot(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection,
                                                prev_categories, dynamic_update):
         #TODO: incorporate subsetting based on legend selection
@@ -121,6 +121,55 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 freq_counts_cat = None
                 cell_id_dict = None
             return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict)
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('quantification-heatmap-full', 'figure'),
+                       Output('quant-heatmap-channel-list', 'options'),
+                       Output('quant-heatmap-channel-list', 'value'),
+                       Input('quantification-dict', 'data'),
+                       State('annotation_canvas', 'relayoutData'),
+                       Input('umap-plot', 'relayoutData'),
+                       State('umap-projection', 'data'),
+                       State('quant-annotation-col', 'options'),
+                       Input('umap-plot', 'restyleData'),
+                       State('umap-projection-options', 'value'),
+                       State('umap-legend-categories', 'data'),
+                       Input('quant-heatmap-channel-list', 'value'),
+                       prevent_initial_call=True)
+    def get_cell_channel_expression_heatmap(quantification_dict, canvas_layout, umap_layout, embeddings,
+                                            annot_cols, restyle_data, umap_col_selection, prev_categories,
+                                            channels_to_display):
+        # TODO: incorporate subsetting based on legend selection
+        # uses the restyledata for the current legend selection to figure out which selections have been made
+        # Example 1: user selected only the third legend item to view
+        # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+        # Example 2: user selects all but the the second item to view
+        # [{'visible': ['legendonly']}, [2]]
+        # print(restyle_data)
+
+        # do not update if the tab is switched and the umap layout is reset to the default
+        # tab_switch = ctx.triggered_id == "umap-plot" and umap_layout in [{"autosize": True}]
+        if quantification_dict is not None:
+
+            zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
+            if ctx.triggered_id not in ["umap-projection-options"] and umap_layout is not None:
+                try:
+                    subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict,
+                                                                          umap_col_selection,
+                                                                          prev_categories)
+                except TypeError:
+                    subtypes, keep = None, None
+            else:
+                subtypes, keep = None, None
+
+            try:
+                fig, cols_return, cols_selected = generate_heatmap_from_interactive_subsetting(quantification_dict,
+                                                        umap_layout, embeddings, zoom_keys, ctx.triggered_id,
+                                                        annot_cols, umap_col_selection, subtypes, channels_to_display)
+            except (BadRequest, IndexError):
+                raise PreventUpdate
+            return fig, cols_return, cols_selected
         else:
             raise PreventUpdate
 

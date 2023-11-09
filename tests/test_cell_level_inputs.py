@@ -6,6 +6,7 @@ import pandas as pd
 import plotly
 from dash.exceptions import PreventUpdate
 from ccramic.inputs.cell_level_inputs import *
+import dash_core_components as dcc
 
 
 def test_bar_graph_from_measurements_csv(get_current_dir):
@@ -67,3 +68,12 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
                                                                                 "umap-plot")
     assert interactive_umap['layout']['uirevision']
     assert '(0 cells)' in interactive_umap['layout']['title']['text']
+
+
+def test_quantification_heatmap(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    fig = generate_channel_heatmap(measurements_csv)
+    # assert that the last element in the list of columns in the heatmap is a channel
+    assert isinstance(fig, plotly.graph_objs._figure.Figure)
+    assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
+    assert '(244 cells)' in fig['layout']['title']['text']

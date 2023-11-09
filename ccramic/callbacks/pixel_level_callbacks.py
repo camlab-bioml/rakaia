@@ -188,6 +188,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('data-collection', 'options'),
                        Output('data-collection', 'value'),
                        Output('image_layers', 'value'),
+                       Output('data-collection', 'optionHeight'),
                        Input('uploaded_dict_template', 'data'),
                        State('data-collection', 'value'),
                        State('image_layers', 'value'),
@@ -205,7 +206,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 selection_return = dash.no_update if cur_data_selection in datasets else None
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0:
                     channels_return = cur_layers_selected
-            return datasets, selection_return, channels_return
+            #TODO: figure out how to change the option height of the dropdown for very long names
+            if any([len(elem) >= 70 for elem in datasets]):
+                height_update = 120
+            else:
+                height_update = dash.no_update
+            return datasets, selection_return, channels_return, height_update
         else:
             raise PreventUpdate
 
@@ -804,9 +810,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         Reset the canvas to blank on an ROI change
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
+        #TODO: new update here does not reset the canvas to blank between ROI selections for smoother transition
         if new_selection is not None:
             cur_graph['data'] = []
-            return cur_graph, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
+            return dash.no_update, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
         else:
             raise PreventUpdate
 
