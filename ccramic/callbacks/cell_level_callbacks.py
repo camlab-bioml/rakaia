@@ -63,7 +63,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('quant-heatmap-channel-list', 'options'),
                        Output('quant-heatmap-channel-list', 'value'),
                        Input('quantification-dict', 'data'),
-                       State('annotation_canvas', 'relayoutData'),
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
                        State('quant-annotation-col', 'options'),
@@ -73,7 +72,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('quant-heatmap-channel-list', 'value'),
                        State('quant-heatmap-channel-list', 'options'),
                        prevent_initial_call=True)
-    def get_cell_channel_expression_heatmap(quantification_dict, canvas_layout, umap_layout, embeddings,
+    def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings,
                                             annot_cols, restyle_data, umap_col_selection, prev_categories,
                                             channels_to_display, heatmap_channel_options):
         # TODO: incorporate subsetting based on legend selection

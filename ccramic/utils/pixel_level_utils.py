@@ -321,3 +321,18 @@ def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_ble
         return channel_order
     else:
         return []
+
+
+def select_random_colour_for_channel(blend_dict, current_channel, default_colours):
+    """
+    Loop through the default colours and select a colour in the sequence for the current channel
+    if the colour is not used. Otherwise, do not update the blend dictionary
+    """
+    for default in default_colours:
+        # check if any of the colours have been used yet. if not, select the next available
+        # only updates a channel if the default is None or white (#FFFFFF), which implies the defaults
+        if not any([channel['color'] == default for channel in blend_dict.values()]) and \
+                blend_dict[current_channel]['color'] in ['#FFFFFF', None, '#ffffff']:
+            blend_dict[current_channel]['color'] = default
+            break
+    return blend_dict

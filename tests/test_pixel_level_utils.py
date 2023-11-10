@@ -285,3 +285,22 @@ def test_basic_svgpath_pixel_mask():
     assert max_2 == 5000.0
     assert min_3 == -1.0
     assert get_bounding_box_for_svgpath(svgpath) == (200, 236, 131, 162)
+
+def test_random_colour_selector():
+    DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
+
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
+                                                   "Nuclear": np.array([1, 1, 1, 1]),
+                                                   "Cytoplasm": np.array([2, 2, 2, 2])},
+                   "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
+                                                   "Nuclear": np.array([4, 4, 4, 4]),
+                                                   "Cytoplasm": np.array([5, 5, 5, 5])}
+                   }
+    blend_dict = create_new_blending_dict(upload_dict)
+    assert blend_dict['Cytoplasm']['color'] == '#FFFFFF'
+    blend_dict = select_random_colour_for_channel(blend_dict, "Nuclear", DEFAULT_COLOURS)
+    assert DEFAULT_COLOURS[0] == blend_dict['Nuclear']['color']
+    blend_dict = select_random_colour_for_channel(blend_dict, "Cytoplasm", DEFAULT_COLOURS)
+    assert DEFAULT_COLOURS[1] == blend_dict['Cytoplasm']['color']
+    blend_dict = select_random_colour_for_channel(blend_dict, "Nuclear", DEFAULT_COLOURS)
+    assert DEFAULT_COLOURS[0] == blend_dict['Nuclear']['color']

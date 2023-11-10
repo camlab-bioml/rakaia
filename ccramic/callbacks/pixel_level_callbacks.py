@@ -26,6 +26,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     blending, filtering, scaling, etc.)
     """
     dash_app.config.suppress_callback_exceptions = True
+    DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
 
     @du.callback(Output('uploads', 'data'),
                  id='upload-image')
@@ -437,6 +438,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        State('images_in_blend', 'value'),
+                       State('autofill-channel-colors', 'value'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('param_config', 'data', allow_duplicate=True),
@@ -444,7 +446,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict,
-                                               cur_image_in_mod_menu):
+                                               cur_image_in_mod_menu, autofill_channel_colours):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
@@ -476,7 +478,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                 uploaded_w_data[data_selection][elem]),
                                                                  'filter_type': None,
                                                                  'filter_val': None}
+                    # TODO: default colour is white, but can set auto selection here for starting colours
                     current_blend_dict[elem]['color'] = '#FFFFFF'
+                    if autofill_channel_colours:
+                        current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     if use_preset_condition:
                         current_blend_dict[elem] = apply_preset_to_blend_dict(
                             current_blend_dict[elem], preset_dict[preset_selection])
@@ -486,6 +491,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     current_blend_dict[elem] = apply_preset_to_blend_dict(
                         current_blend_dict[elem], preset_dict[preset_selection])
                 else:
+                    # TODO: default colour is white, but can set auto selection here for starting colours
+                    if autofill_channel_colours:
+                        current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     # create a nested dict with the image and all of the filters being used for it
                     # if the same blend parameters have been transferred from another ROI, apply them
                     # set a default upper bound for the channel if the value is None
@@ -497,7 +505,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
                     #  present in the layers dictionary to save time
-                    if data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys():
+                    # affects if a channel is added and dropped
+                    if (data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys()) or \
+                            autofill_channel_colours:
                         array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
@@ -512,6 +522,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def update_colour_picker_from_swatch(swatch):
         if swatch is not None:
+            # IMP: need to reset the value of the swatch to None after transferring the colour
             return dict(hex=swatch), None
         else:
             raise PreventUpdate
@@ -1879,8 +1890,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                           xaxis=XAxis(showticklabels=False),
                           yaxis=YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
-            cur_canvas['data'] = None
-            return fig, go.Figure(cur_canvas), [None, None], [], None
+            cur_canvas['data'] = []
+            return fig, cur_canvas, [None, None], [], None
         else:
             raise PreventUpdate
 

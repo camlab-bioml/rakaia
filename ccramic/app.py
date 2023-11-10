@@ -113,6 +113,8 @@ def init_dashboard(server, authentic_id, config=None):
                     dcc.Input(id='annotation-circle-size', type='number', value=4, style={"width": "25%",
                             "margin-top": "-3px"})],
                     style={"display": "flex"}),
+                    daq.ToggleSwitch(label='Autofill channel colours', id='autofill-channel-colors',
+                                     labelPosition='bottom', color="blue", value=False),
                 ]),
                         id="session-config-modal", size='l',
                         style={"margin-left": "10px", "margin-top": "15px"}),
