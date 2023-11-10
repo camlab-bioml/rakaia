@@ -1,3 +1,4 @@
+import dash
 import pandas as pd
 
 from ccramic.inputs.cell_level_inputs import *
@@ -122,7 +123,7 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
                                                 triggered_id, cols_drop=None,
                                                 category_column=None, category_subset=None, cols_include=None):
     """
-    Generate a heatmap of thw quantification frame, trimmed to only the channel columns, based on an interactive
+    Generate a heatmap of the quantification frame, trimmed to only the channel columns, based on an interactive
     subset from the UMAP graph
     """
     if quantification_dict is not None and len(quantification_dict) > 0:
@@ -139,12 +140,12 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         else:
             subset_frame = frame
         subset_frame = subset_frame.reset_index(drop=True)
-        fig = generate_channel_heatmap(subset_frame, cols_include=cols_include)
-        if triggered_id == "quantification-dict":
-            cols_return, cols_selected = list(subset_frame.columns), \
-                list(subset_frame.columns)
+        # only recreate the graph if new data are passed from the UMAP, not on a recolouring of the UMAP
+        if triggered_id not in ["umap-projection-options"] or category_column is None:
+            fig = generate_channel_heatmap(subset_frame, cols_include=cols_include)
+            fig['layout']['uirevision'] = True
         else:
-            cols_return, cols_selected = dash.no_update, dash.no_update
-        return fig, cols_return, cols_selected
+            fig = dash.no_update
+        return fig, subset_frame
     else:
         raise PreventUpdate

@@ -674,40 +674,34 @@ def init_dashboard(server, authentic_id, config=None):
                                 dbc.Col(html.Div([html.Br(),
                                 html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
                                 dbc.Tabs(id='cell-quant-tabs', children=[
-                                dbc.Tab(label='Bar plot', id='cell-quant-barplot', tab_id="cell-quant-barplot", children=[
-                                    html.Br(),
-                                    dcc.RadioItems(['max', 'mean', 'min'], 'mean',
-                                                   inline=True, id="quantification-bar-mode"),
-                                    dcc.Graph(id="quantification-bar-full",
-                                              figure={'layout': dict(xaxis_showgrid=False,
-                                                                     yaxis_showgrid=False,
-                                                                     xaxis=XAxis(
-                                                                         showticklabels=False),
-                                                                     yaxis=YAxis(
-                                                                         showticklabels=False),
-                                                                     margin=dict(l=5, r=5, b=15,
-                                                                                 t=20, pad=0)),
-                                                      })
-                                ]),
-                                dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
-                                children=[
-                                    html.Br(),
+                                    dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
+                                    children=[html.Br(),
                                     dcc.Graph(id="quantification-heatmap-full",
-                                              figure={'layout': dict(xaxis_showgrid=False,
-                                                                     yaxis_showgrid=False,
-                                                                     xaxis=XAxis(
-                                                                         showticklabels=False),
-                                                                     yaxis=YAxis(
-                                                                         showticklabels=False),
-                                                                     margin=dict(l=5, r=5, b=15,
-                                                                                 t=20, pad=0)),
-                                                      }),
+                                    figure={'layout': dict(xaxis_showgrid=False,
+                                    yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                                    yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,
+                                    t=20, pad=0))}),
                                     dcc.Checklist(options=[], value=[], id="quant-heatmap-channel-list",
                                     style={"margin-top": "12px"},
-                                    inline=True, labelStyle= {"margin":"0.12rem"}),
+                                    inline=True, labelStyle={"margin": "0.12rem"}),
                                     html.Br(),
                                     html.Br()
-                                ])
+                                            ]),
+                                # dbc.Tab(label='Bar plot', id='cell-quant-barplot', tab_id="cell-quant-barplot", children=[
+                                #     html.Br(),
+                                #     dcc.RadioItems(['max', 'mean', 'min'], 'mean',
+                                #                    inline=True, id="quantification-bar-mode"),
+                                #     dcc.Graph(id="quantification-bar-full",
+                                #               figure={'layout': dict(xaxis_showgrid=False,
+                                #                                      yaxis_showgrid=False,
+                                #                                      xaxis=XAxis(
+                                #                                          showticklabels=False),
+                                #                                      yaxis=YAxis(
+                                #                                          showticklabels=False),
+                                #                                      margin=dict(l=5, r=5, b=15,
+                                #                                                  t=20, pad=0)),
+                                #                       })
+                                # ])
                                 ]),
                                 ]), width=6),
                                     dbc.Col(html.Div([html.Br(),

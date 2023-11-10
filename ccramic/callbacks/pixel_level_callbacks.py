@@ -207,7 +207,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0:
                     channels_return = cur_layers_selected
             #TODO: figure out how to change the option height of the dropdown for very long names
-            if any([len(elem) >= 70 for elem in datasets]):
+            if any([len(elem) >= 70 and ' ' in elem for elem in datasets]):
                 height_update = 120
             else:
                 height_update = dash.no_update

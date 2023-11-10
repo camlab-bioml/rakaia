@@ -1,3 +1,4 @@
+import dash
 import pytest
 
 import os
@@ -77,3 +78,28 @@ def test_quantification_heatmap(get_current_dir):
     assert isinstance(fig, plotly.graph_objs._figure.Figure)
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
     assert '(244 cells)' in fig['layout']['title']['text']
+
+def test_heatmap_from_interactive_triggers(get_current_dir):
+    measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
+    validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
+    umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
+    zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
+    # category_column = "sample"
+    interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, {}, umap_dict,
+                                                                zoom_keys, None, "umap-layout")
+    assert '(244 cells)' in interactive_heat['layout']['title']['text']
+    embeddings = pd.read_csv(os.path.join(get_current_dir, "umap_coordinates_for_measurements.csv"))
+    subset_layout = {'xaxis.range[0]': 7.386287234198646, 'xaxis.range[1]': 9.393588084462001,
+                     'yaxis.range[0]': 6.270861713114755, 'yaxis.range[1]': 9.579169008196722}
+    interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, subset_layout,
+                                                                        embeddings, zoom_keys, "umap-layout")
+    assert interactive_heat['layout']['uirevision']
+    assert '(41 cells)' in interactive_heat['layout']['title']['text']
+
+
+    subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
+    interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, subset_layout,
+                                                                        embeddings, zoom_keys, "umap-projection-options",
+                                                                        category_column="sample",
+                                                                           category_subset=["test_1", "test_2"])
+    assert isinstance(interactive_heat, dash._callback.NoUpdate)
