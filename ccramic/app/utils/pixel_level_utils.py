@@ -152,11 +152,13 @@ def pixel_hist_from_array(array, subset_number=1000000):
     max_hist = np.max(array)
     hist = np.random.choice(hist_data, subset_number) if hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
+    # ensure that the min of the hist max is 1
+    max_hist = float(max(hist)) if max(hist) > 1 else 1
     try:
         hist = np.concatenate([np.array(hist), np.array([max_hist])])
     except ValueError:
         pass
-    return go.Figure(px.histogram(hist, range_x=[min(hist), max(hist)]), layout_xaxis_range=[0, max(hist)]), \
+    return go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist]), \
         int(np.max(array))
 
 
@@ -289,7 +291,7 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     array_stack = np.hstack(array)
     data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
     upper_percentile = float(np.percentile(data, percentile))
-    return upper_percentile if upper_percentile > 1 else 1.0
+    return upper_percentile if upper_percentile > 0 else 1.0
 
 def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options):
     """

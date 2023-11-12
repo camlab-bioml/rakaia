@@ -7,6 +7,7 @@ import dash_daq as daq
 import dash_bootstrap_components as dbc
 from .callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from .callbacks.cell_level_callbacks import init_cell_level_callbacks
+from .callbacks.roi_level_callbacks import init_roi_level_callbacks
 from .inputs.pixel_level_inputs import *
 import shutil
 import os
@@ -40,7 +41,7 @@ def init_dashboard(server, authentic_id, config=None):
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
                          external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                          server=server,
-                         routes_pathname_prefix="/ccramic/")
+                         routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True)
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
 
@@ -96,21 +97,32 @@ def init_dashboard(server, authentic_id, config=None):
             children=[
                 html.A("ccramic", className="navbar-brand me-0 px-3", href="#"),
                 html.Div([
-                    # dbc.Button(
-                    # children=html.Span([html.I(className="fa-solid fa-gears",
-                    #                            style={"display": "inline-block",
-                    #                                   "margin-right": "3px"}),
-                    #                     html.Div("Session config"),
-                    #                     ]),
-                    # id="session-config-modal", className="navbar-brand me-0 px-3",
-                    # color='dark', n_clicks=0, style={"display": "flex"}),
+                    dbc.Button(
+                    children=html.Span([html.I(className="fa-solid fa-gears",
+                                               style={"display": "inline-block"}),
+                                        ]),
+                    id="session-config-modal-button", className="navbar-brand me-0 px-3",
+                    color=None, n_clicks=0, style={"display": "flex"}, outline=True),
+                dbc.Modal(children=dbc.ModalBody([
+                    html.H6("Set additional session variables"),
+                    daq.ToggleSwitch(label='Enable canvas scroll zoom', id='enable-canvas-scroll-zoom',
+                                     labelPosition='bottom', color="blue", value=False),
+                    html.Br(),
+                    html.Div([html.H6("Set annotation circle radius", style={"margin-right": "20px"}),
+                    dcc.Input(id='annotation-circle-size', type='number', value=4, style={"width": "25%",
+                            "margin-top": "-3px"})],
+                    style={"display": "flex"}),
+                ]),
+                        id="session-config-modal", size='l',
+                        style={"margin-left": "10px", "margin-top": "15px"}),
                 html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
             style={"margin-bottom": "15px"}),
+            html.H6(id="current-roi-ha", style={"float": "right"}),
             dbc.Tab(label='Image Annotation', tab_id='image-annotation', active_label_style={"color": "#FB79B3"},
                     children=[
                 html.Div([dbc.Tabs(id='pixel-level-analysis',
                 children=[dbc.Tab(# label_class_name="fa-regular fa-file-image",
-                                  label="Image analysis",
+                                  label="Image Analysis",
                                   # label_style={"text-transform": "capitalize", "font-weight": "normal"},
                 tab_id='pixel-analysis',
                 children=[
@@ -335,15 +347,19 @@ def init_dashboard(server, authentic_id, config=None):
                                 # },
                                 ), type="default", fullscreen=False)])]),
                                 id="pixel-hist-collapse", is_open=False), style={"minHeight": "100px"}),
-                                 html.Div([dcc.RangeSlider(0, 100, 1, value=[None, None],
+                                 html.Div([
+                                dcc.RangeSlider(0, 100, 1, value=[None, None],
                                 marks=dict([(i, str(i)) for i in range(0, 100, 25)]),
                                 id='pixel-intensity-slider', allowCross=False,
                                 tooltip={"placement": "top", "always_visible": False})],
                                           style={"width": "96.5%", "margin-left": "27px", "margin-top": "-50px"}),
-                                html.Div([dcc.Checklist(options=[' set range max to current upper bound'],
+                                html.Div([dbc.Button("Reset to default", id="set-default-rangeslider", className="me-1",
+                                size="sm", color='dark', outline=True, style={"float": "left",
+                                        "margin-right": "12.5px", "height": "50%"}),
+                                dcc.Checklist(options=[' set range max to current upper bound'],
                                                         value=[], id="custom-slider-max",
-                                               style={"width": "100%"})],
-                                style={"display": "inline-block", "margin": "20px"}),
+                                               style={"width": "90%", "float": "right", "margin-left": "10px"})],
+                                style={"display": "flex", "margin": "20px"}),
                                  # html.Div([html.H6("Set range maximum", style={'width': '75%', 'margin-left': '20px'}),
                                  #           dcc.Input(id="custom-slider-max", type="number", value=None,
                                  #                     style={"width": "30%", "margin-left": "20px"})],
@@ -487,13 +503,17 @@ def init_dashboard(server, authentic_id, config=None):
                                 style={"margin-top": "10px"})], style={"display": "flex", "width": "50%"}),
                                 html.Br(),
                                 html.Br(),
-                                html.Div([daq.ToggleSwitch(label='Enable click annotation', id='enable_click_annotation',
-                                labelPosition='bottom', value=False, color="blue",style={"width": "50%","margin-left": "-15px"}),
+                                html.Div([daq.ToggleSwitch(label='Click annotation', id='enable_click_annotation',
+                                labelPosition='bottom', value=False, color="blue",
+                                                           style={"width": "45%","margin-left": "-20px"}),
+                                dcc.Checklist(options=[' add circle on click'], value=[' add circle on click'],
+                                                id="click-annotation-add-circle", style={"margin-top": "12px"}),
                                 dcc.Input(id="click-annotation-assignment", type="text", value=None,
-                                          placeholder="Add a cell type for click annotation",
-                                    style={"width": "60%", "margin-left": "1px"})
-                                          ],
+                                          placeholder="Add a cell type for click",
+                                    style={"width": "65%", "margin-left": "1px"})],
                                          style={"display": "flex"}),
+                                dcc.Checklist(options=[' overlay grid'], value=[],
+                                id="overlay-grid-canvas", style={"margin-top": "12px"}),
                                 html.Br(),
                                 dbc.Alert([], color='success', is_open=False, duration=1200, id='click-annotation-alert'),
                                 dbc.Modal(children=dbc.ModalBody(
@@ -645,11 +665,11 @@ def init_dashboard(server, authentic_id, config=None):
                         html.Button("Download Edited metadata", id="btn-download-metadata"),
                         dcc.Download(id="download-edited-table")]),
                             width=3)])])]),
-                          dbc.Tab(label="Quantification/Clustering",
+                          dbc.Tab(label="Quantification/Clustering", tab_id='quantification-tab',
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                                  html.H6("Cell-Level Marker Expression"),
+                                html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
                                                   dcc.RadioItems(['max', 'mean', 'min'], 'mean',
                                                                  inline=True, id="quantification-bar-mode"),
                                                   dcc.Graph(id="quantification-bar-full",
@@ -663,28 +683,98 @@ def init_dashboard(server, authentic_id, config=None):
                                                                                                t=20, pad=0)),
                                                                     })]), width=6),
                                     dbc.Col(html.Div([html.Br(),
-                                    html.H6("Dimension Reduction"),
+                                    html.Div([html.H6("Dimension Reduction"),
+                                    dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
+                                        style={"display": "inline-block", "margin-right": "7.5px",
+                                        "margin-top": "3px"}), html.Div("UMAP Options")],
+                                        style={"display": "flex", "margin-bottom": "5px", "margin-left": "15px"}),
+                                        id="umap-config-button", className="mx-auto", color=None,
+                                        n_clicks=0),
+                                        dbc.Modal(children=dbc.ModalBody([html.Div([
+                                        du.Upload(id='upload-umap-coordinates', max_file_size=10000,
+                                        text='Import UMAP coordinates in CSV format',
+                                        chunk_size=100, max_total_size=10000, max_files=1, filetypes=['csv'],
+                                        default_style={"height": "0.1%"})],
+                                             style={"height": "auto"}),
+                                        dcc.Checklist(options=[' dynamic update on expression barplot'],
+                                        value=[' dynamic update on expression barplot'],
+                                        id="dynamic-update-barplot", style={"margin-top": "12px"}),
+                                        html.Br(),
+                                        html.H6("Add annotation to cells"),
+                                        dcc.Input(id="annotation-col-quantification", type="text",
+                                        value="", placeholder="New annotation category",
+                                        style={"width": "55%", "margin-right": "10px", "height": "100%",
+                                               "margin-top": "5px"}),
+                                        dbc.Button("Add new category", id="add-annot-col-quantification",
+                                                       className="me-1", style={"margin-top": "10px"}),
+                                        dcc.Dropdown(id='quant-annotation-col-in-tab',
+                                        multi=False, options=['ccramic_cell_annotation'],
+                                            value="ccramic_cell_annotation", style={"width": "75%"}),
+                                        dcc.Input(id="annotation-cell-types-quantification", type="text",
+                                        value="", placeholder="New cell type",
+                                        style={"width": "55%", "margin-right": "10px", "height": "100%",
+                                               "margin-top": "5px"}),
+                                        dbc.Button("Annotate UMAP", id="create-annotation-umap",
+                                            className="me-1", style={"margin-top": "10px"})
+                                        ]),
+                                                  id="umap-config-modal", size='l'),
+                                    dbc.Button("Run UMAP", id="execute-umap-button", style={
+                                            "margin-top": "-5px"}, color="dark", outline=True)],
+                                    style={"display": "flex", "margin-bottom": "10px"}),
                                     html.Div([dcc.Loading(dcc.Dropdown(id='umap-projection-options', multi=False,
-                                    options=[], style={"width": "175%"}), type="default", fullscreen=False),
+                                    options=[], style={"width": "200%"}), type="default", fullscreen=False),
                                     dbc.Button(children=html.Span([html.I(className="fa-solid fa-table-list",
                                     style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                    html.Div("Show distribution")], style={"display": "flex"}),
-                                    id="show-quant-dist", className="mx-auto", color=None, n_clicks=0)],
-                                    style={"display": "flex", "width": "135%"}),
+                                    html.Div("Show distribution")], style={"display": "flex", "margin-bottom": "5px",
+                                        "margin-left": "15px"}),
+                                    id="show-quant-dist", className="mx-auto", color=None, n_clicks=0,
+                                               style={"float": "right", "margin-left": "20px"}),
+                                    dbc.Button("Send to query", id="quantification-query-link",
+                                               style={"margin-right": "30px", "margin-bottom": "7px"},
+                                    color="dark", outline=True)],
+                                    style={"display": "flex", "width": "auto"}),
                                     dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='quant-dist-table',
                                     columns=[], data=None, editable=False, filter_action='native')]),
                                     id="show-quant-dist-table", size='l'),
                                     dcc.Graph(id="umap-plot", figure={'layout': dict(xaxis_showgrid=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
-                                    yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,t=20, pad=0)),
-                                    })]), width=6)
+                                    yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,t=20, pad=0),
+                                    autosize=True),
+                                    }, responsive=False),
+                                    dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                        style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                        html.Div("Download UMAP projection")],
+                                        style={"display": "flex"}), id="btn-download-umap-projection", className="mx-auto",
+                                        color=None, n_clicks=0, style={"margin-top": "10px"}),
+                                    dcc.Download(id="download-umap-projection")]), width=6),
+                                    html.Br()
                                       ])]),
                         dbc.Modal(children=dbc.ModalBody([html.H6("Select the cell type annotation column"),
                         dcc.Dropdown(id='cell-type-col-designation',
                             multi=False, options=[], style={'width': '100%'})]),
                         id="quantification-config-modal", size='l', style={"margin-left": "10px",
                             "margin-top": "15px"})],
-                                  )])
+                                  ),
+            dbc.Tab(label="Dataset Query", tab_id='dataset-query', children=[
+                html.H6("Set Number of ROIs to return", style={"margin-top": "15px"}),
+                html.Div([dcc.Input(id="dataset-query-number", type="number",
+                        placeholder="Number of ROIs to return",
+                        value=10, style={"height": "25%"}),
+                        dbc.Button(children=html.Span([html.I(className="fa-solid fa-bolt",
+                        style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                        html.Div("Execute query")], style={"display": "flex"}), id="execute-dataset-query",
+                        className="mb-3", color="primary", n_clicks=0, style={"margin-left": "10px", "margin-top": "-3px"}),
+                          ],
+                         style={"display": "flex", "margin-top": "15px"}),
+                html.Div(id="dataset-query-gallery", children=[
+                    dbc.Row(id="dataset-query-gallery-row"),
+                    html.Br(),
+                    dbc.Button("Load more...", id="dataset-query-additional-load", className="d-grid gap-2 col-3 mx-auto",
+                               outline=True, color="dark",
+                    style={"justifyContent": "center"}),
+                    html.Br()], style={"margin-top": "15px", "display": "none"}),
+            ])
+                ])
                           ])], id='tab-annotation'),
         dcc.Loading(dcc.Store(id="uploaded_dict"), type="default", fullscreen=True),
         # use a blank template for the lazy loading
@@ -713,11 +803,18 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="umap-projection"),
         dcc.Store(id="annotations-dict"),
         dcc.Store(id="channel-order"),
+        dcc.Store(id="umap-legend-categories"),
+        dcc.Store(id="dataset-query-gallery-list"),
+        dcc.Store(id="quantification-query-indices"),
+        dcc.Store(id='cur-umap-subset-category-counts'),
+        dcc.Store(id='cur_roi_dimensions'),
+        dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 
     dash_app.enable_dev_tools(debug=True)
 
     init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
     init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_roi_level_callbacks(dash_app, tmpdirname, authentic_id)
 
     return dash_app.server

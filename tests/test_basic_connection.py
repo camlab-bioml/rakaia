@@ -2,13 +2,22 @@ import argparse
 import base64
 import pytest
 from selenium.common import NoSuchElementException
+from selenium.common.exceptions import SessionNotCreatedException
 import socket
 import platform
 import os
 from subprocess import Popen, PIPE
 from ccramic.app.wsgi import argparser, main
+from ccramic.app.entrypoint import init_app
+from ccramic.app.app import init_dashboard
+from ccramic.app.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 import time
 import signal
+from flask import Flask
+import dash_extensions
+from dash_extensions.enrich import DashProxy
+import dash_uploader as du
+from conftest import skip_on
 
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
                     reason="Only test the connection in a GA workflow due to passwordless sudo")
@@ -42,6 +51,7 @@ def recursive_wait_for_elem(app, elem, duration):
             recursive_wait_for_elem(app, elem, int(1.1*duration))
 
 
+@skip_on(SessionNotCreatedException, "Selenium version is not compatible")
 def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
     credentials = base64.b64encode(b"ccramic_user:ccramic-1").decode('utf-8')
     assert str(type(ccramic_flask_test_app)) == "<class 'flask.app.Flask'>"
@@ -49,7 +59,8 @@ def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
     assert response.status_code == 200
     # test landing page alias
     assert client.get("/").data == b'Unauthorized Access'
-    client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
+    assert client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
+    # dash_duo.start_server(ccramic_flask_test_app.server)
     # for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:
     #     assert dash_duo.find_element(elem) is not None
     # with pytest.raises(NoSuchElementException):
@@ -103,3 +114,20 @@ def test_basic_cli_outputs_main():
         main([])
     except TimeoutException:
         assert True
+
+def test_basic_app_return():
+    config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False}
+    app = init_app(config)
+    assert isinstance(app, Flask)
+    app_2 = Flask("ccramic")
+    dashboard = init_dashboard(app_2, "test_app", config)
+    assert isinstance(dashboard, Flask)
+
+def test_basic_callback_register():
+    dash_app = DashProxy("fake_app")
+    assert len(dash_app.callback_map) == 0
+    du.configure_upload(dash_app, "/tmp/")
+    init_pixel_level_callbacks(dash_app, "/tmp/", "test_app")
+    # assert init_pixel_level_callbacks(dash_app, "/tmp/", "test_app") is None
+    assert isinstance(dash_app, dash_extensions.enrich.DashProxy)
+    assert dash_app.callback is not None

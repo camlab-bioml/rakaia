@@ -8,7 +8,7 @@ from pandas.errors import UndefinedVariableError
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                      subset_dict=None, drop_cols=True):
     """
-    Generate a barplot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
+    Generate a bar plot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
     Ensure that the non-numeric columns are dropped prior to plotting
     """
 
@@ -20,6 +20,7 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                                         f'y_max <= {subset_dict["y_max"]}')
         except (KeyError, UndefinedVariableError):
             pass
+
     if drop_cols:
         dropped = drop_columns_from_measurements_csv(measurement_frame)
     else:
@@ -39,7 +40,7 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
         return None
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
-    if embeddings is not None:
+    if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
         df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
         if channel_overlay is not None:
@@ -52,37 +53,49 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
             fig['layout']['uirevision'] = True
         else:
             fig['layout'] = cur_umap_fig['layout']
+            fig['layout']['uirevision'] = True
         return fig
     else:
         raise PreventUpdate
 
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None):
+                                               umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
+                                                category_column=None, category_subset=None):
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame(quantification_dict)
+        # IMP: perform category subsetting before removing columns
+        if None not in (category_column, category_subset):
+            frame = frame[frame[category_column].isin(category_subset)]
         if cols_drop is not None:
             frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
-        if all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
-            try:
-                subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
-                           "x_max": max(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
-                           "y_min": min(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]']),
-                           "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
-            except UndefinedVariableError:
-                subset_zoom = None
-            fig = go.Figure(get_cell_channel_expression_plot(frame, subset_dict=subset_zoom, mode=mode_value))
-        elif triggered_id == "umap-plot" and all([key in umap_layout for key in zoom_keys]):
+        # TODO: for now, o not allow the bar plot to reflect a canvas subset (assign values only from the UMAP)
+        # if canvas_layout is not None and \
+        #         all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
+        #     try:
+        #         subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
+        #                    "x_max": max(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
+        #                    "y_min": min(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]']),
+        #                    "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
+        #     except UndefinedVariableError:
+        #         subset_zoom = None
+        #     fig = go.Figure(get_cell_channel_expression_plot(frame, subset_dict=subset_zoom, mode=mode_value))
+        #     frame_return = frame
+        if triggered_id in ["umap-plot", "umap-projection-options", "quantification-bar-mode"] and \
+                umap_layout is not None and \
+                all([key in umap_layout for key in zoom_keys]):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
                                                                            pd.DataFrame(embeddings,
                                                                                         columns=['UMAP1', 'UMAP2']),
                                                                            umap_layout)
             fig = go.Figure(get_cell_channel_expression_plot(subset_frame,
                                                              subset_dict=None, mode=mode_value))
+            frame_return = subset_frame
         else:
             subset_zoom = None
             fig = go.Figure(get_cell_channel_expression_plot(frame,
                                                              subset_dict=subset_zoom, mode=mode_value))
+            frame_return = frame
         fig['layout']['uirevision'] = True
-        return fig
+        return fig, frame_return
     else:
         raise PreventUpdate

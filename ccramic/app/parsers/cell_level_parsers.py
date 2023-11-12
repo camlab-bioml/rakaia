@@ -10,6 +10,7 @@ from ..utils.cell_level_utils import set_columns_to_drop
 from ..utils.cell_level_utils import *
 from pathlib import Path
 import anndata
+import gc
 
 def drop_columns_from_measurements_csv(measurements_csv,
                                        cols_to_drop=set_columns_to_drop()):
@@ -189,32 +190,122 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
     else:
         return frame, None
 
-# def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation):
-#     """
-#     Parse the selected cell subtypes from the UMAP plot as selected by the legend
-#     if a subset is not found, return None
-#     """
-#     # Example 1: user selected only the third legend item to view
-#     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
-#     # Example 2: user selects all but the the second item to view
-#     # [{'visible': ['legendonly']}, [2]]
-#     # print(restyle_data)
-#     if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0]:
-#         # get the total number of possible sub annotations and figure out which ones were selected
-#         quant_frame = pd.DataFrame(quantification_frame)
-#         tot_subtypes = list(quantification_frame[umap_col_annotation].unique())
-#         subtypes_keep = []
-#         # Case 1: if only one sub type if selected
-#         if len(restyledata[0]['visible']) == len(tot_subtypes):
-#             for selection in range(restyledata[0]['visible']):
-#                 if restyledata[0]['visible'][selection] != 'legendonly':
-#                     subtypes_keep.append(tot_subtypes[selection])
-#             return subtypes_keep
-#         # Case 2: if the user selects all but one of the sub types
-#         elif len(restyledata[0]['visible']) == 1 and len(restyledata[1] == 1):
-#             for selection in range(len(tot_subtypes)):
-#                 if selection not in restyledata[1]:
-#                     subtypes_keep.append(tot_subtypes[selection])
-#             return subtypes_keep
-#     else:
-#         return None
+def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation, existing_cats=None):
+    """
+    Parse the selected cell subtypes from the UMAP plot as selected by the legend
+    if a subset is not found, return None
+    """
+    # Example 1: user selected only the third legend item to view
+    # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+    # Example 2: user selects all but the the second item to view
+    # [{'visible': ['legendonly']}, [2]]
+    # print(restyle_data)
+    if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0]:
+        # get the total number of possible sub annotations and figure out which ones were selected
+        quant_frame = pd.DataFrame(quantification_frame)
+        tot_subtypes = list(quant_frame[umap_col_annotation].unique())
+        subtypes_keep = []
+        # Case 1: if only one sub type is selected
+        if len(restyledata[0]['visible']) == len(tot_subtypes):
+            indices_use = []
+            for selection in range(len(restyledata[0]['visible'])):
+                if restyledata[0]['visible'][selection] != 'legendonly':
+                    subtypes_keep.append(tot_subtypes[selection])
+                    indices_use.append(selection)
+            return subtypes_keep, indices_use
+        # TODO: different options for single select (include or not)
+        # Case 2: if the user has already added or excluded one sub type
+
+        # Case 2.1: when user wants to remove current index plus other ones that have already been removed
+        # [{'visible': ['legendonly']}, [3]]
+
+        # Case 2.2: when user wants to add current index plus others that have already been added
+        # [{'visible': [True]}, [3]]
+        elif len(restyledata[0]['visible']) == 1 and len(restyledata[1]) == 1:
+            # case 2.1: When the current and previous indices are to be ignored
+            # [{'visible': ['legendonly']}, [3]]
+            if restyledata[0]['visible'][0] == 'legendonly':
+                # existing indices will be ones to keep
+                indices_keep = existing_cats.copy() if existing_cats is not None else \
+                    [ind for ind in range(0, len(tot_subtypes))]
+                if restyledata[1][0] in indices_keep:
+                    indices_keep.remove(restyledata[1][0])
+                for selection in range(len(tot_subtypes)):
+                    if selection in indices_keep:
+                        subtypes_keep.append(tot_subtypes[selection])
+                return subtypes_keep, indices_keep
+            # Case 2.2: when the current and previous indices are to be kept
+            # [{'visible': [True]}, [3]]
+            elif restyledata[0]['visible'][0]:
+                indices_keep = existing_cats.copy() if existing_cats is not None else []
+                for elem in restyledata[1]:
+                    if elem not in indices_keep:
+                        indices_keep.append(elem)
+                for selection in range(len(tot_subtypes)):
+                    if selection in indices_keep:
+                        subtypes_keep.append(tot_subtypes[selection])
+                return subtypes_keep, indices_keep
+        gc.collect()
+    else:
+        return None, None
+
+
+def parse_roi_query_indices_from_quantification_subset(quantification_dict, subset_frame, umap_col_selection=None):
+    """
+    Parse the ROIs included in a view of a subset quantification sheet
+    """
+    # get the merged frames to pull the sample names in the subset
+    full_frame = pd.DataFrame(quantification_dict)
+    merged = subset_frame.merge(full_frame, how="inner", on=subset_frame.columns.tolist())
+    # get the roi names from either the description or the sample name
+    if 'description' in list(merged.columns):
+        indices_query = {'names': list(merged['description'].value_counts().to_dict().keys())}
+    else:
+        try:
+            roi_counts = merged['sample'].value_counts().to_dict()
+            indices_query = {'indices': [int(i.split("_")[-1]) - 1 for i in list(roi_counts.keys())]}
+        except ValueError:
+            # may occur if the split doesn't give integers i.e. if there are other underscores in the name
+            indices_query = None
+
+    freq_counts = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
+                    not None else None
+
+    return indices_query, freq_counts
+
+
+def match_mask_name_with_roi(data_selection, mask_options, roi_options):
+    """"
+    Attempt to match a mask name to the currently selected ROI.
+    Heuristics order:
+    1. If the data selection experiment name is in the list of mask options, return it
+    2. If the data selection ROI name is in the list of mask options, return it
+    3. If any of the mask names have indices in them, return the ROI name at that index
+    4. If None of those exist, return None
+    """
+    mask_return = None
+    if mask_options is not None and data_selection in mask_options:
+        mask_return = data_selection
+    else:
+        if "+++" in data_selection:
+            exp, slide, acq = split_string_at_pattern(data_selection)
+            if mask_options is not None and exp in mask_options:
+                mask_return = exp
+            elif mask_options is not None and acq in mask_options:
+                mask_return = acq
+
+        # if the return value is still None, look for indices
+        if mask_return is None and mask_options is not None:
+            # try to match the index of the data selection to an index in the mask options
+            data_index = roi_options.index(data_selection)
+            for mask in mask_options:
+                try:
+                    # mask naming fro the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
+                    # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
+                    split_1 = mask.split("_ac_IA_mask")[0]
+                    index = int(split_1.split("_")[-1].replace("a", "")) - 1
+                    if index == data_index:
+                        mask_return = mask
+                except (TypeError, IndexError, ValueError):
+                    pass
+    return mask_return

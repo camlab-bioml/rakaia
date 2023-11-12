@@ -45,7 +45,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
 
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
-def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False):
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
     or
@@ -54,10 +54,10 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     # conditions for wrapping the canvas
     large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
     if large_image or hovertext:
-        return dcc.Loading(render_default_annotation_canvas(),
+        return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom),
                                      type="default", fullscreen=False)
     else:
-        return render_default_annotation_canvas()
+        return render_default_annotation_canvas(fullscreen_mode=enable_zoom)
 
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
                               invert=False):
@@ -197,3 +197,18 @@ def invert_annotations_figure(cur_canvas: go.Figure):
     cur_canvas['layout']['annotations'] = cur_annotations
     cur_canvas['layout']['shapes'] = cur_shapes
     return cur_canvas
+
+def set_range_slider_tick_markers(max_value, num_ticks=4):
+    """
+    Set the number and spacing of the tick markers used for the pixel range slider using the histogram maximum
+    Note: the slider minimum is always set to 0
+    """
+    if float(max_value) < 1:
+        return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 10), 2))
+    else:
+        # set the default number of tick marks to 4
+        # if the maximum value is less than 3, reduce the number of ticks accordingly
+        if int(max_value) < 3:
+            num_ticks = int(max_value) + 1
+        # sets the dictionary for the string and int values to be shown in the pixel intensity range slider
+        return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1

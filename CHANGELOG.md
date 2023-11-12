@@ -7,6 +7,61 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.9.0] - 2023-11-07
+
+### Changed
+
+- Click annotations now have a circle surrounding the pixel by default
+  (radius of 4 pixels) that is editable with adjustable radius size
+- Channel image gallery is now clickable through pattern matching:
+channels can be added to the canvas through a gallery click
+- Reset the mask option to None on an ROI switch to avoid the
+assumption that the current mask should be applied to a different image
+- Cache the quantification measurements CSV and UMAP coordinates
+as Serverside objects to speed up interactive UMAP for large datasets
+- Annotations linked to quantification sheets are parsed to identify
+which column should be used to match the annotation to the ROI
+- Set the default drag mode to zoom on a canvas export to HTML
+  (prevents spurious shapes from being drawn offline)
+- Cast all return values for the quantification frame as Serverside
+objects to speed up manual annotations for large data frames
+- Current zoom is retained on ROI change if the dimensions of the new
+ROI match exactly. Otherwise, a canvas refresh is made
+- Annotation categories can now be created in both the canvas
+side tab and the quantification option tab
+- Improved heuristics for matching the quantification sheet
+columns to the current ROI name using either description or sample. #69
+
+### Added
+
+- Dataset query: mcd files can now be queried across ROIs to get
+clickable thumbnails for different ROIs that can then be loaded into
+the canvas
+- ROI name is now visible in the session outside the dropdown menu #68
+- Button to reset current channel percentile scaling to the default
+of the 99th percentile. #67
+- Additional session configuration variables in top right corner:
+can now switch on scroll zoom on the canvas (default is not enabled)
+- Ability to overlay grid on canvas with white lines to assist in
+cell counting
+- Link between sub-setting cells on the UMAP and sending a query to
+the query tab to display relevant ROIs by descending cell count
+- Pattern matching on mask and ROI names to automatically find the
+proper mask on an ROI change
+- Users can now annotate quantification sheets from interactive
+UMAP subsetting in addition to annotations on the canvas. Annotation
+category options are the same as the options listed for canvas-derived
+annotations
+
+### Fixed
+
+- Edits to the pixel histogram and range slider for images
+with pixel ranges between 0 and 1
+- Added additional logic to parse for ROI names in quantification
+sheet #69
+- Edited callback triggers for the expression bar plot to update
+properly on a mode change when a subset is being used
+
 ## [0.8.0] - 2023-10-12
 
 ### Changed

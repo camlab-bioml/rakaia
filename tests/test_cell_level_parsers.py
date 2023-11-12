@@ -16,7 +16,8 @@ def test_validation_of_measurements_csv(get_current_dir):
     assert valid is not None
     assert err is None
 
-    measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area'], axis=1)
+    # currently, validation requires only sample to pass
+    measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'], axis=1)
     valid_bad, err = validate_incoming_measurements_csv(measurements_bad)
     assert valid_bad is None
     assert err is None
@@ -88,3 +89,63 @@ def test_return_proper_cols_remove_validate():
     assert 'x_min' in set_columns_to_drop()
     assert not 'x_min' in set_mandatory_columns()
     assert len(set_columns_to_drop()) != len(set_mandatory_columns())
+
+def test_parse_restyledata_from_legend_change():
+    """
+    test that the dictionary from a legend restyle change in the dcc.Graph can be registered properly
+    """
+    test_frame = {"category": ["one", "two", "three", "four", "five", "six", "seven"],
+                 "value": [1, 2, 3, 4, 5, 6, 7]}
+    # case 1: when all categories are selected
+    restyle_1 = [{'visible': ['legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly', 'legendonly']},
+                 [0, 1, 2, 3, 4, 5, 6]]
+
+    types_return_1 = parse_cell_subtypes_from_restyledata(restyle_1, test_frame, "category", None)
+    assert types_return_1 == (['two'], [1])
+
+    restyle_2 = [{'visible': [True]}, [6]]
+    types_return_2 = parse_cell_subtypes_from_restyledata(restyle_2, test_frame, "category", [1])
+    assert types_return_2 == (['two', 'seven'], [1, 6])
+
+    restyle_3 = [{'visible': ['legendonly']}, [3]]
+    types_return_3 = parse_cell_subtypes_from_restyledata(restyle_3, test_frame, "category", [0, 1, 2, 3])
+    assert types_return_3 == (['one', 'two', 'three'], [0, 1, 2])
+
+def test_valid_parse_for_indices_for_query(get_current_dir):
+    """
+    test that the parser for the measurements CSV is able to generate a list of valid indices
+    """
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    expression = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'], axis=1)
+    indices, counts = parse_roi_query_indices_from_quantification_subset(measurements_csv, expression, "sample")
+    assert 'indices' in indices
+    assert indices['indices'] == [0, 1]
+    assert len(counts) == 2
+    measurements_csv.rename(columns={"sample": "description"}, inplace=True)
+    assert 'description' in measurements_csv.columns
+    indices, counts = parse_roi_query_indices_from_quantification_subset(measurements_csv, expression, None)
+    assert 'names' in indices
+    assert indices['names'] == ['test_1', 'test_2']
+    assert counts is None
+
+def test_mask_match_to_roi_name():
+    data_selection = "MCD1+++slide0+++roi_1"
+    mask_options = ["roi_1", "roi_2"]
+    assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1"
+
+    data_selection_2 = "roi_1+++slide0+++roi_1"
+    assert match_mask_name_with_roi(data_selection_2, mask_options, None) == "roi_1"
+
+    dataset_options = ["round_1", "round_2", "round_3", "round_4"]
+    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
+
+    assert match_mask_name_with_roi("round_3", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+
+    dataset_options = ["round_1", "round_2", "MCD1+++slide0+++roi_1", "round_4"]
+    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
+
+    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+
+    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", None, dataset_options) is None
+
+    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options) is None

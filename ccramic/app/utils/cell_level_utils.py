@@ -1,6 +1,7 @@
 import collections
 
 import dash
+import pandas as pd
 from dash_extensions.enrich import Serverside
 from sklearn.preprocessing import StandardScaler
 import sys
@@ -28,8 +29,11 @@ def set_columns_to_drop(measurements_csv=None):
         except (ValueError, IndexError):
             return defaults
 
-def set_mandatory_columns():
-    return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
+def set_mandatory_columns(only_sample=True):
+    if only_sample:
+        return ['sample']
+    else:
+        return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
 def get_pixel(mask, i, j):
     if len(mask.shape) > 2:
@@ -94,27 +98,71 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
     try:
         assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
                                                           'yaxis.range[0]', 'yaxis.range[1]']])
+        if len(measurements) != len(umap_frame):
+            umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
+        #     umap_frame.reset_index()
+        #     measurements.reset_index()
         query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                          f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                          f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
                          f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
-        return measurements.loc[umap_frame.index[query.index.tolist()]]
+        # if len(measurements) != len(umap_frame):
+        #     query.reset_index()
+        subset = measurements.loc[query.index.tolist()]
+        return subset
     except AssertionError:
         return None
+
+
+def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
+                                        annotation_column="ccramic_cell_annotation", annotation_value="None"):
+    """
+    Populate a new column in the quantification frame with a column annotation with a value as subset using the
+    interactive UMAP
+    this is similar but differs from the annotation from the canvas as the coordinates represent UMAP dimensions
+    and not pixels from an image it the coordinates dict
+    """
+    try:
+        umap_frame.columns = ['UMAP1', 'UMAP2']
+        assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']])
+        if len(measurements) != len(umap_frame):
+            umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
+        #     umap_frame.reset_index()
+        #     measurements.reset_index()
+        query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
+                         f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
+                         f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
+                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
+
+        list_indices = query.index.tolist()
+
+        if annotation_column not in measurements.columns:
+            measurements[annotation_column] = "None"
+
+        measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
+                                                   annotation_value, measurements[annotation_column])
+
+    except (KeyError, AssertionError):
+        pass
+    return measurements
 
 def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle):
     if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
-        first_image = list(upload_dict[data_selection].keys())[0]
-        first_image = upload_dict[data_selection][first_image]
-        if first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
-                first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]:
-            if error_config is None:
-                error_config = {"error": None}
-            error_config["error"] = "Warning: the current mask does not have " \
+        try:
+            first_image = list(upload_dict[data_selection].keys())[0]
+            first_image = upload_dict[data_selection][first_image]
+            if first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
+                    first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]:
+                if error_config is None:
+                    error_config = {"error": None}
+                error_config["error"] = "Warning: the current mask does not have " \
                                     "the same dimensions as the current ROI."
-            return error_config
-        else:
+                return error_config
+            else:
+                raise PreventUpdate
+        except KeyError:
             raise PreventUpdate
     else:
         raise PreventUpdate
@@ -177,7 +225,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
                                                     annotation_column="ccramic_cell_annotation",
                                                     cell_identifier="cell_id",
-                                                    cell_type=None, sample_name=None):
+                                                    cell_type=None, sample_name=None, id_column='sample'):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
@@ -185,16 +233,20 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
     if annotation_column not in measurements.columns:
         measurements[annotation_column] = "None"
 
-    measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
-                                               (measurements['sample'] == sample_name), cell_type,
+    try:
+        measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
+                                               (measurements[id_column] == sample_name), cell_type,
                                                measurements[annotation_column])
+    except KeyError as e:
+        pass
     return measurements
 
 
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
                                                     annotation_column="ccramic_cell_annotation",
-                                                    values_dict=None,
-                                                    cell_type=None):
+                                                    cell_identifier="cell_id", values_dict=None, cell_type=None,
+                                                    mask_toggle=True, mask_dict=None, mask_selection=None,
+                                                    sample=None, id_column='sample'):
     """
     Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
@@ -208,14 +260,25 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
         x = values_dict['points'][0]['x']
         y = values_dict['points'][0]['y']
 
-        measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
+        if mask_toggle and None not in (mask_dict, mask_selection) and len(mask_dict) > 0:
+
+            # get the cell ID at that position to match
+            mask_used = mask_dict[mask_selection]['raw']
+            cell_id = mask_used[y, x].astype(int)
+
+            measurements[annotation_column] = np.where((measurements[cell_identifier]== cell_id) &
+                                                   (measurements[id_column] == sample), cell_type,
+                                                   measurements[annotation_column])
+        else:
+            measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
                                                         float(x)) &
                                                (measurements[str(f"{coord_dict['x_max']}")] >=
                                                 float(x)) &
                                                (measurements[str(f"{coord_dict['y_min']}")] <=
                                                 float(y)) &
                                                (measurements[str(f"{coord_dict['y_max']}")] >=
-                                                float(y)),
+                                                float(y)) &
+                                                (measurements['sample'] == sample),
                                                         cell_type,
                                                     measurements[annotation_column])
         return measurements
@@ -359,3 +422,48 @@ def subset_measurements_by_point(measurements, x, y):
 
 def validate_mask_shape_matches_image(mask, image):
     return (mask.shape[0] == image.shape[0]) and (mask.shape[1] == image.shape[1])
+
+
+def generate_greyscale_grid_array(array_shape, dim=100):
+    """
+    Generate a greyscale grid array defined as white lines with a black background, with the square dimensions
+    given by the dim parameter
+    """
+    empty = np.zeros(array_shape)
+    rows_num = int(empty.shape[0] / dim)
+    cols_num = int(empty.shape[1] / dim)
+
+    cols_spacing = [int(i) for i in np.linspace(0, (empty.shape[1] - 1), cols_num)]
+    rows_spacing = [int(i) for i in np.linspace(0, (empty.shape[0] - 1), rows_num)]
+
+    # only create the grid lines if the image is sufficiently large: 2x the dimension of the box or greater
+    if empty.shape[0] >= (2 * dim):
+        for row in rows_spacing:
+            empty[row] = 255
+
+    if empty.shape[1] >= (2 * dim):
+        for col in cols_spacing:
+            empty[:, col] = 255
+
+    return np.array(Image.fromarray(empty).convert('RGB')).astype(np.uint8)
+
+
+def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options):
+    """
+    Parse the quantification sheet and current ROI name to identify the column name to use to match
+    the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
+    prioritized as the name of the ROI, and sample is the fiel name with a 1-indxed counter such as {file_name}_1
+    """
+    quantification_frame = pd.DataFrame(quantification_frame)
+    exp, slide, acq = split_string_at_pattern(data_selection)
+    if 'description' in quantification_frame.columns and acq in quantification_frame['description'].tolist():
+        return acq, 'description'
+    elif 'sample' in quantification_frame.columns:
+        try:
+            index = dataset_options.index(data_selection) + 1
+            sample_name = f"{exp}_{index}"
+            return sample_name, 'sample'
+        except IndexError:
+            return None, None
+    else:
+        return None, None
