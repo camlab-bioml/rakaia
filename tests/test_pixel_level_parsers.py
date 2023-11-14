@@ -30,3 +30,26 @@ def test_basic_parser_from_mcd(get_current_dir):
     dataset_info = uploaded[-1]
     assert len(dataset_info['ROI']) == 6
     assert '11 markers' in dataset_info['Panel']
+
+def test_basic_parser_blend_dict_from_lazy_loading(get_current_dir):
+    uploaded = populate_upload_dict([os.path.join(get_current_dir, "query.mcd")])
+    uploaded_dict = uploaded[0]
+    assert 'query+++slide0+++Xylene' in uploaded_dict.keys()
+    assert all([elem is None for elem in uploaded_dict['query+++slide0+++Xylene'].values()])
+    session_config = {"uploads": [os.path.join(get_current_dir, "query.mcd")]}
+    new_upload_dict = populate_upload_dict_by_roi(uploaded_dict, 'query+++slide0+++Xylene', session_config)
+    assert all([elem is not None for elem in new_upload_dict['query+++slide0+++Xylene'].values()])
+
+def test_basic_parser_from_text(get_current_dir):
+    uploaded = populate_upload_dict([os.path.join(get_current_dir, "query_from_text.txt")])
+    uploaded_dict = uploaded[0]
+    assert 'metadata' in uploaded_dict.keys()
+    assert 'query_from_text+++slide0+++0' in uploaded_dict.keys()
+    assert len(uploaded_dict['query_from_text+++slide0+++0'].keys()) == 4
+
+def test_basic_parser_from_h5py(get_current_dir):
+    uploaded = populate_upload_dict([os.path.join(get_current_dir, "data.h5")])
+    uploaded_dict = uploaded[0]
+    assert 'metadata' in uploaded_dict.keys()
+    assert 'cycA1A2_Ir_TBS_3_8+++slide0+++0' in uploaded_dict.keys()
+    assert len(uploaded_dict['cycA1A2_Ir_TBS_3_8+++slide0+++0'].keys()) == 4

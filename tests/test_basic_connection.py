@@ -52,8 +52,8 @@ def recursive_wait_for_elem(app, elem, duration):
 
 
 @skip_on(SessionNotCreatedException, "Selenium version is not compatible")
-@pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
-                    reason="Only test the connection in a GA workflow due to passwordless sudo")
+# @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
+#                     reason="Only test the connection in a GA workflow due to passwordless sudo")
 def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
     credentials = base64.b64encode(b"ccramic_user:ccramic-1").decode('utf-8')
     assert str(type(ccramic_flask_test_app)) == "<class 'flask.app.Flask'>"

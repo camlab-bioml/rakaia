@@ -16,7 +16,7 @@ import dash_ag_grid as dag
 import dash_mantine_components as dmc
 from plotly.graph_objs.layout import YAxis, XAxis
 from ccramic.entrypoint import __version__
-import dash_core_components as dcc
+from dash import dcc
 def init_dashboard(server, authentic_id, config=None):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -771,13 +771,13 @@ def init_dashboard(server, authentic_id, config=None):
                                         style={"display": "flex"}), id="btn-download-umap-projection", className="mx-auto",
                                         color=None, n_clicks=0, style={"margin-top": "10px"}),
                                     dcc.Download(id="download-umap-projection"),
-                                    dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
-                                    style={"display": "inline-block", "margin-right": "7.5px",
-                                    "margin-top": "3px"}), html.Div("Download quantification CSV")],
-                                    style={"display": "flex"}),
-                                    id="btn-download-annotations", className="mx-auto",
-                                    color=None, n_clicks=0, style={"margin-top": "10px"}),
-                                    dcc.Download(id="download-edited-annotations"),
+                                    # dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                    # style={"display": "inline-block", "margin-right": "7.5px",
+                                    # "margin-top": "3px"}), html.Div("Download quantification CSV")],
+                                    # style={"display": "flex"}),
+                                    # id="btn-download-annotations", className="mx-auto",
+                                    # color=None, n_clicks=0, style={"margin-top": "10px"}),
+                                    # dcc.Download(id="download-edited-annotations"),
                                     ]), width=6),
                                     html.Br(),
                                     html.Br()
