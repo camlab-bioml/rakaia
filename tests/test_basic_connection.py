@@ -78,14 +78,17 @@ def test_basic_cli_outputs():
     parser = argparser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
-    assert vars(args) == {'auto_open': False, 'port': 5000, 'use_local_dialog': False}
+    assert vars(args) == {'auto_open': False, 'debug': False, 'port': 5000, 'threading': True,
+                          'use_local_dialog': False}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     parser = argparser()
     args = parser.parse_args(['-a'])
-    assert vars(args) == {'auto_open': True, 'port': 5000, 'use_local_dialog': False}
+    assert vars(args) == {'auto_open': True, 'debug': False, 'port': 5000, 'threading': True,
+                          'use_local_dialog': False}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
-    assert vars(args) == {'auto_open': False, 'port': 8050, 'use_local_dialog': False}
+    assert vars(args) == {'auto_open': False, 'debug': False, 'port': 8050, 'threading': True,
+                          'use_local_dialog': False}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     with pytest.raises(SystemExit):
         parser.parse_args(['-v'])

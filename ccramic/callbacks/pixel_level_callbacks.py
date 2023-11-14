@@ -512,6 +512,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
+
             return current_blend_dict, Serverside(all_layers), param_dict, channel_modify
         else:
             raise PreventUpdate
@@ -2680,6 +2681,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 raise PreventUpdate
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output('prev-roi', 'disabled'),
+                       Output('next-roi', 'disabled'),
+                       Input('data-collection', 'value'),
+                       State('data-collection', 'options'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def toggle_roi_click_through_visibility(cur_data_selection, cur_options):
+        """
+        Toggle the visibility/availability of the previous and next ROi buttons depending on the current ROI selection
+        """
+        disabled_prev = True if cur_options[0] == cur_data_selection else False
+        disabled_next = True if cur_options[-1] == cur_data_selection else False
+        return disabled_prev, disabled_next
+
 
     @dash_app.callback(
         Output('image_layers', 'value', allow_duplicate=True),

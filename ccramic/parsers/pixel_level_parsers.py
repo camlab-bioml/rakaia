@@ -242,6 +242,8 @@ def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config):
     """
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
+    #IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
+    # is already contained in the dictionary
     try:
         split = split_string_at_pattern(dataset_selection)
         basename, slide, acq_name = split[0], split[1], split[2]

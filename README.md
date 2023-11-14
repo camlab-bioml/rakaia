@@ -54,7 +54,7 @@ pip install .
 
 ## Running ccramic
 
-After installation, ccramic can be run through conda:
+After installation, ccramic can be run through conda or simply executed using the `ccramic` command:
 
 ```
 conda activate ccramic
@@ -100,10 +100,19 @@ ccramic -l
 
 **IMPORTANT**: Due to the limitations of wxPython on multi-threaded
 systems as well as compatibility problems on different OS options, this feature
-is not likely to work properly on MacOS.
+is not likely to work properly on macOS.
 
 In order to use this feature, users should make sure to install
 wxPython [from the proper download page](https://wxpython.org/pages/downloads/index.html)
+
+### Other options
+
+By default, ccramic will run in threaded mode. To disable using a multi-threaded application instance, add `-dt` as
+a command line option:
+
+```commandline
+ccramic -dt
+```
 
 ## Basic authentication
 
@@ -142,7 +151,8 @@ visit [the FAQ documentation](man/README.md)
 
 ## For developers
 
-ccramic can be run in editable mode with either configuration shown below, which permits source code changes to be applied to the application on the fly:
+ccramic can be run in editable mode with either configuration shown below,
+which permits source code changes to be applied to the application on the fly:
 
 ```
 pip install -e .
@@ -159,4 +169,12 @@ Conversely, without app installation:
 
 ```
 python ccramic/wsgi.py
+```
+
+ccramic can also support being run in debug mode, which will apply source code changes to active sessions while the
+application is running (NOte that changes to the source code will trigger an application page refresh). This can be
+enabled using the `-d` CLi option:
+
+```commandline
+ccramic -d
 ```
