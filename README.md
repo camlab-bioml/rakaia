@@ -173,8 +173,25 @@ python ccramic/wsgi.py
 
 ccramic can also support being run in debug mode, which will apply source code changes to active sessions while the
 application is running (NOte that changes to the source code will trigger an application page refresh). This can be
-enabled using the `-d` CLi option:
+enabled using the `-d` CLI option:
 
 ```commandline
 ccramic -d
 ```
+
+## Troubleshooting
+
+### Callback error in updating `unique-channel-list.options`
+
+<p align="center">
+    <img src="man/assets/troubleshooting-error-memory.png">
+</p>
+
+An error of this type is likely to occur during data import, and may be
+the result of low temporary storage available on the hard drive.
+Users should review the data management and storage settings for
+their specific OS to diagnose if there is sufficient storage space
+for the ccramic session caching. In general, the user should aim
+for at least 2x the total dataset size of temporary storage (So for
+analysis of a 10GB dataset, at least 20GB of temp disk space should
+be kept free.)

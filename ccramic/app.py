@@ -113,8 +113,12 @@ def init_dashboard(server, authentic_id, config=None):
                     dcc.Input(id='annotation-circle-size', type='number', value=4, style={"width": "25%",
                             "margin-top": "-3px"})],
                     style={"display": "flex"}),
+                    html.Br(),
                     daq.ToggleSwitch(label='Autofill channel colours', id='autofill-channel-colors',
                                      labelPosition='bottom', color="blue", value=False),
+                    html.Br(),
+                    html.Br(),
+                    html.H6(f"tmp storage destination: {cache_dest}")
                 ]),
                         id="session-config-modal", size='l',
                         style={"margin-left": "10px", "margin-top": "15px"}),
@@ -844,6 +848,7 @@ def init_dashboard(server, authentic_id, config=None):
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
         dcc.Store(id='query-cell-id-lists'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
+
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 
     dash_app.enable_dev_tools(debug=True)

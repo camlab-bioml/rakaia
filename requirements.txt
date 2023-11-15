@@ -66,7 +66,7 @@ numpy==1.24.3
 oauthlib==3.2.2
 opencv-python-headless==4.7.0.72
 outcome==1.2.0
-packaging==21.3
+packaging==22.0
 pandas==2.0.2
 patsy==0.5.3
 percy==2.0.2

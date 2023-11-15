@@ -1,3 +1,4 @@
+import gc
 import os.path
 
 import dash.exceptions
@@ -817,15 +818,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('annotation_canvas', 'figure'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options, cur_graph):
+    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options, cur_canvas):
         """
         Reset the canvas to blank on an ROI change
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
         #TODO: new update here does not reset the canvas to blank between ROI selections for smoother transition
         if new_selection is not None:
-            cur_graph['data'] = []
-            return dash.no_update, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
+            canvas_return = dash.no_update
+            if 'shapes' in cur_canvas['layout'] and len(cur_canvas['layout']['shapes']) > 0:
+                other_shapes = [shape for shape in cur_canvas['layout']['shapes'] if \
+                                                    shape is not None and 'type' in shape and \
+                                                (shape['type'] in ['path', 'rect', 'circle'] or \
+                                                  any(elem in ['rect', 'path', 'circle'] for elem in shape.keys()))]
+                if len(other_shapes) > 0:
+                    canvas_return = go.Figure()
+            return canvas_return, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
         else:
             raise PreventUpdate
 
@@ -879,7 +887,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 len(channel_order) > 0:
-
+            # try:
+            #     cur_graph['layout']['shapes'] = [shape for shape in cur_graph_layout['layout']['shapes'] if \
+            #                                      shape is not None and 'type' in shape]
+            # except (KeyError, TypeError):
+            #     pass
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = ''
             for image in channel_order:
@@ -943,7 +955,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig = cur_graph
                         # del cur_graph
                     # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
-                    except KeyError:
+                    except (KeyError, TypeError):
                         fig['layout']['uirevision'] = True
 
                         if toggle_scalebar:
@@ -2681,6 +2693,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 raise PreventUpdate
         else:
             raise PreventUpdate
+
 
     @dash_app.callback(Output('prev-roi', 'disabled'),
                        Output('next-roi', 'disabled'),
