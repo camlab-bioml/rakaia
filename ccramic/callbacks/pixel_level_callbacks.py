@@ -16,6 +16,7 @@ from ccramic.utils.cell_level_utils import *
 from ccramic.io.display import generate_area_statistics_dataframe
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
 from ccramic.parsers.cell_level_parsers import *
+from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -832,7 +833,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                 (shape['type'] in ['path', 'rect', 'circle'] or \
                                                   any(elem in ['rect', 'path', 'circle'] for elem in shape.keys()))]
                 if len(other_shapes) > 0:
-                    canvas_return = go.Figure()
+                    for shape in cur_canvas['layout']['shapes']:
+                        if 'label' in shape and 'texttemplate' in shape['label']:
+                            del shape['label']['texttemplate']
+                    canvas_return = cur_canvas
             return canvas_return, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
         else:
             raise PreventUpdate
@@ -887,6 +891,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 len(channel_order) > 0:
+            cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             # try:
             #     cur_graph['layout']['shapes'] = [shape for shape in cur_graph_layout['layout']['shapes'] if \
             #                                      shape is not None and 'type' in shape]
@@ -1057,7 +1062,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 fig.update_traces(hovertemplate=new_hover)
                 # fig.update_layout(dragmode="zoom")
                 return fig, Serverside(image)
-            except (ValueError, AttributeError, KeyError, IndexError):
+            except (ValueError, AttributeError, KeyError, IndexError) as e:
                 raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
@@ -1104,12 +1109,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
         """
-        bad_update = cur_graph_layout in [{"autosize": True}]
+        # bad_update = cur_graph_layout in [{"autosize": True}]
 
         # update the scale bar with and without zooming
-        if cur_graph is not None and \
-             'shapes' not in cur_graph_layout and cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and \
-                not bad_update:
+        if cur_graph is not None:
+            cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             if ctx.triggered_id == "annotation_canvas":
                 try:
@@ -1154,7 +1158,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 fig.update_layout(newshape=dict(line=dict(color="white")))
 
                     return fig, cur_graph_layout
-                except (ValueError, KeyError, AssertionError):
+                except (ValueError, KeyError, AssertionError) as e:
                     raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
                 if None not in (x_request, y_request, current_window) and \
@@ -1225,6 +1229,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
         if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
             try:
+                cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
                 pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                 for annotations in cur_graph['layout']['annotations']:
                     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
@@ -1277,7 +1282,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
             # scalebar is y = 0.06
             # legend is y = 0.05
-
+            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             first_image = list(image_dict[data_selection].keys())[0]
             first_image = image_dict[data_selection][first_image]
@@ -1379,6 +1384,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def render_canvas_from_invert_annotations(cur_canvas, cur_layout, currently_selected,
                                             data_selection, blend_colour_dict, invert_annotations):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
+            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             return invert_annotations_figure(cur_canvas)
         else:
             raise PreventUpdate

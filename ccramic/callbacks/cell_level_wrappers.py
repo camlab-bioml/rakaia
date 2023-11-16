@@ -8,6 +8,7 @@ from dash import ctx
 from ccramic.parsers.cell_level_parsers import *
 from ccramic.inputs.cell_level_inputs import *
 from ccramic.utils.cell_level_utils import *
+from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 from dash import dcc
 import ast
 
@@ -75,13 +76,15 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
     Remove any annotation shape on the canvas (i.e. any shape that is a rectangle or closed form svgpath)
     """
     if n_clicks > 0 and None not in (cur_canvas, canvas_layout) and 'shapes' not in canvas_layout:
+        cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
         if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
             try:
                 cur_canvas['layout']['shapes'] = [elem for elem in cur_canvas['layout']['shapes'] if \
-                                                  'type' in elem and \
-                                                  elem['type'] not in ['rect', 'path', 'circle']]
+                                                  elem is not None and ('type' in elem and \
+                                                  elem['type'] not in ['rect', 'path', 'circle'])]
             except KeyError:
                 pass
+            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             return cur_canvas, dash.no_update
         else:
             raise PreventUpdate
