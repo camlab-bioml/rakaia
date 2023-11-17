@@ -377,8 +377,10 @@ def init_dashboard(server, authentic_id, config=None):
                                                style={"width": "85%"}),
                                  dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
                                               style={"width": "85%", "display": "inline-block"}),
-                                 dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"})],
-                                          style={"display": "inline-block", "margin": "20px"}),
+                                 dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"}),
+                                 dcc.Input(id="sigma-val-filter", type="number", value=1, style={"width": "50%"},
+                                           disabled=True)],
+                                style={"display": "inline-block", "margin": "20px"}),
                                  html.Br(),
                                  dbc.Button(
                                      children=html.Span([html.I(className="fa-solid fa-gears",

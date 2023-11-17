@@ -232,8 +232,8 @@ def create_new_blending_dict(uploaded):
             # assert that all of the rois have the same length to use the same panel for all
     first_roi = [elem for elem in list(uploaded.keys()) if 'metadata' not in elem][0]
     for channel in uploaded[first_roi].keys():
-        current_blend_dict[channel] = {'color': None, 'x_lower_bound': None,
-                                                'x_upper_bound': None, 'filter_type': None, 'filter_val': None}
+        current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
+                                       'filter_type': None, 'filter_val': None, 'filter_sigma': None}
         current_blend_dict[channel]['color'] = '#FFFFFF'
     return current_blend_dict
 

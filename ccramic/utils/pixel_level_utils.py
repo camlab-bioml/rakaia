@@ -12,6 +12,7 @@ from skimage import draw
 from scipy import ndimage
 from scipy.ndimage import gaussian_filter, median_filter
 from dash.exceptions import PreventUpdate
+import cv2
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -169,7 +170,9 @@ def apply_preset_to_array(array, preset):
         if preset['filter_type'] == "median" and preset['filter_val'] is not None:
             array = median_filter(array, int(preset['filter_val']))
         elif preset['filter_val'] is not None:
-            array = gaussian_filter(array, int(preset['filter_val']))
+            if int(preset['filter_val']) % 2 != 0:
+                array = cv2.GaussianBlur(array, (int(preset['filter_val']), int(preset['filter_val'])),
+                                         int(preset['filter_sigma']))
         return array
 
 

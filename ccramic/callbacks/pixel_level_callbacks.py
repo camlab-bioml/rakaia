@@ -21,6 +21,7 @@ from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
 import pathlib
+import cv2
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -479,7 +480,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                      get_default_channel_upper_bound_by_percentile(
                                                                 uploaded_w_data[data_selection][elem]),
                                                                  'filter_type': None,
-                                                                 'filter_val': None}
+                                                                 'filter_val': None, 'filter_sigma': None}
                     # TODO: default colour is white, but can set auto selection here for starting colours
                     current_blend_dict[elem]['color'] = '#FFFFFF'
                     if autofill_channel_colours:
@@ -542,12 +543,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('bool-apply-filter', 'value'),
                        State('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
+                       State("sigma-val-filter", 'value'),
                        State('images_in_blend', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def update_blend_dict_on_color_selection(colour, layer, uploaded_w_data,
                                     current_blend_dict, data_selection, add_to_layer,
-                                    all_layers, filter_chosen, filter_name, filter_value,
+                                    all_layers, filter_chosen, filter_name, filter_value, filter_sigma,
                                     blend_options):
         """
         Update the blend dictionary and layer dictionary when a modification channel changes its colour
@@ -574,13 +576,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         if filter_name == "median":
                             array = median_filter(array, int(filter_value))
                         else:
-                            array = gaussian_filter(array, int(filter_value))
-
-                # if filters have been selected, apply them before recolouring
-
-
-                        # and \
-                        # colour['hex'] not in ['#ffffff', '#FFFFFF']:
+                            # array = gaussian_filter(array, int(filter_value))
+                            if int(filter_value) % 2 != 0:
+                                array = cv2.GaussianBlur(array, (int(filter_value),
+                                                                 int(filter_value)), float(filter_sigma))
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
@@ -651,9 +650,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         Set the blend param dictionary and canvas layer dictionary when a preset is applied to the current ROI.
         """
-        preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
+        preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val', 'filter_sigma']
         if None not in (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
-
 
             array = uploaded_w_data[data_selection][layer]
 
@@ -679,15 +677,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Input('bool-apply-filter', 'value'),
                        Input('filter-type', 'value'),
-                       State("kernel-val-filter", 'value'),
+                       Input("kernel-val-filter", 'value'),
+                       Input("sigma-val-filter", 'value'),
                        State('image_layers', 'value'),
                        State('images_in_blend', 'options'),
                        State('static-session-var', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def set_blend_options_for_layer_with_bool_filter(layer, uploaded, current_blend_dict, data_selection,
-                                                     all_layers, filter_chosen, filter_name, filter_value, cur_layers,
-                                                     blend_options, session_vars):
+                                                     all_layers, filter_chosen, filter_name, filter_value, filter_sigma,
+                                                     cur_layers, blend_options, session_vars):
 
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
@@ -695,25 +694,28 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             only_options_changed = ctx.triggered_id == "images_in_blend" and \
                                    ctx.triggered[0]['value'] == session_vars["cur_channel"]
 
-        if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers) and \
-                not only_options_changed:
-
-
+        if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers,
+                        filter_sigma) and not only_options_changed:
 
             array = uploaded[data_selection][layer]
 
             # condition where the current inputs are set to not have a filter, and the current blend dict matches
             no_filter_in_both = current_blend_dict[layer]['filter_type'] is None and \
                                 current_blend_dict[layer]['filter_val'] is None and \
+                                current_blend_dict[layer]['filter_sigma'] is None and \
                                 len(filter_chosen) == 0
 
             # condition where toggling between two channels, and the first one has no filter and the second
             # has a filter. prevent the callback with no actual change
             same_filter_params = current_blend_dict[layer]['filter_type'] == filter_name and \
                                  current_blend_dict[layer]['filter_val'] == filter_value and \
+                                 current_blend_dict[layer]['filter_sigma'] == filter_sigma and \
                                  len(filter_chosen) > 0
 
-            if not no_filter_in_both and not same_filter_params:
+            # do not update if the gaussian filter is applied with an even number
+            gaussian_even = filter_name == "gaussian" and (int(filter_value) % 2 == 0)
+
+            if not no_filter_in_both and not same_filter_params and not gaussian_even:
                 # do not update if all of the channels are not in the Channel dict
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in cur_layers for elem in blend_options]):
@@ -730,14 +732,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         if filter_name == "median":
                             array = median_filter(array, int(filter_value))
                         else:
-                            array = gaussian_filter(array, int(filter_value))
+                            # array = gaussian_filter(array, int(filter_value))
+                            if int(filter_value) % 2 != 0:
+                                array = cv2.GaussianBlur(array, (int(filter_value),
+                                                                 int(filter_value)), float(filter_sigma))
 
                         current_blend_dict[layer]['filter_type'] = filter_name
                         current_blend_dict[layer]['filter_val'] = filter_value
+                        current_blend_dict[layer]['filter_sigma'] = filter_sigma
 
                     else:
                         current_blend_dict[layer]['filter_type'] = None
                         current_blend_dict[layer]['filter_val'] = None
+                        current_blend_dict[layer]['filter_sigma'] = None
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                                                  current_blend_dict[
@@ -777,8 +784,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
 
             for key, value in current_blend_dict.items():
-                current_blend_dict[key] = apply_preset_to_blend_dict(value,
-                                                                                      preset_dict[preset_selection])
+                current_blend_dict[key] = apply_preset_to_blend_dict(value, preset_dict[preset_selection])
             return current_blend_dict
         else:
             raise PreventUpdate
@@ -2073,6 +2079,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('bool-apply-filter', 'value'),
                        Output('filter-type', 'value'),
                        Output('kernel-val-filter', 'value'),
+                       Output('sigma-val-filter', 'value'),
                        Output("annotation-color-picker", 'value'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
@@ -2084,11 +2091,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('bool-apply-filter', 'value'),
                        State('filter-type', 'value'),
                        State('kernel-val-filter', 'value'),
+                       State('sigma-val-filter', 'value'),
                        State("annotation-color-picker", 'value'))
     # @cache.memoize())
     def update_channel_filter_inputs(selected_channel, uploaded, data_selection, current_blend_dict,
                                      preset_selection, preset_dict, session_vars, cur_bool_filter, cur_filter_type,
-                                     cur_filter_val, cur_colour):
+                                     cur_filter_val, cur_filter_sigma, cur_colour):
         """
         Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used,
         or if the blend dict is updated
@@ -2103,39 +2111,53 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:
             filter_type = current_blend_dict[selected_channel]['filter_type']
             filter_val = current_blend_dict[selected_channel]['filter_val']
+            filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
             color = current_blend_dict[selected_channel]['color']
             # evaluate the current states of the inputs. if they are the same as the new channel, do not update
-            if ' apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val):
+            if ' apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val, filter_sigma):
                 to_apply_filter = dash.no_update
             else:
-                to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
+                to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val, filter_sigma) else []
             if filter_type == cur_filter_type:
                 filter_type_return = dash.no_update
             else:
-                filter_type_return = filter_type if filter_type is not None else "median"
+                filter_type_return = filter_type if filter_type is not None else cur_filter_type
             if filter_val == cur_filter_val:
                 filter_val_return = dash.no_update
             else:
-                filter_val_return = filter_val if filter_val is not None else 3
+                filter_val_return = filter_val if filter_val is not None else cur_filter_val
+            if filter_sigma == cur_filter_sigma:
+                filter_sigma_return = dash.no_update
+            else:
+                filter_sigma_return = filter_sigma if filter_sigma is not None else cur_filter_sigma
             if color == cur_colour['hex']:
                 color_return = dash.no_update
             else:
                 color_return = dict(hex=color) if color is not None and color not in \
                                                   ['#FFFFFF', '#ffffff'] else dash.no_update
-            return to_apply_filter, filter_type_return, filter_val_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
             filter_type = preset_dict[preset_selection]['filter_type']
             filter_val = preset_dict[preset_selection]['filter_val']
+            filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
             color = current_blend_dict[selected_channel]['color']
             to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
+            filter_sigma_return = filter_sigma if filter_sigma is not None else 1
             color_return = dict(hex=color) if color is not None and color not in \
                                                   ['#FFFFFF', '#ffffff'] else dash.no_update
-            return to_apply_filter, filter_type_return, filter_val_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output('sigma-val-filter', 'disabled'),
+                       Input('filter-type', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def update_channel_filter_inputs(filter_type):
+        return True if filter_type == "median" else False
 
     @dash_app.callback(Input('preset-button', 'n_clicks'),
                        State('set-preset', 'value'),
