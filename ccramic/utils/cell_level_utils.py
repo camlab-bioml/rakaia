@@ -15,6 +15,7 @@ import cv2
 import os
 import matplotlib.patches as mpatches
 import ast
+from skimage.segmentation import find_boundaries
 
 def set_columns_to_drop(measurements_csv=None):
     defaults = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
@@ -35,11 +36,11 @@ def set_mandatory_columns(only_sample=True):
     else:
         return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
-def get_pixel(mask, i, j):
-    if len(mask.shape) > 2:
-        return mask[i][j][0]
-    else:
-        return mask[i][j]
+# def get_pixel(mask, i, j):
+#     if len(mask.shape) > 2:
+#         return mask[i][j][0]
+#     else:
+#         return mask[i][j]
 
 def get_min_max_values_from_zoom_box(coord_dict):
     try:
@@ -65,29 +66,33 @@ def get_min_max_values_from_rect_box(coord_dict):
     except AssertionError:
         return None
 
-def convert_mask_to_cell_boundary(mask, outline_color=255, greyscale=True):
-    """
-    Convert a mask array with filled in cell masks to an array with drawn boundaries with black interiors of cells
-    """
-    if greyscale:
-        outlines = np.full((mask.shape[0], mask.shape[1]), 3)
-    else:
-        outlines = np.stack([np.empty(mask[0].shape), mask[0], mask[1]], axis=2)
-    for i in range(mask.shape[0]):
-        for j in range(mask.shape[1]):
-            pixel = get_pixel(mask, i, j)
-            if pixel != 0:
-                if i != 0 and get_pixel(mask, i - 1, j) != pixel:
-                    outlines[i][j] = outline_color
-                elif i != mask.shape[0] - 1 and get_pixel(mask, i + 1, j) != pixel:
-                    outlines[i][j] = outline_color
-                elif j != 0 and get_pixel(mask, i, j - 1) != pixel:
-                    outlines[i][j] = outline_color
-                elif j != mask.shape[1] - 1 and get_pixel(mask, i, j + 1) != pixel:
-                    outlines[i][j] = outline_color
+# def convert_mask_to_cell_boundary(mask, outline_color=255, greyscale=True):
+#     """
+#     Convert a mask array with filled in cell masks to an array with drawn boundaries with black interiors of cells
+#     """
+#     if greyscale:
+#         outlines = np.full((mask.shape[0], mask.shape[1]), 3)
+#     else:
+#         outlines = np.stack([np.empty(mask[0].shape), mask[0], mask[1]], axis=2)
+#     for i in range(mask.shape[0]):
+#         for j in range(mask.shape[1]):
+#             pixel = get_pixel(mask, i, j)
+#             if pixel != 0:
+#                 if i != 0 and get_pixel(mask, i - 1, j) != pixel:
+#                     outlines[i][j] = outline_color
+#                 elif i != mask.shape[0] - 1 and get_pixel(mask, i + 1, j) != pixel:
+#                     outlines[i][j] = outline_color
+#                 elif j != 0 and get_pixel(mask, i, j - 1) != pixel:
+#                     outlines[i][j] = outline_color
+#                 elif j != mask.shape[1] - 1 and get_pixel(mask, i, j + 1) != pixel:
+#                     outlines[i][j] = outline_color
+#
+#     # Floating point errors can occaisionally put us very slightly below 0
+#     return np.where(outlines >= 0, outlines, 0).astype(np.uint8)
 
-    # Floating point errors can occaisionally put us very slightly below 0
-    return np.where(outlines >= 0, outlines, 0).astype(np.uint8)
+def convert_mask_to_cell_boundary(mask):
+    boundaries = find_boundaries(mask, mode='outer', connectivity=1)
+    return np.where(boundaries == True, 255, 0).astype(np.uint8)
 
 
 def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict):
@@ -333,7 +338,6 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
     if data_selection in annotations_dict and len(annotations_dict) > 0:
         annotations_dict = {key: value for key, value in annotations_dict[data_selection].items() if \
                         value['type'] not in ['point']}
-        print(annotations_dict)
         if len(annotations_dict) > 0:
             with PdfPages(file_output) as pdf:
                 for key, value in annotations_dict.items():

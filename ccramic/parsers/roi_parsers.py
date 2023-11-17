@@ -95,7 +95,7 @@ def generate_multi_roi_images_from_query(session_config, blend_dict,
                                         sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
                                         if sam_name is not None:
                                             mask_to_use = subset_mask_outline_using_cell_id_list(
-                                            mask_dict[matched_mask]["boundary"], mask_dict[matched_mask]["raw"],
+                                            mask_dict[matched_mask]["raw"], mask_dict[matched_mask]["raw"],
                                             query_cell_id_lists[sam_name])
                                         else:
                                             mask_to_use = mask_dict[matched_mask]["boundary"]

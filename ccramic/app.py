@@ -190,7 +190,7 @@ def init_dashboard(server, authentic_id, config=None):
                                 style={"margin-left": "10px", "margin-top": "15px"}),
                             du.Upload(id='upload-mask', max_file_size=30000,
                                       text='Import mask in tiff format using drag and drop',
-                                      max_total_size=30000, max_files=100,
+                                      max_total_size=30000, max_files=500,
                                       chunk_size=100,
                                       filetypes=['tif', 'tiff'],
                                       default_style={"margin-top": "20px", "height": "10%"}),

@@ -31,7 +31,7 @@ def subset_mask_outline_using_cell_id_list(mask_outline, original_mask, cell_id_
         assert validate_mask_shape_matches_image(original_mask, mask_outline)
         mask_bool = np.isin(original_mask, cell_id_list)
         mask_outline[~mask_bool] = 0
-        converted = (mask_outline * 255).clip(0, 255).astype(np.uint8)
-        return np.array(Image.fromarray(converted).convert('RGB')).astype(np.uint8)
+        # converted = (mask_outline * 255).clip(0, 255).astype(np.uint8)
+        return np.array(Image.fromarray(mask_outline).convert('RGB')).astype(np.uint8)
     except AssertionError:
         return None
