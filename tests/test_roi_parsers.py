@@ -1,5 +1,6 @@
-
-from ccramic.parsers.roi_parsers import *
+import os
+from ccramic.parsers.roi_parsers import generate_multi_roi_images_from_query
+import numpy as np
 
 def test_roi_query_parser(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")

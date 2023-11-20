@@ -2,13 +2,15 @@
 from dash import dash_table
 import tempfile
 import dash_uploader as du
-from dash_extensions.enrich import DashProxy, html, ServersideOutputTransform, FileSystemBackend
+from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
 import dash_daq as daq
-import dash_bootstrap_components as dbc
 from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
 from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
-from ccramic.inputs.pixel_level_inputs import *
+from ccramic.inputs.pixel_level_inputs import (
+    render_default_annotation_canvas,
+    add_local_file_dialog)
+from ccramic.inputs.loaders import wrap_child_in_loading
 import shutil
 import os
 # from sd_material_ui import AutoComplete
@@ -16,7 +18,8 @@ import dash_ag_grid as dag
 import dash_mantine_components as dmc
 from plotly.graph_objs.layout import YAxis, XAxis
 from ccramic.entrypoint import __version__
-from dash import dcc
+from dash import dcc, html
+import dash_bootstrap_components as dbc
 def init_dashboard(server, authentic_id, config=None):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -377,9 +380,10 @@ def init_dashboard(server, authentic_id, config=None):
                                                style={"width": "85%"}),
                                  dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
                                               style={"width": "85%", "display": "inline-block"}),
-                                 dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"}),
+                                 dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"},
+                                           min=0, max=9, step=1),
                                  dcc.Input(id="sigma-val-filter", type="number", value=1, style={"width": "50%"},
-                                           disabled=True)],
+                                           disabled=True, min=0, max=9, step=0.1)],
                                 style={"display": "inline-block", "margin": "20px"}),
                                  html.Br(),
                                  dbc.Button(
@@ -815,9 +819,9 @@ def init_dashboard(server, authentic_id, config=None):
             ])
                 ])
                           ])], id='tab-annotation'),
-        dcc.Store(id="uploaded_dict"),
+        wrap_child_in_loading(dcc.Store(id="uploaded_dict"), wrap=config['use_loading']),
         # use a blank template for the lazy loading
-        dcc.Loading(dcc.Store(id="uploaded_dict_template"), type="default", fullscreen=True),
+        wrap_child_in_loading(dcc.Store(id="uploaded_dict_template"), wrap=config['use_loading']),
         dcc.Store(id="session_config"),
         dcc.Store(id="window_config"),
         dcc.Store(id="param_config"),

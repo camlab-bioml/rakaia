@@ -38,6 +38,9 @@ def argparser():
     parser.add_argument('-dt', "--disable-threading", action="store_false",
                         help="Disable threading. By default, threading is enabled.",
                         dest="threading")
+    parser.add_argument('-dl', "--disable-loading", action="store_false",
+                        help="Disable loading on data import and data switching. By default, loading is enabled.",
+                        dest="loading")
 
     return parser
 
@@ -52,7 +55,8 @@ def main(sysargs = sys.argv[1:]):
 
     # establish the cli config
 
-    CLI_CONFIG = {"use_local_dialog": args.use_local_dialog}
+    CLI_CONFIG = {"use_local_dialog": args.use_local_dialog,
+                  'use_loading': args.loading}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:

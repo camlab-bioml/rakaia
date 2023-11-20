@@ -1,21 +1,15 @@
-import collections
-
-import dash
 import pandas as pd
-from dash_extensions.enrich import Serverside
-from sklearn.preprocessing import StandardScaler
-import sys
-from ccramic.utils.pixel_level_utils import *
+from ccramic.utils.pixel_level_utils import path_to_mask, get_bounding_box_for_svgpath, split_string_at_pattern
 from dash.exceptions import PreventUpdate
-from os import system
-import tifffile
+from PIL import Image
 import matplotlib.pyplot as plt
 from matplotlib.backends.backend_pdf import PdfPages
 import cv2
 import os
 import matplotlib.patches as mpatches
-import ast
+import numpy as np
 from skimage.segmentation import find_boundaries
+
 
 def set_columns_to_drop(measurements_csv=None):
     defaults = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',

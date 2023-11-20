@@ -1,16 +1,16 @@
-import ast
-
 import dash
-import dash_uploader as du
 import pandas as pd
-from dash_extensions.enrich import Output, Input, State
-from dash import ctx
-from ccramic.parsers.cell_level_parsers import *
-from ccramic.inputs.cell_level_inputs import *
-from ccramic.utils.cell_level_utils import *
+from dash_extensions.enrich import Serverside
+from ccramic.utils.cell_level_utils import (
+    populate_cell_annotation_column_from_bounding_box,
+    get_cells_in_svg_boundary_by_mask_percentage,
+    populate_cell_annotation_column_from_cell_id_list,
+    populate_cell_annotation_column_from_clickpoint
+)
+from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
-from dash import dcc
 import ast
+from dash.exceptions import PreventUpdate
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                                       mask_config, mask_toggle, mask_selection, sample_name=None,

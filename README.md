@@ -114,6 +114,14 @@ a command line option:
 ccramic -dt
 ```
 
+ccramic also uses Dash-based load screens to indicate that data
+are being imported or changed (i.e. on an ROI change). To disable
+the load screens for data manipulation, use the `-dl` CLI option:
+
+```commandline
+ccramic -dl
+```
+
 ## Basic authentication
 
 ccramic uses basic authentication upon a new session. The credentials are as follows:

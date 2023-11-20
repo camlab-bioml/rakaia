@@ -1,7 +1,20 @@
 import numpy as np
 import plotly.graph_objs as go
 from dash_extensions.enrich import html
-from ccramic.inputs.pixel_level_inputs import *
+from ccramic.inputs.pixel_level_inputs import (
+    render_default_annotation_canvas,
+    wrap_canvas_in_loading_screen_for_large_images,
+    add_scale_value_to_figure,
+    get_additive_image_with_masking,
+    add_local_file_dialog,
+    invert_annotations_figure,
+    set_range_slider_tick_markers)
+import dash_core_components as dcc
+from PIL import Image
+import os
+from ccramic.utils.pixel_level_utils import recolour_greyscale
+import plotly.express as px
+import dash_bootstrap_components as dbc
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()

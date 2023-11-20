@@ -1,5 +1,4 @@
 
-
 def strip_invalid_shapes_from_graph_layout(cur_graph):
     """
     Remove any incorrectly formatted graph objects

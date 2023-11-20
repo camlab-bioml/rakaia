@@ -6,8 +6,13 @@ import plotly.graph_objs as go
 import pandas as pd
 import plotly
 from dash.exceptions import PreventUpdate
-from ccramic.inputs.cell_level_inputs import *
-import dash_core_components as dcc
+from ccramic.inputs.cell_level_inputs import (
+    get_cell_channel_expression_plot,
+    generate_umap_plot,
+    generate_expression_bar_plot_from_interactive_subsetting,
+    generate_channel_heatmap,
+    generate_heatmap_from_interactive_subsetting)
+from ccramic.parsers.cell_level_parsers import parse_and_validate_measurements_csv
 
 
 def test_bar_graph_from_measurements_csv(get_current_dir):

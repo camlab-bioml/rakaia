@@ -10,7 +10,7 @@ import plotly.graph_objects as go
 import plotly.express as px
 from skimage import draw
 from scipy import ndimage
-from scipy.ndimage import gaussian_filter, median_filter
+from scipy.ndimage import median_filter
 from dash.exceptions import PreventUpdate
 import cv2
 
@@ -167,14 +167,17 @@ def apply_preset_to_array(array, preset):
     preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
     if isinstance(preset, dict) and all([elem in preset.keys() for elem in preset_keys]):
         array = filter_by_upper_and_lower_bound(array, preset['x_lower_bound'], preset['x_upper_bound'])
-        if preset['filter_type'] == "median" and preset['filter_val'] is not None:
-            array = median_filter(array, int(preset['filter_val']))
+        if preset['filter_type'] == "median" and preset['filter_val'] is not None and \
+                int(preset['filter_val']) >= 1:
+            try:
+                array = median_filter(array, int(preset['filter_val']))
+            except ValueError:
+                pass
         elif preset['filter_val'] is not None:
-            if int(preset['filter_val']) % 2 != 0:
+            if int(preset['filter_val']) % 2 != 0 and int(preset['filter_val']) >= 1:
                 array = cv2.GaussianBlur(array, (int(preset['filter_val']), int(preset['filter_val'])),
                                          int(preset['filter_sigma']))
         return array
-
 
 def apply_preset_to_blend_dict(blend_dict, preset_dict):
     """

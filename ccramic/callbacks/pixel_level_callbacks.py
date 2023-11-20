@@ -1,27 +1,58 @@
-import gc
-import os.path
 
+import os.path
 import dash.exceptions
-import dash_bootstrap_components as dbc
 import dash_uploader as du
 import flask
-import numpy as np
-import pandas as pd
-from dash import ctx, MATCH, ALL
-from dash_extensions.enrich import Output, Input, State, html
+from dash import ctx, ALL
+from dash_extensions.enrich import Output, Input, State, html, Serverside
 from tifffile import imwrite
-from ccramic.inputs.pixel_level_inputs import *
-from ccramic.parsers.pixel_level_parsers import *
-from ccramic.utils.cell_level_utils import *
+from ccramic.inputs.pixel_level_inputs import (
+    wrap_canvas_in_loading_screen_for_large_images,
+    add_scale_value_to_figure,
+    invert_annotations_figure,
+    set_range_slider_tick_markers)
+from ccramic.parsers.pixel_level_parsers import (
+    populate_upload_dict,
+    populate_upload_dict_by_roi,
+    create_new_blending_dict)
+from ccramic.utils.pixel_level_utils import (
+    delete_dataset_option_from_list_interactively,
+    split_string_at_pattern,
+    get_default_channel_upper_bound_by_percentile,
+    apply_preset_to_array,
+    recolour_greyscale,
+    resize_for_canvas,
+    select_random_colour_for_channel,
+    apply_preset_to_blend_dict,
+    filter_by_upper_and_lower_bound,
+    get_all_images_by_channel_name,
+    set_channel_list_order,
+    pixel_hist_from_array,
+    per_channel_intensity_hovertext,
+    validate_incoming_metadata_table,
+    make_metadata_column_editable,
+    path_to_mask,
+    create_new_coord_bounds)
+from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 from ccramic.io.display import generate_area_statistics_dataframe
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
-from ccramic.parsers.cell_level_parsers import *
+from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
 import pathlib
 import cv2
+import math
+from dash import dcc
+import h5py
+from dash.exceptions import PreventUpdate
+import pandas as pd
+import numpy as np
+import plotly.graph_objs as go
+from scipy.ndimage import median_filter
+import plotly.express as px
+from PIL import Image
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -573,11 +604,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                       'x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
-                        if filter_name == "median":
-                            array = median_filter(array, int(filter_value))
+                        if filter_name == "median" and int(filter_value) >= 1:
+                            try:
+                                array = median_filter(array, int(filter_value))
+                            except ValueError:
+                                pass
                         else:
                             # array = gaussian_filter(array, int(filter_value))
-                            if int(filter_value) % 2 != 0:
+                            if int(filter_value) % 2 != 0 and int(filter_value) >= 1:
                                 array = cv2.GaussianBlur(array, (int(filter_value),
                                                                  int(filter_value)), float(filter_sigma))
                     current_blend_dict[layer]['color'] = colour['hex']
@@ -729,8 +763,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                       'x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
-                        if filter_name == "median":
-                            array = median_filter(array, int(filter_value))
+                        if filter_name == "median" and int(filter_value) >= 1:
+                            try:
+                                array = median_filter(array, int(filter_value))
+                            except ValueError:
+                                pass
                         else:
                             # array = gaussian_filter(array, int(filter_value))
                             if int(filter_value) % 2 != 0:

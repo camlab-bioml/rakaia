@@ -3,7 +3,7 @@ import h5py
 from pathlib import Path
 from tifffile import TiffFile
 import os
-from ccramic.utils.pixel_level_utils import *
+from ccramic.utils.pixel_level_utils import convert_to_below_255,  split_string_at_pattern
 from readimc import MCDFile, TXTFile
 
 def populate_upload_dict(uploaded_files):
@@ -36,7 +36,7 @@ def populate_upload_dict(uploaded_files):
                                 upload_dict[roi][channel] = data_h5[roi][channel]['image'][()]
                                 if channel_index == 1:
                                     dataset_information["ROI"].append(str(roi))
-                                    dataset_information["Dimensions"].append(f"{upload_dict[roi][channel].shape[1]}x" \
+                                    dataset_information["Dimensions"].append(f"{upload_dict[roi][channel].shape[1]}x"
                                     f"{upload_dict[roi][channel].shape[0]}")
                                     dataset_information["Panel"].append(f"{len(data_h5[roi].keys())} markers")
                             except KeyError:
