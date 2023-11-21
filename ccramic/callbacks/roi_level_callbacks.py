@@ -1,3 +1,4 @@
+import dash
 import pandas as pd
 
 from ccramic.parsers.roi_parsers import generate_multi_roi_images_from_query
@@ -6,7 +7,6 @@ from ccramic.utils.quantification import (
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi)
 from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
-from ccramic.utils.pixel_level_utils import split_string_at_pattern
 from dash import ALL
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
@@ -96,6 +96,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(
         Output('quantification-dict', 'data', allow_duplicate=True),
+        Output('session_alert_config', 'data', allow_duplicate=True),
         Input('quantify-cur-roi-execute', 'n_clicks'),
         State('apply-mask', 'value'),
         State('mask-dict', 'data'),
@@ -104,24 +105,31 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('data-collection', 'value'),
         State('quantification-dict', 'data'),
         State('channel-quantification-list', 'value'),
+        State('alias-dict', 'data'),
+        State('session_alert_config', 'data'),
         prevent_initial_call=True)
     # @cache.memoize())
     def quantify_current_roi(execute, apply_mask, mask_dict, mask_selection, image_dict, data_selection,
-                             cur_quant_dict, channels_to_quantify):
+                             cur_quant_dict, channels_to_quantify, aliases, error_config):
         """
         Quantify the current ROI using the currently applied mask
         """
+        if error_config is None:
+            error_config = {"error": None}
         if execute > 0 and None not in (image_dict, data_selection, mask_selection, channels_to_quantify) and \
                 apply_mask:
             first_image = list(image_dict[data_selection].keys())[0]
             first_image = image_dict[data_selection][first_image]
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 new_quant = quantify_multiple_channels_per_roi(image_dict, mask_dict[mask_selection]['raw'],
-                                                               data_selection, channels_to_quantify)
+                                                               data_selection, channels_to_quantify, aliases)
                 quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant,
                                                                      data_selection)
-                return Serverside(quant_frame.to_dict(orient="records"))
+                return Serverside(quant_frame.to_dict(orient="records")), dash.no_update
             else:
-                raise PreventUpdate
+                error_config["error"] = "The dimensions of the mask do not agree with the current ROI."
+                return dash.no_update, error_config
         else:
-            raise PreventUpdate
+            error_config["error"] = "Quantification requires an ROI with a compatible mask that has been applied to the" \
+                                    " canvas. Please review the required inputs."
+            return dash.no_update, error_config

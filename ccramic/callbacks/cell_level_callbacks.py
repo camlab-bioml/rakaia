@@ -145,8 +145,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 freq_counts_cat = None
                 cell_id_dict = None
             # if the heatmap channel options are already set, do not update
-            cols_return = list(frame.columns) if not heatmap_channel_options else dash.no_update
-            cols_selected = list(frame.columns) if not heatmap_channel_options else dash.no_update
+            cols_return = list(frame.columns)
+            if ctx.triggered_id == "quantification-dict":
+                cols_selected = list(frame.columns)
+            else:
+                cols_selected = list(frame.columns) if not heatmap_channel_options else dash.no_update
             return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict), cols_return, cols_selected
         else:
             raise PreventUpdate

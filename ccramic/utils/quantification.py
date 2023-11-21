@@ -38,7 +38,7 @@ def quantify_one_channel(image, mask):
     else:
         return None
 
-def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify):
+def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None):
     """
     Quantify multiple channels for a single ROI and concatenate into a dataframe with cells
     as rows and channels + metadata as columns
@@ -49,7 +49,9 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
         if channel in list(channel_dict[data_selection].keys()):
             mat = quantify_one_channel(channel_dict[data_selection][channel], mask)
             column = pd.Series(mat.flatten())
-            channel_frame[channel] = column
+            # set the channel label if the aliases exists with a different name
+            channel_name = aliases[channel] if aliases is not None and channel in aliases.keys() else channel
+            channel_frame[channel_name] = column
     channel_frame['sample'] = roi_name
     channel_frame['cell_id'] = pd.Series(range(1, (len(channel_frame.index) + 1)), dtype='int64')
     channel_frame['description'] = roi_name
@@ -72,7 +74,7 @@ def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_s
         else:
             return new_frame
     else:
-        if empty_master_frame:
+        if empty_master_frame and not empty_new_frame:
             return new_frame
         else:
             return existing_frame

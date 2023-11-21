@@ -845,7 +845,7 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="alias-dict"),
         dcc.Store(id="static-session-var"),
         dcc.Store(id="session_config_quantification"),
-        dcc.Store(id="quantification-dict"),
+        wrap_child_in_loading(dcc.Store(id="quantification-dict"), wrap=config['use_loading']),
         dcc.Store(id="mask-dict"),
         dcc.Store(id="mask-uploads"),
         dcc.Store(id="figure-cache"),

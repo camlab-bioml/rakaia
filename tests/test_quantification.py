@@ -51,8 +51,8 @@ def test_quantification_multiple_rois(get_current_dir):
     assert len(merged) == 2 * len(roi_1_quant)
 
     merged = concat_quantification_frames_multi_roi(None, roi_2_quant, "set1+++slide0+++roi_2")
-    assert len(merged) -- len(roi_1_quant)
+    assert len(merged) == len(roi_1_quant)
     assert 'roi_2' in merged['sample'].tolist()
     merged = concat_quantification_frames_multi_roi(roi_1_quant, None, "set1+++slide0+++roi_2")
-    assert len(merged) - - len(roi_1_quant)
+    assert len(merged) == len(roi_1_quant)
     assert 'roi_1' in merged['sample'].tolist()
