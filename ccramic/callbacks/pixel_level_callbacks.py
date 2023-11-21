@@ -358,6 +358,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(Input('image_layers', 'options'),
+                       State('alias-dict', 'data'),
+                       Output('channel-quantification-list', 'options'),
+                       Output('channel-quantification-list', 'value'),
+                       prevent_initial_call=True)
+    def create_channel_options_for_quantification(channel_options, aliases):
+        channel_list_return = [elem['label'] for elem in channel_options]
+        return channel_list_return, channel_list_return
+
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Output('images_in_blend', 'value'),
                        Input('image_layers', 'value'),

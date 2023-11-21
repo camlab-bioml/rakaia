@@ -606,8 +606,16 @@ def init_dashboard(server, authentic_id, config=None):
                                 id="region-annotation-modal", size='xl', style={"margin-left": "10px",
                                 "margin-top": "15px"}),
                                 html.Br(),
-                                ], style={"padding": "5px"})
-                                    ]),
+                                ], style={"padding": "5px"}),
+                                dbc.Tab(label="Quantification", children=[
+                                html.Br(),
+                                dbc.Button("Quantify current ROI", id="quantify-cur-roi-button"),
+                                dbc.Modal(id="quantification-roi-modal", children=dbc.ModalBody([
+                                dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute"),
+                                html.H6("Select channels to quantify"),
+                                dcc.Checklist(id="channel-quantification-list", value=[], options=[]),
+                                ])),
+                                ])]),
                                      ]),
                                  html.Div([dbc.Button(
                                      children=html.Span([html.I(className="fa-solid fa-list-check",
