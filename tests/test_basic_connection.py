@@ -132,7 +132,8 @@ def test_basic_callback_register():
     dash_app = DashProxy("fake_app")
     assert len(dash_app.callback_map) == 0
     du.configure_upload(dash_app, "/tmp/")
-    init_pixel_level_callbacks(dash_app, "/tmp/", "test_app")
+    app_config = {'use_local_dialog': False, 'use_loading': False}
+    init_pixel_level_callbacks(dash_app, "/tmp/", "test_app", app_config)
     # assert init_pixel_level_callbacks(dash_app, "/tmp/", "test_app") is None
     assert isinstance(dash_app, dash_extensions.enrich.DashProxy)
     assert dash_app.callback is not None

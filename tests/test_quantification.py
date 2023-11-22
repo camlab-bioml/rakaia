@@ -30,6 +30,16 @@ def test_quantification_multiple_channels(get_current_dir):
     assert column_list.index('sample') == 3
     assert all([elem in column_list[0:3] for elem in channel_list])
 
+    dataset_options = ["set1+++slide0+++roi_1", "set1+++slide0+++roi_2"]
+
+    aliases = {elem: elem for elem in channel_list}
+    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_1", channel_list,
+                                                     aliases, dataset_options)
+
+    assert 'set1_1' in multi_frame['sample'].tolist()
+    assert 'set1_1' not in multi_frame['description'].tolist()
+
+
 def test_quantification_multiple_rois(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
     channel_dict = {"set1+++slide0+++roi_1": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),

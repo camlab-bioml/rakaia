@@ -697,10 +697,10 @@ def init_dashboard(server, authentic_id, config=None):
                                     dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
                                     children=[html.Br(),
                                     dcc.Graph(id="quantification-heatmap-full",
-                                    figure={'layout': dict(xaxis_showgrid=False,
+                                    figure={'layout': dict(xaxis_showgrid=False, autosize=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
                                     yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,
-                                    t=20, pad=0))}),
+                                    t=20, pad=0))}, responsive=False),
                                     dcc.Checklist(options=[], value=[], id="quant-heatmap-channel-list",
                                     style={"margin-top": "12px"},
                                     inline=True, labelStyle={"margin": "0.12rem"}),
@@ -778,11 +778,11 @@ def init_dashboard(server, authentic_id, config=None):
                                     dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='quant-dist-table',
                                     columns=[], data=None, editable=False, filter_action='native')]),
                                     id="show-quant-dist-table", size='l'),
-                                    dcc.Graph(id="umap-plot", figure={'layout': dict(xaxis_showgrid=False,
+                                    html.Div([dcc.Graph(id="umap-plot", figure={'layout': dict(xaxis_showgrid=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
                                     yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,t=20, pad=0),
-                                    autosize=True),
-                                    }, responsive=False),
+                                    autosize=False),
+                                    }, responsive=False)], id="umap-div-holder", style={"display": "None"}),
                                     dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
                                         style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
                                         html.Div("Download UMAP projection")],
@@ -845,7 +845,7 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="alias-dict"),
         dcc.Store(id="static-session-var"),
         dcc.Store(id="session_config_quantification"),
-        wrap_child_in_loading(dcc.Store(id="quantification-dict"), wrap=config['use_loading']),
+        wrap_child_in_loading(dcc.Store(id="quantification-dict"), wrap=False),
         dcc.Store(id="mask-dict"),
         dcc.Store(id="mask-uploads"),
         dcc.Store(id="figure-cache"),
@@ -867,7 +867,7 @@ def init_dashboard(server, authentic_id, config=None):
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, config)
     init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
     init_roi_level_callbacks(dash_app, tmpdirname, authentic_id)
 

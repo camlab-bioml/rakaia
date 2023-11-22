@@ -46,7 +46,8 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
 
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
-def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False):
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False,
+                                                   wrap=True):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
     or
@@ -54,7 +55,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     """
     # conditions for wrapping the canvas
     large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
-    if large_image or hovertext:
+    if (large_image or hovertext) and wrap:
         return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom),
                                      type="default", fullscreen=False)
     else:

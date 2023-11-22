@@ -23,6 +23,8 @@ with the CLI option `-dl` to disable load screens when importing or
 changing to new data. Allows for smoother transitions between ROIs #73
 - Next and previous ROI buttons are grayed out when the next or previous
 ROIs are not available, respectively. #75
+- mask object outlines are now computed with `skimage` to drastically
+increase speed and avoid pixel iteration
 
 ### Added
 

@@ -76,7 +76,7 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
             fig['layout']['uirevision'] = True
         return fig
     else:
-        raise PreventUpdate
+        return dash.no_update
 
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,

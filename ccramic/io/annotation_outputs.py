@@ -91,13 +91,19 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
     if n_clicks > 0 and None not in (annotations_dict, data_selection):
         try:
             points = {'ROI': [], 'x': [], 'y': [], 'annotation_col': [], 'annotation': []}
-            first_image = list(image_dict[data_selection].keys())[0]
-            first_image = image_dict[data_selection][first_image]
+            try:
+                if None not in (image_dict, data_selection):
+                    first_image = list(image_dict[data_selection].keys())[0]
+                    first_image = image_dict[data_selection][first_image]
+                else:
+                    first_image = None
+            except (KeyError, TypeError):
+                first_image = None
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             # check that the mask is compatible with the current image
-            if None not in (mask_dict, mask_selection) and apply_mask and \
+            if None not in (mask_dict, mask_selection) and apply_mask and first_image is not None and \
                     validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 mask_used = mask_dict[mask_selection]['raw']
                 points[mask_selection + "_cell_id"] = []

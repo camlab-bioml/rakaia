@@ -34,6 +34,7 @@ import dash_uploader as du
 from dash_extensions.enrich import Output, Input, State, Serverside
 from dash import ctx
 from dash.exceptions import PreventUpdate
+import plotly.graph_objs as go
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -248,6 +249,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
 
     @dash_app.callback(Output('umap-plot', 'figure'),
+                       Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
                        State('quantification-dict', 'data'),
@@ -255,9 +257,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
         try:
-            return generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+            umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+            display = {'display': 'flex'} if isinstance(umap, go.Figure) else {'display': 'None'}
+            return umap, display
         except BadRequest:
-            raise PreventUpdate
+            return dash.no_update, {'display': 'None'}
 
     @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
                        Input('create-annotation-umap', 'n_clicks'),

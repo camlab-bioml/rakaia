@@ -47,8 +47,7 @@ def test_umap_plot(get_current_dir):
     umap_plot = generate_umap_plot(umap_dict, None, validated_measurements, None)
     assert isinstance(umap_plot, plotly.graph_objs._figure.Figure)
     assert umap_plot['layout']['uirevision']
-    with pytest.raises(PreventUpdate):
-        generate_umap_plot(None, None, None, None)
+    assert isinstance(generate_umap_plot(None, None, None, None), dash._callback.NoUpdate)
 
 def test_expression_plot_from_interactive_triggers(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}

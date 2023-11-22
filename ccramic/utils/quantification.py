@@ -9,7 +9,7 @@ def quantify_one_channel(image, mask):
     segmented object
     """
 
-    # reshape the image to retain only the frsit two dimensions
+    # reshape the image to retain only the first two dimensions
     image = image.reshape((image.shape[0], image.shape[1]))
     mask = mask.reshape((mask.shape[0], mask.shape[1]))
     if validate_mask_shape_matches_image(mask, image):
@@ -38,7 +38,8 @@ def quantify_one_channel(image, mask):
     else:
         return None
 
-def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None):
+def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None,
+                                       dataset_options=None):
     """
     Quantify multiple channels for a single ROI and concatenate into a dataframe with cells
     as rows and channels + metadata as columns
@@ -52,7 +53,14 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
             # set the channel label if the aliases exists with a different name
             channel_name = aliases[channel] if aliases is not None and channel in aliases.keys() else channel
             channel_frame[channel_name] = column
-    channel_frame['sample'] = roi_name
+    roi_name_sample = roi_name
+    if dataset_options is not None:
+        for dataset in dataset_options:
+            exp, slide, roi = split_string_at_pattern(dataset)
+            if roi == roi_name:
+                index = dataset_options.index(dataset) + 1
+                roi_name_sample = f"{exp}_{index}"
+    channel_frame['sample'] = roi_name_sample
     channel_frame['cell_id'] = pd.Series(range(1, (len(channel_frame.index) + 1)), dtype='int64')
     channel_frame['description'] = roi_name
     return channel_frame

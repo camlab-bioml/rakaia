@@ -54,7 +54,7 @@ from scipy.ndimage import median_filter
 import plotly.express as px
 from PIL import Image
 
-def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
+def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with pixel level analysis/raw image preprocessing (image loading,
     blending, filtering, scaling, etc.)
@@ -332,7 +332,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                            canvas_return = dash.no_update
                         else:
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,
-                                                                            enable_zoom=enable_zoom)]
+                                            enable_zoom=enable_zoom, wrap=app_config['use_loading'])]
                     else:
                         canvas_return = dash.no_update
                         dim_return = None

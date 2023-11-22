@@ -12,7 +12,6 @@ from ccramic.utils.cell_level_utils import (
     set_columns_to_drop)
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import anndata
-import gc
 import sys
 from sklearn.preprocessing import StandardScaler
 
@@ -27,11 +26,12 @@ def drop_columns_from_measurements_csv(measurements_csv,
     except KeyError:
         return measurements_csv
 
-def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True):
+def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True,
+                                                   rerun=True):
     if quantification_dict is not None:
         data_frame = pd.DataFrame(quantification_dict)
         cols = list(data_frame.columns)
-        if current_umap is None:
+        if current_umap is None or rerun:
                 # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
             #  column-wise, by channel)
             umap_obj = None
@@ -204,7 +204,8 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
     # Example 2: user selects all but the the second item to view
     # [{'visible': ['legendonly']}, [2]]
     # print(restyle_data)
-    if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0]:
+    if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0] and \
+        umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns):
         # get the total number of possible sub annotations and figure out which ones were selected
         quant_frame = pd.DataFrame(quantification_frame)
         tot_subtypes = list(quant_frame[umap_col_annotation].unique())
@@ -249,7 +250,6 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
                     if selection in indices_keep:
                         subtypes_keep.append(tot_subtypes[selection])
                 return subtypes_keep, indices_keep
-        gc.collect()
     else:
         return None, None
 
