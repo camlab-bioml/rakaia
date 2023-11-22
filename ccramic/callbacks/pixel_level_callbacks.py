@@ -38,6 +38,9 @@ from ccramic.io.display import generate_area_statistics_dataframe
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
 from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
+from ccramic.inputs.loaders import (
+    previous_roi_trigger,
+    next_roi_trigger)
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -2753,20 +2756,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
                        Input('prev-roi', 'n_clicks'),
                        Input('next-roi', 'n_clicks'),
+                       Input('keyboard-listener', 'event'),
+                       Input('keyboard-listener', 'n_events'),
                        State('data-collection', 'value'),
                        State('data-collection', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def click_to_new_roi(prev_roi, next_roi, cur_data_selection, cur_options):
+    def click_to_new_roi(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options):
         """
         Use the forward and backwards buttons to click to a new ROI
+        Alternatively, use the directional arrow buttons from an event listener
         """
         if None not in (cur_data_selection, cur_options):
             cur_index = cur_options.index(cur_data_selection)
             try:
-                if ctx.triggered_id == "prev-roi" and cur_index != 0 and prev_roi > 0:
+                prev_trigger = previous_roi_trigger(ctx.triggered_id, prev_roi, key_listener, n_events)
+                next_trigger = next_roi_trigger(ctx.triggered_id, next_roi, key_listener, n_events)
+                if prev_trigger and cur_index != 0:
                     return cur_options[cur_index - 1] if cur_options[cur_index - 1] != cur_data_selection else dash.no_update
-                elif ctx.triggered_id == "next-roi" and next_roi > 0:
+                elif next_trigger:
                     return cur_options[cur_index + 1] if cur_options[cur_index + 1] != cur_data_selection else dash.no_update
                 else:
                     raise PreventUpdate
@@ -2774,7 +2782,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 raise PreventUpdate
         else:
             raise PreventUpdate
-
 
     @dash_app.callback(Output('prev-roi', 'disabled'),
                        Output('next-roi', 'disabled'),

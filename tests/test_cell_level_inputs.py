@@ -1,11 +1,8 @@
 import dash
-import pytest
-
 import os
 import plotly.graph_objs as go
 import pandas as pd
 import plotly
-from dash.exceptions import PreventUpdate
 from ccramic.inputs.cell_level_inputs import (
     get_cell_channel_expression_plot,
     generate_umap_plot,

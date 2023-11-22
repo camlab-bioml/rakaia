@@ -1,6 +1,4 @@
-import dash_core_components as dcc
-import plotly.graph_objs as go
-from plotly.graph_objs.layout import YAxis, XAxis
+from dash import dcc
 
 def wrap_child_in_loading(child, wrap=True, fullscreen=True, wrap_type="default"):
     """
@@ -15,3 +13,24 @@ def reset_graph_data(graph):
     if 'data' in graph:
         graph['data'] = []
     return graph
+
+
+def previous_roi_trigger(triggered_id, button_click, key_listener, key_events):
+    """
+    Detect if the app should navigate to the previous ROI based on either a button click or keyboard event
+    """
+    try:
+        return (triggered_id == "prev-roi" and button_click > 0) or \
+                (triggered_id == "keyboard-listener" and key_listener['keyCode'] == 37 and key_events > 0)
+    except KeyError:
+        return False
+
+def next_roi_trigger(triggered_id, button_click, key_listener, key_events):
+    """
+    Detect if the app should navigate to the previous ROI based on either a button click or keyboard event
+    """
+    try:
+        return (triggered_id == "next-roi" and button_click > 0) or \
+                (triggered_id == "keyboard-listener" and key_listener['keyCode'] == 39 and key_events > 0)
+    except KeyError:
+        return False

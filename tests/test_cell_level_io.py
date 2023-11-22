@@ -52,7 +52,18 @@ def test_output_annotations_masks():
                                                            'imported': False, 'annotation_column': 'broad',
                                                            'type': 'path', 'channels': ['Ho165'], 'use_mask': None,
                                                            'mask_selection': None, 'mask_blending_level': 35,
-                                                           'add_mask_boundary': [' add boundary']}}}
+                                                           'add_mask_boundary': [' add boundary']},
+                                                           "{'points': [{'curveNumber': 0, 'x': 235, 'y': 124, 'color': "
+                                                           "{'0': 0, '1': 0, '2': 255, '3': 1}, 'colormodel': 'rgba256', "
+                                                           "'z': {'0': 0, '1': 0, '2': 255, '3': 1}, 'bbox': "
+                                                           "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
+                                                               {'title': None, 'body': None, 'cell_type': 'immune',
+                                                                'imported': False,
+                                                                'annotation_column': 'ccramic_cell_annotation',
+                                                                'type': 'point', 'channels': None,
+                                                                'use_mask': None, 'mask_selection': None,
+                                                                'mask_blending_level': None, 'add_mask_boundary': None}
+                                                           }}
 
         assert not os.path.exists(os.path.join(tmpdirname, "annotation_masks.zip"))
         output_dir = export_annotations_as_masks(annotations_dict, tmpdirname,

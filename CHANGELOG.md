@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.10.0] - 2023-11-20
+## [0.10.0] - 2023-11-22
 
 ### Changed
 
@@ -34,6 +34,8 @@ blur filter
 - ROI queries from the quantification tab will apply the mask
 and fill in the cells show in the UMAP with white
 - Ability to auto assign colours from the swatches #72
+- Added functionality for keyboard-directed switches between
+ROIs using the left and right arrow keys #79
 
 ### Fixed
 

@@ -3,6 +3,7 @@ from dash import dash_table
 import tempfile
 import dash_uploader as du
 from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
+from dash_extensions import EventListener
 import dash_daq as daq
 from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
@@ -862,7 +863,12 @@ def init_dashboard(server, authentic_id, config=None):
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
         dcc.Store(id='query-cell-id-lists'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
-
+        EventListener(
+            # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event
+            events=[{"event": "keydown",
+                     "props": ["keyCode", "key"]}],
+            logging=True, id="keyboard-listener"
+        ),
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 
     dash_app.enable_dev_tools(debug=True)
