@@ -59,13 +59,15 @@ def test_roi_query_parser_predefined(get_current_dir):
     assert len(roi_query) == 1
     assert dataset_selection in roi_query.keys()
 
-    mask_roi_dict = {"PAP": {"boundary": np.full((100, 100, 3), 7)},
-                     "HIER": {"boundary": np.full((100, 100, 3), 0)},
+    mask_roi_dict = {"PAP": {"boundary": np.full((100, 100), 7), "raw": np.full((100, 100), 7)},
+                     "HIER": {"boundary": np.full((100, 100), 0)},
                      "roi_3": {"boundary": np.zeros((100, 100))}}
 
     defined_names = {'names': ['PAP']}
+    query_cell_id_lists = {'PAP': [7]}
     roi_query_w_mask = generate_multi_roi_images_from_query(session_config, blend_dict, channels, 4, [],
-                            predefined_indices=defined_names, mask_dict=mask_roi_dict, dataset_options=None)
-    assert len(roi_query) == 1
-    assert dataset_selection in roi_query.keys()
+                            predefined_indices=defined_names, mask_dict=mask_roi_dict, dataset_options=None,
+                            query_cell_id_lists=query_cell_id_lists)
+    assert len(roi_query_w_mask) == 1
+    assert dataset_selection in roi_query_w_mask.keys()
     assert not np.array_equal(roi_query['query+++slide0+++PAP'], roi_query_w_mask['query+++slide0+++PAP'])

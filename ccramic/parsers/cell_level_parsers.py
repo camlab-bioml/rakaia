@@ -321,17 +321,24 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sa
     Example: query_s0_a2_ac_IA_mask will match to query_2 in the quantification sheet
     """
     sam_id = None
-    split_1 = mask_selection.split("_ac_IA_mask")[0]
-    # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
-    index = int(split_1.split("_")[-1].replace("a", ""))
-    for sample in sorted(cell_id_list):
-        if sample == mask_selection:
-            sam_id = sample
-        elif sample_col_id == "sample":
-            split = sample.split("_")
-            try:
-                if int(split[-1]) == int(index):
+    if mask_selection in cell_id_list:
+        sam_id = mask_selection
+    else:
+        try:
+            split_1 = mask_selection.split("_ac_IA_mask")[0]
+            # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
+            index = int(split_1.split("_")[-1].replace("a", ""))
+            for sample in sorted(cell_id_list):
+                if sample == mask_selection:
                     sam_id = sample
-            except ValueError:
-                pass
+                elif sample_col_id == "sample":
+                    split = sample.split("_")
+                    try:
+                        if int(split[-1]) == int(index):
+                            sam_id = sample
+                    except ValueError:
+                        pass
+            return sam_id
+        except (KeyError, TypeError):
+            pass
     return sam_id

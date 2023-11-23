@@ -256,12 +256,15 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
-        try:
-            umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
-            display = {'display': 'flex'} if isinstance(umap, go.Figure) else {'display': 'None'}
-            return umap, display
-        except BadRequest:
+        if ctx.triggered_id == "umap-projection-options" and channel_overlay is None:
             return dash.no_update, {'display': 'None'}
+        else:
+            try:
+                umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else {'display': 'None'}
+                return umap, display
+            except BadRequest:
+                return dash.no_update, {'display': 'None'}
 
     @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
                        Input('create-annotation-umap', 'n_clicks'),

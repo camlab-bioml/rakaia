@@ -12,8 +12,6 @@ from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Serverside
-from ccramic.inputs.loaders import reset_graph_data
-import plotly.graph_objs as go
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
     """

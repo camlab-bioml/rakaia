@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.10.0] - 2023-11-22
+## [0.10.0] - 2023-11-23
 
 ### Changed
 
@@ -46,7 +46,9 @@ will remain from the last channel to get a filter applied
 that cause erroneous "half-shapes" to appear on the canvas
 - Check for very long ROI names or ones containing a space
 that may interfere with proper separation in the dropdown menu. #71
-
+- Fixed UMAP clearing when in-app quantification updates the
+heatmap: UMAP plot will be hidden until new UMAP projections
+are computed
 
 ## [0.9.0] - 2023-11-07
 
