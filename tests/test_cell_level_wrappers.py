@@ -95,6 +95,30 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     assert list(quantification_frame[
                     quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
 
+    annotations_dict = {'roi_1': {
+        "{'points': [{'x': 534, 'y': 648}]}":
+            {'title': 'fake_title', 'body': 'fake_body',
+             'cell_type': 'mature', 'imported': False, 'type': 'point',
+             'annotation_column': 'ccramic_cell_annotation'}
+    }}
+
+    print(eval("{'points': [{'x': 534, 'y': 648}]}"))
+
+    mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
+
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                                                                              measurements.to_dict(
+                                                                                                  orient="records"),
+                                                                                              "roi_1", mask_dict, True,
+                                                                                              "mask_1",
+                                                                                              sample_name='Dilution_series_1_1')
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'ccramic_cell_annotation' in quantification_frame.columns
+
+
+
 
 def test_basic_shape_removal_from_canvas():
     import plotly.graph_objects as go

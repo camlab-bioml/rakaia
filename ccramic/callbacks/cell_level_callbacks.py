@@ -24,6 +24,7 @@ from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
     callback_remove_canvas_annotation_shapes)
 from ccramic.io.annotation_outputs import export_annotations_as_masks, export_point_annotations_as_csv
+from ccramic.inputs.loaders import adjust_option_height_from_list_length
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import os
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
@@ -337,6 +338,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('mask-dict', 'data'),
                        Output('mask-options', 'options'),
+                       Output('mask-options', 'optionHeight'),
                        Input('mask-uploads', 'data'),
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
@@ -349,8 +351,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
         if multi_upload or single_upload:
-            return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
-                                                cur_mask_dict, derive_cell_boundary)
+            dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
+                                                             cur_mask_dict, derive_cell_boundary)
+            # if any of the names are longer than 40 characters, increase the height to make them visible
+            height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
+            return dict, options, height_update
         else:
             raise PreventUpdate
 

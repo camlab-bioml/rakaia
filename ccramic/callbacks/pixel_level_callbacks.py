@@ -40,7 +40,8 @@ from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 from ccramic.inputs.loaders import (
     previous_roi_trigger,
-    next_roi_trigger)
+    next_roi_trigger,
+    adjust_option_height_from_list_length)
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -245,10 +246,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0:
                     channels_return = cur_layers_selected
             #TODO: figure out how to change the option height of the dropdown for very long names
-            if any([len(elem) >= 70 and ' ' in elem for elem in datasets]):
-                height_update = 120
-            else:
-                height_update = dash.no_update
+            height_update = adjust_option_height_from_list_length(datasets)
             return datasets, selection_return, channels_return, height_update
         else:
             raise PreventUpdate

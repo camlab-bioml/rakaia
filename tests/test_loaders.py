@@ -5,7 +5,8 @@ from ccramic.inputs.loaders import (
     wrap_child_in_loading,
     previous_roi_trigger,
     next_roi_trigger,
-    reset_graph_data)
+    reset_graph_data,
+    adjust_option_height_from_list_length)
 
 def test_loader_children():
     child = dcc.Store(id="test_store")
@@ -35,3 +36,11 @@ def test_loaders_roi_triggers():
     assert next_roi_trigger("keyboard-listener", 0, {'keyCode': 39}, 1)
     assert not next_roi_trigger("keyboard-listener", 0, {'keyCode': 39}, 0)
     assert not next_roi_trigger("keyboard-listener", 1, {'badKey': 39}, 1)
+
+def test_adjust_option_height_based_on_lengths():
+
+    dropdown = ["this_is_a_super_long_mask_name that_is_intended_for_testing_purposes",
+                "this_is_a_super_long_mask_name that_is_intended_for_testing_purposes_v2"]
+    assert adjust_option_height_from_list_length(dropdown) == 120
+    dropdown_2 = ["this is short"]
+    assert adjust_option_height_from_list_length(dropdown_2) != 120

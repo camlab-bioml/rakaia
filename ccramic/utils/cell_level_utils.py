@@ -1,3 +1,4 @@
+import numpy
 import pandas as pd
 from ccramic.utils.pixel_level_utils import path_to_mask, get_bounding_box_for_svgpath, split_string_at_pattern
 from dash.exceptions import PreventUpdate
@@ -264,6 +265,7 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
             # get the cell ID at that position to match
             mask_used = mask_dict[mask_selection]['raw']
             cell_id = mask_used[y, x].astype(int)
+            cell_id = int(cell_id[0]) if isinstance(cell_id, numpy.ndarray) else cell_id
 
             measurements[annotation_column] = np.where((measurements[cell_identifier]== cell_id) &
                                                    (measurements[id_column] == sample), cell_type,
