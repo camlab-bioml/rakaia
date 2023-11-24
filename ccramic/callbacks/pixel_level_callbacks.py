@@ -57,6 +57,7 @@ import plotly.graph_objs as go
 from scipy.ndimage import median_filter
 import plotly.express as px
 from PIL import Image
+from natsort import natsorted
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -192,8 +193,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('session_config', 'data'),
                        State('blending_colours', 'data'),
                        State('session_alert_config', 'data'),
+                       State('natsort-uploads', 'value'),
                        prevent_initial_call=True)
-    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config):
+    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config, natsort):
         """
         Create session variables from the list of imported file paths
         Note that a message will be supplied if more than one type of file is passed
@@ -203,7 +205,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if error_config is None:
                 error_config = {"error": None}
             message = "Read in the following files:\n"
-            for upload in session_dict['uploads']:
+            # TODO: establish whether or not to use natural sorting on the filenames and applications for when to use
+            # i.e. useful for ordinal serial section files
+            files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
+            for upload in files:
                 suffix = pathlib.Path(upload).suffix
                 message = message + f"{upload}\n"
                 if suffix not in unique_suffixes:
@@ -215,7 +220,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                         "and ensure that all imported datasets share the same panel.\n\n" + message
             else:
                 error_config["error"] = message
-            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
+            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files)
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')

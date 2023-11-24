@@ -110,15 +110,15 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('channel-quantification-list', 'value'),
         State('alias-dict', 'data'),
         State('session_alert_config', 'data'),
-        State('umap-plot', 'figure'),
         prevent_initial_call=True)
     # @cache.memoize())
     def quantify_current_roi(execute, apply_mask, mask_dict, mask_selection, image_dict, data_selection,
-                             dataset_options, cur_quant_dict, channels_to_quantify, aliases, error_config, cur_umap):
+                             dataset_options, cur_quant_dict, channels_to_quantify, aliases, error_config):
         """
         Quantify the current ROI using the currently applied mask
         Important: the UMAP figure and UMAP annotation column are both reset when new quantification results are
         obtained as the UMAP projections will no longer align with the quantification frame and must be re-run
+        If the quantification is successful, close the modal
         """
         if error_config is None:
             error_config = {"error": None}

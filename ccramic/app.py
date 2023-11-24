@@ -121,6 +121,8 @@ def init_dashboard(server, authentic_id, config=None):
                     daq.ToggleSwitch(label='Autofill channel colours', id='autofill-channel-colors',
                                      labelPosition='bottom', color="blue", value=False),
                     html.Br(),
+                    daq.ToggleSwitch(label='Natural sort input files', id='natsort-uploads',
+                                     labelPosition='bottom', color="blue", value=True),
                     html.Br(),
                     html.H6(f"tmp storage destination: {cache_dest}")
                 ]),

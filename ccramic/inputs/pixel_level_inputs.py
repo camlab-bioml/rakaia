@@ -158,7 +158,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
                       ))
         fig.update_layout(hovermode="x")
         return fig
-    except KeyError:
+    except (KeyError, AttributeError):
         return dash.no_update
 
 

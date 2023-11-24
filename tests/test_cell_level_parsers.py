@@ -158,3 +158,6 @@ def test_match_mask_name_to_quantification_sheet_roi():
     mask_selection_2 = "query_3"
     assert match_mask_name_to_quantification_sheet_roi(mask_selection_2, samples) == "query_3"
     assert match_mask_name_to_quantification_sheet_roi("query_5", samples) is None
+
+    samples_no_index= ["sampletest"]
+    assert match_mask_name_to_quantification_sheet_roi("sampletest", samples_no_index) == "sampletest"

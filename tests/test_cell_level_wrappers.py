@@ -1,7 +1,6 @@
 import pytest
 
 import os
-from dash_extensions.enrich import Serverside
 import tifffile
 from ccramic.callbacks.cell_level_wrappers import *
 
@@ -102,8 +101,6 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
              'annotation_column': 'ccramic_cell_annotation'}
     }}
 
-    print(eval("{'points': [{'x': 534, 'y': 648}]}"))
-
     mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
@@ -116,8 +113,6 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                                                                                               sample_name='Dilution_series_1_1')
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'ccramic_cell_annotation' in quantification_frame.columns
-
-
 
 
 def test_basic_shape_removal_from_canvas():

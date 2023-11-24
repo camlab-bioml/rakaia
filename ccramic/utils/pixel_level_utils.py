@@ -1,7 +1,3 @@
-# from imctools.converters import ome2analysis
-# from imctools.converters import ome2histocat
-# from imctools.converters import mcdfolder2imcfolder
-# from imctools.converters import exportacquisitioncsv
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -130,7 +126,7 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     try:
         if upper_bound >= 0:
             array = np.where(array > upper_bound, upper_bound, array)
-    except TypeError:
+    except (TypeError, ValueError):
         pass
     array = np.where((array - lower_bound) > 0, (array - lower_bound), 0)
     if upper_bound is not None:
@@ -311,6 +307,10 @@ def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_select
         raise PreventUpdate
 
 def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_blend, aliases, triggered_id):
+    """
+    Set the blend order of channels in the canvas based on either the existing order of addition,
+    or the sorting from a dash-ag-grid that is passed as rowdata
+    """
     channel_order = [] if channel_order is None or len(channel_order) < 1 else channel_order
     # input 1: if a channel is added or removed
     if triggered_id == "image_layers" and current_blend is not None and len(current_blend) > 0:

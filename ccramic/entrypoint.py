@@ -11,11 +11,6 @@ import warnings
 _program = "ccramic"
 __version__ = "0.10.0"
 
-
-def get_current_dir():
-    return str(os.path.abspath(os.path.join(os.path.dirname(__file__))))
-
-
 def init_app(cli_config):
     # suppress numba depreciation warnings from umap
     warnings.simplefilter('ignore', category=NumbaDeprecationWarning)

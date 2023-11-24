@@ -51,10 +51,7 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True):
         measurements = drop_columns_from_measurements_csv(measurements)
     if cols_include is not None and len(cols_include) > 0 and \
             all([elem in measurements.columns for elem in cols_include]):
-        try:
-            measurements = measurements[cols_include]
-        except (IndexError, ValueError):
-            pass
+        measurements = measurements[cols_include]
     return px.imshow(measurements, x=measurements.columns, y=measurements.index,
                     labels=dict(x="Channel", y="Cells", color="Cell Channel Mean"),
                     title=f"Channel expression per cell ({len(measurements)} cells)")
@@ -63,9 +60,9 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
     if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
         df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
-        if channel_overlay is not None:
-            df[channel_overlay] = quant_frame[channel_overlay]
         try:
+            if channel_overlay is not None:
+                df[channel_overlay] = quant_frame[channel_overlay]
             fig = px.scatter(df, x="UMAP1", y="UMAP2", color=channel_overlay)
         except KeyError:
             fig = px.scatter(df, x="UMAP1", y="UMAP2")

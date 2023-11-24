@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.10.0] - 2023-11-23
+## [0.10.0] - 2023-11-24
 
 ### Changed
 
@@ -49,6 +49,8 @@ that may interfere with proper separation in the dropdown menu. #71
 - Fixed UMAP clearing when in-app quantification updates the
 heatmap: UMAP plot will be hidden until new UMAP projections
 are computed
+- Fixed improper mask projection over canvas subset
+when regions are exported to PDF
 
 ## [0.9.0] - 2023-11-07
 

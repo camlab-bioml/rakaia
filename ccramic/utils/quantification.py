@@ -70,7 +70,8 @@ def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_s
     """
     Concatenate a quantification frame from one ROI to an existing frame that may contain quantification
     results for one or more ROIs.
-    If the columns do not match, then NAN values will be applied to the columns that differ
+    If the columns do not match or the ROI has already been quantified,
+    then the new frame will replace the existing frame
     """
     empty_master_frame = existing_frame is None or existing_frame.empty
     empty_new_frame = new_frame is None or new_frame.empty

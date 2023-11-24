@@ -66,8 +66,10 @@ def test_output_annotations_masks():
                                                            }}
 
         assert not os.path.exists(os.path.join(tmpdirname, "annotation_masks.zip"))
+        canvas_mask = np.full((600, 600), 7)
         output_dir = export_annotations_as_masks(annotations_dict, tmpdirname,
-                                                 'Patient1+++slide0+++pos1_1', (600, 600))
+                                                 'Patient1+++slide0+++pos1_1', (600, 600),
+                                                 canvas_mask=canvas_mask)
         assert os.path.exists(os.path.join(output_dir))
 
 
@@ -103,3 +105,34 @@ def test_output_point_annotations_as_csv():
 
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation,mask_cell_id\n'
             'pos1_1,235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'point_annotations.csv', 'type': None}
+
+
+    point_annotations = export_point_annotations_as_csv(1, 'pos1_1', annotations_dict, 'Patient1+++slide0+++pos1_1',
+                                                        mask_dict, True, 'mask', None,
+                                                        authentic_id, tmpdirname)
+
+    # assert that the mask id is not included if the image to compare cannot be found
+    assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
+            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'point_annotations.csv', 'type': None}
+
+    # assert no update occurs if one of the keys is malformed
+
+    with pytest.raises(PreventUpdate):
+        export_point_annotations_as_csv(0, 'pos1_1', annotations_dict,
+                                        'Patient1+++slide0+++pos1_1',
+                                        mask_dict, True, 'mask', None,
+                                        authentic_id, tmpdirname)
+
+        annotations_dict_malformed = {'Patient1+++slide0+++pos1_1': {
+        "{'points': [{'curveNumber': 0, 'fake_x': 235, 'y': 124, 'color': "
+        "{'0': 0, '1': 0, '2': 255, '3': 1}, 'colormodel': 'rgba256', "
+        "'z': {'0': 0, '1': 0, '2': 255, '3': 1}, 'bbox': "
+        "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
+            {'title': None, 'body': None, 'cell_type': 'immune', 'imported': False,
+             'annotation_column': 'ccramic_cell_annotation', 'type': 'point', 'channels': None,
+             'use_mask': None, 'mask_selection': None, 'mask_blending_level': None, 'add_mask_boundary': None}
+        }}
+        export_point_annotations_as_csv(1, 'pos1_1', annotations_dict_malformed,
+                                                        'Patient1+++slide0+++pos1_1',
+                                                        mask_dict, True, 'mask', None,
+                                                        authentic_id, tmpdirname)

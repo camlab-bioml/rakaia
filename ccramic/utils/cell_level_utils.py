@@ -352,24 +352,21 @@ def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_select
                             image = np.clip(image, 0, 255)
                         except KeyError:
                             image = None
-                            if value['use_mask'] and None not in (mask_config, value['mask_selection']) and \
-                                    len(mask_config) > 0:
-                                if image.shape[0] == mask_config[value['mask_selection']]["array"].shape[0] and \
-                                    image.shape[1] == mask_config[value['mask_selection']]["array"].shape[1]:
-                                    # set the mask blending level based on the slider, by default use an equal blend
-                                    mask_level = float(value['mask_blending_level'] / 100) if \
-                                    value['mask_blending_level'] is not None else 1
-                                    image = cv2.addWeighted(image.astype(np.uint8), 1,
+                        if value['use_mask'] and None not in (mask_config, value['mask_selection']) and \
+                                len(mask_config) > 0:
+                            if image.shape[0] == mask_config[value['mask_selection']]["array"].shape[0] and \
+                                image.shape[1] == mask_config[value['mask_selection']]["array"].shape[1]:
+                                # set the mask blending level based on the slider, by default use an equal blend
+                                mask_level = float(value['mask_blending_level'] / 100) if \
+                                value['mask_blending_level'] is not None else 1
+                                image = cv2.addWeighted(image.astype(np.uint8), 1,
                                                 mask_config[value['mask_selection']]["array"].astype(np.uint8),
                                                 mask_level, 0)
-                                if value['add_mask_boundary'] and mask_config[value['mask_selection']]["boundary"] is not None:
+                            if value['add_mask_boundary'] and mask_config[value['mask_selection']]["boundary"] is not None:
                                     # add the border of the mask after converting back to greyscale to derive the conversion
-                                    greyscale_mask = np.array(Image.fromarray(mask_config[
-                                                                          value['mask_selection']][
-                                                                                  "boundary"]).convert('L'))
-                                    reconverted = np.array(Image.fromarray(
-                                    convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
-                                    image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
+                                reconverted = np.array(Image.fromarray(mask_config[value['mask_selection']][
+                                                                                  "boundary"]).convert('RGB'))
+                                image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
                         region = np.array(image[np.ix_(range(int(y_min), int(y_max), 1),
                                                range(int(x_min), int(x_max), 1))]).astype(np.uint8)
                         aspect_ratio = image.shape[1] / image.shape[0]
