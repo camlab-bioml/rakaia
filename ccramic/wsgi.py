@@ -41,6 +41,9 @@ def argparser():
     parser.add_argument('-dl', "--disable-loading", action="store_false",
                         help="Disable loading on data import and data switching. By default, loading is enabled.",
                         dest="loading")
+    parser.add_argument('-dp', "--disable-persistence", action="store_false",
+                        help="Disable saving persistent session variable values in the browser. By default, persistence is enabled.",
+                        dest="persistence")
 
     return parser
 
@@ -56,7 +59,8 @@ def main(sysargs = sys.argv[1:]):
     # establish the cli config
 
     CLI_CONFIG = {"use_local_dialog": args.use_local_dialog,
-                  'use_loading': args.loading}
+                  'use_loading': args.loading,
+                  'persistence': args.persistence}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:

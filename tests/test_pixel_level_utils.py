@@ -19,7 +19,8 @@ from ccramic.utils.pixel_level_utils import (
     path_to_mask,
     get_area_statistics_from_closed_path,
     get_bounding_box_for_svgpath,
-    select_random_colour_for_channel)
+    select_random_colour_for_channel,
+    apply_preset_to_blend_dict)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -230,6 +231,15 @@ def test_basic_blend_dict_params():
     for channel in blend_dict.keys():
         for blend_param in blend_dict[channel].values():
             assert blend_param not in possibilities
+
+def test_basic_preset_apply_blend_dict():
+    blend_dict = {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None, "filter_sigma": None}
+    preset_dict = {"color": "#FF00FF", "x_lower_bound": 1, "x_upper_bound": 100, "filter_type": "median",
+                   "filter_val": 3, "filter_sigma": 1}
+    blend_dict = apply_preset_to_blend_dict(blend_dict, preset_dict)
+    for key, value in blend_dict.items():
+        if key != 'color':
+            assert value == preset_dict[key]
 
 def test_calculate_percentile_intensity(get_current_dir):
     array = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
