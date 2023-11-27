@@ -175,7 +175,7 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                     else:
                         mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
                         boundary_import = np.array(Image.fromarray(
-                            convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+                            convert_mask_to_cell_boundary(page.asarray().astype(np.uint16))).convert('RGB'))
                     mask_name_use = single_mask_name if single_mask_name is not None else mask_name
                     cur_mask_dict[mask_name_use] = {"array": mask_import, "boundary": boundary_import,
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],

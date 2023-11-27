@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.10.0] - 2023-11-24
+## [0.10.0] - 2023-11-27
 
 ### Changed
 
@@ -25,6 +25,8 @@ changing to new data. Allows for smoother transitions between ROIs #73
 ROIs are not available, respectively. #75
 - mask object outlines are now computed with `skimage` to drastically
 increase speed and avoid pixel iteration
+- Imported imaging filenames are now sorted using natsort by default (feature can
+be disabled in the session configuration modal)
 
 ### Added
 
@@ -51,6 +53,8 @@ heatmap: UMAP plot will be hidden until new UMAP projections
 are computed
 - Fixed improper mask projection over canvas subset
 when regions are exported to PDF
+- Fixed improper conversion of cell mask to boundaries
+when numpy floats are not used in the mask array
 
 ## [0.9.0] - 2023-11-07
 
