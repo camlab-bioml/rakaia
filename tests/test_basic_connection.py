@@ -7,10 +7,10 @@ import socket
 import platform
 import os
 from subprocess import Popen, PIPE
-from ccramic.app.wsgi import argparser, main
-from ccramic.app.entrypoint import init_app
-from ccramic.app.app import init_dashboard
-from ccramic.app.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
+from ccramic.wsgi import argparser, main
+from ccramic.entrypoint import init_app
+from ccramic.app import init_dashboard
+from ccramic.app import init_pixel_level_callbacks
 import time
 import signal
 from flask import Flask
@@ -52,6 +52,8 @@ def recursive_wait_for_elem(app, elem, duration):
 
 
 @skip_on(SessionNotCreatedException, "Selenium version is not compatible")
+# @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
+#                     reason="Only test the connection in a GA workflow due to passwordless sudo")
 def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
     credentials = base64.b64encode(b"ccramic_user:ccramic-1").decode('utf-8')
     assert str(type(ccramic_flask_test_app)) == "<class 'flask.app.Flask'>"
@@ -76,14 +78,17 @@ def test_basic_cli_outputs():
     parser = argparser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
-    assert vars(args) == {'auto_open': False, 'port': 5000, 'use_local_dialog': False}
+    assert vars(args) == {'auto_open': False, 'debug': False, 'loading': True, 'port': 5000, 'threading': True,
+                          'use_local_dialog': False}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     parser = argparser()
     args = parser.parse_args(['-a'])
-    assert vars(args) == {'auto_open': True, 'port': 5000, 'use_local_dialog': False}
+    assert vars(args) == {'auto_open': True, 'debug': False, 'loading': True, 'port': 5000, 'threading': True,
+                          'use_local_dialog': False}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
-    assert vars(args) == {'auto_open': False, 'port': 8050, 'use_local_dialog': False}
+    assert vars(args) == {'auto_open': False, 'debug': False, 'loading': True, 'port': 8050, 'threading': True,
+                          'use_local_dialog': False}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     with pytest.raises(SystemExit):
         parser.parse_args(['-v'])
@@ -116,7 +121,7 @@ def test_basic_cli_outputs_main():
         assert True
 
 def test_basic_app_return():
-    config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False}
+    config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False, 'use_loading': False}
     app = init_app(config)
     assert isinstance(app, Flask)
     app_2 = Flask("ccramic")
@@ -127,7 +132,8 @@ def test_basic_callback_register():
     dash_app = DashProxy("fake_app")
     assert len(dash_app.callback_map) == 0
     du.configure_upload(dash_app, "/tmp/")
-    init_pixel_level_callbacks(dash_app, "/tmp/", "test_app")
+    app_config = {'use_local_dialog': False, 'use_loading': False}
+    init_pixel_level_callbacks(dash_app, "/tmp/", "test_app", app_config)
     # assert init_pixel_level_callbacks(dash_app, "/tmp/", "test_app") is None
     assert isinstance(dash_app, dash_extensions.enrich.DashProxy)
     assert dash_app.callback is not None

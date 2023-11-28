@@ -1,5 +1,5 @@
 from setuptools import setup, find_packages
-from ccramic.app.entrypoint import __version__, _program
+from ccramic.entrypoint import __version__, _program
 
 setup(
     name=_program,
@@ -25,7 +25,7 @@ setup(
     ],
     entry_points="""
     [console_scripts]
-    {program} = ccramic.app.wsgi:main
+    {program} = ccramic.wsgi:main
     """.format(program="ccramic"),
     license="Unlicensed",
     install_requires=["pillow", "pandas", "matplotlib",

@@ -74,3 +74,8 @@ h3 {
   color: #444;
   text-decoration: none;
 }
+
+.VirtualizedSelectOption {
+  overflow: hidden;
+  font-size: .8em;
+}

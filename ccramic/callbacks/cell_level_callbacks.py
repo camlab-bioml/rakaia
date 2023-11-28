@@ -1,13 +1,41 @@
 import dash
 import pandas as pd
 
-from .cell_level_wrappers import *
-from ..io.annotation_outputs import *
+from ccramic.parsers.cell_level_parsers import (
+    parse_cell_subtypes_from_restyledata,
+    parse_and_validate_measurements_csv,
+    parse_masks_from_filenames,
+    parse_roi_query_indices_from_quantification_subset,
+    get_quantification_filepaths_from_drag_and_drop,
+    return_umap_dataframe_from_quantification_dict,
+    read_in_mask_array_from_filepath,
+)
+from ccramic.utils.cell_level_utils import (
+    populate_quantification_frame_column_from_umap_subsetting,
+    send_alert_on_incompatible_mask,
+    identify_column_matching_roi_to_quantification,
+    generate_annotations_output_pdf,
+    validate_mask_shape_matches_image)
+from ccramic.inputs.cell_level_inputs import (
+    generate_heatmap_from_interactive_subsetting,
+    generate_umap_plot,
+    )
+from ccramic.callbacks.cell_level_wrappers import (
+    callback_add_region_annotation_to_quantification_frame,
+    callback_remove_canvas_annotation_shapes)
+from ccramic.io.annotation_outputs import export_annotations_as_masks, export_point_annotations_as_csv
+from ccramic.inputs.loaders import adjust_option_height_from_list_length
+from ccramic.utils.pixel_level_utils import split_string_at_pattern
+import os
+from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
 from dash import dcc
-from matplotlib.backends.backend_pdf import PdfPages
 import matplotlib
 from werkzeug.exceptions import BadRequest
-
+import dash_uploader as du
+from dash_extensions.enrich import Output, Input, State, Serverside
+from dash import ctx
+from dash.exceptions import PreventUpdate
+import plotly.graph_objs as go
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -53,25 +81,27 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             else:
                 raise PreventUpdate
 
-    @dash_app.callback(Output('quantification-bar-full', 'figure'),
+    @dash_app.callback(Output('quantification-heatmap-full', 'figure'),
                        Output('umap-legend-categories', 'data'),
                        Output('quantification-query-indices', 'data'),
                        Output('cur-umap-subset-category-counts', 'data'),
+                       Output('query-cell-id-lists', 'data'),
+                       Output('quant-heatmap-channel-list', 'options'),
+                       Output('quant-heatmap-channel-list', 'value'),
                        Input('quantification-dict', 'data'),
-                       State('annotation_canvas', 'relayoutData'),
-                       Input('quantification-bar-mode', 'value'),
                        Input('umap-plot', 'relayoutData'),
                        State('umap-projection', 'data'),
                        State('quant-annotation-col', 'options'),
                        Input('umap-plot', 'restyleData'),
                        Input('umap-projection-options', 'value'),
                        State('umap-legend-categories', 'data'),
-                       State('dynamic-update-barplot', 'value'),
+                       Input('quant-heatmap-channel-list', 'value'),
+                       State('quant-heatmap-channel-list', 'options'),
                        prevent_initial_call=True)
-    def get_cell_channel_expression_statistics(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection,
-                                               prev_categories, dynamic_update):
-        #TODO: incorporate subsetting based on legend selection
+    def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings,
+                                            annot_cols, restyle_data, umap_col_selection, prev_categories,
+                                            channels_to_display, heatmap_channel_options):
+        # TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
         # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
@@ -79,40 +109,121 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         # [{'visible': ['legendonly']}, [2]]
         # print(restyle_data)
 
-        # TODO: fix when umap layout resets after tab switch
         # do not update if the tab is switched and the umap layout is reset to the default
         # tab_switch = ctx.triggered_id == "umap-plot" and umap_layout in [{"autosize": True}]
+        # do not update if the trigger is the column options and there isn't one selected
+        # empty_col = ctx.triggered_id == "umap-projection-options" and umap_col_selection is None
         if quantification_dict is not None:
-            zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
-            if ctx.triggered_id not in ["umap-projection-options"]:
+            zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
+            if ctx.triggered_id not in ["umap-projection-options"] and umap_layout is not None:
                 try:
-                    subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
-                                                              prev_categories)
+                    subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict,
+                                                                          umap_col_selection,
+                                                                          prev_categories)
                 except TypeError:
                     subtypes, keep = None, None
             else:
                 subtypes, keep = None, None
 
             try:
-                # do not update the expression barplot if the feature is turned off
-                if not (ctx.triggered_id == "umap-layout" and len(dynamic_update) <= 0):
-                    fig, frame = generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
-                                               umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols,
-                                                                        umap_col_selection, subtypes)
-                else:
-                    fig, frame = dash.no_update, dash.no_update
+                fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
+                        umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols, umap_col_selection,
+                        subtypes, channels_to_display)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             if frame is not None:
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
-                    # also return the current count of the uamp category selected to update the distribution table
+                    # also return the current count of the umap category selected to update the distribution table
+                # only store the cell id lists if zoom subsetting is used
+                if umap_layout is not None and all([key in umap_layout.keys() for key in zoom_keys]):
+                    full_frame = pd.DataFrame(quantification_dict)
+                    merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
+                    cell_id_dict = generate_dict_of_roi_cell_ids(merged)
+                else:
+                    cell_id_dict = None
             else:
                 indices_query = None
                 freq_counts_cat = None
-            return fig, keep, indices_query, freq_counts_cat
+                cell_id_dict = None
+            # if the heatmap channel options are already set, do not update
+            cols_return = list(frame.columns)
+            if ctx.triggered_id == "quantification-dict":
+                cols_selected = list(frame.columns)
+            else:
+                cols_selected = list(frame.columns) if not heatmap_channel_options else dash.no_update
+            return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict), cols_return, cols_selected
         else:
             raise PreventUpdate
+
+
+    # @dash_app.callback(Output('quantification-bar-full', 'figure'),
+    #                    Input('quantification-dict', 'data'),
+    #                    State('annotation_canvas', 'relayoutData'),
+    #                    Input('quantification-bar-mode', 'value'),
+    #                    Input('umap-plot', 'relayoutData'),
+    #                    State('umap-projection', 'data'),
+    #                    State('quant-annotation-col', 'options'),
+    #                    Input('umap-plot', 'restyleData'),
+    #                    Input('umap-projection-options', 'value'),
+    #                    State('umap-legend-categories', 'data'),
+    #                    State('dynamic-update-barplot', 'value'),
+    #                    Input('cell-quant-tabs', 'active_tab'),
+    #                    prevent_initial_call=True)
+    # def get_cell_channel_expression_barplot(quantification_dict, canvas_layout, mode_value,
+    #                                            umap_layout, embeddings, annot_cols, restyle_data, umap_col_selection,
+    #                                            prev_categories, dynamic_update, active_tab):
+    #     #TODO: incorporate subsetting based on legend selection
+    #     # uses the restyledata for the current legend selection to figure out which selections have been made
+    #     # Example 1: user selected only the third legend item to view
+    #     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+    #     # Example 2: user selects all but the the second item to view
+    #     # [{'visible': ['legendonly']}, [2]]
+    #     # print(restyle_data)
+    #
+    #
+    #     # do not update if the tab is switched and the umap layout is reset to the default
+    #     # tab_switch = ctx.triggered_id == "umap-plot" and umap_layout in [{"autosize": True}]
+    #     if quantification_dict is not None and active_tab == "cell-quant-barplot":
+    #
+    #         zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]','yaxis.range[0]', 'yaxis.range[1]']
+    #         if ctx.triggered_id not in ["umap-projection-options"] and umap_layout is not None:
+    #             try:
+    #                 subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict, umap_col_selection,
+    #                                                           prev_categories)
+    #             except TypeError:
+    #                 subtypes, keep = None, None
+    #         else:
+    #             subtypes, keep = None, None
+    #
+    #         try:
+    #             # do not update the expression barplot if the feature is turned off
+    #             if not (ctx.triggered_id == "umap-layout" and len(dynamic_update) <= 0):
+    #                 fig, frame = generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
+    #                                            umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols,
+    #                                                                     umap_col_selection, subtypes)
+    #             else:
+    #                 fig, frame = dash.no_update, dash.no_update
+    #         except (BadRequest, IndexError):
+    #             raise PreventUpdate
+    #         # if frame is not None:
+    #         #     indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
+    #         #         quantification_dict, frame, umap_col_selection)
+    #         #         # also return the current count of the umap category selected to update the distribution table
+    #         #     # only store the cell id lists if zoom subsetting is used
+    #         #     if umap_layout is not None and all([key in umap_layout.keys() for key in zoom_keys]):
+    #         #         full_frame = pd.DataFrame(quantification_dict)
+    #         #         merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
+    #         #         cell_id_dict = generate_dict_of_roi_cell_ids(merged)
+    #         #     else:
+    #         #         cell_id_dict = None
+    #         # else:
+    #         #     indices_query = None
+    #         #     freq_counts_cat = None
+    #         #     cell_id_dict = None
+    #         return fig
+    #     else:
+    #         raise PreventUpdate
 
 
     @dash_app.callback(Output('umap-projection', 'data', allow_duplicate=True),
@@ -139,16 +250,22 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
 
     @dash_app.callback(Output('umap-plot', 'figure'),
+                       Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
                        State('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
-        try:
-            return generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
-        except BadRequest:
-            raise PreventUpdate
+        if ctx.triggered_id == "umap-projection-options" and channel_overlay is None:
+            return dash.no_update, {'display': 'None'}
+        else:
+            try:
+                umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else {'display': 'None'}
+                return umap, display
+            except BadRequest:
+                return dash.no_update, {'display': 'None'}
 
     @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
                        Input('create-annotation-umap', 'n_clicks'),
@@ -221,6 +338,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Output('mask-dict', 'data'),
                        Output('mask-options', 'options'),
+                       Output('mask-options', 'optionHeight'),
                        Input('mask-uploads', 'data'),
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
@@ -233,8 +351,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
         if multi_upload or single_upload:
-            return read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
-                                                cur_mask_dict, derive_cell_boundary)
+            dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
+                                                             cur_mask_dict, derive_cell_boundary)
+            # if any of the names are longer than 40 characters, increase the height to make them visible
+            height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
+            return dict, options, height_update
         else:
             raise PreventUpdate
 
@@ -449,3 +570,16 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         if n1:
             return not is_open
         return is_open
+
+    @dash_app.callback(
+        Output("quantification-roi-modal", "is_open"),
+        Input('quantify-cur-roi-button', 'n_clicks'),
+        Input('quantify-cur-roi-execute', 'n_clicks'),
+        [State("quantification-roi-modal", "is_open")])
+    def toggle_show_quantification_config_modal(n1, execute, is_open):
+        if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0:
+            return False
+        else:
+            if n1:
+                return not is_open
+            return is_open

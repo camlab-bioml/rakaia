@@ -1,7 +1,3 @@
-# from imctools.converters import ome2analysis
-# from imctools.converters import ome2histocat
-# from imctools.converters import mcdfolder2imcfolder
-# from imctools.converters import exportacquisitioncsv
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -10,8 +6,9 @@ import plotly.graph_objects as go
 import plotly.express as px
 from skimage import draw
 from scipy import ndimage
-from scipy.ndimage import gaussian_filter, median_filter
+from scipy.ndimage import median_filter
 from dash.exceptions import PreventUpdate
+import cv2
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -129,7 +126,7 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     try:
         if upper_bound >= 0:
             array = np.where(array > upper_bound, upper_bound, array)
-    except TypeError:
+    except (TypeError, ValueError):
         pass
     array = np.where((array - lower_bound) > 0, (array - lower_bound), 0)
     if upper_bound is not None:
@@ -166,12 +163,17 @@ def apply_preset_to_array(array, preset):
     preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
     if isinstance(preset, dict) and all([elem in preset.keys() for elem in preset_keys]):
         array = filter_by_upper_and_lower_bound(array, preset['x_lower_bound'], preset['x_upper_bound'])
-        if preset['filter_type'] == "median" and preset['filter_val'] is not None:
-            array = median_filter(array, int(preset['filter_val']))
+        if preset['filter_type'] == "median" and preset['filter_val'] is not None and \
+                int(preset['filter_val']) >= 1:
+            try:
+                array = median_filter(array, int(preset['filter_val']))
+            except ValueError:
+                pass
         elif preset['filter_val'] is not None:
-            array = gaussian_filter(array, int(preset['filter_val']))
+            if int(preset['filter_val']) % 2 != 0 and int(preset['filter_val']) >= 1:
+                array = cv2.GaussianBlur(array, (int(preset['filter_val']), int(preset['filter_val'])),
+                                         int(preset['filter_sigma']))
         return array
-
 
 def apply_preset_to_blend_dict(blend_dict, preset_dict):
     """
@@ -305,6 +307,10 @@ def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_select
         raise PreventUpdate
 
 def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_blend, aliases, triggered_id):
+    """
+    Set the blend order of channels in the canvas based on either the existing order of addition,
+    or the sorting from a dash-ag-grid that is passed as rowdata
+    """
     channel_order = [] if channel_order is None or len(channel_order) < 1 else channel_order
     # input 1: if a channel is added or removed
     if triggered_id == "image_layers" and current_blend is not None and len(current_blend) > 0:
@@ -321,3 +327,18 @@ def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_ble
         return channel_order
     else:
         return []
+
+
+def select_random_colour_for_channel(blend_dict, current_channel, default_colours):
+    """
+    Loop through the default colours and select a colour in the sequence for the current channel
+    if the colour is not used. Otherwise, do not update the blend dictionary
+    """
+    for default in default_colours:
+        # check if any of the colours have been used yet. if not, select the next available
+        # only updates a channel if the default is None or white (#FFFFFF), which implies the defaults
+        if not any([channel['color'] == default for channel in blend_dict.values()]) and \
+                blend_dict[current_channel]['color'] in ['#FFFFFF', None, '#ffffff']:
+            blend_dict[current_channel]['color'] = default
+            break
+    return blend_dict

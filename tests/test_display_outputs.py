@@ -1,4 +1,4 @@
-from ccramic.app.io.display import generate_area_statistics_dataframe
+from ccramic.io.display import generate_area_statistics_dataframe
 import numpy as np
 import pandas as pd
 

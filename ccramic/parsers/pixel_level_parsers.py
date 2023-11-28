@@ -3,7 +3,7 @@ import h5py
 from pathlib import Path
 from tifffile import TiffFile
 import os
-from ..utils.pixel_level_utils import *
+from ccramic.utils.pixel_level_utils import convert_to_below_255,  split_string_at_pattern
 from readimc import MCDFile, TXTFile
 
 def populate_upload_dict(uploaded_files):
@@ -36,7 +36,7 @@ def populate_upload_dict(uploaded_files):
                                 upload_dict[roi][channel] = data_h5[roi][channel]['image'][()]
                                 if channel_index == 1:
                                     dataset_information["ROI"].append(str(roi))
-                                    dataset_information["Dimensions"].append(f"{upload_dict[roi][channel].shape[1]}x" \
+                                    dataset_information["Dimensions"].append(f"{upload_dict[roi][channel].shape[1]}x"
                                     f"{upload_dict[roi][channel].shape[0]}")
                                     dataset_information["Panel"].append(f"{len(data_h5[roi].keys())} markers")
                             except KeyError:
@@ -232,8 +232,8 @@ def create_new_blending_dict(uploaded):
             # assert that all of the rois have the same length to use the same panel for all
     first_roi = [elem for elem in list(uploaded.keys()) if 'metadata' not in elem][0]
     for channel in uploaded[first_roi].keys():
-        current_blend_dict[channel] = {'color': None, 'x_lower_bound': None,
-                                                'x_upper_bound': None, 'filter_type': None, 'filter_val': None}
+        current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
+                                       'filter_type': None, 'filter_val': None, 'filter_sigma': None}
         current_blend_dict[channel]['color'] = '#FFFFFF'
     return current_blend_dict
 
@@ -242,6 +242,8 @@ def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config):
     """
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
+    #IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
+    # is already contained in the dictionary
     try:
         split = split_string_at_pattern(dataset_selection)
         basename, slide, acq_name = split[0], split[1], split[2]

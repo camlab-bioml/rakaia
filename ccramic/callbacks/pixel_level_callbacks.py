@@ -1,31 +1,71 @@
-import os.path
 
+import os.path
 import dash.exceptions
-import dash_bootstrap_components as dbc
 import dash_uploader as du
 import flask
-import numpy as np
-import pandas as pd
-from dash import ctx, MATCH, ALL
-from dash_extensions.enrich import Output, Input, State, html
+from dash import ctx, ALL
+from dash_extensions.enrich import Output, Input, State, html, Serverside
 from tifffile import imwrite
-from ..inputs.pixel_level_inputs import *
-from ..parsers.pixel_level_parsers import *
-from ..utils.cell_level_utils import *
-from ..io.display import generate_area_statistics_dataframe
-from ..io.gallery_outputs import generate_channel_tile_gallery_children
-from ..parsers.cell_level_parsers import *
+from ccramic.inputs.pixel_level_inputs import (
+    wrap_canvas_in_loading_screen_for_large_images,
+    add_scale_value_to_figure,
+    invert_annotations_figure,
+    set_range_slider_tick_markers)
+from ccramic.parsers.pixel_level_parsers import (
+    populate_upload_dict,
+    populate_upload_dict_by_roi,
+    create_new_blending_dict)
+from ccramic.utils.pixel_level_utils import (
+    delete_dataset_option_from_list_interactively,
+    split_string_at_pattern,
+    get_default_channel_upper_bound_by_percentile,
+    apply_preset_to_array,
+    recolour_greyscale,
+    resize_for_canvas,
+    select_random_colour_for_channel,
+    apply_preset_to_blend_dict,
+    filter_by_upper_and_lower_bound,
+    get_all_images_by_channel_name,
+    set_channel_list_order,
+    pixel_hist_from_array,
+    per_channel_intensity_hovertext,
+    validate_incoming_metadata_table,
+    make_metadata_column_editable,
+    path_to_mask,
+    create_new_coord_bounds)
+from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
+from ccramic.io.display import generate_area_statistics_dataframe
+from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
+from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
+from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
+from ccramic.inputs.loaders import (
+    previous_roi_trigger,
+    next_roi_trigger,
+    adjust_option_height_from_list_length)
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
 import pathlib
+import cv2
+import math
+from dash import dcc
+import h5py
+from dash.exceptions import PreventUpdate
+import pandas as pd
+import numpy as np
+import plotly.graph_objs as go
+from scipy.ndimage import median_filter
+import plotly.express as px
+from PIL import Image
+from natsort import natsorted
 
-def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
+def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with pixel level analysis/raw image preprocessing (image loading,
     blending, filtering, scaling, etc.)
     """
     dash_app.config.suppress_callback_exceptions = True
+    DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
 
     @du.callback(Output('uploads', 'data'),
                  id='upload-image')
@@ -153,8 +193,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('session_config', 'data'),
                        State('blending_colours', 'data'),
                        State('session_alert_config', 'data'),
+                       State('natsort-uploads', 'value'),
                        prevent_initial_call=True)
-    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config):
+    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config, natsort):
         """
         Create session variables from the list of imported file paths
         Note that a message will be supplied if more than one type of file is passed
@@ -164,7 +205,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             if error_config is None:
                 error_config = {"error": None}
             message = "Read in the following files:\n"
-            for upload in session_dict['uploads']:
+            # TODO: establish whether or not to use natural sorting on the filenames and applications for when to use
+            # i.e. useful for ordinal serial section files
+            files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
+            for upload in files:
                 suffix = pathlib.Path(upload).suffix
                 message = message + f"{upload}\n"
                 if suffix not in unique_suffixes:
@@ -176,7 +220,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                         "and ensure that all imported datasets share the same panel.\n\n" + message
             else:
                 error_config["error"] = message
-            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(session_dict['uploads'])
+            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files)
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
@@ -188,6 +232,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('data-collection', 'options'),
                        Output('data-collection', 'value'),
                        Output('image_layers', 'value'),
+                       Output('data-collection', 'optionHeight'),
                        Input('uploaded_dict_template', 'data'),
                        State('data-collection', 'value'),
                        State('image_layers', 'value'),
@@ -205,7 +250,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 selection_return = dash.no_update if cur_data_selection in datasets else None
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0:
                     channels_return = cur_layers_selected
-            return datasets, selection_return, channels_return
+            #TODO: figure out how to change the option height of the dropdown for very long names
+            height_update = adjust_option_height_from_list_length(datasets)
+            return datasets, selection_return, channels_return, height_update
         else:
             raise PreventUpdate
 
@@ -291,7 +338,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                            canvas_return = dash.no_update
                         else:
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,
-                                                                            enable_zoom=enable_zoom)]
+                                            enable_zoom=enable_zoom, wrap=app_config['use_loading'])]
                     else:
                         canvas_return = dash.no_update
                         dim_return = None
@@ -316,6 +363,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     dash.no_update
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Input('image_layers', 'options'),
+                       Input('alias-dict', 'data'),
+                       State('channel-quantification-list', 'value'),
+                       Output('channel-quantification-list', 'options'),
+                       Output('channel-quantification-list', 'value'),
+                       prevent_initial_call=True)
+    def create_channel_options_for_quantification(channel_options, aliases, cur_selection):
+        """
+        Create the dropdown options for the channels for quantification
+        If channels are already selected, keep them and just update the labels
+        """
+        channel_list_options = [{'label': value, 'value': key} for key, value in aliases.items()]
+        channel_list_selected = list(aliases.keys()) if cur_selection is None or len(cur_selection) == 0 else \
+            cur_selection
+        return channel_list_options, channel_list_selected
 
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Output('images_in_blend', 'value'),
@@ -431,6 +494,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        State('images_in_blend', 'value'),
+                       State('autofill-channel-colors', 'value'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('param_config', 'data', allow_duplicate=True),
@@ -438,7 +502,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict,
-                                               cur_image_in_mod_menu):
+                                               cur_image_in_mod_menu, autofill_channel_colours):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
@@ -469,8 +533,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                      get_default_channel_upper_bound_by_percentile(
                                                                 uploaded_w_data[data_selection][elem]),
                                                                  'filter_type': None,
-                                                                 'filter_val': None}
+                                                                 'filter_val': None, 'filter_sigma': None}
+                    # TODO: default colour is white, but can set auto selection here for starting colours
                     current_blend_dict[elem]['color'] = '#FFFFFF'
+                    if autofill_channel_colours:
+                        current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     if use_preset_condition:
                         current_blend_dict[elem] = apply_preset_to_blend_dict(
                             current_blend_dict[elem], preset_dict[preset_selection])
@@ -480,6 +547,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                     current_blend_dict[elem] = apply_preset_to_blend_dict(
                         current_blend_dict[elem], preset_dict[preset_selection])
                 else:
+                    # TODO: default colour is white, but can set auto selection here for starting colours
+                    if autofill_channel_colours:
+                        current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     # create a nested dict with the image and all of the filters being used for it
                     # if the same blend parameters have been transferred from another ROI, apply them
                     # set a default upper bound for the channel if the value is None
@@ -491,11 +561,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
                     #  present in the layers dictionary to save time
-                    if data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys():
+                    # affects if a channel is added and dropped
+                    if (data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys()) or \
+                            autofill_channel_colours:
                         array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
+
             return current_blend_dict, Serverside(all_layers), param_dict, channel_modify
         else:
             raise PreventUpdate
@@ -506,6 +579,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        prevent_initial_call=True)
     def update_colour_picker_from_swatch(swatch):
         if swatch is not None:
+            # IMP: need to reset the value of the swatch to None after transferring the colour
             return dict(hex=swatch), None
         else:
             raise PreventUpdate
@@ -522,12 +596,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('bool-apply-filter', 'value'),
                        State('filter-type', 'value'),
                        State("kernel-val-filter", 'value'),
+                       State("sigma-val-filter", 'value'),
                        State('images_in_blend', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def update_blend_dict_on_color_selection(colour, layer, uploaded_w_data,
                                     current_blend_dict, data_selection, add_to_layer,
-                                    all_layers, filter_chosen, filter_name, filter_value,
+                                    all_layers, filter_chosen, filter_name, filter_value, filter_sigma,
                                     blend_options):
         """
         Update the blend dictionary and layer dictionary when a modification channel changes its colour
@@ -551,16 +626,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                       'x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
-                        if filter_name == "median":
-                            array = median_filter(array, int(filter_value))
+                        if filter_name == "median" and int(filter_value) >= 1:
+                            try:
+                                array = median_filter(array, int(filter_value))
+                            except ValueError:
+                                pass
                         else:
-                            array = gaussian_filter(array, int(filter_value))
-
-                # if filters have been selected, apply them before recolouring
-
-
-                        # and \
-                        # colour['hex'] not in ['#ffffff', '#FFFFFF']:
+                            # array = gaussian_filter(array, int(filter_value))
+                            if int(filter_value) % 2 != 0 and int(filter_value) >= 1:
+                                array = cv2.GaussianBlur(array, (int(filter_value),
+                                                                 int(filter_value)), float(filter_sigma))
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
@@ -631,9 +706,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         Set the blend param dictionary and canvas layer dictionary when a preset is applied to the current ROI.
         """
-        preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
+        preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val', 'filter_sigma']
         if None not in (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
-
 
             array = uploaded_w_data[data_selection][layer]
 
@@ -659,15 +733,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Input('bool-apply-filter', 'value'),
                        Input('filter-type', 'value'),
-                       State("kernel-val-filter", 'value'),
+                       Input("kernel-val-filter", 'value'),
+                       Input("sigma-val-filter", 'value'),
                        State('image_layers', 'value'),
                        State('images_in_blend', 'options'),
                        State('static-session-var', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def set_blend_options_for_layer_with_bool_filter(layer, uploaded, current_blend_dict, data_selection,
-                                                     all_layers, filter_chosen, filter_name, filter_value, cur_layers,
-                                                     blend_options, session_vars):
+                                                     all_layers, filter_chosen, filter_name, filter_value, filter_sigma,
+                                                     cur_layers, blend_options, session_vars):
 
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
@@ -675,25 +750,28 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
             only_options_changed = ctx.triggered_id == "images_in_blend" and \
                                    ctx.triggered[0]['value'] == session_vars["cur_channel"]
 
-        if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers) and \
-                not only_options_changed:
-
-
+        if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers,
+                        filter_sigma) and not only_options_changed:
 
             array = uploaded[data_selection][layer]
 
             # condition where the current inputs are set to not have a filter, and the current blend dict matches
             no_filter_in_both = current_blend_dict[layer]['filter_type'] is None and \
                                 current_blend_dict[layer]['filter_val'] is None and \
+                                current_blend_dict[layer]['filter_sigma'] is None and \
                                 len(filter_chosen) == 0
 
             # condition where toggling between two channels, and the first one has no filter and the second
             # has a filter. prevent the callback with no actual change
             same_filter_params = current_blend_dict[layer]['filter_type'] == filter_name and \
                                  current_blend_dict[layer]['filter_val'] == filter_value and \
+                                 current_blend_dict[layer]['filter_sigma'] == filter_sigma and \
                                  len(filter_chosen) > 0
 
-            if not no_filter_in_both and not same_filter_params:
+            # do not update if the gaussian filter is applied with an even number
+            gaussian_even = filter_name == "gaussian" and (int(filter_value) % 2 == 0)
+
+            if not no_filter_in_both and not same_filter_params and not gaussian_even:
                 # do not update if all of the channels are not in the Channel dict
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in cur_layers for elem in blend_options]):
@@ -707,17 +785,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                                                       'x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
-                        if filter_name == "median":
-                            array = median_filter(array, int(filter_value))
+                        if filter_name == "median" and int(filter_value) >= 1:
+                            try:
+                                array = median_filter(array, int(filter_value))
+                            except ValueError:
+                                pass
                         else:
-                            array = gaussian_filter(array, int(filter_value))
+                            # array = gaussian_filter(array, int(filter_value))
+                            if int(filter_value) % 2 != 0:
+                                array = cv2.GaussianBlur(array, (int(filter_value),
+                                                                 int(filter_value)), float(filter_sigma))
 
                         current_blend_dict[layer]['filter_type'] = filter_name
                         current_blend_dict[layer]['filter_val'] = filter_value
+                        current_blend_dict[layer]['filter_sigma'] = filter_sigma
 
                     else:
                         current_blend_dict[layer]['filter_type'] = None
                         current_blend_dict[layer]['filter_val'] = None
+                        current_blend_dict[layer]['filter_sigma'] = None
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                                                  current_blend_dict[
@@ -757,8 +843,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
 
 
             for key, value in current_blend_dict.items():
-                current_blend_dict[key] = apply_preset_to_blend_dict(value,
-                                                                                      preset_dict[preset_selection])
+                current_blend_dict[key] = apply_preset_to_blend_dict(value, preset_dict[preset_selection])
             return current_blend_dict
         else:
             raise PreventUpdate
@@ -799,14 +884,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('annotation_canvas', 'figure'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options, cur_graph):
+    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options, cur_canvas):
         """
         Reset the canvas to blank on an ROI change
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
+        #TODO: new update here does not reset the canvas to blank between ROI selections for smoother transition
         if new_selection is not None:
-            cur_graph['data'] = []
-            return cur_graph, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
+            canvas_return = dash.no_update
+            if 'shapes' in cur_canvas['layout'] and len(cur_canvas['layout']['shapes']) > 0:
+                other_shapes = [shape for shape in cur_canvas['layout']['shapes'] if \
+                                                    shape is not None and 'type' in shape and \
+                                                (shape['type'] in ['path', 'rect', 'circle'] or \
+                                                  any(elem in ['rect', 'path', 'circle'] for elem in shape.keys()))]
+                if len(other_shapes) > 0:
+                    for shape in cur_canvas['layout']['shapes']:
+                        if 'label' in shape and 'texttemplate' in shape['label']:
+                            del shape['label']['texttemplate']
+                    canvas_return = cur_canvas
+            return canvas_return, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
         else:
             raise PreventUpdate
 
@@ -860,7 +956,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
                 len(channel_order) > 0:
-
+            cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
+            # try:
+            #     cur_graph['layout']['shapes'] = [shape for shape in cur_graph_layout['layout']['shapes'] if \
+            #                                      shape is not None and 'type' in shape]
+            # except (KeyError, TypeError):
+            #     pass
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = ''
             for image in channel_order:
@@ -924,7 +1025,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                         fig = cur_graph
                         # del cur_graph
                     # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
-                    except KeyError:
+                    except (KeyError, TypeError):
                         fig['layout']['uirevision'] = True
 
                         if toggle_scalebar:
@@ -1026,7 +1127,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 fig.update_traces(hovertemplate=new_hover)
                 # fig.update_layout(dragmode="zoom")
                 return fig, Serverside(image)
-            except (ValueError, AttributeError, KeyError, IndexError):
+            except (ValueError, AttributeError, KeyError, IndexError) as e:
                 raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
@@ -1073,12 +1174,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
         """
-        bad_update = cur_graph_layout in [{"autosize": True}]
+        # bad_update = cur_graph_layout in [{"autosize": True}]
 
         # update the scale bar with and without zooming
-        if cur_graph is not None and \
-             'shapes' not in cur_graph_layout and cur_graph_layout not in [{'dragmode': 'drawclosedpath'}] and \
-                not bad_update:
+        if cur_graph is not None:
+            cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             if ctx.triggered_id == "annotation_canvas":
                 try:
@@ -1123,7 +1223,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 fig.update_layout(newshape=dict(line=dict(color="white")))
 
                     return fig, cur_graph_layout
-                except (ValueError, KeyError, AssertionError):
+                except (ValueError, KeyError, AssertionError) as e:
                     raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
                 if None not in (x_request, y_request, current_window) and \
@@ -1194,6 +1294,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
         if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
             try:
+                cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
                 pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                 for annotations in cur_graph['layout']['annotations']:
                     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
@@ -1246,7 +1347,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
             # scalebar is y = 0.06
             # legend is y = 0.05
-
+            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             first_image = list(image_dict[data_selection].keys())[0]
             first_image = image_dict[data_selection][first_image]
@@ -1348,6 +1449,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     def render_canvas_from_invert_annotations(cur_canvas, cur_layout, currently_selected,
                                             data_selection, blend_colour_dict, invert_annotations):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
+            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             return invert_annotations_figure(cur_canvas)
         else:
             raise PreventUpdate
@@ -1570,7 +1672,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 #     if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
                 #         current_canvas['layout']['shapes'].remove(shape)
 
-                # can set the canvas width and height from the canvas style to retain the in-app aspect ratio
+                # can set the canvas width and height from the canvas style to retain the in-dash aspect ratio
                 if not ' use graph subset on download' in graph_subset:
                     fig = go.Figure(current_canvas)
                     # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -1872,8 +1974,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                           xaxis=XAxis(showticklabels=False),
                           yaxis=YAxis(showticklabels=False),
                           margin=dict(l=5, r=5, b=15, t=20, pad=0))
-            cur_canvas['data'] = None
-            return fig, go.Figure(cur_canvas), [None, None], [], None
+            cur_canvas['data'] = []
+            return fig, cur_canvas, [None, None], [], None
         else:
             raise PreventUpdate
 
@@ -2036,6 +2138,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('bool-apply-filter', 'value'),
                        Output('filter-type', 'value'),
                        Output('kernel-val-filter', 'value'),
+                       Output('sigma-val-filter', 'value'),
                        Output("annotation-color-picker", 'value'),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
@@ -2047,11 +2150,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('bool-apply-filter', 'value'),
                        State('filter-type', 'value'),
                        State('kernel-val-filter', 'value'),
+                       State('sigma-val-filter', 'value'),
                        State("annotation-color-picker", 'value'))
     # @cache.memoize())
     def update_channel_filter_inputs(selected_channel, uploaded, data_selection, current_blend_dict,
                                      preset_selection, preset_dict, session_vars, cur_bool_filter, cur_filter_type,
-                                     cur_filter_val, cur_colour):
+                                     cur_filter_val, cur_filter_sigma, cur_colour):
         """
         Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used,
         or if the blend dict is updated
@@ -2066,39 +2170,53 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:
             filter_type = current_blend_dict[selected_channel]['filter_type']
             filter_val = current_blend_dict[selected_channel]['filter_val']
+            filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
             color = current_blend_dict[selected_channel]['color']
             # evaluate the current states of the inputs. if they are the same as the new channel, do not update
-            if ' apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val):
+            if ' apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val, filter_sigma):
                 to_apply_filter = dash.no_update
             else:
-                to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
+                to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val, filter_sigma) else []
             if filter_type == cur_filter_type:
                 filter_type_return = dash.no_update
             else:
-                filter_type_return = filter_type if filter_type is not None else "median"
+                filter_type_return = filter_type if filter_type is not None else cur_filter_type
             if filter_val == cur_filter_val:
                 filter_val_return = dash.no_update
             else:
-                filter_val_return = filter_val if filter_val is not None else 3
+                filter_val_return = filter_val if filter_val is not None else cur_filter_val
+            if filter_sigma == cur_filter_sigma:
+                filter_sigma_return = dash.no_update
+            else:
+                filter_sigma_return = filter_sigma if filter_sigma is not None else cur_filter_sigma
             if color == cur_colour['hex']:
                 color_return = dash.no_update
             else:
                 color_return = dict(hex=color) if color is not None and color not in \
                                                   ['#FFFFFF', '#ffffff'] else dash.no_update
-            return to_apply_filter, filter_type_return, filter_val_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
             filter_type = preset_dict[preset_selection]['filter_type']
             filter_val = preset_dict[preset_selection]['filter_val']
+            filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
             color = current_blend_dict[selected_channel]['color']
             to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
+            filter_sigma_return = filter_sigma if filter_sigma is not None else 1
             color_return = dict(hex=color) if color is not None and color not in \
                                                   ['#FFFFFF', '#ffffff'] else dash.no_update
-            return to_apply_filter, filter_type_return, filter_val_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output('sigma-val-filter', 'disabled'),
+                       Input('filter-type', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def update_channel_filter_inputs(filter_type):
+        return True if filter_type == "median" else False
 
     @dash_app.callback(Input('preset-button', 'n_clicks'),
                        State('set-preset', 'value'),
@@ -2641,20 +2759,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
     @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
                        Input('prev-roi', 'n_clicks'),
                        Input('next-roi', 'n_clicks'),
+                       Input('keyboard-listener', 'event'),
+                       Input('keyboard-listener', 'n_events'),
                        State('data-collection', 'value'),
                        State('data-collection', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def click_to_new_roi(prev_roi, next_roi, cur_data_selection, cur_options):
+    def click_to_new_roi(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options):
         """
         Use the forward and backwards buttons to click to a new ROI
+        Alternatively, use the directional arrow buttons from an event listener
         """
         if None not in (cur_data_selection, cur_options):
             cur_index = cur_options.index(cur_data_selection)
             try:
-                if ctx.triggered_id == "prev-roi" and cur_index != 0 and prev_roi > 0:
+                prev_trigger = previous_roi_trigger(ctx.triggered_id, prev_roi, key_listener, n_events)
+                next_trigger = next_roi_trigger(ctx.triggered_id, next_roi, key_listener, n_events)
+                if prev_trigger and cur_index != 0:
                     return cur_options[cur_index - 1] if cur_options[cur_index - 1] != cur_data_selection else dash.no_update
-                elif ctx.triggered_id == "next-roi" and next_roi > 0:
+                elif next_trigger:
                     return cur_options[cur_index + 1] if cur_options[cur_index + 1] != cur_data_selection else dash.no_update
                 else:
                     raise PreventUpdate
@@ -2662,6 +2785,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id):
                 raise PreventUpdate
         else:
             raise PreventUpdate
+
+    @dash_app.callback(Output('prev-roi', 'disabled'),
+                       Output('next-roi', 'disabled'),
+                       Input('data-collection', 'value'),
+                       State('data-collection', 'options'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def toggle_roi_click_through_visibility(cur_data_selection, cur_options):
+        """
+        Toggle the visibility/availability of the previous and next ROi buttons depending on the current ROI selection
+        """
+        disabled_prev = True if cur_options[0] == cur_data_selection else False
+        disabled_next = True if cur_options[-1] == cur_data_selection else False
+        return disabled_prev, disabled_next
+
 
     @dash_app.callback(
         Output('image_layers', 'value', allow_duplicate=True),

@@ -6,11 +6,14 @@ from tifffile import TiffFile
 import numpy as np
 from dash_extensions.enrich import Serverside
 from PIL import Image
-from ..utils.cell_level_utils import set_columns_to_drop
-from ..utils.cell_level_utils import *
-from pathlib import Path
+from ccramic.utils.cell_level_utils import (
+    set_mandatory_columns,
+    convert_mask_to_cell_boundary,
+    set_columns_to_drop)
+from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import anndata
-import gc
+import sys
+from sklearn.preprocessing import StandardScaler
 
 def drop_columns_from_measurements_csv(measurements_csv,
                                        cols_to_drop=set_columns_to_drop()):
@@ -23,11 +26,12 @@ def drop_columns_from_measurements_csv(measurements_csv,
     except KeyError:
         return measurements_csv
 
-def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True):
+def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True,
+                                                   rerun=True):
     if quantification_dict is not None:
         data_frame = pd.DataFrame(quantification_dict)
         cols = list(data_frame.columns)
-        if current_umap is None:
+        if current_umap is None or rerun:
                 # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
             #  column-wise, by channel)
             umap_obj = None
@@ -171,7 +175,7 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                     else:
                         mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
                         boundary_import = np.array(Image.fromarray(
-                            convert_mask_to_cell_boundary(page.asarray())).convert('RGB'))
+                            convert_mask_to_cell_boundary(page.asarray().astype(np.uint16))).convert('RGB'))
                     mask_name_use = single_mask_name if single_mask_name is not None else mask_name
                     cur_mask_dict[mask_name_use] = {"array": mask_import, "boundary": boundary_import,
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
@@ -200,7 +204,8 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
     # Example 2: user selects all but the the second item to view
     # [{'visible': ['legendonly']}, [2]]
     # print(restyle_data)
-    if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0]:
+    if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0] and \
+        umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns):
         # get the total number of possible sub annotations and figure out which ones were selected
         quant_frame = pd.DataFrame(quantification_frame)
         tot_subtypes = list(quant_frame[umap_col_annotation].unique())
@@ -245,7 +250,6 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
                     if selection in indices_keep:
                         subtypes_keep.append(tot_subtypes[selection])
                 return subtypes_keep, indices_keep
-        gc.collect()
     else:
         return None, None
 
@@ -275,7 +279,7 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
 
 
 def match_mask_name_with_roi(data_selection, mask_options, roi_options):
-    """"
+    """
     Attempt to match a mask name to the currently selected ROI.
     Heuristics order:
     1. If the data selection experiment name is in the list of mask options, return it
@@ -295,7 +299,7 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                 mask_return = acq
 
         # if the return value is still None, look for indices
-        if mask_return is None and mask_options is not None:
+        if mask_return is None and mask_options is not None and roi_options is not None:
             # try to match the index of the data selection to an index in the mask options
             data_index = roi_options.index(data_selection)
             for mask in mask_options:
@@ -309,3 +313,32 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                 except (TypeError, IndexError, ValueError):
                     pass
     return mask_return
+
+
+def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sample_col_id="sample"):
+    """
+    Match a mask name to a sample ID in the quantification sheet, either in the `description` or `sample` table
+    Example: query_s0_a2_ac_IA_mask will match to query_2 in the quantification sheet
+    """
+    sam_id = None
+    if mask_selection in cell_id_list:
+        sam_id = mask_selection
+    else:
+        try:
+            split_1 = mask_selection.split("_ac_IA_mask")[0]
+            # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
+            index = int(split_1.split("_")[-1].replace("a", ""))
+            for sample in sorted(cell_id_list):
+                if sample == mask_selection:
+                    sam_id = sample
+                elif sample_col_id == "sample":
+                    split = sample.split("_")
+                    try:
+                        if int(split[-1]) == int(index):
+                            sam_id = sample
+                    except ValueError:
+                        pass
+            return sam_id
+        except (KeyError, TypeError):
+            pass
+    return sam_id

@@ -1,4 +1,4 @@
-from flask import Flask, redirect
+from flask import Flask
 from flask_caching import Cache
 from flask import render_template
 from flask_httpauth import HTTPBasicAuth
@@ -9,25 +9,20 @@ from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWa
 import warnings
 
 _program = "ccramic"
-__version__ = "0.9.0"
-
-
-def get_current_dir():
-    return str(os.path.abspath(os.path.join(os.path.dirname(__file__))))
-
+__version__ = "0.10.0"
 
 def init_app(cli_config):
     # suppress numba depreciation warnings from umap
     warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
     warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
     warnings.simplefilter('ignore', category=DeprecationWarning)
-    """Construct core Flask application with embedded Dash app."""
+    """Construct core Flask application with embedded Dash dash."""
     # STATIC_DIR = os.path.dirname(os.path.join(get_current_dir(), "templates", "static"))
     app = Flask(__name__, instance_relative_config=False,
                 static_url_path="", static_folder="static",
             template_folder="templates")
 
-    # app.cache = Cache(app, config={'CACHE_TYPE': 'simple'})
+    # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
 
     cache = Cache(config = {
         "DEBUG": True,  # some Flask specific configs
@@ -70,13 +65,13 @@ def init_app(cli_config):
             'help.html')
 
     with app.app_context():
-        # Import parts of our core Flask app
+        # Import parts of our core Flask dash
 
         # Import Dash application
-        from .app import init_dashboard
+        from ccramic.app import init_dashboard
         # use a unique uuid for the session id I/O
         authentic_user = str(uuid.uuid1())
         app = init_dashboard(app, authentic_user, config=cli_config)
-        # init_callbacks(app)
+        # init_callbacks(dash)
 
         return app

@@ -1,4 +1,4 @@
-from ccramic.app.entrypoint import init_app, __version__
+from ccramic.entrypoint import init_app, __version__
 import argparse
 import sys
 import webbrowser
@@ -12,7 +12,8 @@ def argparser():
                                      usage='''
             ccramic can be initialized from the command line using: \n
             ccramic \n
-            From here, navigate to http://127.0.0.1:5000/ or http://0.0.0.0:5000/ to access ccramic.''')
+            From here, navigate to http://127.0.0.1:5000/ or http://0.0.0.0:5000/ to access ccramic. \n
+            If a different port is used, replace 5000 with the provided port number.''')
 
     parser.add_argument('-v', "--version", action="version",
                         help="Show the current ccramic version then exit.",
@@ -22,7 +23,7 @@ def argparser():
                         help="Show the help output and exit.",
                         dest="help")
     parser.add_argument('-a', "--auto-open", action="store_true",
-                        help="automatically open the browser when the app is called. Default: False",
+                        help="automatically open the browser when the dash is called. Default: False",
                         dest="auto_open")
     parser.add_argument('-l', "--use-local-dialog", action="store_true",
                         help="Enable a local file dialog with wxPython to browse and read local files. Default: False",
@@ -31,6 +32,15 @@ def argparser():
                         help="Set the port for ccramic on local runs. Default: 5000. Other options to consider are "
                              "8050, 8080",
                         dest="port", default=5000, type=int)
+    parser.add_argument('-d', "--debug", action="store_true",
+                        help="Run the application in debugging mode. Default: False",
+                        dest="debug")
+    parser.add_argument('-dt', "--disable-threading", action="store_false",
+                        help="Disable threading. By default, threading is enabled.",
+                        dest="threading")
+    parser.add_argument('-dl', "--disable-loading", action="store_false",
+                        help="Disable loading on data import and data switching. By default, loading is enabled.",
+                        dest="loading")
 
     return parser
 
@@ -45,12 +55,13 @@ def main(sysargs = sys.argv[1:]):
 
     # establish the cli config
 
-    CLI_CONFIG = {"use_local_dialog": args.use_local_dialog}
+    CLI_CONFIG = {"use_local_dialog": args.use_local_dialog,
+                  'use_loading': args.loading}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:
         Timer(1, open_browser).start()
-    app.run(host='0.0.0.0', debug=True, threaded=True, port=args.port)
+    app.run(host='0.0.0.0', debug=args.debug, threaded=args.threading, port=args.port)
 
 if __name__ == "__main__":
     main()

@@ -1,6 +1,5 @@
-import numpy as np
 import math
-from ..utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path
+from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
 

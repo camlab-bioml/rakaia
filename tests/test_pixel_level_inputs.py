@@ -1,7 +1,23 @@
-from ccramic.app.inputs.pixel_level_inputs import *
+import dash
 import numpy as np
 import plotly.graph_objs as go
+import pytest
 from dash_extensions.enrich import html
+from ccramic.inputs.pixel_level_inputs import (
+    render_default_annotation_canvas,
+    wrap_canvas_in_loading_screen_for_large_images,
+    add_scale_value_to_figure,
+    get_additive_image_with_masking,
+    add_local_file_dialog,
+    invert_annotations_figure,
+    set_range_slider_tick_markers)
+import dash_core_components as dcc
+from PIL import Image
+import os
+from ccramic.utils.pixel_level_utils import recolour_greyscale
+import plotly.express as px
+import dash_bootstrap_components as dbc
+from dash.exceptions import PreventUpdate
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()
@@ -46,12 +62,19 @@ def test_basic_additive_image():
     image = get_additive_image_with_masking(["DNA", "Nuclear"], data_selection="experiment0+++slide0+++acq0",
                                             canvas_layers=upload_dict, mask_config=None, mask_toggle=False,
                                             mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
-                                            add_mask_boundary=False, legend_text='')
+                                            add_mask_boundary=False, legend_text='this is a legend')
     assert isinstance(image, go.Figure)
     assert image['data'] is not None
     assert image['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
     assert image['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
     assert image['layout']['uirevision']
+
+    bad_col = get_additive_image_with_masking(["fake_channel"], data_selection="experiment0+++slide0+++acq0",
+                                        canvas_layers=upload_dict, mask_config=None, mask_toggle=False,
+                                        mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
+                                        add_mask_boundary=False, legend_text='this is a legend')
+
+    assert isinstance(bad_col, dash._callback.NoUpdate)
 
 
     mask_config = {"mask": np.zeros((600, 600, 3)).astype(np.uint8)}
@@ -93,6 +116,10 @@ def test_invert_annotations_figure():
     image = invert_annotations_figure(image)
     assert image['layout']['annotations'][0]['x'] == (1 - 0.0875)
     assert image['layout']['shapes'][0]['x0'] == (1 - 0.05)
+
+    image_2 = go.Figure()
+    image_2 = invert_annotations_figure(image_2)
+    assert len(image_2['layout']['annotations']) == 0
 
 
 def test_tick_marker_spacing_range_slider():

@@ -1,8 +1,30 @@
 import os
 import pytest
 import plotly
-from ccramic.app.parsers.pixel_level_parsers import create_new_blending_dict
-from ccramic.app.utils.pixel_level_utils import *
+from ccramic.utils.pixel_level_utils import (
+    recolour_greyscale,
+    apply_preset_to_array,
+    resize_for_canvas,
+    filter_by_upper_and_lower_bound,
+    pixel_hist_from_array,
+    get_default_channel_upper_bound_by_percentile,
+    validate_incoming_metadata_table,
+    get_all_images_by_channel_name,
+    per_channel_intensity_hovertext,
+    create_new_coord_bounds,
+    get_area_statistics_from_rect,
+    delete_dataset_option_from_list_interactively,
+    set_channel_list_order,
+    path_to_indices,
+    path_to_mask,
+    get_area_statistics_from_closed_path,
+    get_bounding_box_for_svgpath,
+    select_random_colour_for_channel)
+from dash.exceptions import PreventUpdate
+import pandas as pd
+from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
+from PIL import Image
+import numpy as np
 
 def test_basic_recolour_non_white(get_current_dir):
     greyscale = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
@@ -43,6 +65,48 @@ def test_basic_recolour_white(get_current_dir):
         for j in range(greyscale.width):
             assert len(tuple(set(recoloured_pixels[i, j]))) == 1
             assert recoloured_pixels[i, j] == pixels[i, j]
+
+def test_median_gaussian_filtering(get_current_dir):
+    greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
+    greyscale_image = np.array(greyscale_image)
+    image = np.array(Image.fromarray(greyscale_image).convert('RGB'))
+    blend_dict = {'color': '#BE4115',
+     'x_lower_bound': None,
+     'x_upper_bound': None,
+     'filter_type': 'gaussian',
+     'filter_val': 5,
+        'filter_sigma': 1}
+    gaussian = apply_preset_to_array(image, blend_dict)
+    assert np.mean(image) != np.mean(gaussian)
+
+    # assert that nothing happens if the gaussian filter is even
+    blend_dict_2 = {'color': '#BE4115',
+                  'x_lower_bound': None,
+                  'x_upper_bound': None,
+                  'filter_type': 'gaussian',
+                  'filter_val': 4,
+                  'filter_sigma': 1}
+    gaussian_2 = apply_preset_to_array(image, blend_dict_2)
+    assert np.mean(image) == np.mean(gaussian_2)
+
+    blend_dict_3 = {'color': '#BE4115',
+                    'x_lower_bound': None,
+                    'x_upper_bound': None,
+                    'filter_type': 'median',
+                    'filter_val': 3,
+                    'filter_sigma': 1}
+    median_1 = apply_preset_to_array(image, blend_dict_3)
+    assert np.mean(image) != np.mean(median_1)
+
+    # assert nothing happens if the median value is negative
+    blend_dict_4 = {'color': '#BE4115',
+                    'x_lower_bound': None,
+                    'x_upper_bound': None,
+                    'filter_type': 'median',
+                    'filter_val': -1,
+                    'filter_sigma': 1}
+    median_2 = apply_preset_to_array(image, blend_dict_4)
+    assert np.mean(image) == np.mean(median_2)
 
 
 def test_resize_canvas_image(get_current_dir):
@@ -284,3 +348,22 @@ def test_basic_svgpath_pixel_mask():
     assert max_2 == 5000.0
     assert min_3 == -1.0
     assert get_bounding_box_for_svgpath(svgpath) == (200, 236, 131, 162)
+
+def test_random_colour_selector():
+    DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
+
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
+                                                   "Nuclear": np.array([1, 1, 1, 1]),
+                                                   "Cytoplasm": np.array([2, 2, 2, 2])},
+                   "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
+                                                   "Nuclear": np.array([4, 4, 4, 4]),
+                                                   "Cytoplasm": np.array([5, 5, 5, 5])}
+                   }
+    blend_dict = create_new_blending_dict(upload_dict)
+    assert blend_dict['Cytoplasm']['color'] == '#FFFFFF'
+    blend_dict = select_random_colour_for_channel(blend_dict, "Nuclear", DEFAULT_COLOURS)
+    assert DEFAULT_COLOURS[0] == blend_dict['Nuclear']['color']
+    blend_dict = select_random_colour_for_channel(blend_dict, "Cytoplasm", DEFAULT_COLOURS)
+    assert DEFAULT_COLOURS[1] == blend_dict['Cytoplasm']['color']
+    blend_dict = select_random_colour_for_channel(blend_dict, "Nuclear", DEFAULT_COLOURS)
+    assert DEFAULT_COLOURS[0] == blend_dict['Nuclear']['color']

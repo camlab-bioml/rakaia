@@ -1,9 +1,12 @@
+import dash
 import pandas as pd
 
-from ..inputs.cell_level_inputs import *
-from ..utils.cell_level_utils import *
-from ..parsers.cell_level_parsers import *
+from ccramic.parsers.cell_level_parsers import drop_columns_from_measurements_csv
+from ccramic.utils.cell_level_utils import subset_measurements_frame_from_umap_coordinates
 from pandas.errors import UndefinedVariableError
+import plotly.express as px
+from dash.exceptions import PreventUpdate
+import plotly.graph_objs as go
 
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                      subset_dict=None, drop_cols=True):
@@ -39,13 +42,27 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
     else:
         return None
 
+def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True):
+    """
+    Generate a heatmap of the current quantification frame (total or subset)
+    """
+    measurements = pd.DataFrame(measurements)
+    if drop_cols:
+        measurements = drop_columns_from_measurements_csv(measurements)
+    if cols_include is not None and len(cols_include) > 0 and \
+            all([elem in measurements.columns for elem in cols_include]):
+        measurements = measurements[cols_include]
+    return px.imshow(measurements, x=measurements.columns, y=measurements.index,
+                    labels=dict(x="Channel", y="Cells", color="Cell Channel Mean"),
+                    title=f"Channel expression per cell ({len(measurements)} cells)")
+
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
     if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
         df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
-        if channel_overlay is not None:
-            df[channel_overlay] = quant_frame[channel_overlay]
         try:
+            if channel_overlay is not None:
+                df[channel_overlay] = quant_frame[channel_overlay]
             fig = px.scatter(df, x="UMAP1", y="UMAP2", color=channel_overlay)
         except KeyError:
             fig = px.scatter(df, x="UMAP1", y="UMAP2")
@@ -56,7 +73,7 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
             fig['layout']['uirevision'] = True
         return fig
     else:
-        raise PreventUpdate
+        return dash.no_update
 
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
@@ -97,5 +114,37 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
             frame_return = frame
         fig['layout']['uirevision'] = True
         return fig, frame_return
+    else:
+        raise PreventUpdate
+
+
+def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings, zoom_keys,
+                                                triggered_id, cols_drop=None,
+                                                category_column=None, category_subset=None, cols_include=None):
+    """
+    Generate a heatmap of the quantification frame, trimmed to only the channel columns, based on an interactive
+    subset from the UMAP graph
+    """
+    if quantification_dict is not None and len(quantification_dict) > 0:
+        frame = pd.DataFrame(quantification_dict)
+        # IMP: perform category subsetting before removing columns
+        if None not in (category_column, category_subset):
+            frame = frame[frame[category_column].isin(category_subset)]
+        if cols_drop is not None:
+            frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
+        if umap_layout is not None and \
+                all([key in umap_layout for key in zoom_keys]):
+            subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
+                        pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2']), umap_layout)
+        else:
+            subset_frame = frame
+        subset_frame = subset_frame.reset_index(drop=True)
+        # only recreate the graph if new data are passed from the UMAP, not on a recolouring of the UMAP
+        if triggered_id not in ["umap-projection-options"] or category_column is None:
+            fig = generate_channel_heatmap(subset_frame, cols_include=cols_include)
+            fig['layout']['uirevision'] = True
+        else:
+            fig = dash.no_update
+        return fig, subset_frame
     else:
         raise PreventUpdate

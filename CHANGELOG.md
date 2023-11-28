@@ -7,6 +7,55 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.10.0] - 2023-11-27
+
+### Changed
+
+- Internal API changed: new directory structure to accommodate
+future data classes for the internal data stores
+- quantification: the expression bar plot is now replaced
+with a heatmap that changes dynamically on UMAP region selection.
+Channels can be added/removed using a checklist
+- The gaussian filter is now changed to `GaussianBlur` from the cv2
+package.
+- Loading screens for the data import and data switch are now toggle-able
+with the CLI option `-dl` to disable load screens when importing or
+changing to new data. Allows for smoother transitions between ROIs #73
+- Next and previous ROI buttons are grayed out when the next or previous
+ROIs are not available, respectively. #75
+- mask object outlines are now computed with `skimage` to drastically
+increase speed and avoid pixel iteration
+- Imported imaging filenames are now sorted using natsort by default (feature can
+be disabled in the session configuration modal)
+
+### Added
+
+- Added a sigma value input for the gaussian filter as above.
+Default value is 1 with steps of 0.1. Used in the new gaussian
+blur filter
+- ROI queries from the quantification tab will apply the mask
+and fill in the cells show in the UMAP with white
+- Ability to auto assign colours from the swatches #72
+- Added functionality for keyboard-directed switches between
+ROIs using the left and right arrow keys #79
+
+### Fixed
+
+- Fixed channel filter values being reset to a default
+when a channel does not have a filter. Now, the values
+will remain from the last channel to get a filter applied
+- Fix improper shapes clearing and malformed shapes
+that cause erroneous "half-shapes" to appear on the canvas
+- Check for very long ROI names or ones containing a space
+that may interfere with proper separation in the dropdown menu. #71
+- Fixed UMAP clearing when in-app quantification updates the
+heatmap: UMAP plot will be hidden until new UMAP projections
+are computed
+- Fixed improper mask projection over canvas subset
+when regions are exported to PDF
+- Fixed improper conversion of cell mask to boundaries
+when numpy floats are not used in the mask array
+
 ## [0.9.0] - 2023-11-07
 
 ### Changed

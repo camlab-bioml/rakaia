@@ -2,24 +2,29 @@
 from dash import dash_table
 import tempfile
 import dash_uploader as du
-from dash_extensions.enrich import DashProxy, html, ServersideOutputTransform, FileSystemBackend
+from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
+from dash_extensions import EventListener
 import dash_daq as daq
-import dash_bootstrap_components as dbc
-from .callbacks.pixel_level_callbacks import init_pixel_level_callbacks
-from .callbacks.cell_level_callbacks import init_cell_level_callbacks
-from .callbacks.roi_level_callbacks import init_roi_level_callbacks
-from .inputs.pixel_level_inputs import *
+from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
+from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
+from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
+from ccramic.inputs.pixel_level_inputs import (
+    render_default_annotation_canvas,
+    add_local_file_dialog)
+from ccramic.inputs.loaders import wrap_child_in_loading
 import shutil
 import os
 # from sd_material_ui import AutoComplete
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
 from plotly.graph_objs.layout import YAxis, XAxis
-from .entrypoint import __version__
+from ccramic.entrypoint import __version__
+from dash import dcc, html
+import dash_bootstrap_components as dbc
 def init_dashboard(server, authentic_id, config=None):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
-        # set the serveroutput cache dir and clean it every time a new app session is started
+        # set the serveroutput cache dir and clean it every time a new dash session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
         if os.access("/tmp/", os.R_OK):
             # TODO: establish cleaning the tmp dir for any sub directory that has ccramic cache in it
@@ -112,6 +117,14 @@ def init_dashboard(server, authentic_id, config=None):
                     dcc.Input(id='annotation-circle-size', type='number', value=4, style={"width": "25%",
                             "margin-top": "-3px"})],
                     style={"display": "flex"}),
+                    html.Br(),
+                    daq.ToggleSwitch(label='Autofill channel colours', id='autofill-channel-colors',
+                                     labelPosition='bottom', color="blue", value=False),
+                    html.Br(),
+                    daq.ToggleSwitch(label='Natural sort input files', id='natsort-uploads',
+                                     labelPosition='bottom', color="blue", value=True),
+                    html.Br(),
+                    html.H6(f"tmp storage destination: {cache_dest}")
                 ]),
                         id="session-config-modal", size='l',
                         style={"margin-left": "10px", "margin-top": "15px"}),
@@ -164,6 +177,8 @@ def init_dashboard(server, authentic_id, config=None):
                             html.Br(),
                             html.Br(),
                             html.H5("Choose data collection/ROI", style={'width': '65%'}),
+                            # TODO: set dropdown height based on length
+                            # https://community.plotly.com/t/long-dropdown-values-overlap/14843
                             dcc.Dropdown(id='data-collection', multi=False, options=[],
                                          style={'width': '100%'}),
                             html.Br(),
@@ -181,7 +196,7 @@ def init_dashboard(server, authentic_id, config=None):
                                 style={"margin-left": "10px", "margin-top": "15px"}),
                             du.Upload(id='upload-mask', max_file_size=30000,
                                       text='Import mask in tiff format using drag and drop',
-                                      max_total_size=30000, max_files=100,
+                                      max_total_size=30000, max_files=500,
                                       chunk_size=100,
                                       filetypes=['tif', 'tiff'],
                                       default_style={"margin-top": "20px", "height": "10%"}),
@@ -368,8 +383,11 @@ def init_dashboard(server, authentic_id, config=None):
                                                style={"width": "85%"}),
                                  dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
                                               style={"width": "85%", "display": "inline-block"}),
-                                 dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"})],
-                                          style={"display": "inline-block", "margin": "20px"}),
+                                 dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"},
+                                           min=0, max=9, step=1),
+                                 dcc.Input(id="sigma-val-filter", type="number", value=1, style={"width": "50%"},
+                                           disabled=True, min=0, max=9, step=0.1)],
+                                style={"display": "inline-block", "margin": "20px"}),
                                  html.Br(),
                                  dbc.Button(
                                      children=html.Span([html.I(className="fa-solid fa-gears",
@@ -591,8 +609,16 @@ def init_dashboard(server, authentic_id, config=None):
                                 id="region-annotation-modal", size='xl', style={"margin-left": "10px",
                                 "margin-top": "15px"}),
                                 html.Br(),
-                                ], style={"padding": "5px"})
-                                    ]),
+                                ], style={"padding": "5px"}),
+                                dbc.Tab(label="Quantification", children=[
+                                html.Br(),
+                                dbc.Button("Quantify current ROI", id="quantify-cur-roi-button"),
+                                dbc.Modal(id="quantification-roi-modal", children=dbc.ModalBody([
+                                dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute"),
+                                html.H6("Select channels to quantify"),
+                                dcc.Checklist(id="channel-quantification-list", value=[], options=[]),
+                                ])),
+                                ])]),
                                      ]),
                                  html.Div([dbc.Button(
                                      children=html.Span([html.I(className="fa-solid fa-list-check",
@@ -670,18 +696,37 @@ def init_dashboard(server, authentic_id, config=None):
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
                                 html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
-                                                  dcc.RadioItems(['max', 'mean', 'min'], 'mean',
-                                                                 inline=True, id="quantification-bar-mode"),
-                                                  dcc.Graph(id="quantification-bar-full",
-                                                            figure={'layout': dict(xaxis_showgrid=False,
-                                                                                   yaxis_showgrid=False,
-                                                                                   xaxis=XAxis(
-                                                                                       showticklabels=False),
-                                                                                   yaxis=YAxis(
-                                                                                       showticklabels=False),
-                                                                                   margin=dict(l=5, r=5, b=15,
-                                                                                               t=20, pad=0)),
-                                                                    })]), width=6),
+                                dbc.Tabs(id='cell-quant-tabs', children=[
+                                    dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
+                                    children=[html.Br(),
+                                    dcc.Graph(id="quantification-heatmap-full",
+                                    figure={'layout': dict(xaxis_showgrid=False, autosize=False,
+                                    yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                                    yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,
+                                    t=20, pad=0))}, responsive=False),
+                                    dcc.Checklist(options=[], value=[], id="quant-heatmap-channel-list",
+                                    style={"margin-top": "12px"},
+                                    inline=True, labelStyle={"margin": "0.12rem"}),
+                                    html.Br(),
+                                    html.Br()
+                                            ]),
+                                # dbc.Tab(label='Bar plot', id='cell-quant-barplot', tab_id="cell-quant-barplot", children=[
+                                #     html.Br(),
+                                #     dcc.RadioItems(['max', 'mean', 'min'], 'mean',
+                                #                    inline=True, id="quantification-bar-mode"),
+                                #     dcc.Graph(id="quantification-bar-full",
+                                #               figure={'layout': dict(xaxis_showgrid=False,
+                                #                                      yaxis_showgrid=False,
+                                #                                      xaxis=XAxis(
+                                #                                          showticklabels=False),
+                                #                                      yaxis=YAxis(
+                                #                                          showticklabels=False),
+                                #                                      margin=dict(l=5, r=5, b=15,
+                                #                                                  t=20, pad=0)),
+                                #                       })
+                                # ])
+                                ]),
+                                ]), width=6),
                                     dbc.Col(html.Div([html.Br(),
                                     html.Div([html.H6("Dimension Reduction"),
                                     dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
@@ -736,17 +781,28 @@ def init_dashboard(server, authentic_id, config=None):
                                     dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='quant-dist-table',
                                     columns=[], data=None, editable=False, filter_action='native')]),
                                     id="show-quant-dist-table", size='l'),
-                                    dcc.Graph(id="umap-plot", figure={'layout': dict(xaxis_showgrid=False,
+                                    html.Div([dcc.Graph(id="umap-plot", figure={'layout': dict(xaxis_showgrid=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
                                     yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,t=20, pad=0),
-                                    autosize=True),
+                                    autosize=False),
                                     }, responsive=False),
+                                    html.Br(),
                                     dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
-                                        style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                        html.Div("Download UMAP projection")],
-                                        style={"display": "flex"}), id="btn-download-umap-projection", className="mx-auto",
-                                        color=None, n_clicks=0, style={"margin-top": "10px"}),
-                                    dcc.Download(id="download-umap-projection")]), width=6),
+                                    style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                    html.Div("Download UMAP projection")], style={"display": "flex"}),
+                                    id="btn-download-umap-projection", className="mx-auto",
+                                    color=None, n_clicks=0, style={"margin-top": "10px"}),
+                                    dcc.Download(id="download-umap-projection")],
+                                             id="umap-div-holder", style={"display": "None"}),
+                                    # dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                    # style={"display": "inline-block", "margin-right": "7.5px",
+                                    # "margin-top": "3px"}), html.Div("Download quantification CSV")],
+                                    # style={"display": "flex"}),
+                                    # id="btn-download-annotations", className="mx-auto",
+                                    # color=None, n_clicks=0, style={"margin-top": "10px"}),
+                                    # dcc.Download(id="download-edited-annotations"),
+                                    ]), width=6),
+                                    html.Br(),
                                     html.Br()
                                       ])]),
                         dbc.Modal(children=dbc.ModalBody([html.H6("Select the cell type annotation column"),
@@ -776,9 +832,9 @@ def init_dashboard(server, authentic_id, config=None):
             ])
                 ])
                           ])], id='tab-annotation'),
-        dcc.Loading(dcc.Store(id="uploaded_dict"), type="default", fullscreen=True),
+        wrap_child_in_loading(dcc.Store(id="uploaded_dict"), wrap=config['use_loading']),
         # use a blank template for the lazy loading
-        dcc.Loading(dcc.Store(id="uploaded_dict_template"), type="default", fullscreen=True),
+        wrap_child_in_loading(dcc.Store(id="uploaded_dict_template"), wrap=config['use_loading']),
         dcc.Store(id="session_config"),
         dcc.Store(id="window_config"),
         dcc.Store(id="param_config"),
@@ -794,7 +850,7 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="alias-dict"),
         dcc.Store(id="static-session-var"),
         dcc.Store(id="session_config_quantification"),
-        dcc.Store(id="quantification-dict"),
+        wrap_child_in_loading(dcc.Store(id="quantification-dict"), wrap=False),
         dcc.Store(id="mask-dict"),
         dcc.Store(id="mask-uploads"),
         dcc.Store(id="figure-cache"),
@@ -808,12 +864,20 @@ def init_dashboard(server, authentic_id, config=None):
         dcc.Store(id="quantification-query-indices"),
         dcc.Store(id='cur-umap-subset-category-counts'),
         dcc.Store(id='cur_roi_dimensions'),
+        # maintain a list of cell ids for each ROI from the quant query to subset the mask
+        dcc.Store(id='query-cell-id-lists'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
+        EventListener(
+            # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event
+            events=[{"event": "keydown",
+                     "props": ["keyCode", "key"]}],
+            logging=True, id="keyboard-listener"
+        ),
     ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
 
     dash_app.enable_dev_tools(debug=True)
 
-    init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, config)
     init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
     init_roi_level_callbacks(dash_app, tmpdirname, authentic_id)
 

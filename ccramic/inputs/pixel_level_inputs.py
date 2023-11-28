@@ -1,14 +1,15 @@
 import dash
 from dash_extensions.enrich import dcc, html
-from ..parsers.pixel_level_parsers import *
-from ..utils.cell_level_utils import *
+from ccramic.utils.cell_level_utils import convert_mask_to_cell_boundary
 import plotly.graph_objs as go
 import dash_draggable
-import math
 import cv2
 from plotly.graph_objs.layout import XAxis, YAxis
 import dash_bootstrap_components as dbc
 from copy import deepcopy
+import numpy as np
+from PIL import Image
+import plotly.express as px
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False):
@@ -45,7 +46,8 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
 
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
-def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False):
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False,
+                                                   wrap=True):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
     or
@@ -53,7 +55,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     """
     # conditions for wrapping the canvas
     large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
-    if large_image or hovertext:
+    if (large_image or hovertext) and wrap:
         return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom),
                                      type="default", fullscreen=False)
     else:
@@ -156,7 +158,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
                       ))
         fig.update_layout(hovermode="x")
         return fig
-    except KeyError:
+    except (KeyError, AttributeError):
         return dash.no_update
 
 

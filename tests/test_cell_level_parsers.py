@@ -1,13 +1,12 @@
 import pytest
 
-from ccramic.app.parsers.cell_level_parsers import *
-from ccramic.app.utils.cell_level_utils import *
 import numpy as np
 import pandas as pd
 import os
 from dash_uploader import UploadStatus
 from dash.exceptions import PreventUpdate
 import dash_extensions
+from ccramic.parsers.cell_level_parsers import *
 
 def test_validation_of_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -149,3 +148,16 @@ def test_mask_match_to_roi_name():
     assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", None, dataset_options) is None
 
     assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options) is None
+
+
+def test_match_mask_name_to_quantification_sheet_roi():
+    samples = ["query_1", "query_2", "query_3", "query_4"]
+    mask_selection = "query_s0_a2_ac_IA_mask"
+    sam_match = match_mask_name_to_quantification_sheet_roi(mask_selection, samples)
+    assert sam_match == "query_2"
+    mask_selection_2 = "query_3"
+    assert match_mask_name_to_quantification_sheet_roi(mask_selection_2, samples) == "query_3"
+    assert match_mask_name_to_quantification_sheet_roi("query_5", samples) is None
+
+    samples_no_index= ["sampletest"]
+    assert match_mask_name_to_quantification_sheet_roi("sampletest", samples_no_index) == "sampletest"

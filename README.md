@@ -54,7 +54,7 @@ pip install .
 
 ## Running ccramic
 
-After installation, ccramic can be run through conda:
+After installation, ccramic can be run through conda or simply executed using the `ccramic` command:
 
 ```
 conda activate ccramic
@@ -100,10 +100,27 @@ ccramic -l
 
 **IMPORTANT**: Due to the limitations of wxPython on multi-threaded
 systems as well as compatibility problems on different OS options, this feature
-is not likely to work properly on MacOS.
+is not likely to work properly on macOS.
 
 In order to use this feature, users should make sure to install
 wxPython [from the proper download page](https://wxpython.org/pages/downloads/index.html)
+
+### Other options
+
+By default, ccramic will run in threaded mode. To disable using a multi-threaded application instance, add `-dt` as
+a command line option:
+
+```commandline
+ccramic -dt
+```
+
+ccramic also uses Dash-based load screens to indicate that data
+are being imported or changed (i.e. on an ROI change). To disable
+the load screens for data manipulation, use the `-dl` CLI option:
+
+```commandline
+ccramic -dl
+```
 
 ## Basic authentication
 
@@ -142,7 +159,8 @@ visit [the FAQ documentation](man/README.md)
 
 ## For developers
 
-ccramic can be run in editable mode with either configuration shown below, which permits source code changes to be applied to the application on the fly:
+ccramic can be run in editable mode with either configuration shown below,
+which permits source code changes to be applied to the application on the fly:
 
 ```
 pip install -e .
@@ -158,5 +176,30 @@ pytest --headless --cov ccramic
 Conversely, without app installation:
 
 ```
-python ccramic/app/wsgi.py
+python ccramic/wsgi.py
 ```
+
+ccramic can also support being run in debug mode, which will apply source code changes to active sessions while the
+application is running (NOte that changes to the source code will trigger an application page refresh). This can be
+enabled using the `-d` CLI option:
+
+```commandline
+ccramic -d
+```
+
+## Troubleshooting
+
+### Callback error in updating `unique-channel-list.options`
+
+<p align="center">
+    <img src="man/assets/troubleshooting-error-memory.png">
+</p>
+
+An error of this type is likely to occur during data import, and may be
+the result of low temporary storage available on the hard drive.
+Users should review the data management and storage settings for
+their specific OS to diagnose if there is sufficient storage space
+for the ccramic session caching. In general, the user should aim
+for at least 2x the total dataset size of temporary storage (So for
+analysis of a 10GB dataset, at least 20GB of temp disk space should
+be kept free.)
