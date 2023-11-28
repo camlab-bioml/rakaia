@@ -10,7 +10,8 @@ from ccramic.inputs.pixel_level_inputs import (
     wrap_canvas_in_loading_screen_for_large_images,
     add_scale_value_to_figure,
     invert_annotations_figure,
-    set_range_slider_tick_markers)
+    set_range_slider_tick_markers,
+    generate_canvas_legend_text)
 from ccramic.parsers.pixel_level_parsers import (
     populate_upload_dict,
     populate_upload_dict_by_roi,
@@ -933,6 +934,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('pixel-size-ratio', 'value'),
                        State('invert-annotations', 'value'),
                        Input('overlay-grid-canvas', 'value'),
+                       State('legend_orientation', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -942,7 +944,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 canvas_children, param_dict, mask_config, mask_toggle,
                                                 mask_selection, toggle_legend, toggle_scalebar, mask_blending_level,
                                                 add_mask_boundary, channel_order, legend_size, add_cell_id_hover,
-                                                pixel_ratio, invert_annot, overlay_grid):
+                                                pixel_ratio, invert_annot, overlay_grid, legend_orientation):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -963,13 +965,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # except (KeyError, TypeError):
             #     pass
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
-            legend_text = ''
-            for image in channel_order:
-                # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
-                label = aliases[image] if aliases is not None and image in aliases.keys() else image
-                legend_text = legend_text + f'<span style="color:' \
-                                                f'{blend_colour_dict[image]["color"]}"' \
-                                                f'>{label}</span><br>'
+            legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation)
             try:
                 image = sum([canvas_layers[data_selection][elem].astype(np.float32) for \
                              elem in currently_selected if \
@@ -1336,11 +1332,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('legend-size-slider', 'value'),
                        State('pixel-size-ratio', 'value'),
                        State('invert-annotations', 'value'),
+                       Input('legend_orientation', 'value'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
                                                    cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
-                                                   channel_order, legend_size, pixel_ratio, invert_annot):
+                                                   channel_order, legend_size, pixel_ratio, invert_annot,
+                                                   legend_orientation):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend)
         """
@@ -1365,25 +1363,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 cur_shapes = cur_canvas['layout']['shapes'].copy()
             else:
                 cur_shapes = []
-            if ctx.triggered_id == "toggle-canvas-legend":
+            if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation"]:
+                cur_annotations = [annot for annot in cur_annotations if \
+                                   annot is not None and 'y' in annot and annot['y'] != 0.05]
+                cur_canvas['layout']['annotations'] = cur_annotations
                 if not toggle_legend:
-                    cur_annotations = [annot for annot in cur_annotations if \
-                                       annot is not None and 'y' in annot and annot['y'] != 0.05]
-                    cur_canvas['layout']['annotations'] = cur_annotations
                     return cur_canvas
                 else:
-                    legend_text = ''
-                    # cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
-                    #                                   shape is not None and 'label' in shape and \
-                    #                                   shape['label'] is not None and 'texttemplate' not in shape[
-                    #                                       'label']]
-                    for image in channel_order:
-                        # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
-                        label = aliases[image] if aliases is not None and image in aliases.keys() else image
-                        legend_text = legend_text + f'<span style="color:' \
-                                                        f'{blend_colour_dict[image]["color"]}"' \
-                                                        f'>{label}</span><br>'
-
+                    legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation)
                     fig = go.Figure(cur_canvas)
                     fig.update_layout(newshape=dict(line=dict(color="white")))
                     if legend_text != '':

@@ -123,6 +123,8 @@ def init_dashboard(server, authentic_id, config=None):
                     html.Br(),
                     daq.ToggleSwitch(label='Natural sort input files', id='natsort-uploads',
                                      labelPosition='bottom', color="blue", value=True),
+                    html.H6("Legend orientation"),
+                    dcc.RadioItems(['vertical', 'horizontal'], 'vertical', inline=True, id="legend_orientation"),
                     html.Br(),
                     html.H6(f"tmp storage destination: {cache_dest}")
                 ]),

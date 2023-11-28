@@ -10,7 +10,9 @@ from ccramic.inputs.pixel_level_inputs import (
     get_additive_image_with_masking,
     add_local_file_dialog,
     invert_annotations_figure,
-    set_range_slider_tick_markers)
+    set_range_slider_tick_markers,
+    generate_canvas_legend_text)
+from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
 import os
@@ -130,3 +132,25 @@ def test_tick_marker_spacing_range_slider():
     low_range, small_step = set_range_slider_tick_markers(0.3)
     assert len(low_range) == 2
     assert small_step == 0.03
+
+
+def test_generate_legend_text():
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
+                                                   "Nuclear": np.array([1, 1, 1, 1]),
+                                                   "Cytoplasm": np.array([2, 2, 2, 2])},
+                   "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
+                                                   "Nuclear": np.array([4, 4, 4, 4]),
+                                                   "Cytoplasm": np.array([5, 5, 5, 5])}
+                   }
+    blend_dict = create_new_blending_dict(upload_dict)
+    channel_order = list(blend_dict.keys())
+    aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto"}
+    orientation = "horizontal"
+    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, orientation)
+    assert "<br>" not in legend_text
+    assert "dna" in legend_text
+    assert not "DNA" in legend_text
+    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical")
+    assert "<br>" in legend_text
+    assert "dna" in legend_text
+    assert not "DNA" in legend_text
