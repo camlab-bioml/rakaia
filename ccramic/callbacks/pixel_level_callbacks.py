@@ -754,7 +754,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers,
                         filter_sigma) and not only_options_changed:
 
-            array = uploaded[data_selection][layer]
+            try:
+                array = uploaded[data_selection][layer]
+            except KeyError:
+                array = None
 
             # condition where the current inputs are set to not have a filter, and the current blend dict matches
             no_filter_in_both = current_blend_dict[layer]['filter_type'] is None and \
@@ -772,7 +775,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # do not update if the gaussian filter is applied with an even number
             gaussian_even = filter_name == "gaussian" and (int(filter_value) % 2 == 0)
 
-            if not no_filter_in_both and not same_filter_params and not gaussian_even:
+            if not no_filter_in_both and not same_filter_params and not gaussian_even and array is not None:
                 # do not update if all of the channels are not in the Channel dict
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in cur_layers for elem in blend_options]):

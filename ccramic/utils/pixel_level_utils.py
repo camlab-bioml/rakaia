@@ -9,9 +9,41 @@ from scipy import ndimage
 from scipy.ndimage import median_filter
 from dash.exceptions import PreventUpdate
 import cv2
+import re
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
+
+def is_rgb_color(value):
+    """
+    Return if a particular string is in the format of RGB hex code or not
+    # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string
+    """
+    _rgbstring = re.compile(r'#[a-fA-F0-9]{6}$')
+    return bool(_rgbstring.match(value))
+
+def generate_default_swatches(config):
+    """
+    Return a list of default swatches for the mantine ColorPicker based on the contents of the config
+    """
+    DEFAULTS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
+    try:
+        # set the split based on if the swatches are given as a string or list
+        if isinstance(config['swatches'], str):
+            split = config['swatches'].split(',')
+        elif isinstance(config['swatches'], list):
+            split = config['swatches']
+        else:
+            split = None
+        if split is not None:
+            swatches = [str(i) for i in split if is_rgb_color(i)] if \
+            config['swatches'] is not None else DEFAULTS
+            swatches = swatches if len(swatches) > 0 else DEFAULTS
+            return swatches
+        else:
+            return DEFAULTS
+    except KeyError:
+        return DEFAULTS
 
 
 def recolour_greyscale(array, colour):

@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2023-11-28
+
+### Changed
+
+- Added persistence variable logging to select variables (session + canvas
+appearance) that are cached in the browser for future sessions based on user preferences
+
+### Added
+
+- Toggle feature to cast the canvas legend as horizontal instead of vertical
+  (horizontal = all channel names on one line)
+- Added ability to add custom colour swatches through CLI as a comma separated string #81
+
 ## [0.10.0] - 2023-11-27
 
 ### Changed

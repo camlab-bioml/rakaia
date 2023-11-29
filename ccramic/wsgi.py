@@ -41,6 +41,13 @@ def argparser():
     parser.add_argument('-dl', "--disable-loading", action="store_false",
                         help="Disable loading on data import and data switching. By default, loading is enabled.",
                         dest="loading")
+    parser.add_argument('-dp', "--disable-persistence", action="store_false",
+                        help="Disable saving persistent session variable values in the browser. By default, persistence is enabled.",
+                        dest="persistence")
+    parser.add_argument('-sc', "--swatch-colors", action="store",
+                        help="Set custom RGB codes for the swatches. Should be a string wrapped in quotations of the form \n"
+                             "`#FF0000,#00FF00,#0000FF,#00FAFF,#FF00FF,#FFFF00,#FFFFFF`",
+                        dest="swatches", default=None, type=str)
 
     return parser
 
@@ -56,7 +63,9 @@ def main(sysargs = sys.argv[1:]):
     # establish the cli config
 
     CLI_CONFIG = {"use_local_dialog": args.use_local_dialog,
-                  'use_loading': args.loading}
+                  'use_loading': args.loading,
+                  'persistence': args.persistence,
+                  'swatches': args.swatches}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:
