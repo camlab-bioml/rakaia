@@ -26,15 +26,35 @@ def test_basic_canvas_image():
     show_each_channel_intensity = []
     raw_data_dict = canvas_layers
     aliases = {"channel_1": "first", "channel_2": "second", "channel_3": "third"}
+    global_apply_filter = [' apply/refresh filter']
+    global_filter_type = "gaussian"
+    global_filter_val = 5
+    global_filter_sigma = 1
 
     canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                 mask_config, mask_selection, mask_blending_level,
                 overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                show_each_channel_intensity, raw_data_dict, aliases)
+                show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, go.Figure)
+
+    global_filter_type = "median"
+    global_filter_val = 3
+    canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
+                         mask_config, mask_selection, mask_blending_level,
+                         overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                         legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                         global_filter_val, global_filter_sigma)
+    assert isinstance(canvas, CanvasImage)
+    canvas_fig = canvas.generate_canvas()
+    assert isinstance(canvas_fig, go.Figure)
+
+
+
 
     # overlay_grid = [' overlay grid']
     add_cell_id_hover = [' show mask ID on hover']
@@ -44,7 +64,8 @@ def test_basic_canvas_image():
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                         show_each_channel_intensity, raw_data_dict, aliases)
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma)
     assert isinstance(canvas_2, CanvasImage)
     canvas_fig = canvas_2.generate_canvas()
     assert isinstance(canvas_fig, go.Figure)
@@ -58,7 +79,8 @@ def test_basic_canvas_image():
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                         show_each_channel_intensity, raw_data_dict, aliases)
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma)
     canvas_fig_3 = canvas_3.generate_canvas()
     assert isinstance(canvas_fig_3, go.Figure)
 
@@ -68,7 +90,8 @@ def test_basic_canvas_image():
                            mask_config, mask_selection, mask_blending_level,
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases)
+                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma)
 
     canvas_fig_4 = canvas_4.generate_canvas()
     assert isinstance(canvas_fig_4, go.Figure)
@@ -78,7 +101,8 @@ def test_basic_canvas_image():
                            mask_config, mask_selection, mask_blending_level,
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases)
+                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma)
 
     canvas_fig_5 = canvas_5.generate_canvas()
     assert isinstance(canvas_fig_5, go.Figure)
@@ -88,7 +112,8 @@ def test_basic_canvas_image():
                            mask_config, mask_selection, mask_blending_level,
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases)
+                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma)
     canvas_fig_6 = canvas_6.generate_canvas()
     assert isinstance(canvas_fig_6, go.Figure)
 
@@ -97,6 +122,7 @@ def test_basic_canvas_image():
                            mask_config, mask_selection, mask_blending_level,
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases)
+                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma)
     canvas_fig_7 = canvas_7.generate_canvas()
     assert isinstance(canvas_fig_7, go.Figure)

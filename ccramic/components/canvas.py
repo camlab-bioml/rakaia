@@ -17,7 +17,8 @@ class CanvasImage:
                  mask_config: dict, mask_selection: str, mask_blending_level: int,
                  overlay_grid: list, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                 show_each_channel_intensity, raw_data_dict, aliases):
+                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -38,12 +39,28 @@ class CanvasImage:
         self.show_each_channel_intensity = show_each_channel_intensity
         self.raw_data_dict = raw_data_dict
         self.aliases = aliases
+        self.global_apply_filter = global_apply_filter
+        self.global_filter_type = global_filter_type
+        self.global_filter_val = global_filter_val
+        self.global_filter_sigma = global_filter_sigma if global_filter_sigma is not None else 1
 
         image = sum([self.canvas_layers[self.data_selection][elem].astype(np.float32) for \
                      elem in self.currently_selected if \
                      elem in self.canvas_layers[self.data_selection].keys()]).astype(np.float32)
-        self.image = np.clip(image, 0, 255)
-
+        if len(self.global_apply_filter) > 0 and None not in (self.global_filter_type, self.global_filter_val) and \
+                int(self.global_filter_val) % 2 != 0:
+            if self.global_filter_type == "median" and int(self.global_filter_val) >= 1:
+                try:
+                    image = cv2.medianBlur(image, int(self.global_filter_val))
+                except (ValueError, cv2.error):
+                    pass
+            else:
+                # array = gaussian_filter(array, int(filter_value))
+                if int(self.global_filter_val) >= 1:
+                    image = cv2.GaussianBlur(image, (int(self.global_filter_val),
+                                                     int(self.global_filter_val)), float(self.global_filter_sigma))
+        image = np.clip(image, 0, 255)
+        self.image = image
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
             if self.image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
                     self.image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
@@ -63,7 +80,6 @@ class CanvasImage:
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)))
         # fig.update(data=[{'customdata':)
     def generate_canvas(self) -> go.Figure:
-        fig = self.canvas.update_traces(hoverinfo="skip")
         x_axis_placement = 0.00001 * self.image.shape[1]
         # make sure the placement is min 0.05 and max 0.1
         x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05

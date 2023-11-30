@@ -60,6 +60,7 @@ from scipy.ndimage import median_filter
 import plotly.express as px
 from PIL import Image
 from natsort import natsorted
+from ccramic.io.readers import DashUploaderFileReader
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -73,10 +74,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-image')
     # @cache.memoize())
     def get_filenames_from_drag_and_drop(status: du.UploadStatus):
-        filenames = [str(x) for x in status.uploaded_files]
-        # IMP: ensure that the progress is up to 100% in the float before beginning to process
-        if filenames and float(status.progress) == 1.0:
-            return filenames
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files is not None:
+            return files
         else:
             raise PreventUpdate
 
@@ -84,10 +85,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-param-json')
     # @cache.memoize())
     def get_param_json_from_drag_and_drop(status: du.UploadStatus):
-        filenames = [str(x) for x in status.uploaded_files]
-        # IMP: ensure that the progress is up to 100% in the float before beginning to process
-        if filenames and float(status.progress) == 1.0:
-            param_json = json.load(open(filenames[0]))
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files is not None:
+            param_json = json.load(open(files[0]))
             return param_json
         else:
             raise PreventUpdate
@@ -939,6 +940,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('invert-annotations', 'value'),
                        Input('overlay-grid-canvas', 'value'),
                        State('legend_orientation', 'value'),
+                       Input('bool-apply-global-filter', 'value'),
+                       Input('global-filter-type', 'value'),
+                       Input("global-kernel-val-filter", 'value'),
+                       Input("global-sigma-val-filter", 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -948,7 +953,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 canvas_children, param_dict, mask_config, mask_toggle,
                                                 mask_selection, toggle_legend, toggle_scalebar, mask_blending_level,
                                                 add_mask_boundary, channel_order, legend_size, add_cell_id_hover,
-                                                pixel_ratio, invert_annot, overlay_grid, legend_orientation):
+                                                pixel_ratio, invert_annot, overlay_grid, legend_orientation,
+                                                global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -997,7 +1003,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  mask_config, mask_selection, mask_blending_level,
                  overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                 show_each_channel_intensity, raw_data_dict, aliases)
+                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter,
+                                     global_filter_type, global_filter_val, global_filter_sigma)
                 fig = canvas.generate_canvas()
                 # fig.update_traces(hoverinfo="skip")
                 # x_axis_placement = 0.00001 * image_shape[1]
@@ -1160,7 +1167,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
         else:
             raise PreventUpdate
-
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
                        Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
@@ -1484,10 +1490,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
         datasets to ensure that it matches the number of channels
         """
-        filenames = [str(x) for x in status.uploaded_files]
         metadata_config = {'uploads': []}
-        if filenames:
-            for file in filenames:
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files:
+            for file in files:
                 metadata_config['uploads'].append(file)
             return metadata_config
         else:
@@ -2212,6 +2219,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     # @cache.memoize())
     def update_channel_filter_inputs(filter_type):
+        return True if filter_type == "median" else False
+
+    @dash_app.callback(Output('global-sigma-val-filter', 'disabled'),
+                       Input('global-filter-type', 'value'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def update_global_channel_filter_inputs(filter_type):
         return True if filter_type == "median" else False
 
     @dash_app.callback(Input('preset-button', 'n_clicks'),

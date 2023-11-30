@@ -26,6 +26,7 @@ from ccramic.callbacks.cell_level_wrappers import (
 from ccramic.io.annotation_outputs import export_annotations_as_masks, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
+from ccramic.io.readers import DashUploaderFileReader
 import os
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
 from dash import dcc
@@ -72,14 +73,17 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                  id='upload-umap-coordinates')
     # @cache.memoize())
     def get_quantification_upload_from_drag_and_drop(status: du.UploadStatus):
-        filenames = [str(x) for x in status.uploaded_files]
-        if filenames and float(status.progress) == 1.0:
-            frame = pd.read_csv(filenames[0])
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files:
+            frame = pd.read_csv(files[0])
             if len(frame.columns) == 2:
                 frame.columns = ['UMAP1', 'UMAP2']
                 return Serverside(frame.to_dict(orient="records"))
             else:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(Output('quantification-heatmap-full', 'figure'),
                        Output('umap-legend-categories', 'data'),
