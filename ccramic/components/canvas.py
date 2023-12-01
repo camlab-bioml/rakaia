@@ -1,12 +1,17 @@
+from typing import Union
+
 import numpy as np
 import plotly.graph_objs as go
 import cv2
 import plotly.express as px
 from PIL import Image
+
+from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
 from ccramic.utils.pixel_level_utils import per_channel_intensity_hovertext
 from plotly.graph_objs.layout import YAxis, XAxis
+import pandas as pd
 
 class CanvasImage:
     """
@@ -221,3 +226,31 @@ class CanvasImage:
 
     def get_image(self):
         return self.image
+
+
+class CanvasLayout:
+    """
+    This class represents a set of layout manipulations for the image canvas. It is distinct from
+    CanvasImage in that it doesn't manipulate the underlying image, but rather the layout and UI components
+    of the attributes projected on top of the data. It expected a `go.Figure` object or a dictionary representing
+    a `go.Figure` object as input
+    """
+    def __init__(self, figure: Union[dict, go.Figure]):
+        self.figure = figure
+
+    def add_point_annotations_as_circles(self, imported_annotations, cur_image, circle_size):
+        """
+        Add a circle for each point annotation in a CSV file. Each annotation is validated against the
+        image dimensions in the current canvas to ensure that the annotation lies within the dimensions
+        """
+        imported_annotations = pd.DataFrame(imported_annotations)
+        fig = go.Figure(self.figure)
+        for index, row in imported_annotations.iterrows():
+            if validate_coordinate_set_for_image(row['x'], row['y'], cur_image):
+                fig.add_shape(type="circle",
+                              xref='x', yref='y',
+                              x0=(row['x'] - circle_size), y0=(row['y'] - circle_size), x1=(row['x'] + circle_size),
+                              y1=(row['y'] + circle_size),
+                              line_color="white", editable=True)
+
+        return fig

@@ -1,7 +1,9 @@
 import numpy as np
-from ccramic.components.canvas import CanvasImage
+from ccramic.components.canvas import CanvasImage, CanvasLayout
 import plotly.graph_objs as go
 import plotly.express as px
+import pandas as pd
+import os
 
 def test_basic_canvas_image():
 
@@ -126,3 +128,13 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma)
     canvas_fig_7 = canvas_7.generate_canvas()
     assert isinstance(canvas_fig_7, go.Figure)
+
+
+def test_canvas_layout_editor(get_current_dir):
+    image = np.full((600, 600, 3), 255).astype(np.uint8)
+    fig = go.Figure(px.imshow(image))
+    assert len(fig['layout']['shapes']) == 0
+    fig = CanvasLayout(fig)
+    point_annotations = pd.read_csv(os.path.join(get_current_dir, "point_annotations.csv"))
+    fig = fig.add_point_annotations_as_circles(point_annotations, image, 4)
+    assert len(fig['layout']['shapes']) > 0

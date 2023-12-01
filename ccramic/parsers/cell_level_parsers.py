@@ -15,8 +15,7 @@ import anndata
 import sys
 from sklearn.preprocessing import StandardScaler
 
-def drop_columns_from_measurements_csv(measurements_csv,
-                                       cols_to_drop=set_columns_to_drop()):
+def drop_columns_from_measurements_csv(measurements_csv):
     cols_to_drop = set_columns_to_drop(measurements_csv)
     try:
         for col in cols_to_drop:
@@ -342,3 +341,20 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sa
         except (KeyError, TypeError):
             pass
     return sam_id
+
+def validate_imported_csv_annotations(annotations_csv):
+    """
+    Validate that the imported annotations CSV has the correct format and columns
+    """
+    frame = pd.DataFrame(annotations_csv)
+    return "x" in list(frame.columns) and "y" in list(frame.columns)
+
+
+def validate_coordinate_set_for_image(x=None, y=None, image=None):
+    """
+    Validate that a pair of xy coordinates can fit inside an image's dimensions
+    """
+    if None not in (x, y) and image is not None:
+        return int(x) <= image.shape[1] and int(y) <= image.shape[0]
+    else:
+        return False

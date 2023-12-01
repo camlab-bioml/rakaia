@@ -161,3 +161,10 @@ def test_match_mask_name_to_quantification_sheet_roi():
 
     samples_no_index= ["sampletest"]
     assert match_mask_name_to_quantification_sheet_roi("sampletest", samples_no_index) == "sampletest"
+
+
+def test_validate_xy_coordinates_for_image():
+    image = np.full((1000, 100, 3), 255)
+    assert validate_coordinate_set_for_image(x=10, y=10, image=image)
+    assert not validate_coordinate_set_for_image(x=101, y=10, image=image)
+    assert not validate_coordinate_set_for_image()

@@ -35,7 +35,7 @@ from ccramic.utils.pixel_level_utils import (
     path_to_mask,
     create_new_coord_bounds)
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
-from ccramic.components.canvas import CanvasImage
+from ccramic.components.canvas import CanvasImage, CanvasLayout
 from ccramic.io.display import generate_area_statistics_dataframe
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
 from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
@@ -44,6 +44,7 @@ from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     adjust_option_height_from_list_length)
+from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -1402,7 +1403,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if not toggle_scalebar:
                     cur_shapes = [shape for shape in cur_shapes if \
                                       shape is not None and 'type' in shape and shape['type'] \
-                                      in ['rect', 'path']]
+                                      in ['rect', 'path', 'circle']]
                     cur_annotations = [annot for annot in cur_annotations if \
                                            annot is not None and 'y' in annot and annot['y'] != 0.06]
                     cur_canvas['layout']['annotations'] = cur_annotations
@@ -2745,6 +2746,28 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                  f"{annotation_cell_type} in {annot_col}"), True, fig
             except KeyError:
                 return dash.no_update, html.H6("Error in annotating point"), True, dash.no_update
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output('annotation_canvas', 'figure', allow_duplicate=True),
+        Input('imported-annotations-csv', 'data'),
+        State('uploaded_dict', 'data'),
+        State('data-collection', 'value'),
+        State('annotation_canvas', 'figure'),
+        State('annotation-circle-size', 'value'),
+        prevent_initial_call=True)
+    def populate_canvas_with_point_annotation_circles(imported_annotations, image_dict, data_selection,
+                                                      cur_graph, circle_size):
+        """
+        Render a circle for every valid point annotation imported from a CSV. Valiad xy coordinates
+        must fit inside the dimensions of the current image
+        """
+        if None not in (imported_annotations, image_dict, data_selection, cur_graph):
+            first_image = list(image_dict[data_selection].keys())[0]
+            first_image = image_dict[data_selection][first_image]
+            fig = CanvasLayout(cur_graph).add_point_annotations_as_circles(imported_annotations, first_image, circle_size)
+            return fig
         else:
             raise PreventUpdate
 

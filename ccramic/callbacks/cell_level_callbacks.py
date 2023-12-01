@@ -9,6 +9,7 @@ from ccramic.parsers.cell_level_parsers import (
     get_quantification_filepaths_from_drag_and_drop,
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
+    validate_imported_csv_annotations
 )
 from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
@@ -587,3 +588,21 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             if n1:
                 return not is_open
             return is_open
+
+    @du.callback(Output('imported-annotations-csv', 'data'),
+                 id='upload-point-annotations')
+    # @cache.memoize())
+    def import_point_annotations_from_drag_and_drop(status: du.UploadStatus):
+        """
+        Import a CSV of point annotations to re-render on the canvas
+        """
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files:
+            frame = pd.read_csv(files[0])
+            if validate_imported_csv_annotations(frame):
+                return Serverside(frame.to_dict(orient="records"))
+            else:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate

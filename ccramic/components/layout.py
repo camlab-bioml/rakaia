@@ -513,6 +513,10 @@ def register_app_layout(config, cache_dest):
                                           dbc.Tooltip(children="", target="preset-options",
                                                       id="hover-preset-information", trigger="hover"),
                                 html.Br(),
+                                html.Div([du.Upload(id='upload-point-annotations', max_file_size=1000, max_files=1,
+                                text='Re-import point/ click annotations and add to canvas',
+                                filetypes=['csv'], upload_id="upload-point-annotations",
+                                default_style={'minHeight': 2, 'lineHeight': 2})], style={"height": "10%"}),
                                 html.Br(),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
                                 style={"display": "inline-block", "margin-right": "7.5px",
@@ -826,6 +830,7 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id="quantification-query-indices"),
         dcc.Store(id='cur-umap-subset-category-counts'),
         dcc.Store(id='cur_roi_dimensions'),
+        dcc.Store(id='imported-annotations-csv'),
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
         dcc.Store(id='query-cell-id-lists'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),

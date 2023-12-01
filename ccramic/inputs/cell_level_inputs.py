@@ -84,7 +84,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
         if None not in (category_column, category_subset):
             frame = frame[frame[category_column].isin(category_subset)]
         if cols_drop is not None:
-            frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
+            frame = drop_columns_from_measurements_csv(frame)
         # TODO: for now, o not allow the bar plot to reflect a canvas subset (assign values only from the UMAP)
         # if canvas_layout is not None and \
         #         all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
@@ -131,7 +131,7 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         if None not in (category_column, category_subset):
             frame = frame[frame[category_column].isin(category_subset)]
         if cols_drop is not None:
-            frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
+            frame = drop_columns_from_measurements_csv(frame)
         if umap_layout is not None and \
                 all([key in umap_layout for key in zoom_keys]):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
