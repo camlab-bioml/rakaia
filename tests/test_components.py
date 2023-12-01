@@ -134,7 +134,56 @@ def test_canvas_layout_editor(get_current_dir):
     image = np.full((600, 600, 3), 255).astype(np.uint8)
     fig = go.Figure(px.imshow(image))
     assert len(fig['layout']['shapes']) == 0
+    # fig = {'data': fig['data'], 'layout': fig['layout']}
     fig = CanvasLayout(fig)
     point_annotations = pd.read_csv(os.path.join(get_current_dir, "point_annotations.csv"))
     fig = fig.add_point_annotations_as_circles(point_annotations, image, 4)
     assert len(fig['layout']['shapes']) > 0
+
+    fig = go.Figure(px.imshow(image))
+    assert len(fig['layout']['annotations']) == 0
+
+    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    assert len(fig['layout']['annotations']) > 0
+
+    # update the layout to mimic a zoom to change the scalebar value
+    fig.update_layout(xaxis=dict(range=[50, 60]), yaxis=dict(range=[50, 60]))
+    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    assert len(fig['layout']['annotations']) > 0
+
+    fig = go.Figure(px.imshow(image))
+    fig = CanvasLayout(fig).toggle_scalebar(False, 0.05, True, 1, image.shape, 12)
+    assert len(fig['layout']['annotations']) == 0
+
+
+    fig = go.Figure(px.imshow(image))
+    fig = CanvasLayout(fig).toggle_legend(True, "legend_text", 0.99, 14)
+    assert 'legend_text' in fig['layout']['annotations'][0]['text']
+
+    fig = {'data': fig['data'], 'layout': {'annotations': [{
+        'bgcolor': 'black',
+        'font': {'size': 15},
+        'showarrow': False,
+        'text': 'legend_text: color',
+        'x': 0.010000000000000009,
+        'xref': 'paper',
+        'y': 0.05,
+        'yref': 'paper'
+    },
+        {
+            'bgcolor': 'black',
+            'font': {'size': 15},
+            'showarrow': False,
+            'text': 'legend',
+            'x': 0.010000000000000009,
+            'xref': 'paper',
+            'y': 0.06,
+            'yref': 'paper'
+        }
+    ]}}
+    fig = CanvasLayout(fig).change_annotation_size(9)
+    assert 'legend_text' in fig['layout']['annotations'][0]['text']
+
+    fig = go.Figure(px.imshow(image))
+    fig = CanvasLayout(fig).toggle_legend(False, "legend_text", 0.99, 14)
+    assert len(fig['layout']['annotations']) == 0

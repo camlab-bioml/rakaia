@@ -1371,73 +1371,76 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
             if invert_annot:
                 x_axis_placement = 1 - x_axis_placement
-            if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
-                cur_annotations = cur_canvas['layout']['annotations'].copy()
-            else:
-                cur_annotations = []
-            if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
-                cur_shapes = cur_canvas['layout']['shapes'].copy()
-            else:
-                cur_shapes = []
+            # if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
+            #     cur_annotations = cur_canvas['layout']['annotations'].copy()
+            # else:
+            #     cur_annotations = []
+            # if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
+            #     cur_shapes = cur_canvas['layout']['shapes'].copy()
+            # else:
+            #     cur_shapes = []
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation"]:
-                cur_annotations = [annot for annot in cur_annotations if \
-                                   annot is not None and 'y' in annot and annot['y'] != 0.05]
-                cur_canvas['layout']['annotations'] = cur_annotations
-                if not toggle_legend:
-                    return cur_canvas
-                else:
-                    legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation)
-                    fig = go.Figure(cur_canvas)
-                    fig.update_layout(newshape=dict(line=dict(color="white")))
-                    if legend_text != '':
-                        fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
-                                               yref='paper',
-                                               x=(1 - x_axis_placement),
-                                               # xanchor='right',
-                                               y=0.05,
-                                               # yanchor='bottom',
-                                               bgcolor="black",
-                                               showarrow=False)
-                    return fig
+                legend_text = generate_canvas_legend_text(blend_colour_dict,
+                            channel_order, aliases, legend_orientation)  if toggle_legend else ''
+                return CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
+                # cur_annotations = [annot for annot in cur_annotations if \
+                #                    annot is not None and 'y' in annot and annot['y'] != 0.05]
+                # cur_canvas['layout']['annotations'] = cur_annotations
+                # if not toggle_legend:
+                #     return cur_canvas
+                # else:
+                #     fig = go.Figure(cur_canvas)
+                #     fig.update_layout(newshape=dict(line=dict(color="white")))
+                #     if legend_text != '':
+                #         fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
+                #                                yref='paper',
+                #                                x=(1 - x_axis_placement),
+                #                                # xanchor='right',
+                #                                y=0.05,
+                #                                # yanchor='bottom',
+                #                                bgcolor="black",
+                #                                showarrow=False)
+                #     return fig
             elif ctx.triggered_id == "toggle-canvas-scalebar":
-                if not toggle_scalebar:
-                    cur_shapes = [shape for shape in cur_shapes if \
-                                      shape is not None and 'type' in shape and shape['type'] \
-                                      in ['rect', 'path', 'circle']]
-                    cur_annotations = [annot for annot in cur_annotations if \
-                                           annot is not None and 'y' in annot and annot['y'] != 0.06]
-                    cur_canvas['layout']['annotations'] = cur_annotations
-                    cur_canvas['layout']['shapes'] = cur_shapes
-                    return cur_canvas
-                else:
-                    fig = go.Figure(cur_canvas)
-                    # set the x0 and x1 depending on if the bar is inverted or not
-                    x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
-                    x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
-                    fig.add_shape(type="line",
-                                  xref="paper", yref="paper",
-                                  x0=x_0, y0=0.05, x1=x_1,
-                                  y1=0.05, line=dict(color="white", width=2))
-
-                    try:
-                        high = max(cur_canvas['layout']['xaxis']['range'][1],
-                                   cur_canvas['layout']['xaxis']['range'][0])
-                        low = min(cur_canvas['layout']['xaxis']['range'][1],
-                                  cur_canvas['layout']['xaxis']['range'][0])
-                        x_range_high = math.ceil(int(high))
-                        x_range_low = math.floor(int(low))
-                        assert x_range_high >= x_range_low
-                        custom_scale_val = int(float(math.ceil(int(0.075 *
-                                                                   (x_range_high - x_range_low))) + 1) * float(
-                            pixel_ratio))
-                    except KeyError:
-                        custom_scale_val = None
-
-                    fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                                                    font_size=legend_size, x_axis_left=x_axis_placement,
-                                                    invert=invert_annot)
-                fig.update_layout(newshape=dict(line=dict(color="white")))
-                return fig
+                # if not toggle_scalebar:
+                #     cur_shapes = [shape for shape in cur_shapes if \
+                #                       shape is not None and 'type' in shape and shape['type'] \
+                #                       in ['rect', 'path', 'circle']]
+                #     cur_annotations = [annot for annot in cur_annotations if \
+                #                            annot is not None and 'y' in annot and annot['y'] != 0.06]
+                #     cur_canvas['layout']['annotations'] = cur_annotations
+                #     cur_canvas['layout']['shapes'] = cur_shapes
+                #     return cur_canvas
+                # else:
+                #     fig = go.Figure(cur_canvas)
+                #     # set the x0 and x1 depending on if the bar is inverted or not
+                #     x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
+                #     x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
+                #     fig.add_shape(type="line",
+                #                   xref="paper", yref="paper",
+                #                   x0=x_0, y0=0.05, x1=x_1,
+                #                   y1=0.05, line=dict(color="white", width=2))
+                #
+                #     try:
+                #         high = max(cur_canvas['layout']['xaxis']['range'][1],
+                #                    cur_canvas['layout']['xaxis']['range'][0])
+                #         low = min(cur_canvas['layout']['xaxis']['range'][1],
+                #                   cur_canvas['layout']['xaxis']['range'][0])
+                #         x_range_high = math.ceil(int(high))
+                #         x_range_low = math.floor(int(low))
+                #         assert x_range_high >= x_range_low
+                #         custom_scale_val = int(float(math.ceil(int(0.075 *
+                #                                                    (x_range_high - x_range_low))) + 1) * float(
+                #             pixel_ratio))
+                #     except KeyError:
+                #         custom_scale_val = None
+                #
+                #     fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
+                #                                     font_size=legend_size, x_axis_left=x_axis_placement,
+                #                                     invert=invert_annot)
+                # fig.update_layout(newshape=dict(line=dict(color="white")))
+                return CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
+                                                                pixel_ratio, image_shape, legend_size)
         else:
             raise PreventUpdate
 
@@ -1468,16 +1471,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if cur_graph is not None:
             try:
-                annotations_copy = cur_graph['layout']['annotations'].copy()
-                for annotation in annotations_copy:
-                    # the scalebar is always slightly smaller
-                    if annotation['y'] == 0.06:
-                        annotation['font']['size'] = legend_size
-                    elif annotation['y'] == 0.05 and 'color' in annotation['text']:
-                        annotation['font']['size'] = legend_size + 1
-                cur_graph['layout']['annotations'] = [elem for elem in cur_graph['layout']['annotations'] if \
-                                                  elem is not None and 'texttemplate' not in elem]
-                return cur_graph
+                # annotations_copy = cur_graph['layout']['annotations'].copy()
+                # for annotation in annotations_copy:
+                #     # the scalebar is always slightly smaller
+                #     if annotation['y'] == 0.06:
+                #         annotation['font']['size'] = legend_size
+                #     elif annotation['y'] == 0.05 and 'color' in annotation['text']:
+                #         annotation['font']['size'] = legend_size + 1
+                # cur_graph['layout']['annotations'] = [elem for elem in cur_graph['layout']['annotations'] if \
+                #                                   elem is not None and 'texttemplate' not in elem]
+                # return cur_graph
+                return CanvasLayout(cur_graph).change_annotation_size(legend_size)
             except KeyError:
                 raise PreventUpdate
         else:

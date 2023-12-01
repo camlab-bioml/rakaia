@@ -12,6 +12,7 @@ from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
 from ccramic.utils.pixel_level_utils import per_channel_intensity_hovertext
 from plotly.graph_objs.layout import YAxis, XAxis
 import pandas as pd
+import math
 
 class CanvasImage:
     """
@@ -237,6 +238,106 @@ class CanvasLayout:
     """
     def __init__(self, figure: Union[dict, go.Figure]):
         self.figure = figure
+
+        # TODO: add condition checking whether the annotations or shapes are held in tuples (do not allow)
+        if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
+                len(self.figure['layout']['annotations']) > 0 and not \
+                isinstance(self.figure['layout']['annotations'], tuple):
+            self.cur_annotations = self.figure['layout']['annotations'].copy()
+        else:
+            self.cur_annotations = []
+        if 'layout' in self.figure and 'shapes' in self.figure['layout'] and \
+                len(self.figure['layout']['shapes']) > 0 and not \
+                isinstance(self.figure['layout']['shapes'], tuple):
+            self.cur_shapes = self.figure['layout']['shapes'].copy()
+        else:
+            self.cur_shapes = []
+
+    def get_fig(self):
+        return self.figure
+
+    def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size):
+        fig = go.Figure(self.figure)
+        # set the x0 and x1 depending on if the bar is inverted or not
+        x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
+        x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
+        fig.add_shape(type="line",
+                      xref="paper", yref="paper",
+                      x0=x_0, y0=0.05, x1=x_1,
+                      y1=0.05, line=dict(color="white", width=2))
+
+        try:
+            high = max(self.figure['layout']['xaxis']['range'][1],
+                       self.figure['layout']['xaxis']['range'][0])
+            low = min(self.figure['layout']['xaxis']['range'][1],
+                      self.figure['layout']['xaxis']['range'][0])
+            x_range_high = math.ceil(int(high))
+            x_range_low = math.floor(int(low))
+            assert x_range_high >= x_range_low
+            custom_scale_val = int(float(math.ceil(int(0.075 *
+                                                       (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
+        except (KeyError, TypeError):
+            custom_scale_val = None
+
+        fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
+                                        font_size=legend_size, x_axis_left=x_axis_placement,
+                                        invert=invert_annot)
+
+        fig.update_layout(newshape=dict(line=dict(color="white")))
+        return fig
+
+    def add_legend_text(self, legend_text, x_axis_placement, legend_size):
+        fig = go.Figure(self.figure)
+        fig.update_layout(newshape=dict(line=dict(color="white")))
+        if legend_text != '':
+            fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
+                                   yref='paper',
+                                   x=(1 - x_axis_placement),
+                                   # xanchor='right',
+                                   y=0.05,
+                                   # yanchor='bottom',
+                                   bgcolor="black",
+                                   showarrow=False)
+        return fig
+    def toggle_legend(self, toggle_legend: bool, legend_text, x_axis_placement, legend_size):
+        """
+        Modify the legend text for the figure, or remove the legend
+        """
+        cur_annotations = [annot for annot in self.cur_annotations if \
+                           annot is not None and 'y' in annot and annot['y'] != 0.05]
+        self.figure['layout']['annotations'] = cur_annotations
+        if not toggle_legend:
+            return self.figure
+        else:
+            return self.add_legend_text(legend_text, x_axis_placement, legend_size)
+
+    def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size):
+        cur_shapes = [shape for shape in self.cur_shapes if \
+                      shape is not None and 'type' in shape and shape['type'] \
+                      in ['rect', 'path', 'circle']]
+        cur_annotations = [annot for annot in self.cur_annotations if \
+                           annot is not None and 'y' in annot and annot['y'] != 0.06]
+        self.figure['layout']['annotations'] = cur_annotations
+        self.figure['layout']['shapes'] = cur_shapes
+        if not toggle_scalebar:
+            return self.figure
+        else:
+            return self.add_scalebar(x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size)
+
+    def change_annotation_size(self, legend_size):
+        """
+        Change the size of the legend and scalebar
+        """
+        # annotations_copy = self.figure['layout']['annotations'].copy() if not isinstance()
+        for annotation in self.cur_annotations:
+            # the scalebar is always slightly smaller
+            if annotation['y'] == 0.06:
+                annotation['font']['size'] = legend_size
+            elif annotation['y'] == 0.05 and 'color' in annotation['text']:
+                annotation['font']['size'] = legend_size + 1
+        self.figure['layout']['annotations'] = [elem for elem in self.figure['layout']['annotations'] if \
+                                              elem is not None and 'texttemplate' not in elem]
+        return self.figure
 
     def add_point_annotations_as_circles(self, imported_annotations, cur_image, circle_size):
         """
