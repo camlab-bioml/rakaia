@@ -35,6 +35,7 @@ from ccramic.utils.pixel_level_utils import (
     path_to_mask,
     create_new_coord_bounds)
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
+from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
 from ccramic.io.display import generate_area_statistics_dataframe
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
@@ -1194,48 +1195,48 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             if ctx.triggered_id == "annotation_canvas":
                 try:
-                    fig = go.Figure(cur_graph)
-                    # find the text annotation that has um in the text and the correct location
-                    for annotations in cur_graph['layout']['annotations']:
-                        # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
-                        if annotations['y'] == 0.06:
-                            if cur_graph_layout not in [{'autosize': True}]:
-                                x_range_high = 0
-                                x_range_low = 0
-                                # use different variables depending on how the ranges are written in the dict
-                                # IMP: the variables will be written differently after a tab change
-                                if 'xaxis' in cur_graph['layout']:
-                                    high = max(cur_graph['layout']['xaxis']['range'][1],
-                                           cur_graph['layout']['xaxis']['range'][0])
-                                    low = min(cur_graph['layout']['xaxis']['range'][1],
-                                          cur_graph['layout']['xaxis']['range'][0])
-                                    x_range_high = math.ceil(int(high))
-                                    x_range_low = math.floor(int(low))
-                                elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
-                                    high = max(cur_graph_layout['xaxis.range[1]'],
-                                           cur_graph_layout['xaxis.range[0]'])
-                                    low = min(cur_graph_layout['xaxis.range[1]'],
-                                          cur_graph_layout['xaxis.range[0]'])
-                                    x_range_high = math.ceil(int(high))
-                                    x_range_low = math.ceil(int(low))
-
-                                assert x_range_high >= x_range_low
-                                # assert that all values must be above 0 for the scale value to render during panning
-                                # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
-                                scale_val = int(float(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1) * float(
-                                    pixel_ratio))
-                                scale_val = scale_val if scale_val > 0 else 1
-                                scale_annot = str(scale_val) + "μm"
-                                scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                                # get the index of the list element corresponding to this text annotation
-                                index = cur_graph['layout']['annotations'].index(annotations)
-                                cur_graph['layout']['annotations'][index]['text'] = scale_text
-
-                                fig = go.Figure(cur_graph)
-                                fig.update_layout(newshape=dict(line=dict(color="white")))
-
+                    # fig = go.Figure(cur_graph)
+                    # # find the text annotation that has um in the text and the correct location
+                    # for annotations in cur_graph['layout']['annotations']:
+                    #     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
+                    #     if annotations['y'] == 0.06:
+                    #         if cur_graph_layout not in [{'autosize': True}]:
+                    #             x_range_high = 0
+                    #             x_range_low = 0
+                    #             # use different variables depending on how the ranges are written in the dict
+                    #             # IMP: the variables will be written differently after a tab change
+                    #             if 'xaxis' in cur_graph['layout']:
+                    #                 high = max(cur_graph['layout']['xaxis']['range'][1],
+                    #                        cur_graph['layout']['xaxis']['range'][0])
+                    #                 low = min(cur_graph['layout']['xaxis']['range'][1],
+                    #                       cur_graph['layout']['xaxis']['range'][0])
+                    #                 x_range_high = math.ceil(int(high))
+                    #                 x_range_low = math.floor(int(low))
+                    #             elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
+                    #                 high = max(cur_graph_layout['xaxis.range[1]'],
+                    #                        cur_graph_layout['xaxis.range[0]'])
+                    #                 low = min(cur_graph_layout['xaxis.range[1]'],
+                    #                       cur_graph_layout['xaxis.range[0]'])
+                    #                 x_range_high = math.ceil(int(high))
+                    #                 x_range_low = math.ceil(int(low))
+                    #
+                    #             assert x_range_high >= x_range_low
+                    #             # assert that all values must be above 0 for the scale value to render during panning
+                    #             # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
+                    #             scale_val = int(float(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1) * float(
+                    #                 pixel_ratio))
+                    #             scale_val = scale_val if scale_val > 0 else 1
+                    #             scale_annot = str(scale_val) + "μm"
+                    #             scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                    #             # get the index of the list element corresponding to this text annotation
+                    #             index = cur_graph['layout']['annotations'].index(annotations)
+                    #             cur_graph['layout']['annotations'][index]['text'] = scale_text
+                    #
+                    #             fig = go.Figure(cur_graph)
+                    #             fig.update_layout(newshape=dict(line=dict(color="white")))
+                    fig = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio)
                     return fig, cur_graph_layout
-                except (ValueError, KeyError, AssertionError) as e:
+                except (ValueError, KeyError, AssertionError):
                     raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
                 if None not in (x_request, y_request, current_window) and \
@@ -2883,3 +2884,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         cur_config = cur_config.copy()
         cur_config['scrollZoom'] = enable_zoom
         return cur_config
+
+    @dash_app.callback(
+        Output('app_dest', 'href'),
+        Input('refresh-app', 'n_clicks'))
+    def refresh_and_clear_app(refresh):
+        """
+        Open the modal for general session variables
+        """
+        if refresh:
+            remove_ccramic_caches('/tmp/')
+            return '/ccramic/'
+        else:
+            return '/ccramic/'

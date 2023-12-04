@@ -346,6 +346,7 @@ class CanvasLayout:
         """
         imported_annotations = pd.DataFrame(imported_annotations)
         fig = go.Figure(self.figure)
+        # TODO: figure out what to increase the speed of shape rendering
         for index, row in imported_annotations.iterrows():
             if validate_coordinate_set_for_image(row['x'], row['y'], cur_image):
                 fig.add_shape(type="circle",
@@ -354,4 +355,49 @@ class CanvasLayout:
                               y1=(row['y'] + circle_size),
                               line_color="white", editable=True)
 
+        return fig
+
+    def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio):
+        """
+        update the scalebar value when zoom is used
+        Loop through the annotations to identify the scalebar value when y = 0.06
+        """
+        # find the text annotation that has um in the text and the correct location
+        for annotations in self.figure['layout']['annotations']:
+            # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
+            if annotations['y'] == 0.06:
+                if current_graph_layout not in [{'autosize': True}]:
+                    x_range_high = 0
+                    x_range_low = 0
+                    # use different variables depending on how the ranges are written in the dict
+                    # IMP: the variables will be written differently after a tab change
+                    if 'xaxis.range[0]' and 'xaxis.range[1]' in current_graph_layout:
+                        high = max(current_graph_layout['xaxis.range[1]'],
+                                   current_graph_layout['xaxis.range[0]'])
+                        low = min(current_graph_layout['xaxis.range[1]'],
+                                  current_graph_layout['xaxis.range[0]'])
+                        x_range_high = math.ceil(int(high))
+                        x_range_low = math.ceil(int(low))
+                    elif 'xaxis' in self.figure['layout'] and 'range' in self.figure['layout']['xaxis'] and \
+                            self.figure['layout']['xaxis']:
+                        high = max(self.figure['layout']['xaxis']['range'][1],
+                                   self.figure['layout']['xaxis']['range'][0])
+                        low = min(self.figure['layout']['xaxis']['range'][1],
+                                  self.figure['layout']['xaxis']['range'][0])
+                        x_range_high = math.ceil(int(high))
+                        x_range_low = math.floor(int(low))
+                    assert x_range_high >= x_range_low
+                    # assert that all values must be above 0 for the scale value to render during panning
+                    # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
+                    scale_val = int(float(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1) * float(
+                        pixel_ratio))
+                    scale_val = scale_val if scale_val > 0 else 1
+                    scale_annot = str(scale_val) + "μm"
+                    scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                    # get the index of the list element corresponding to this text annotation
+                    index = self.figure['layout']['annotations'].index(annotations)
+                    self.figure['layout']['annotations'][index]['text'] = scale_text
+
+        fig = go.Figure(self.figure)
+        fig.update_layout(newshape=dict(line=dict(color="white")))
         return fig

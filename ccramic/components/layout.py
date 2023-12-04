@@ -68,7 +68,9 @@ def register_app_layout(config, cache_dest):
                     dcc.RadioItems(['vertical', 'horizontal'], 'vertical', inline=True, id="legend_orientation",
                                    persistence=config['persistence'], persistence_type='local'),
                     html.Br(),
-                    html.H6(f"tmp storage destination: {cache_dest}")
+                    html.H6(f"tmp storage destination: {cache_dest}"),
+                    html.A(dbc.Button('Refresh app and clear previous data caches', id='refresh-app'),
+                           id='app_dest', href='/ccramic/'),
                 ]),
                         id="session-config-modal", size='l',
                         style={"margin-left": "10px", "margin-top": "15px"}),
