@@ -2885,15 +2885,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         cur_config['scrollZoom'] = enable_zoom
         return cur_config
 
-    @dash_app.callback(
-        Output('app_dest', 'href'),
-        Input('refresh-app', 'n_clicks'))
-    def refresh_and_clear_app(refresh):
-        """
-        Open the modal for general session variables
-        """
-        if refresh:
-            remove_ccramic_caches('/tmp/')
-            return '/ccramic/'
-        else:
-            return '/ccramic/'
+    # @dash_app.callback(
+    #     Output('app_dest', 'href'),
+    #     Input('refresh-app', 'n_clicks'))
+    # def refresh_and_clear_app(refresh):
+    #     """
+    #     Open the modal for general session variables
+    #     """
+    #     if refresh:
+    #         remove_ccramic_caches('/tmp/')
+    #         return '/ccramic/'
+    #     else:
+    #         return '/ccramic/'

@@ -345,17 +345,21 @@ class CanvasLayout:
         image dimensions in the current canvas to ensure that the annotation lies within the dimensions
         """
         imported_annotations = pd.DataFrame(imported_annotations)
-        fig = go.Figure(self.figure)
+        # fig = go.Figure(self.figure)
         # TODO: figure out what to increase the speed of shape rendering
         for index, row in imported_annotations.iterrows():
             if validate_coordinate_set_for_image(row['x'], row['y'], cur_image):
-                fig.add_shape(type="circle",
-                              xref='x', yref='y',
-                              x0=(row['x'] - circle_size), y0=(row['y'] - circle_size), x1=(row['x'] + circle_size),
-                              y1=(row['y'] + circle_size),
-                              line_color="white", editable=True)
-
-        return fig
+                self.cur_shapes.append(
+                    {'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
+                     'x0': (row['x'] - circle_size), 'x1': (row['x'] + circle_size),
+                     'xref': 'x', 'y0': (row['y'] - circle_size), 'y1': (row['y'] + circle_size), 'yref': 'y'})
+                # fig.add_shape(type="circle",
+                #               xref='x', yref='y',
+                #               x0=(row['x'] - circle_size), y0=(row['y'] - circle_size), x1=(row['x'] + circle_size),
+                #               y1=(row['y'] + circle_size),
+                #               line_color="white", editable=True)
+        self.figure['layout']['shapes'] = self.cur_shapes
+        return self.figure
 
     def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio):
         """
