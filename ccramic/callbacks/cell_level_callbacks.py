@@ -626,7 +626,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
     @dash_app.callback(Input('imported-cluster-frame', 'data'),
                        State('data-collection', 'value'),
-                 Output('cluster-colour-assignments-dict', 'data'))
+                 Output('cluster-colour-assignments-dict', 'data'),
+                Output('cluster-label-list', 'options'))
     # @cache.memoize())
     def generate_cluster_colour_assignment(cluster_frame, data_selection):
         if None not in (cluster_frame, data_selection):
@@ -635,7 +636,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             cluster_assignments = {data_selection: {}}
             for clust, colour in zip(unique_clusters, unique_colours):
                 cluster_assignments[data_selection][clust] = colour
-            return cluster_assignments
+            return cluster_assignments, list(unique_clusters)
         else:
             raise PreventUpdate
 
@@ -652,5 +653,23 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 children.append(html.Span(f"{str(key)}\n", style={"color": str(value)}))
                 children.append(html.Br())
             return children
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
+                       Input('cluster-color-picker', 'value'),
+                       State('cluster-label-list', 'value'),
+                       State('data-collection', 'value'),
+                       State('cluster-colour-assignments-dict', 'data'))
+    def assign_colour_to_cluster_label(colour_selection, cluster_selection, data_selection, clust_dict):
+        """
+        Assign the designated colour from the colour picker to the selected cluster label
+        """
+        if None not in (colour_selection, cluster_selection, data_selection, clust_dict):
+            try:
+                clust_dict[data_selection][cluster_selection] = colour_selection['hex']
+                return clust_dict
+            except KeyError:
+              raise PreventUpdate
         else:
             raise PreventUpdate

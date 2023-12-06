@@ -481,7 +481,7 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
         return None, None
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
-                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id"):
+                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True):
     """
     Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
     remain as greyscale values
@@ -491,11 +491,14 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
     for cell_type in cluster_frame[cluster_col].unique().tolist():
         cell_list = cluster_frame[(cluster_frame[cluster_col] == cell_type)][cell_id_col].tolist()
-        annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0) * 255
+        annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
         annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
         empty = empty + annot_mask
     # Find where the cells are annotated, and add back in the ones that are not
-    already_cells = empty != 0
-    original_mod = np.where(~already_cells, np.array(Image.fromarray(mask_array).convert('RGB')), 0)
-    empty = (empty + original_mod).clip(0, 255)
-    return empty.astype(np.uint8)
+    if retain_cells:
+        already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
+        mask_array[already_cells] = 0
+        # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
+        return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
+    else:
+        return empty.astype(np.uint8)

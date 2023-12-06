@@ -359,3 +359,9 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     assert list(with_annotations[623, 420]) == list(with_annotations[787, 709]) == [0, 0, 0]
     # assert where there are cells that are not annotated (remain as white)
     assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]
+
+    # run without keeping the cells that are not annotated
+    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                              retain_cells=False)
+    # assert that where cells were before, there is nothing
+    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
