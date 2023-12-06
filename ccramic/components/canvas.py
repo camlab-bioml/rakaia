@@ -10,6 +10,7 @@ from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
 from ccramic.utils.pixel_level_utils import per_channel_intensity_hovertext
+from ccramic.utils.cell_level_utils import generate_mask_with_cluster_annotations
 from plotly.graph_objs.layout import YAxis, XAxis
 import pandas as pd
 import math
@@ -24,7 +25,8 @@ class CanvasImage:
                  overlay_grid: list, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma):
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
+                                                cluster_frame):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -49,6 +51,9 @@ class CanvasImage:
         self.global_filter_type = global_filter_type
         self.global_filter_val = global_filter_val
         self.global_filter_sigma = global_filter_sigma if global_filter_sigma is not None else 1
+        self.apply_cluster_on_mask = apply_cluster_on_mask
+        self.cluster_assignments_dict = cluster_assignments_dict
+        self.cluster_frame = cluster_frame
 
         image = sum([self.canvas_layers[self.data_selection][elem].astype(np.float32) for \
                      elem in self.currently_selected if \
@@ -70,9 +75,16 @@ class CanvasImage:
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
             if self.image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
                     self.image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
-                # set the mask blending level based on the slider, by default use an equal blend
+                # TODO: establish when to apply cluster mask
                 mask_level = float(self.mask_blending_level / 100) if self.mask_blending_level is not None else 1
-                image = cv2.addWeighted(self.image.astype(np.uint8), 1,
+                if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame):
+                    annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
+                                self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
+                    image = cv2.addWeighted(self.image.astype(np.uint8), 1,
+                                            annot_mask, mask_level, 0)
+                else:
+                    # set the mask blending level based on the slider, by default use an equal blend
+                    image = cv2.addWeighted(self.image.astype(np.uint8), 1,
                                         self.mask_config[self.mask_selection]["array"].astype(np.uint8), mask_level, 0)
                 if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
                     # add the border of the mask after converting back to greyscale to derive the conversion

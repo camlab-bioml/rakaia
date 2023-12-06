@@ -487,13 +487,13 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     remain as greyscale values
     Returns a mask in RGB format
     """
+    cluster_frame = pd.DataFrame(cluster_frame)
     empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
     for cell_type in cluster_frame[cluster_col].unique().tolist():
         cell_list = cluster_frame[(cluster_frame[cluster_col] == cell_type)][cell_id_col].tolist()
         annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0) * 255
         annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
         empty = empty + annot_mask
-
     # Find where the cells are annotated, and add back in the ones that are not
     already_cells = empty != 0
     original_mod = np.where(~already_cells, np.array(Image.fromarray(mask_array).convert('RGB')), 0)

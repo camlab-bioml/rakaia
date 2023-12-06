@@ -32,13 +32,16 @@ def test_basic_canvas_image():
     global_filter_type = "gaussian"
     global_filter_val = 5
     global_filter_sigma = 1
+    apply_cluster_on_mask = False
+    cluster_assignments_dict = None
+    cluster_frame = None
 
     canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                 mask_config, mask_selection, mask_blending_level,
                 overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, go.Figure)
@@ -50,7 +53,7 @@ def test_basic_canvas_image():
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                         global_filter_val, global_filter_sigma)
+                         global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, go.Figure)
@@ -67,7 +70,7 @@ def test_basic_canvas_image():
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     assert isinstance(canvas_2, CanvasImage)
     canvas_fig = canvas_2.generate_canvas()
     assert isinstance(canvas_fig, go.Figure)
@@ -82,7 +85,7 @@ def test_basic_canvas_image():
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     canvas_fig_3 = canvas_3.generate_canvas()
     assert isinstance(canvas_fig_3, go.Figure)
 
@@ -93,7 +96,7 @@ def test_basic_canvas_image():
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                            show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
 
     canvas_fig_4 = canvas_4.generate_canvas()
     assert isinstance(canvas_fig_4, go.Figure)
@@ -104,7 +107,7 @@ def test_basic_canvas_image():
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                            show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
 
     canvas_fig_5 = canvas_5.generate_canvas()
     assert isinstance(canvas_fig_5, go.Figure)
@@ -115,7 +118,7 @@ def test_basic_canvas_image():
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                            show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     canvas_fig_6 = canvas_6.generate_canvas()
     assert isinstance(canvas_fig_6, go.Figure)
 
@@ -125,7 +128,7 @@ def test_basic_canvas_image():
                            overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                            legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                            show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     canvas_fig_7 = canvas_7.generate_canvas()
     assert isinstance(canvas_fig_7, go.Figure)
 
