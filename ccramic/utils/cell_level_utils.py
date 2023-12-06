@@ -1,6 +1,10 @@
 import numpy
 import pandas as pd
-from ccramic.utils.pixel_level_utils import path_to_mask, get_bounding_box_for_svgpath, split_string_at_pattern
+from ccramic.utils.pixel_level_utils import (
+    path_to_mask,
+    get_bounding_box_for_svgpath,
+    split_string_at_pattern,
+    recolour_greyscale)
 from dash.exceptions import PreventUpdate
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -475,3 +479,23 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
             return None, None
     else:
         return None, None
+
+def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
+                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id"):
+    """
+    Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
+    remain as greyscale values
+    Returns a mask in RGB format
+    """
+    empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
+    for cell_type in cluster_frame[cluster_col].unique().tolist():
+        cell_list = cluster_frame[(cluster_frame[cluster_col] == cell_type)][cell_id_col].tolist()
+        annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0) * 255
+        annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
+        empty = empty + annot_mask
+
+    # Find where the cells are annotated, and add back in the ones that are not
+    already_cells = empty != 0
+    original_mod = np.where(~already_cells, np.array(Image.fromarray(mask_array).convert('RGB')), 0)
+    empty = (empty + original_mod).clip(0, 255)
+    return empty.astype(np.uint8)

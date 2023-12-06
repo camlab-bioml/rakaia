@@ -967,9 +967,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if the hovertemplate is updated (it is faster to recreate the figure rather than trying to remove the
         hovertemplate)
         """
+        # do not update if the trigger is a global filter and the filter is not applied
+        global_not_enabled = ctx.triggered_id in ["global-filter-type", "global-kernel-val-filter",
+                                                  "global-sigma-val-filter"] and not global_apply_filter
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
-                len(channel_order) > 0:
+                len(channel_order) > 0 and not global_not_enabled:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             # try:
             #     cur_graph['layout']['shapes'] = [shape for shape in cur_graph_layout['layout']['shapes'] if \
@@ -1683,15 +1686,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                 # can set the canvas width and height from the canvas style to retain the in-dash aspect ratio
                 if not ' use graph subset on download' in graph_subset:
-                    fig = go.Figure(current_canvas)
-                    # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                    #                   xaxis=XAxis(showticklabels=False),
-                    #                   yaxis=YAxis(showticklabels=False),
-                    #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
-                    fig.update_layout(dragmode="zoom")
-                    fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
+                    try:
+                        fig = go.Figure(current_canvas)
+                        # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                        #                   xaxis=XAxis(showticklabels=False),
+                        #                   yaxis=YAxis(showticklabels=False),
+                        #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
+                        fig.update_layout(dragmode="zoom")
+                        fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
                                default_height = canvas_style['height'])
-                    fig_return = str(os.path.join(download_dir, "canvas.html"))
+                        fig_return = str(os.path.join(download_dir, "canvas.html"))
+                    except ValueError:
+                        fig_return = dash.no_update
                 else:
                     fig_return = dash.no_update
                 param_json = str(os.path.join(download_dir, 'param.json'))

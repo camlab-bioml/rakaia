@@ -402,6 +402,7 @@ class CanvasLayout:
                     index = self.figure['layout']['annotations'].index(annotations)
                     self.figure['layout']['annotations'][index]['text'] = scale_text
 
-        fig = go.Figure(self.figure)
-        fig.update_layout(newshape=dict(line=dict(color="white")))
-        return fig
+        # fig = go.Figure(self.figure)
+        # fig.update_layout(newshape=dict(line=dict(color="white")))
+        # return fig
+        return self.figure

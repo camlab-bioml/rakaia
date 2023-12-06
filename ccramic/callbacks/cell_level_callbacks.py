@@ -26,7 +26,7 @@ from ccramic.callbacks.cell_level_wrappers import (
     callback_remove_canvas_annotation_shapes)
 from ccramic.io.annotation_outputs import export_annotations_as_masks, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
-from ccramic.utils.pixel_level_utils import split_string_at_pattern
+from ccramic.utils.pixel_level_utils import split_string_at_pattern, random_hex_colour_generator
 from ccramic.io.readers import DashUploaderFileReader
 import os
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
@@ -38,6 +38,7 @@ from dash_extensions.enrich import Output, Input, State, Serverside
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
+from dash import html
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -604,5 +605,52 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return Serverside(frame.to_dict(orient="records"))
             else:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @du.callback(Output('imported-cluster-frame', 'data'),
+                 id='upload-cluster-annotations')
+    # @cache.memoize())
+    def get_cluster_assignment_upload_from_drag_and_drop(status: du.UploadStatus):
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files:
+            frame = pd.read_csv(files[0])
+            # TODO: for now, use set column names, but epand in the future
+            if len(frame.columns) == 2 and all([elem in list(frame.columns) for elem in ['cell_id', 'cluster']]):
+                return Serverside(frame.to_dict(orient="records"))
+            else:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Input('imported-cluster-frame', 'data'),
+                       State('data-collection', 'value'),
+                 Output('cluster-colour-assignments-dict', 'data'))
+    # @cache.memoize())
+    def generate_cluster_colour_assignment(cluster_frame, data_selection):
+        if None not in (cluster_frame, data_selection):
+            unique_clusters = pd.DataFrame(cluster_frame)['cluster'].unique().tolist()
+            unique_colours = random_hex_colour_generator(len(unique_clusters))
+            cluster_assignments = {data_selection: {}}
+            for clust, colour in zip(unique_clusters, unique_colours):
+                cluster_assignments[data_selection][clust] = colour
+            return cluster_assignments
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('cluster-assignments', 'children'),
+                       Input('cluster-colour-assignments-dict', 'data'),
+                       State('data-collection', 'value'))
+    def render_cluster_colour_legend(cluster_assignments_dict, data_selection):
+        """
+        render the html H6 html span legend for the cluster annotation colours
+        """
+        if None not in (cluster_assignments_dict, data_selection):
+            children = [html.Span("Cluster assignments\n", style={"color": "black"}), html.Br()]
+            for key, value in cluster_assignments_dict[data_selection].items():
+                children.append(html.Span(f"{str(key)}\n", style={"color": str(value)}))
+                children.append(html.Br())
+            return children
         else:
             raise PreventUpdate

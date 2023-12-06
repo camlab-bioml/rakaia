@@ -22,7 +22,8 @@ from ccramic.utils.pixel_level_utils import (
     select_random_colour_for_channel,
     apply_preset_to_blend_dict,
     is_rgb_color,
-    generate_default_swatches)
+    generate_default_swatches,
+    random_hex_colour_generator)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -36,6 +37,16 @@ def test_identify_rgb_codes():
     assert not is_rgb_color('#FAF0')
     assert not is_rgb_color('#NotRgb')
     assert not is_rgb_color('FAF0E6')
+
+def test_random_hex_colour_generator():
+    random_cols = random_hex_colour_generator()
+    assert len(random_cols) == 10
+    assert len(set(random_cols)) == 10
+
+    random_cols = random_hex_colour_generator(75)
+    assert len(random_cols) == 75
+    assert len(set(random_cols)) == 75
+    assert all([len(elem) == 7 for elem in random_cols])
 
 def test_generate_default_swatches():
     config = {'swatches': ["#0000FF", "#0000FF", "#0000FF", "#0000FF"]}
@@ -64,8 +75,6 @@ def test_generate_default_swatches():
     config = {'fake_key': "None"}
     swatches = generate_default_swatches(config)
     assert len(swatches) == 7
-
-
 
 def test_basic_recolour_non_white(get_current_dir):
     greyscale = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))

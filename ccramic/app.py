@@ -1,7 +1,7 @@
 
 import tempfile
 import dash_uploader as du
-from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
+from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend, LogTransform
 from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
 from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
@@ -34,7 +34,8 @@ def init_dashboard(server, authentic_id, config=None):
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
                          external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                          server=server,
-                         routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True)
+                         routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True,
+                         prevent_initial_callbacks=True)
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
 

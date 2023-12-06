@@ -345,3 +345,17 @@ def test_annotation_column_from_umap_(get_current_dir):
             assert measurements["broad_class"].tolist()[index] == "test_cell_type"
         else:
             assert measurements["broad_class"].tolist()[index] == "None"
+
+
+def test_apply_cluster_annotations_to_mask(get_current_dir):
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
+    cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
+    cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
+    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict)
+    assert with_annotations.shape == (mask.shape[0], mask.shape[1], 3)
+    # assert where type 1 is
+    assert list(with_annotations[449, 414]) == list(with_annotations[484, 852]) == [147, 38, 82]
+    # assert where no cells are
+    assert list(with_annotations[623, 420]) == list(with_annotations[787, 709]) == [0, 0, 0]
+    # assert where there are cells that are not annotated (remain as white)
+    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]

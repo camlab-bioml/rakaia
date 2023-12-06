@@ -10,6 +10,7 @@ from scipy.ndimage import median_filter
 from dash.exceptions import PreventUpdate
 import cv2
 import re
+import random
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -374,3 +375,19 @@ def select_random_colour_for_channel(blend_dict, current_channel, default_colour
             blend_dict[current_channel]['color'] = default
             break
     return blend_dict
+
+
+def random_hex_colour_generator(number=10):
+    """
+    Generate a list of random hex colours. The number provided will be the length of the list
+    """
+    #
+    r = lambda: random.randint(0, 255)
+    colours = []
+    index = 0
+    while index < number:
+        colour = '#%02X%02X%02X' % (r(), r(), r())
+        if colour not in colours:
+            colours.append(colour)
+            index += 1
+    return colours
