@@ -9,11 +9,13 @@ from PIL import Image
 from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
-from ccramic.utils.pixel_level_utils import per_channel_intensity_hovertext
+from ccramic.utils.pixel_level_utils import per_channel_intensity_hovertext, get_additive_image
 from ccramic.utils.cell_level_utils import generate_mask_with_cluster_annotations
 from plotly.graph_objs.layout import YAxis, XAxis
 import pandas as pd
 import math
+import time
+import numexpr as ne
 
 class CanvasImage:
     """
@@ -55,9 +57,14 @@ class CanvasImage:
         self.cluster_assignments_dict = cluster_assignments_dict
         self.cluster_frame = cluster_frame
 
-        image = sum([self.canvas_layers[self.data_selection][elem].astype(np.float32) for \
-                     elem in self.currently_selected if \
-                     elem in self.canvas_layers[self.data_selection].keys()]).astype(np.float32)
+        # TODO: summing up the arrays is the bottleneck for speed. try to fix with better broadcasting
+        # if len(self.currently_selected) > 1:
+        #     image = np.sum([self.canvas_layers[self.data_selection][elem].astype(np.float32) for \
+        #              elem in self.currently_selected if \
+        #              elem in self.canvas_layers[self.data_selection].keys()], axis=0).astype(np.float32)
+        # else:
+        #     image = self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
+        image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected)
         if len(self.global_apply_filter) > 0 and None not in (self.global_filter_type, self.global_filter_val) and \
                 int(self.global_filter_val) % 2 != 0:
             if self.global_filter_type == "median" and int(self.global_filter_val) >= 1:
@@ -97,7 +104,7 @@ class CanvasImage:
 
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)))
         # fig.update(data=[{'customdata':)
-    def generate_canvas(self) -> go.Figure:
+    def generate_canvas(self) -> Union[go.Figure, dict]:
         x_axis_placement = 0.00001 * self.image.shape[1]
         # make sure the placement is min 0.05 and max 0.1
         x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
@@ -232,7 +239,7 @@ class CanvasImage:
             fig.update(data=[{'customdata': None}])
             new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
         fig.update_traces(hovertemplate=new_hover)
-        return fig
+        return fig.to_dict()
 
     def get_shape(self):
         return self.image.shape
@@ -296,7 +303,7 @@ class CanvasLayout:
                                         invert=invert_annot)
 
         fig.update_layout(newshape=dict(line=dict(color="white")))
-        return fig
+        return fig.to_dict()
 
     def add_legend_text(self, legend_text, x_axis_placement, legend_size):
         fig = go.Figure(self.figure)
@@ -310,7 +317,7 @@ class CanvasLayout:
                                    # yanchor='bottom',
                                    bgcolor="black",
                                    showarrow=False)
-        return fig
+        return fig.to_dict()
     def toggle_legend(self, toggle_legend: bool, legend_text, x_axis_placement, legend_size):
         """
         Modify the legend text for the figure, or remove the legend

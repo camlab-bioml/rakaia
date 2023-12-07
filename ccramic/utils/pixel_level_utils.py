@@ -11,6 +11,7 @@ from dash.exceptions import PreventUpdate
 import cv2
 import re
 import random
+import numexpr as ne
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -48,6 +49,9 @@ def generate_default_swatches(config):
 
 
 def recolour_greyscale(array, colour):
+    """
+    Convert a greyscale image into an RGB with a designated colour
+    """
     if colour not in ['#ffffff', '#FFFFFF']:
         image = Image.fromarray(array)
         image = image.convert('RGB')
@@ -61,7 +65,6 @@ def recolour_greyscale(array, colour):
         new_array[:, :, 2] = blue
 
         converted = new_array * (np.array(image) / 255)
-        # print(converted)
         return converted.astype(np.uint8)
 
     else:
@@ -391,3 +394,12 @@ def random_hex_colour_generator(number=10):
             colours.append(colour)
             index += 1
     return colours
+
+
+def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
+    image_shape = layer_dict[channel_list[0]].shape
+    image = np.zeros(image_shape)
+    for elem in channel_list:
+        blend = layer_dict[elem]
+        image = ne.evaluate("image + blend")
+    return image.astype(np.float32)

@@ -1,5 +1,6 @@
 
 import os.path
+
 import dash.exceptions
 import dash_uploader as du
 import flask
@@ -644,6 +645,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
+
                     return current_blend_dict, Serverside(all_layers)
                 else:
                     raise PreventUpdate
@@ -914,6 +916,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         else:
             raise PreventUpdate
 
+    @dash_app.callback(
+        Output('channel-order', 'data'),
+        Input('set-sort', 'n_clicks'),
+        State('blend-options-ag-grid', 'virtualRowData'),
+        State('channel-order', 'data'),
+        Input('image_layers', 'value'),
+        State('alias-dict', 'data'),
+        prevent_initial_call=True)
+    def set_channel_sorting(nclicks, rowdata, channel_order, current_blend, aliases):
+        """
+        Set the channel order in a dcc Store based on the dash ag grid or adding/removing a channel from the list
+        """
+        return set_channel_list_order(nclicks, rowdata, channel_order, current_blend, aliases, ctx.triggered_id)
+
     @dash_app.callback(Output('annotation_canvas', 'figure'),
                        # Output('annotation_canvas', 'relayoutData'),
                        Output('current_canvas_image', 'data'),
@@ -975,9 +991,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # do not update if the trigger is a global filter and the filter is not applied
         global_not_enabled = ctx.triggered_id in ["global-filter-type", "global-kernel-val-filter",
                                                   "global-sigma-val-filter"] and not global_apply_filter
+        channel_order_same = ctx.triggered_id in ["channel-order"] and channel_order == currently_selected
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
-                len(channel_order) > 0 and not global_not_enabled:
+                len(channel_order) > 0 and not global_not_enabled and not channel_order_same:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             # try:
             #     cur_graph['layout']['shapes'] = [shape for shape in cur_graph_layout['layout']['shapes'] if \
@@ -1150,7 +1167,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # fig.update_traces(hovertemplate=new_hover)
                 # # fig.update_layout(dragmode="zoom")
                 return fig, Serverside(canvas.get_image())
-            except (ValueError, AttributeError, KeyError, IndexError) as e:
+            except (ValueError, AttributeError, KeyError, IndexError):
                 raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
@@ -2608,20 +2625,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return [], []
         else:
             raise PreventUpdate
-
-    @dash_app.callback(
-        Output('channel-order', 'data'),
-        Input('set-sort', 'n_clicks'),
-        State('blend-options-ag-grid', 'virtualRowData'),
-        State('channel-order', 'data'),
-        Input('image_layers', 'value'),
-        State('alias-dict', 'data'),
-        prevent_initial_call=True)
-    def set_channel_sorting(nclicks, rowdata, channel_order, current_blend, aliases):
-        """
-        Set the channel order in a dcc Store based on the dash ag grid or adding/removing a channel from the list
-        """
-        return set_channel_list_order(nclicks, rowdata, channel_order, current_blend, aliases, ctx.triggered_id)
 
     @dash_app.callback(
         Output("inputs-offcanvas", "is_open"),

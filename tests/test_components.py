@@ -44,7 +44,7 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
-    assert isinstance(canvas_fig, go.Figure)
+    assert isinstance(canvas_fig, dict)
 
     global_filter_type = "median"
     global_filter_val = 3
@@ -56,7 +56,7 @@ def test_basic_canvas_image():
                          global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
-    assert isinstance(canvas_fig, go.Figure)
+    assert isinstance(canvas_fig, dict)
 
 
 
@@ -73,7 +73,7 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     assert isinstance(canvas_2, CanvasImage)
     canvas_fig = canvas_2.generate_canvas()
-    assert isinstance(canvas_fig, go.Figure)
+    assert isinstance(canvas_fig, dict)
 
 
     cur_graph = px.imshow(canvas.get_image())
@@ -87,7 +87,7 @@ def test_basic_canvas_image():
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     canvas_fig_3 = canvas_3.generate_canvas()
-    assert isinstance(canvas_fig_3, go.Figure)
+    assert isinstance(canvas_fig_3, dict)
 
 
     cur_graph = {'data': {'customdata': np.full((100, 100), 10)}, 'layout': {'uirevision': True}}
@@ -99,7 +99,7 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
 
     canvas_fig_4 = canvas_4.generate_canvas()
-    assert isinstance(canvas_fig_4, go.Figure)
+    assert isinstance(canvas_fig_4, dict)
 
     cur_graph = {'data': {'customdata': None}, 'layout': {'uirevision': True}}
     canvas_5 = CanvasImage(canvas_layers, data_selection, currently_selected,
@@ -110,7 +110,7 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
 
     canvas_fig_5 = canvas_5.generate_canvas()
-    assert isinstance(canvas_fig_5, go.Figure)
+    assert isinstance(canvas_fig_5, dict)
 
     add_cell_id_hover = []
     canvas_6 = CanvasImage(canvas_layers, data_selection, currently_selected,
@@ -120,7 +120,7 @@ def test_basic_canvas_image():
                            show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     canvas_fig_6 = canvas_6.generate_canvas()
-    assert isinstance(canvas_fig_6, go.Figure)
+    assert isinstance(canvas_fig_6, dict)
 
     cur_graph = {'data': {'customdata': None}, 'layout': {'uirevision': True, 'shapes': [{'fake_key': 'fake_val'}]}}
     canvas_7 = CanvasImage(canvas_layers, data_selection, currently_selected,
@@ -130,7 +130,7 @@ def test_basic_canvas_image():
                            show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     canvas_fig_7 = canvas_7.generate_canvas()
-    assert isinstance(canvas_fig_7, go.Figure)
+    assert isinstance(canvas_fig_7, dict)
 
 
 def test_canvas_layout_editor(get_current_dir):
@@ -146,7 +146,7 @@ def test_canvas_layout_editor(get_current_dir):
     fig = go.Figure(px.imshow(image))
     assert len(fig['layout']['annotations']) == 0
 
-    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    fig = go.Figure(CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12))
     assert len(fig['layout']['annotations']) > 0
 
     # update the layout to mimic a zoom to change the scalebar value

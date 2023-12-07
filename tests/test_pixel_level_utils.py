@@ -23,7 +23,8 @@ from ccramic.utils.pixel_level_utils import (
     apply_preset_to_blend_dict,
     is_rgb_color,
     generate_default_swatches,
-    random_hex_colour_generator)
+    random_hex_colour_generator,
+    get_additive_image)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -426,3 +427,23 @@ def test_random_colour_selector():
     assert DEFAULT_COLOURS[1] == blend_dict['Cytoplasm']['color']
     blend_dict = select_random_colour_for_channel(blend_dict, "Nuclear", DEFAULT_COLOURS)
     assert DEFAULT_COLOURS[0] == blend_dict['Nuclear']['color']
+
+
+def test_get_additive_image():
+    layer_dict = {"channel_1": np.full((200, 200, 3), 3),
+                  "channel_2": np.full((200, 200, 3), 6),
+                  "channel_3": np.full((200, 200, 3), 9)}
+
+    additive = get_additive_image(layer_dict, list(layer_dict.keys()))
+    assert np.max(additive) == 18.0
+    assert np.min(additive) == 18.0
+    assert np.mean(additive) == 18.0
+
+    layer_dict = {"channel_1": np.full((200, 200, 3), 1000),
+                  "channel_2": np.full((200, 200, 3), 2000),
+                  "channel_3": np.full((200, 200, 3), 3000)}
+
+    additive = get_additive_image(layer_dict, list(layer_dict.keys()))
+    assert np.max(additive) == 6000.0
+    assert np.min(additive) == 6000.0
+    assert np.mean(additive) == 6000.0
