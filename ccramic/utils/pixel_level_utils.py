@@ -403,3 +403,12 @@ def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
         blend = layer_dict[elem]
         image = ne.evaluate("image + blend")
     return image.astype(np.float32)
+
+def get_first_image_from_roi_dictionary(roi_dictionary):
+    """
+    Return the first image in a dictionary that specifies an ROI. This assumes that
+    all of the other channel arrays in the dictionary have the same shape
+    """
+    first_image_name = list(roi_dictionary.keys())[0]
+    image_for_validation = roi_dictionary[first_image_name]
+    return image_for_validation

@@ -1,6 +1,5 @@
 
 import os.path
-
 import dash.exceptions
 import dash_uploader as du
 import flask
@@ -34,7 +33,8 @@ from ccramic.utils.pixel_level_utils import (
     validate_incoming_metadata_table,
     make_metadata_column_editable,
     path_to_mask,
-    create_new_coord_bounds)
+    create_new_coord_bounds,
+    get_first_image_from_roi_dictionary)
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
@@ -335,8 +335,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     if all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
                         # get the first image in the ROI and check the dimensions
-                        first_image = list(image_dict[data_selection].keys())[0]
-                        first_image = image_dict[data_selection][first_image]
+                        first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
                         # if the new dimensions match, do not update the canvas child
                         if cur_dimensions is not None and (first_image.shape[0] == cur_dimensions[0]) and \
@@ -1390,8 +1389,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # legend is y = 0.05
             cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
-            first_image = list(image_dict[data_selection].keys())[0]
-            first_image = image_dict[data_selection][first_image]
+            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             image_shape = first_image.shape
             x_axis_placement = 0.00001 * image_shape[1]
             # make sure the placement is min 0.05 and max 0.1
@@ -1630,9 +1628,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
 
-            first_image = list(uploaded[data_selection].keys())[0]
-            first_image = uploaded[data_selection][first_image]
-
+            first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
 
             # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
@@ -1775,8 +1771,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         #         add_layer is not None and value is not None:
         if None not in (add_layer, value, data_selection, image_dict):
             try:
-                first_image = list(image_dict[data_selection].keys())[0]
-                first_image = image_dict[data_selection][first_image]
+                first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
                 aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
             except (KeyError, AttributeError):
                 aspect_ratio = 1
@@ -2784,8 +2779,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         must fit inside the dimensions of the current image
         """
         if None not in (imported_annotations, image_dict, data_selection, cur_graph):
-            first_image = list(image_dict[data_selection].keys())[0]
-            first_image = image_dict[data_selection][first_image]
+            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             fig = CanvasLayout(cur_graph).add_point_annotations_as_circles(imported_annotations, first_image, circle_size)
             return fig
         else:

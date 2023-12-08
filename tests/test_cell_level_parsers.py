@@ -1,10 +1,5 @@
 import pytest
-
-import numpy as np
-import pandas as pd
-import os
 from dash_uploader import UploadStatus
-from dash.exceptions import PreventUpdate
 import dash_extensions
 from ccramic.parsers.cell_level_parsers import *
 
@@ -21,8 +16,7 @@ def test_validation_of_measurements_csv(get_current_dir):
     assert valid_bad is None
     assert err is None
 
-    fake_image = np.empty((1490, 93, 3))
-    valid, err = validate_incoming_measurements_csv(measurements_csv, current_image=fake_image)
+    valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None
     assert err is None
 
@@ -134,6 +128,10 @@ def test_mask_match_to_roi_name():
 
     data_selection_2 = "roi_1+++slide0+++roi_1"
     assert match_mask_name_with_roi(data_selection_2, mask_options, None) == "roi_1"
+
+    data_selection = "MCD1+++slide0+++roi_1"
+    mask_options = ["roi_1_mask", "roi_2_mask"]
+    assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1_mask"
 
     dataset_options = ["round_1", "round_2", "round_3", "round_4"]
     mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]

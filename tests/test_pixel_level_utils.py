@@ -24,7 +24,8 @@ from ccramic.utils.pixel_level_utils import (
     is_rgb_color,
     generate_default_swatches,
     random_hex_colour_generator,
-    get_additive_image)
+    get_additive_image,
+    get_first_image_from_roi_dictionary)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -447,3 +448,11 @@ def test_get_additive_image():
     assert np.max(additive) == 6000.0
     assert np.min(additive) == 6000.0
     assert np.mean(additive) == 6000.0
+
+def test_retrieval_first_roi_dict_image():
+    layer_dict = {"channel_1": np.full((200, 200, 3), 1000),
+                  "channel_2": np.full((200, 200, 3), 2000),
+                  "channel_3": np.full((200, 200, 3), 3000)}
+    first_array = get_first_image_from_roi_dictionary(layer_dict)
+    assert first_array.shape == (200, 200, 3)
+    assert np.mean(first_array) == 1000

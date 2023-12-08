@@ -7,18 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.0] - 2023-11-28
+## [0.11.0] - 2023-12-08
 
 ### Changed
 
 - Added persistence variable logging to select variables (session + canvas
 appearance) that are cached in the browser for future sessions based on user preferences
+- Additive image blending for channels is now handled through `numexpr` instead of numpy
+for faster performance
 
 ### Added
 
 - Toggle feature to cast the canvas legend as horizontal instead of vertical
   (horizontal = all channel names on one line)
 - Added ability to add custom colour swatches through CLI as a comma separated string #81
+- Added ability to upload cluster assignments in CSV format to annotate an applied mask
+by colour (auto-generated or default random) #82
+
+### Fixed
+
+- Fixed extraneous callback on the canvas redraw the channel order is triggered
+but the order has not changed
 
 ## [0.10.0] - 2023-11-27
 

@@ -57,8 +57,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
         raise PreventUpdate
 
 
-def validate_incoming_measurements_csv(measurements_csv, current_image=None, validate_with_image=True,
-                                       required_columns=set_mandatory_columns()):
+def validate_incoming_measurements_csv(measurements_csv, required_columns=set_mandatory_columns()):
     """
     Validate an incoming measurements CSV against the current canvas, and ensure that it has the required
     information columns
@@ -109,7 +108,7 @@ def get_quantification_filepaths_from_drag_and_drop(status):
         raise PreventUpdate
 
 
-def parse_and_validate_measurements_csv(session_dict, error_config=None, image_to_validate=None,
+def parse_and_validate_measurements_csv(session_dict, error_config=None,
                                         use_percentile=False):
     """
     Validate the measurements CSV and return a clean version
@@ -117,8 +116,7 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, image_t
     """
     if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
         if str(session_dict['uploads'][0]).endswith('.csv'):
-            quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
-                                            current_image=image_to_validate, validate_with_image=True)
+            quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]))
         elif str(session_dict['uploads'][0]).endswith('.h5ad'):
             quantification_worksheet, warning = validate_quantification_from_anndata(session_dict['uploads'][0])
         else:
@@ -290,16 +288,8 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
     if mask_options is not None and data_selection in mask_options:
         mask_return = data_selection
     else:
-        if "+++" in data_selection:
-            exp, slide, acq = split_string_at_pattern(data_selection)
-            if mask_options is not None and exp in mask_options:
-                mask_return = exp
-            elif mask_options is not None and acq in mask_options:
-                mask_return = acq
-
-        # if the return value is still None, look for indices
-        if mask_return is None and mask_options is not None and roi_options is not None:
-            # try to match the index of the data selection to an index in the mask options
+        # first, check to see if the pattern matches based on the pipeline mask name output
+        if mask_options is not None and roi_options is not None:
             data_index = roi_options.index(data_selection)
             for mask in mask_options:
                 try:
@@ -311,6 +301,19 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                         mask_return = mask
                 except (TypeError, IndexError, ValueError):
                     pass
+        if mask_return is None and "+++" in data_selection:
+            exp, slide, acq = split_string_at_pattern(data_selection)
+            if mask_options is not None and exp in mask_options:
+                mask_return = exp
+            elif mask_options is not None and acq in mask_options:
+                mask_return = acq
+            # begin looking for partial matches if not direct match between experiment/ROI name and mask
+            elif mask_options is not None:
+                for mask_name in mask_options:
+                    # check if any overlap with the mask options and the current data selection
+                    # IMP: assumes that the mask name contains all of the experiment or ROI name somewhere in the label
+                    if exp in mask_name or acq in mask_name:
+                        mask_return = mask_name
     return mask_return
 
 
@@ -323,22 +326,29 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sa
     if mask_selection in cell_id_list:
         sam_id = mask_selection
     else:
-        try:
-            split_1 = mask_selection.split("_ac_IA_mask")[0]
-            # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
-            index = int(split_1.split("_")[-1].replace("a", ""))
-            for sample in sorted(cell_id_list):
-                if sample == mask_selection:
-                    sam_id = sample
-                elif sample_col_id == "sample":
-                    split = sample.split("_")
-                    try:
-                        if int(split[-1]) == int(index):
-                            sam_id = sample
-                    except ValueError:
-                        pass
-            return sam_id
-        except (KeyError, TypeError):
+        # if this pattern exists, try to match to the sample name by index
+        # otherwise, try matching directly by name
+        if "_ac_IA_mask" in mask_selection:
+            try:
+                split_1 = mask_selection.split("_ac_IA_mask")[0]
+                # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
+                index = int(split_1.split("_")[-1].replace("a", ""))
+                for sample in sorted(cell_id_list):
+                    if sample == mask_selection:
+                        sam_id = sample
+                    elif sample_col_id == "sample":
+                        split = sample.split("_")
+                        try:
+                            if int(split[-1]) == int(index):
+                                sam_id = sample
+                        except ValueError:
+                            pass
+                return sam_id
+            except (KeyError, TypeError):
+                pass
+        # otherwise, try to match the mask name exactly
+        else:
+            #TODO: implement logic for finding partial mask matches to quantificcation sheets
             pass
     return sam_id
 

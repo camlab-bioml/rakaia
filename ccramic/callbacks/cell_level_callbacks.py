@@ -21,6 +21,7 @@ from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
     generate_umap_plot,
     )
+from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
     callback_remove_canvas_annotation_shapes)
@@ -58,23 +59,18 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('session_config_quantification', 'data'),
                        State('session_alert_config', 'data'),
-                       State('uploaded_dict', 'data'),
-                       State('data-collection', 'value'),
                        prevent_initial_call=True)
-    def populate_quantification_table_from_upload(session_dict, error_config, upload_dict, data_selection):
-        if None not in (data_selection, upload_dict):
-            first_image = list(upload_dict[data_selection].keys())[0]
-            image_for_validation = upload_dict[data_selection][first_image]
+    def populate_quantification_table_from_upload(session_dict, error_config):
+        if session_dict is not None:
+            quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config)
+            return Serverside(quant_dict), cols, alert
         else:
-            image_for_validation = None
-        quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config,
-                                                   image_to_validate=image_for_validation)
-        return Serverside(quant_dict), cols, alert
+            raise PreventUpdate
 
     @du.callback(Output('umap-projection', 'data'),
                  id='upload-umap-coordinates')
     # @cache.memoize())
-    def get_quantification_upload_from_drag_and_drop(status: du.UploadStatus):
+    def get_umap_upload_from_drag_and_drop(status: du.UploadStatus):
         uploader = DashUploaderFileReader(status)
         files = uploader.return_filenames()
         if files:
@@ -295,7 +291,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
 
-
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
     # @cache.memoize())
@@ -451,8 +446,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                                  data_selection, image_dict, mask_dict, apply_mask, mask_selection):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
-            first_image = list(image_dict[data_selection].keys())[0]
-            first_image = image_dict[data_selection][first_image]
+            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
