@@ -396,7 +396,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 mask_selection, sample_name=sample_name, id_column=id_column)
         return Serverside(quant_frame), annotations
 
-
     @dash_app.callback(
         Output("download-edited-annotations", "data"),
         Input("btn-download-annotations", "n_clicks"),

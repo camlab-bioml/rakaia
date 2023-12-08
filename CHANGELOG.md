@@ -15,6 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 appearance) that are cached in the browser for future sessions based on user preferences
 - Additive image blending for channels is now handled through `numexpr` instead of numpy
 for faster performance
+- Modify pattern matching for mask names to ROI names in datasets and quantification sheets to include partial match of
+mask to ROI
 
 ### Added
 

@@ -160,6 +160,17 @@ def test_match_mask_name_to_quantification_sheet_roi():
     samples_no_index= ["sampletest"]
     assert match_mask_name_to_quantification_sheet_roi("sampletest", samples_no_index) == "sampletest"
 
+    # assert partial match of the cell id ROI name to mask name works
+    mask_name = "Kidney7_Sector2Row9Column6_SlideStart_mask"
+    cell_id_list = ["Kidney7_Sector2Row9Column6_SlideStart", "Other"]
+    assert match_mask_name_to_quantification_sheet_roi(mask_name, cell_id_list) == "Kidney7_Sector2Row9Column6_SlideStart"
+
+    # assert that when the partial match doesn't work, it is None
+    mask_name = "Kidney6_Sector2Row9Column6_SlideStart_mask"
+    cell_id_list = ["Kidney7_Sector2Row9Column6_SlideStart", "Other"]
+    assert match_mask_name_to_quantification_sheet_roi(mask_name, cell_id_list) is None
+
+
 
 def test_validate_xy_coordinates_for_image():
     image = np.full((1000, 100, 3), 255)

@@ -241,7 +241,7 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
         measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
                                                (measurements[id_column] == sample_name), cell_type,
                                                measurements[annotation_column])
-    except KeyError as e:
+    except KeyError:
         pass
     return measurements
 
@@ -464,7 +464,7 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
-    prioritized as the name of the ROI, and sample is the fiel name with a 1-indxed counter such as {file_name}_1
+    prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1
     """
     quantification_frame = pd.DataFrame(quantification_frame)
     exp, slide, acq = split_string_at_pattern(data_selection)
