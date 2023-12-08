@@ -47,7 +47,8 @@ def test_basic_canvas_image():
     assert isinstance(canvas_fig, dict)
 
     global_filter_type = "median"
-    global_filter_val = 3
+    global_filter_val = 33
+
     canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
@@ -131,6 +132,25 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
     canvas_fig_7 = canvas_7.generate_canvas()
     assert isinstance(canvas_fig_7, dict)
+
+    canvas_layers = {"roi_1": {"channel_1": np.full((100, 100, 3), 10),
+                               "channel_2": np.full((100, 100, 3), 20), "channel_3": np.full((100, 100, 3), 30)}}
+    cluster_frame = {'cell_id': list(range(1, 10, 1)),
+                                 'cluster': ['Cluster_1'] * 9}
+    cluster_assignments_dict = {"roi_1": {"Cluster_1": '#FFFFFF'}}
+    apply_cluster_on_mask = True
+    mask_config = {"roi_1": {"array": np.full((100, 100), 1), "boundary": np.zeros((100, 100, 3)),
+                             "raw": np.full((100, 100), 1).astype(np.float32)}}
+    overlay_grid = [' overlay grid']
+    canvas_8 = CanvasImage(canvas_layers, data_selection, currently_selected,
+                           mask_config, mask_selection, mask_blending_level,
+                           overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                           legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                           global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
+                           cluster_frame)
+    canvas_fig_8 = canvas_8.generate_canvas()
+    assert isinstance(canvas_fig_8, dict)
 
 
 def test_canvas_layout_editor(get_current_dir):

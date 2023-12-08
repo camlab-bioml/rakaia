@@ -1,3 +1,4 @@
+import dash.exceptions
 import pytest
 
 import os
@@ -93,6 +94,19 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                     quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]
     assert list(quantification_frame[
                     quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
+
+    with pytest.raises(dash.exceptions.PreventUpdate):
+        quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                    measurements.to_dict(orient="records"),b"roi_1", None, False,
+                                    None,sample_name='Dilution_series_1_1')
+
+    assert len(quantification_frame[
+                   quantification_frame["ccramic_cell_annotation"] == "mature"]) == 2
+    assert list(quantification_frame[
+                    quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]
+    assert list(quantification_frame[
+                    quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
+
 
     annotations_dict = {'roi_1': {
         "{'points': [{'x': 534, 'y': 648}]}":

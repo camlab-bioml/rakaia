@@ -2,6 +2,7 @@ import pytest
 from dash_uploader import UploadStatus
 import dash_extensions
 from ccramic.parsers.cell_level_parsers import *
+import scanpy as sc
 
 def test_validation_of_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -170,10 +171,19 @@ def test_match_mask_name_to_quantification_sheet_roi():
     cell_id_list = ["Kidney7_Sector2Row9Column6_SlideStart", "Other"]
     assert match_mask_name_to_quantification_sheet_roi(mask_name, cell_id_list) is None
 
-
-
 def test_validate_xy_coordinates_for_image():
     image = np.full((1000, 100, 3), 255)
     assert validate_coordinate_set_for_image(x=10, y=10, image=image)
     assert not validate_coordinate_set_for_image(x=101, y=10, image=image)
     assert not validate_coordinate_set_for_image()
+
+def test_parse_quantification_sheet_from_anndata(get_current_dir):
+    anndata = os.path.join(get_current_dir, "quantification_anndata.h5ad")
+    quant_sheet = parse_quantification_sheet_from_h5ad(anndata)
+    assert quant_sheet.shape == (1445, 24)
+    assert 'cell_id' in quant_sheet.columns
+    assert 'sample' in quant_sheet.columns
+
+    # check that the correct columns get dropped before UMAP computation
+    cols_drop = set_columns_to_drop(quant_sheet)
+    assert cols_drop == ['cell_id', 'sample', 'x', 'y', 'size', 'leiden', 'cluster_id']

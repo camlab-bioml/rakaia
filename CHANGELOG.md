@@ -25,6 +25,7 @@ mask to ROI
 - Added ability to add custom colour swatches through CLI as a comma separated string #81
 - Added ability to upload cluster assignments in CSV format to annotate an applied mask
 by colour (auto-generated or default random) #82
+- First draft: ability to read in quantification sheets from anndata/h5ad #54
 
 ### Fixed
 

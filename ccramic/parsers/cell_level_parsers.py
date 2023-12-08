@@ -14,6 +14,7 @@ from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import anndata
 import sys
 from sklearn.preprocessing import StandardScaler
+import scanpy as sc
 
 def drop_columns_from_measurements_csv(measurements_csv):
     cols_to_drop = set_columns_to_drop(measurements_csv)
@@ -118,7 +119,9 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None,
         if str(session_dict['uploads'][0]).endswith('.csv'):
             quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]))
         elif str(session_dict['uploads'][0]).endswith('.h5ad'):
-            quantification_worksheet, warning = validate_quantification_from_anndata(session_dict['uploads'][0])
+            # TODO: add parsing function for h5ad
+            quantification_worksheet, warning = validate_quantification_from_anndata(
+                parse_quantification_sheet_from_h5ad(session_dict['uploads'][0]))
         else:
             quantification_worksheet, warning = None, "Error: could not find a valid quantification sheet."
         # TODO: establish where to use the percentile filtering on the measurements
@@ -184,8 +187,11 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
 
 
 def validate_quantification_from_anndata(anndata_obj, required_columns=set_mandatory_columns()):
-    obj = anndata.read_h5ad(anndata_obj)
-    frame = pd.DataFrame(obj.obs)
+    if isinstance(anndata_obj, str):
+        obj = anndata.read_h5ad(anndata_obj)
+        frame = pd.DataFrame(obj.obs)
+    else:
+        frame = anndata_obj
     if not all([column in frame.columns for column in required_columns]):
         return None, None
     else:
@@ -368,3 +374,16 @@ def validate_coordinate_set_for_image(x=None, y=None, image=None):
         return int(x) <= image.shape[1] and int(y) <= image.shape[0]
     else:
         return False
+
+def parse_quantification_sheet_from_h5ad(h5ad_file):
+    """
+    Parse the quantification results from an h5ad files. Assumes the following format:
+    - Channel expression is held as an array in h5ad_file.X
+    - Channel names are held in h5ad_file.var_names
+    - Additional metadata variables are held in h5ad_file.obs
+    """
+    quantification_frame = sc.read_h5ad(h5ad_file)
+    expression = pd.DataFrame(quantification_frame.X, columns=list(quantification_frame.var_names)).reset_index(
+        drop=True)
+    # return the merged version of the data frames to mimic the pipeline
+    return expression.join(quantification_frame.obs.reset_index(drop=True))

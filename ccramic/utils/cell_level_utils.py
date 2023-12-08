@@ -25,13 +25,14 @@ def set_columns_to_drop(measurements_csv=None):
         # drop every column from sample and after, as these don't represent channels
         try:
             cols = list(measurements_csv.columns)
-            return cols[cols.index('sample'): len(cols)]
+            index_find = min(cols.index('sample'), cols.index('cell_id'))
+            return cols[index_find: len(cols)]
         except (ValueError, IndexError):
             return defaults
 
 def set_mandatory_columns(only_sample=True):
     if only_sample:
-        return ['sample']
+        return ['sample', 'cell_id']
     else:
         return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
