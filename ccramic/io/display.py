@@ -85,28 +85,18 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
     elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
             all([elem in graph_layout for elem in modified_rect_keys]):
         try:
-            assert all([elem >= 0 for elem in graph_layout.keys() if isinstance(elem, float)])
-            x_range_low = math.ceil(int(graph_layout['shapes[1].x0']))
-            x_range_high = math.ceil(int(graph_layout['shapes[1].x1']))
-            y_range_low = math.ceil(int(graph_layout['shapes[1].y0']))
-            y_range_high = math.ceil(int(graph_layout['shapes[1].y1']))
-            assert x_range_high >= x_range_low
-            assert y_range_high >= y_range_low
-
             mean_panel = []
             max_panel = []
             min_panel = []
             aliases = []
-            for layer in layers:
-                mean_exp, max_xep, min_exp = get_area_statistics_from_rect(upload[data_selection][layer],
-                                                                           x_range_low,
-                                                                           x_range_high,
-                                                                           y_range_low, y_range_high)
-                mean_panel.append(round(float(mean_exp), 2))
-                max_panel.append(round(float(max_xep), 2))
-                min_panel.append(round(float(min_exp), 2))
-                aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
 
+            for layer in layers:
+                region_shape = RectangleRegion(upload[data_selection][layer], graph_layout,
+                                               reg_type="rect", redrawn=True)
+                mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
+                max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
+                min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
             layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
 
             return pd.DataFrame(layer_dict).to_dict(orient='records')
@@ -125,13 +115,11 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
             aliases = []
             for layer in layers:
                 for shape_path in graph_layout.values():
-                    mean_exp, max_xep, min_exp = get_area_statistics_from_closed_path(
-                        upload[data_selection][layer], shape_path)
-                    mean_panel.append(round(float(mean_exp), 2))
-                    max_panel.append(round(float(max_xep), 2))
-                    min_panel.append(round(float(min_exp), 2))
+                    region_shape = FreeFormRegion(upload[data_selection][layer], shape_path)
+                    mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
+                    max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
+                    min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
                 aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-
             layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
 
             return pd.DataFrame(layer_dict).to_dict(orient='records')

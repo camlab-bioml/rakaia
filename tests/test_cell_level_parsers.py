@@ -1,3 +1,5 @@
+import dash
+import pandas as pd
 import pytest
 from dash_uploader import UploadStatus
 import dash_extensions
@@ -50,6 +52,20 @@ def test_parsing_incoming_measurements_csv(get_current_dir):
     assert isinstance(validated_measurements, list)
     for elem in validated_measurements:
         assert isinstance(elem, dict)
+
+    measurements_dict = {"uploads": [os.path.join(get_current_dir, "quantification_anndata.h5ad")]}
+    validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
+    assert isinstance(validated_measurements, list)
+    for elem in validated_measurements:
+        assert isinstance(elem, dict)
+
+    # assert that a fake sheet returns the appropriate updates
+
+    measurements_dict = {"uploads": [os.path.join(get_current_dir, "this_file_is_fake.txt")]}
+    validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
+    assert validated_measurements is None
+    assert err is not None
+
     with pytest.raises(PreventUpdate):
         parse_and_validate_measurements_csv(None)
     with pytest.raises(PreventUpdate):
@@ -73,7 +89,7 @@ def test_read_in_mask_from_filepath(get_current_dir):
     masks_dict_2 = {"mask_1": os.path.join(get_current_dir, "mask.tiff"),
                     "mask_2": os.path.join(get_current_dir, "mask.tiff")}
     # TODO: validate the read_in_mask_array_from_filepath function
-    mask_return = read_in_mask_array_from_filepath(masks_dict_2, "mask", 1, None, True)
+    mask_return = read_in_mask_array_from_filepath(masks_dict_2, "mask", 1, None, False)
     assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
     assert isinstance(mask_return[1], list)
     assert 'mask_2' in mask_return[1]
@@ -187,3 +203,12 @@ def test_parse_quantification_sheet_from_anndata(get_current_dir):
     # check that the correct columns get dropped before UMAP computation
     cols_drop = set_columns_to_drop(quant_sheet)
     assert cols_drop == ['cell_id', 'sample', 'x', 'y', 'size', 'leiden', 'cluster_id']
+
+    anndata_frame, placeholder = validate_quantification_from_anndata(anndata)
+    assert anndata_frame.shape == (1445, 7)
+
+def test_return_umap_dataframe_from_quantification_dict(get_current_dir):
+    quant_sheet = pd.DataFrame({'Channel_1': [1, 2, 3, 4, 5, 6], 'Channel_2': [1, 2, 3, 4, 5, 6]})
+    cur_umap = pd.DataFrame({'UMAP1': [1, 2, 3, 4, 5, 6], 'UMAP2': [1, 2, 3, 4, 5, 6]})
+    umap, cols = return_umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False)
+    assert isinstance(umap, dash._callback.NoUpdate)

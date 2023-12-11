@@ -618,7 +618,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
     @dash_app.callback(Input('imported-cluster-frame', 'data'),
-                       State('data-collection', 'value'),
+                 State('data-collection', 'value'),
                  Output('cluster-colour-assignments-dict', 'data'),
                 Output('cluster-label-list', 'options'))
     # @cache.memoize())
@@ -633,19 +633,32 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
-    @dash_app.callback(Output('cluster-assignments', 'children'),
+    @dash_app.callback(Input('data-collection', 'value'),
+                       State('cluster-colour-assignments-dict', 'data'),
+                       Output('cluster-label-list', 'options', allow_duplicate=True))
+    # @cache.memoize())
+    def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame):
+        if None not in (data_selection, cluster_frame) and data_selection in cluster_frame.keys():
+            return list(cluster_frame[data_selection].keys())
+        else:
+            return []
+
+    @dash_app.callback(Output('cluster-assignments', 'children', allow_duplicate=True),
                        Input('cluster-colour-assignments-dict', 'data'),
-                       State('data-collection', 'value'))
+                       Input('data-collection', 'value'))
     def render_cluster_colour_legend(cluster_assignments_dict, data_selection):
         """
         render the html H6 html span legend for the cluster annotation colours
         """
         if None not in (cluster_assignments_dict, data_selection):
-            children = [html.Span("Cluster assignments\n", style={"color": "black"}), html.Br()]
-            for key, value in cluster_assignments_dict[data_selection].items():
-                children.append(html.Span(f"{str(key)}\n", style={"color": str(value)}))
-                children.append(html.Br())
-            return children
+            if data_selection in cluster_assignments_dict:
+                children = [html.Span("Cluster assignments\n", style={"color": "black"}), html.Br()]
+                for key, value in cluster_assignments_dict[data_selection].items():
+                    children.append(html.Span(f"{str(key)}\n", style={"color": str(value)}))
+                    children.append(html.Br())
+                return children
+            else:
+                return []
         else:
             raise PreventUpdate
 

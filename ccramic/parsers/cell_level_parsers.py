@@ -127,14 +127,15 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None,
         # TODO: establish where to use the percentile filtering on the measurements
         measurements_return = filter_measurements_csv_by_channel_percentile(
             quantification_worksheet).to_dict(orient="records") if use_percentile else \
-            quantification_worksheet.to_dict(orient="records")
+            quantification_worksheet.to_dict(orient="records") if quantification_worksheet is not None else None
+        cols_return = quantification_worksheet.columns if quantification_worksheet is not None else None
         warning_return = dash.no_update
         if warning is not None:
             if error_config is None:
                 error_config = {"error": None}
             error_config["error"] = warning
             warning_return = error_config
-        return measurements_return, quantification_worksheet.columns, warning_return
+        return measurements_return, cols_return, warning_return
     else:
         raise PreventUpdate
 

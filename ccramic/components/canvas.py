@@ -64,7 +64,9 @@ class CanvasImage:
         #              elem in self.canvas_layers[self.data_selection].keys()], axis=0).astype(np.float32)
         # else:
         #     image = self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
-        image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected)
+        image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
+            len(self.currently_selected) > 1 else \
+            self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
         if len(self.global_apply_filter) > 0 and None not in (self.global_filter_type, self.global_filter_val) and \
                 int(self.global_filter_val) % 2 != 0:
             if self.global_filter_type == "median" and int(self.global_filter_val) >= 1:
@@ -84,7 +86,8 @@ class CanvasImage:
                     self.image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
                 # TODO: establish when to apply cluster mask
                 mask_level = float(self.mask_blending_level / 100) if self.mask_blending_level is not None else 1
-                if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame):
+                if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame) and \
+                        self.data_selection in self.cluster_assignments_dict.keys():
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
                                 self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
                     image = cv2.addWeighted(self.image.astype(np.uint8), 1,
