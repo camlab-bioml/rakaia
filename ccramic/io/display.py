@@ -2,7 +2,7 @@ import math
 from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
-from ccramic.utils.region import ZoomRegion, RectangleRegion, FreeFormRegion
+from ccramic.utils.region import RectangleRegion, FreeFormRegion
 
 def generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict,
                                        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]',
@@ -28,7 +28,7 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
                 # option 1: if the shape is drawn with a rectangle
                 if shape['type'] == 'rect':
                     for layer in layers:
-                        region_shape = RectangleRegion(upload[data_selection][layer], shape)
+                        region_shape = RectangleRegion(upload[data_selection][layer], shape, reg_type="rect")
                         mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                         max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                         min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
@@ -67,7 +67,7 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
             aliases = []
 
             for layer in layers:
-                region = ZoomRegion(upload[data_selection][layer], graph_layout)
+                region = RectangleRegion(upload[data_selection][layer], graph_layout, reg_type="zoom")
                 mean_panel.append(round(float(region.compute_pixel_mean()), 2))
                 max_panel.append(round(float(region.compute_pixel_max()), 2))
                 min_panel.append(round(float(region.compute_pixel_min()), 2))

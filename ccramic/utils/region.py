@@ -31,39 +31,17 @@ class ChannelRegion:
         """
         return self.max_exp
 
-class ZoomRegion(ChannelRegion):
+class RectangleRegion(ChannelRegion):
     """
     This class defines a channel region created using the zoom feature
     """
-    def __init__(self, channel_array, coordinates):
+    def __init__(self, channel_array, coordinates, reg_type="zoom"):
         super().__init__(channel_array, coordinates)
-        self.required_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-        if all([elem in self.coordinate_dict] for elem in self.required_keys):
-            try:
-                assert all([elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)])
-                x_range_low = math.ceil(int(self.coordinate_dict['xaxis.range[0]']))
-                x_range_high = math.ceil(int(self.coordinate_dict['xaxis.range[1]']))
-                y_range_low = math.ceil(int(self.coordinate_dict['yaxis.range[1]']))
-                y_range_high = math.ceil(int(self.coordinate_dict['yaxis.range[0]']))
-                assert x_range_high >= x_range_low
-                assert y_range_high >= y_range_low
-
-                self.mean_exp, self.max_exp, self.min_exp = get_area_statistics_from_rect(self.channel_array,
-                                                                                          x_range_low,
-                                                                                          x_range_high,
-                                                                                          y_range_low, y_range_high)
-            except AssertionError:
-                self.mean_exp, self.max_exp, self.min_exp = 0, 0, 0
-
-
-class RectangleRegion(ChannelRegion):
-    """
-    This class defines a channel region created using by drawing a rectangle
-    """
-    def __init__(self, channel_array, coordinates, first_draw=True):
-        super().__init__(channel_array, coordinates)
-        self.required_keys = ('x0', 'x1', 'y0', 'y1') if first_draw else ('shapes[1].x0', 'shapes[1].x1',
-                                                                          'shapes[1].y0', 'shapes[1].y1')
+        self.type = reg_type
+        if self.type == "zoom":
+            self.required_keys = ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]')
+        elif self.type == "rect":
+            self.required_keys = ('x0', 'x1', 'y0', 'y1')
         if all([elem in self.coordinate_dict] for elem in self.required_keys):
             try:
                 assert all([elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)])
@@ -78,7 +56,7 @@ class RectangleRegion(ChannelRegion):
                                                                                           x_range_low,
                                                                                           x_range_high,
                                                                                           y_range_low, y_range_high)
-            except AssertionError:
+            except (AssertionError, KeyError):
                 self.mean_exp, self.max_exp, self.min_exp = 0, 0, 0
 
 class FreeFormRegion(ChannelRegion):
