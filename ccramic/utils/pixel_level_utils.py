@@ -64,7 +64,7 @@ def recolour_greyscale(array, colour):
         new_array[:, :, 1] = green
         new_array[:, :, 2] = blue
 
-        converted = new_array * (np.array(image) / 255)
+        converted = ne.evaluate("new_array * image / 255")
         return converted.astype(np.uint8)
 
     else:
@@ -173,7 +173,7 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     else:
         scale_factor = 1
     if scale_factor > 0 and scale_factor != 1:
-        array = array * scale_factor
+        array = ne.evaluate("array * scale_factor")
     return array
 
 
