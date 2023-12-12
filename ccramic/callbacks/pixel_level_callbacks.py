@@ -1003,170 +1003,27 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation)
             try:
-                # image = sum([canvas_layers[data_selection][elem].astype(np.float32) for \
-                #              elem in currently_selected if \
-                #              elem in canvas_layers[data_selection].keys()]).astype(np.float32)
-                # image = np.clip(image, 0, 255)
-                # if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
-                #     if image.shape[0] == mask_config[mask_selection]["array"].shape[0] and \
-                #             image.shape[1] == mask_config[mask_selection]["array"].shape[1]:
-                #         # set the mask blending level based on the slider, by default use an equal blend
-                #         mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
-                #         image = cv2.addWeighted(image.astype(np.uint8), 1,
-                #                                 mask_config[mask_selection]["array"].astype(np.uint8), mask_level, 0)
-                #         if add_mask_boundary and mask_config[mask_selection]["boundary"] is not None:
-                #             # add the border of the mask after converting back to greyscale to derive the conversion
-                #             image = cv2.addWeighted(image.astype(np.uint8), 1,
-                #                                     mask_config[mask_selection]["boundary"].astype(np.uint8), 1, 0)
-                #
-                # if ' overlay grid' in overlay_grid:
-                #     image = cv2.addWeighted(image.astype(np.uint8), 1,
-                #                         generate_greyscale_grid_array((image.shape[0], image.shape[1])), 1, 0)
-                #
-                # fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
-                # fig.update(data=[{'customdata': )
-                canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
+                if ctx.triggered_id not in ["toggle-cluster-annotations", "cluster-colour-assignments-dict"]:
+                    canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                  mask_config, mask_selection, mask_blending_level,
                  overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter,
                 global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
-                fig = canvas.generate_canvas()
-                # fig.update_traces(hoverinfo="skip")
-                # x_axis_placement = 0.00001 * image_shape[1]
-                # # make sure the placement is min 0.05 and max 0.1
-                # x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
-                # if invert_annot:
-                #     x_axis_placement = 1 - x_axis_placement
-                # # if the current graph already has an image, take the existing layout and apply it to the new figure
-                # # otherwise, set the uirevision for the first time
-                # # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
-                # # do not update if there is already a hover template as it will be too slow
-                # # scalebar is y = 0.06
-                # # legend is y = 0.05
-                # hover_template_exists = 'data' in cur_graph and 'customdata' in cur_graph['data'] and \
-                #                         cur_graph['data']['customdata'] is not None
-                # if 'layout' in cur_graph and 'uirevision' in cur_graph['layout'] and \
-                #         cur_graph['layout']['uirevision'] and not hover_template_exists:
-                #     try:
-                #         # fig['layout'] = cur_graph['layout']
-                #         cur_graph['data'] = fig['data']
-                #         # if taking the old layout, remove the current legend and remake with the new layers
-                #         # imp: do not remove the current scale bar value if its there
-                #         if 'annotations' in cur_graph['layout'] and len(cur_graph['layout']['annotations']) > 0:
-                #             cur_graph['layout']['annotations'] = [annotation for annotation in \
-                #                                           cur_graph['layout']['annotations'] if \
-                #                                                   annotation['y'] == 0.06 and toggle_scalebar]
-                #         if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']):
-                #             cur_graph['layout']['shapes'] = [shape for shape in cur_graph['layout']['shapes'] if \
-                #                                              shape['type'] != 'line']
-                #         fig = cur_graph
-                #         # del cur_graph
-                #     # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
-                #     except (KeyError, TypeError):
-                #         fig['layout']['uirevision'] = True
-                #
-                #         if toggle_scalebar:
-                #             fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                #                 x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio, invert=invert_annot)
-                #
-                #         fig = go.Figure(fig)
-                #         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                #                           xaxis=XAxis(showticklabels=False, domain=[0, 1]),
-                #                           yaxis=YAxis(showticklabels=False),
-                #                           margin=dict(
-                #                               l=10,
-                #                               r=0,
-                #                               b=25,
-                #                               t=35,
-                #                               pad=0
-                #                           ))
-                #         fig.update_layout(hovermode="x")
-                # else:
-                #     # del cur_graph
-                #     # if making the fig for the firs time, set the uirevision
-                #     fig['layout']['uirevision'] = True
-                #
-                #     if toggle_scalebar:
-                #         fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                #                                         x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio,
-                #                                         invert=invert_annot)
-                #
-                #     fig = go.Figure(fig)
-                #     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                #                   xaxis=XAxis(showticklabels=False),
-                #                   yaxis=YAxis(showticklabels=False),
-                #                   margin=dict(
-                #                       l=10,
-                #                       r=0,
-                #                       b=25,
-                #                       t=35,
-                #                       pad=0
-                #                   ))
-                #     fig.update_layout(hovermode="x")
-                #
-                # fig = go.Figure(fig)
-                # fig.update_layout(newshape=dict(line=dict(color="white")))
-                #
-                # # set how far in from the lefthand corner the scale bar and colour legends should be
-                # # higher values mean closer to the centre
-                # # fig = canvas_layers[image_type][currently_selected[0]]
-                # if legend_text != '' and toggle_legend:
-                #     fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
-                #                            yref='paper',
-                #                            x=(1 - x_axis_placement),
-                #                            # xanchor='right',
-                #                            y=0.05,
-                #                            # yanchor='bottom',
-                #                            bgcolor="black",
-                #                            showarrow=False)
-                #
-                # # set the x-axis scale placement based on the size of the image
-                # # for adding a scale bar
-                # if toggle_scalebar:
-                #     # set the x0 and x1 depending on if the bar is inverted or not
-                #     x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
-                #     x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
-                #     fig.add_shape(type="line",
-                #                   xref="paper", yref="paper",
-                #                   x0=x_0, y0=0.05, x1=x_1,
-                #                   y1=0.05, line=dict(color="white", width=2))
-                #
-                # # set the custom hovertext if is is requested
-                # # the masking mask ID get priority over the channel intensity hover
-                # # TODO: combine both the mask ID and channel intensity into one hover if both are requested
-                #
-                # if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0 and \
-                #         ' show mask ID on hover' in add_cell_id_hover:
-                #     try:
-                #         # fig.update(data=[{'customdata': None}])
-                #         fig.update(data=[{'customdata': mask_config[mask_selection]["hover"]}])
-                #         new_hover = per_channel_intensity_hovertext(["mask ID"])
-                #     except KeyError:
-                #         new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                #
-                # elif " show channel intensities on hover" in show_each_channel_intensity:
-                #     # fig.update(data=[{'customdata': None}])
-                #     hover_stack = np.stack(tuple(raw_data_dict[data_selection][elem] for elem in currently_selected),
-                #                            axis=-1)
-                #     fig.update(data=[{'customdata': hover_stack}])
-                #     # set the labels for the hover from the aliases
-                #     hover_labels = []
-                #     for label in currently_selected:
-                #         if label in aliases.keys():
-                #             hover_labels.append(aliases[label])
-                #         else:
-                #             hover_labels.append(label)
-                #     new_hover = per_channel_intensity_hovertext(hover_labels)
-                #     # fig.update_traces(hovertemplate=new_hover)
-                # else:
-                #     fig.update(data=[{'customdata': None}])
-                #     new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                # fig.update_traces(hovertemplate=new_hover)
-                # # fig.update_layout(dragmode="zoom")
-                return fig, Serverside(canvas.get_image())
-            except (ValueError, AttributeError, KeyError, IndexError):
+                    fig = canvas.generate_canvas()
+                    return fig, Serverside(canvas.get_image())
+                else:
+                    fig = CanvasLayout(cur_graph)
+                    if apply_cluster_on_mask:
+                        fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
+                                pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
+                    elif not apply_cluster_on_mask:
+                        fig = fig.remove_cluster_annotation_shapes()
+                    else:
+                        fig = fig.get_fig()
+                    return go.Figure(fig), dash.no_update
+            except (ValueError, AttributeError, KeyError, IndexError) as e:
                 raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
