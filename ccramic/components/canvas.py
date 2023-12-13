@@ -25,7 +25,7 @@ class CanvasImage:
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                                                cluster_frame):
+                                                cluster_frame, cluster_type):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -53,6 +53,7 @@ class CanvasImage:
         self.apply_cluster_on_mask = apply_cluster_on_mask
         self.cluster_assignments_dict = cluster_assignments_dict
         self.cluster_frame = cluster_frame
+        self.cluster_type = cluster_type
 
         # TODO: summing up the arrays is the bottleneck for speed. try to fix with better broadcasting
         # if len(self.currently_selected) > 1:
@@ -83,15 +84,15 @@ class CanvasImage:
                     self.image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
                 # TODO: establish when to apply cluster mask
                 mask_level = float(self.mask_blending_level / 100) if self.mask_blending_level is not None else 1
-                # if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame) and \
-                #         self.data_selection in self.cluster_assignments_dict.keys():
-                #     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
-                #                 self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
-                #     image = cv2.addWeighted(self.image.astype(np.uint8), 1,
-                #                             annot_mask, mask_level, 0)
-                # else:
+                if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame) and \
+                        self.data_selection in self.cluster_assignments_dict.keys() and self.cluster_type == 'mask':
+                    annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
+                                self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
+                    image = cv2.addWeighted(self.image.astype(np.uint8), 1,
+                                            annot_mask, mask_level, 0)
+                else:
                     # set the mask blending level based on the slider, by default use an equal blend
-                image = cv2.addWeighted(self.image.astype(np.uint8), 1,
+                    image = cv2.addWeighted(self.image.astype(np.uint8), 1,
                                         self.mask_config[self.mask_selection]["array"].astype(np.uint8), mask_level, 0)
                 if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
                     # add the border of the mask after converting back to greyscale to derive the conversion
@@ -455,13 +456,14 @@ class CanvasLayout:
 
     def remove_cluster_annotation_shapes(self):
         """
-        Remove the cluster annotation shapes from the canvas. This are recognized as circles that are not editable
+        Remove the cluster annotation shapes from the canvas.
+        These are uniquely recognized as circles that are not editable
         """
         new_shapes = []
         for shape in self.cur_shapes:
             shape_not_editable = 'editable' not in shape
-            shape_not_circle = 'type' in shape and shape['type'] not in ['circle']
-            if shape_not_editable and shape_not_circle:
+            shape_editable_circle = 'type' in shape and shape['type'] in ['circle'] and not shape['editable']
+            if shape_not_editable or not shape_editable_circle:
                 new_shapes.append(shape)
         self.figure['layout']['shapes'] = new_shapes
         return self.figure

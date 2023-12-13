@@ -964,6 +964,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('toggle-cluster-annotations', 'value'),
                        Input('cluster-colour-assignments-dict', 'data'),
                        State('imported-cluster-frame', 'data'),
+                       Input('cluster-annotation-type', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -976,7 +977,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 pixel_ratio, invert_annot, overlay_grid, legend_orientation,
                                                 global_apply_filter, global_filter_type, global_filter_val,
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                                                cluster_frame):
+                                                cluster_frame, cluster_type):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -1003,27 +1004,33 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation)
             try:
-                if ctx.triggered_id not in ["toggle-cluster-annotations", "cluster-colour-assignments-dict"]:
-                    canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
+                canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                  mask_config, mask_selection, mask_blending_level,
                  overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter,
                 global_filter_type, global_filter_val, global_filter_sigma,
-                apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
-                    fig = canvas.generate_canvas()
-                    return fig, Serverside(canvas.get_image())
-                else:
-                    fig = CanvasLayout(cur_graph)
-                    if apply_cluster_on_mask:
-                        fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
-                                pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
-                    elif not apply_cluster_on_mask:
-                        fig = fig.remove_cluster_annotation_shapes()
-                    else:
-                        fig = fig.get_fig()
-                    return go.Figure(fig), dash.no_update
-            except (ValueError, AttributeError, KeyError, IndexError) as e:
+                apply_cluster_on_mask, cluster_assignments_dict, cluster_frame, cluster_type)
+                fig = canvas.generate_canvas()
+                if cluster_type == 'mask' or not apply_cluster_on_mask:
+                    fig = CanvasLayout(fig)
+                    fig = fig.remove_cluster_annotation_shapes()
+                elif apply_cluster_on_mask:
+                    fig = CanvasLayout(fig)
+                    fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
+                        pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
+                return fig, Serverside(canvas.get_image())
+                # else:
+                #     fig = CanvasLayout(cur_graph)
+                #     if apply_cluster_on_mask:
+                #         fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
+                #                 pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
+                #     elif not apply_cluster_on_mask:
+                #         fig = fig.remove_cluster_annotation_shapes()
+                #     else:
+                #         fig = fig.get_fig()
+                #     return go.Figure(fig), dash.no_update
+            except (ValueError, AttributeError, KeyError, IndexError):
                 raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
 
