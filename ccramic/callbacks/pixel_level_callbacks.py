@@ -2747,13 +2747,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                  'add_mask_boundary': None}
 
                 if ' add circle on click' in add_circle:
-                    # add a circle where the annotation occurred
-                    fig = go.Figure(cur_figure)
                     circle_size = int(circle_size)
-                    fig.add_shape(type="circle",
-                              xref="x", yref="y",
-                              x0=(x - circle_size), y0=(y - circle_size), x1=(x + circle_size), y1=(y + circle_size),
-                              line_color="white", editable=True)
+                    fig = CanvasLayout(cur_figure).clear_improper_shapes()
+                    fig['layout']['shapes'].append(
+                        {'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
+                         'x0': (x - circle_size), 'x1': (x + circle_size),
+                         'xref': 'x', 'y0': (y - circle_size), 'y1': (y + circle_size), 'yref': 'y'})
+                    # fig.add_shape(type="circle",
+                    #           xref="x", yref="y",
+                    #           x0=(x - circle_size), y0=(y - circle_size), x1=(x + circle_size), y1=(y + circle_size),
+                    #           line_color="white", editable=True)
                 else:
                     fig = dash.no_update
 
@@ -2781,6 +2784,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (imported_annotations, image_dict, data_selection, cur_graph):
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             fig = CanvasLayout(cur_graph).add_point_annotations_as_circles(imported_annotations, first_image, circle_size)
+            fig = CanvasLayout(fig).clear_improper_shapes()
             return fig
         else:
             raise PreventUpdate

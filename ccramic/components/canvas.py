@@ -428,3 +428,14 @@ class CanvasLayout:
         # fig.update_layout(newshape=dict(line=dict(color="white")))
         # return fig
         return self.figure
+
+    def clear_improper_shapes(self):
+        def is_bad_shape(shape):
+            return 'label' in shape and 'texttemplate' in shape['label']
+
+        for shape in self.cur_shapes:
+            if is_bad_shape(shape):
+                del shape['label']
+
+        self.figure['layout']['shapes'] = self.cur_shapes
+        return self.figure
