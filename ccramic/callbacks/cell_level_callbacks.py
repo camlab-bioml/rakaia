@@ -99,10 +99,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('umap-legend-categories', 'data'),
                        Input('quant-heatmap-channel-list', 'value'),
                        State('quant-heatmap-channel-list', 'options'),
+                       Input('normalize-heatmap', 'value'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings,
                                             annot_cols, restyle_data, umap_col_selection, prev_categories,
-                                            channels_to_display, heatmap_channel_options):
+                                            channels_to_display, heatmap_channel_options, normalize_heatmap):
         # TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
@@ -129,8 +130,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
             try:
                 fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
-                        umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols, umap_col_selection,
-                        subtypes, channels_to_display)
+                        umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
+                        subtypes, channels_to_display, normalize=normalize_heatmap)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             if frame is not None:
@@ -139,8 +140,13 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # also return the current count of the umap category selected to update the distribution table
                 # only store the cell id lists if zoom subsetting is used
                 if umap_layout is not None and all([key in umap_layout.keys() for key in zoom_keys]):
-                    full_frame = pd.DataFrame(quantification_dict)
-                    merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
+                    # merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
+                    # merged = pd.merge(pd.DataFrame(frame), pd.DataFrame(quantification_dict),
+                    #          left_index=True, right_index=True).reset_index(drop=True)
+                    # TODO: need to fix duplicate columns on concat
+                    # merged = pd.concat([frame, pd.DataFrame(quantification_dict)], axis=1,
+                    #           join="inner").reset_index(drop=True)
+                    merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
                     cell_id_dict = generate_dict_of_roi_cell_ids(merged)
                 else:
                     cell_id_dict = None
@@ -157,7 +163,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict), cols_return, cols_selected
         else:
             raise PreventUpdate
-
 
     # @dash_app.callback(Output('quantification-bar-full', 'figure'),
     #                    Input('quantification-dict', 'data'),

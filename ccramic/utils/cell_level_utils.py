@@ -95,7 +95,7 @@ def convert_mask_to_cell_boundary(mask):
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
 
 
-def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict):
+def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict, normalized_values=None):
     """
     Subset measurements frame based on a range of UMAP coordinates in the x and y axes
     Expects that the length of both frames are equal
@@ -113,7 +113,9 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
                          f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
         # if len(measurements) != len(umap_frame):
         #     query.reset_index()
-        subset = measurements.loc[query.index.tolist()]
+        # use the normalized values if they exist
+        measurements_to_use = normalized_values if normalized_values is not None else measurements
+        subset = measurements_to_use.loc[query.index.tolist()]
         return subset
     except AssertionError:
         return None

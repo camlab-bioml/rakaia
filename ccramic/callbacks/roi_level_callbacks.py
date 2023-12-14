@@ -77,6 +77,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
         else:
             raise PreventUpdate
 
+
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),
         Output('pixel-level-analysis', 'active_tab', allow_duplicate=True),

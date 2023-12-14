@@ -116,5 +116,6 @@ def generate_multi_roi_images_from_query(session_config, blend_dict,
         else:
             return None
     # return roi_images
-    except (KeyError, AssertionError):
+    except (KeyError, AssertionError) as e:
+        print(e)
         return None

@@ -684,10 +684,13 @@ def register_app_layout(config, cache_dest):
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
+                                html.Div([html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
+                                daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap', labelPosition='bottom',
+                                    color="blue", value=True)], style={"display": "flex", "margin-bottom": "-15px"}),
                                 dbc.Tabs(id='cell-quant-tabs', children=[
                                     dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
                                     children=[html.Br(),
+                                    # TODO: add toggle for normalization
                                     dcc.Graph(id="quantification-heatmap-full",
                                     figure={'layout': dict(xaxis_showgrid=False, autosize=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
