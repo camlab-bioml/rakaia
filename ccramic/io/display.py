@@ -48,6 +48,7 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
                 # max_panel.append(round(sum(shapes_max) / len(shapes_max), 2))
                 # min_panel.append(round(sum(shapes_min) / len(shapes_min), 2))
 
+            # TODO: evaluate if this exception catch actually works, since there is already one in the region child classes
             except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
                     _ArrayMemoryError, KeyError):
                 pass
@@ -101,7 +102,7 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
 
             return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-        except (AssertionError, ValueError, ZeroDivisionError, _ArrayMemoryError):
+        except (AssertionError, ValueError, ZeroDivisionError, _ArrayMemoryError, TypeError):
             return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
 
@@ -124,7 +125,7 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
 
             return pd.DataFrame(layer_dict).to_dict(orient='records')
 
-        except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
+        except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError, AttributeError):
             return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                                  'Min': []}).to_dict(orient='records')
     else:

@@ -10,6 +10,7 @@ from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
 from ccramic.utils.pixel_level_utils import per_channel_intensity_hovertext, get_additive_image
 from ccramic.utils.cell_level_utils import generate_mask_with_cluster_annotations
 from plotly.graph_objs.layout import YAxis, XAxis
+from ccramic.utils.shapes import is_cluster_annotation_circle
 import pandas as pd
 import math
 from skimage import measure
@@ -461,9 +462,7 @@ class CanvasLayout:
         """
         new_shapes = []
         for shape in self.cur_shapes:
-            shape_not_editable = 'editable' not in shape
-            shape_editable_circle = 'type' in shape and shape['type'] in ['circle'] and not shape['editable']
-            if shape_not_editable or not shape_editable_circle:
+            if 'editable' not in shape or not is_cluster_annotation_circle(shape):
                 new_shapes.append(shape)
         self.figure['layout']['shapes'] = new_shapes
         return self.figure

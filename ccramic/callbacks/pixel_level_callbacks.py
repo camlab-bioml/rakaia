@@ -8,7 +8,6 @@ from dash_extensions.enrich import Output, Input, State, html, Serverside
 from tifffile import imwrite
 from ccramic.inputs.pixel_level_inputs import (
     wrap_canvas_in_loading_screen_for_large_images,
-    add_scale_value_to_figure,
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text)
@@ -35,8 +34,8 @@ from ccramic.utils.pixel_level_utils import (
     path_to_mask,
     create_new_coord_bounds,
     get_first_image_from_roi_dictionary)
-from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
-from ccramic.utils.session import remove_ccramic_caches
+# from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
+# from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
 from ccramic.io.display import generate_area_statistics_dataframe
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
@@ -46,7 +45,7 @@ from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     adjust_option_height_from_list_length)
-from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
+# from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -60,8 +59,6 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
 from scipy.ndimage import median_filter
-import plotly.express as px
-from PIL import Image
 from natsort import natsorted
 from ccramic.io.readers import DashUploaderFileReader
 

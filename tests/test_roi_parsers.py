@@ -27,6 +27,14 @@ def test_roi_query_parser(get_current_dir):
     roi_query = generate_multi_roi_images_from_query(session_config, blend_dict, channels, 20, [])
     assert len(roi_query) == 6
 
+    # fake mcd returns None
+    fake_mcd = os.path.join(get_current_dir, "fake.txt")
+    session_config = {"uploads": [str(fake_mcd)]}
+    assert generate_multi_roi_images_from_query(session_config, blend_dict, channels, 20, []) is None
+
+    # assert a key error on an improperly configured session config
+    bad_session_config = {"fake_key": [str(mcd)]}
+    assert generate_multi_roi_images_from_query(bad_session_config, blend_dict, channels, 20, []) is None
 
 def test_roi_query_parser_predefined(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")

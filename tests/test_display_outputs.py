@@ -121,3 +121,106 @@ def test_generate_channel_statistics_dataframe():
         generate_area_statistics_dataframe(empty_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases))
     assert len(stats_6) == 0
+
+
+def test_generate_channel_statistics_dataframe_errors():
+    """
+    test when errors occur with the region parsing
+    """
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.full((1000, 1000), 100),
+                                                   "Nuclear": np.full((1000, 1000), 200),
+                                                   "Cytoplasm": np.full((1000, 1000), 300)}}
+
+    layers = ["DNA", "Cytoplasm"]
+    aliases = {"DNA": "DNA", "Cytoplasm": "Cytoplasm", "Nuclear": "Nuclear"}
+
+    # If there is a key error because the shape dimensions are malformed
+
+    graph_layout_bad = {'shapes': [{'line': {'color': 'white', 'width': 2},
+                                  'type': 'line', 'x0': 0.05, 'x1': 0.125, 'xref': 'paper',
+                                  'y0': 0.05, 'y1': 0.05, 'yref': 'paper'},
+                                 {'editable': True, 'label': {'text': ''}, 'xref': 'x', 'yref': 'y',
+                                  'layer': 'above', 'opacity': 1, 'line': {'color': 'white', 'width': 4,
+                                                                           'dash': 'solid'},
+                                  'fillcolor': 'rgba(0,0,0,0)',
+                                  'fillrule': 'evenodd', 'type': 'rect', 'x0': 127.4940119760479,
+                                  'y0': 127.04491017964072, 'x1': 0, 'y1': 232.13473053892216},
+                                 {'editable': True, 'label': {'text': ''}, 'xref': 'x', 'yref': 'y',
+                                  'layer': 'above', 'opacity': 1,
+                                  'line': {'color': 'white', 'width': 4, 'dash': 'solid'},
+                                  'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd', 'type':
+                                      'rect', 'x0': 397.8532934131737, 'y0': 262.6736526946108,
+                                  'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
+
+    stats = pd.DataFrame(
+        generate_area_statistics_dataframe(graph_layout_bad, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+    assert len(stats) == 4
+    assert list(stats['Max'] == [0, 0, 100, 300])
+    assert list(stats['Min'] == [0, 0, 100, 300])
+    assert list(stats['Mean'] == [0, 0, 100, 300])
+
+
+    # test when the arrays are None
+    upload_dict_none = {"experiment0+++slide0+++acq0": {"DNA": None,
+                                                   "Nuclear": None,
+                                                   "Cytoplasm": None}}
+    graph_layout = {'xaxis.range[1]': 650, 'xaxis.range[0]': 540,
+                    'yaxis.range[1]': 800, 'yaxis.range[0]': 900}
+
+    layers = ["DNA", "Cytoplasm"]
+    aliases = {"DNA": "DNA", "Cytoplasm": "Cytoplasm", "Nuclear": "Nuclear"}
+
+    stats_none = pd.DataFrame(
+        generate_area_statistics_dataframe(graph_layout, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+    assert len(stats_none) == 0
+
+
+    shape_edited = {'shapes[1].x0': 253.2425149700599, 'shapes[1].x1': 350.248502994012,
+                      'shapes[1].y0': 111.32634730538922, 'shapes[1].y1': 311.62574850299404}
+
+    stats_none_2 = pd.DataFrame(
+        generate_area_statistics_dataframe(shape_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+
+    assert len(stats_none_2 ) == 0
+
+    path_edited = {'shapes[1].path': 'M349.3502994011976,346.2065868263473L366.4161676646707,'
+                                        '266.26646706586826L267.6137724550898,'
+                                        '275.248502994012L257.73353293413174,277.04491017964074L234.3802395209581,'
+                                        '308.4820359281437L210.12874251497004,327.3443113772455L186.7754491017964,'
+                                        '336.3263473053892L184.0808383233533,339.9191616766467L185.87724550898204,'
+                                        '372.2544910179641L190.3682634730539,389.32035928143716L214.6197604790419,'
+                                        '428.84131736526945L244.26047904191617,454.88922155688624L287.374251497006,'
+                                        '480.93712574850304L290.9670658682635,480.93712574850304L294.55988023952096,'
+                                        '465.6676646706587L329.5898203592814,395.60778443113776L338.57185628742513,'
+                                        '392.0149700598802L343.062874251497,392.0149700598802Z'}
+
+    stats_none_3 = pd.DataFrame(
+        generate_area_statistics_dataframe(path_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+
+    assert len(stats_none_3) == 0
+
+    graph_layout_shapes = {'shapes': [{'line': {'color': 'white', 'width': 2},
+                                  'type': 'line', 'x0': 0.05, 'x1': 0.125, 'xref': 'paper',
+                                  'y0': 0.05, 'y1': 0.05, 'yref': 'paper'},
+                                 {'editable': True, 'label': {'text': ''}, 'xref': 'x', 'yref': 'y',
+                                  'layer': 'above', 'opacity': 1, 'line': {'color': 'white', 'width': 4,
+                                                                           'dash': 'solid'},
+                                  'fillcolor': 'rgba(0,0,0,0)',
+                                  'fillrule': 'evenodd', 'type': 'rect', 'x0': 127.4940119760479,
+                                  'y0': 127.04491017964072, 'x1': 290.06886227544913, 'y1': 232.13473053892216},
+                                 {'editable': True, 'label': {'text': ''}, 'xref': 'x', 'yref': 'y',
+                                  'layer': 'above', 'opacity': 1,
+                                  'line': {'color': 'white', 'width': 4, 'dash': 'solid'},
+                                  'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd', 'type':
+                                      'rect', 'x0': 397.8532934131737, 'y0': 262.6736526946108,
+                                  'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
+
+    stats_none_4 = pd.DataFrame(
+        generate_area_statistics_dataframe(graph_layout_shapes, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases))
+
+    assert len(stats_none_4) == 0
