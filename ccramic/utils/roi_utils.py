@@ -33,5 +33,5 @@ def subset_mask_outline_using_cell_id_list(mask_outline, original_mask, cell_id_
         mask_outline[~mask_bool] = 0
         # converted = (mask_outline * 255).clip(0, 255).astype(np.uint8)
         return np.array(Image.fromarray(mask_outline.astype(np.float32)).convert('RGB')).astype(np.uint8)
-    except AssertionError as e:
+    except AssertionError:
         return None

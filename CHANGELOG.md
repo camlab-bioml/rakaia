@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.0] - 2023-12-08
+## [0.11.0] - 2023-12-12
 
 ### Changed
 
 - Added persistence variable logging to select variables (session + canvas
 appearance) that are cached in the browser for future sessions based on user preferences
 - Additive image blending for channels is now handled through `numexpr` instead of numpy
-for faster performance
+for faster performance (applies to additive blending, recolouring, and intensity thresholds)
 - Modify pattern matching for mask names to ROI names in datasets and quantification sheets to include partial match of
 mask to ROI
 
