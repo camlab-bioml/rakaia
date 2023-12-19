@@ -79,20 +79,21 @@ def test_basic_cli_outputs():
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
     assert vars(args) == {'auto_open': False, 'debug': False, 'loading': True, 'port': 5000, 'threading': True,
-                          'use_local_dialog': False, 'persistence': True, 'swatches': None}
+                          'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float'}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     parser = argparser()
     args = parser.parse_args(['-a'])
     assert vars(args) == {'auto_open': True, 'debug': False, 'loading': True, 'port': 5000, 'threading': True,
-                          'use_local_dialog': False, 'persistence': True, 'swatches': None}
+                          'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
     assert vars(args) == {'auto_open': False, 'debug': False, 'loading': True, 'port': 8050, 'threading': True,
-                          'use_local_dialog': False, 'persistence': True, 'swatches': None}
+                          'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',}
     assert "ccramic can be initialized from the command line using:" in parser.usage
-    args = parser.parse_args(['-p', '8050', '-dp'])
+    args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int'])
     assert vars(args) == {'auto_open': False, 'debug': False, 'loading': True, 'port': 8050, 'threading': True,
-                          'use_local_dialog': False, 'persistence': False, 'swatches': None}
+                          'use_local_dialog': False, 'persistence': False, 'swatches': None, 'array_type': 'int'}
+
     with pytest.raises(SystemExit):
         parser.parse_args(['-v'])
     with pytest.raises(SystemExit):

@@ -223,7 +223,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                         "and ensure that all imported datasets share the same panel.\n\n" + message
             else:
                 error_config["error"] = message
-            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files)
+            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files,
+                                                    array_store_type=app_config['array_store_type'])
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
@@ -326,7 +327,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # imp: use the channel label for the dropdown view and the name in the background to retrieve
                 try:
                     image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
-                                                     session_config=session_config)
+                                session_config=session_config, array_store_type=app_config['array_store_type'])
                     assert data_selection in image_dict.keys()
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if all([image_dict[data_selection][elem] is not None for \

@@ -25,7 +25,8 @@ from ccramic.utils.pixel_level_utils import (
     generate_default_swatches,
     random_hex_colour_generator,
     get_additive_image,
-    get_first_image_from_roi_dictionary)
+    get_first_image_from_roi_dictionary,
+    set_array_storage_type_from_config)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -39,6 +40,12 @@ def test_identify_rgb_codes():
     assert not is_rgb_color('#FAF0')
     assert not is_rgb_color('#NotRgb')
     assert not is_rgb_color('FAF0E6')
+
+def test_return_array_dtype():
+    assert str(set_array_storage_type_from_config()) == "<class 'numpy.float32'>"
+    assert str(set_array_storage_type_from_config("int")) == "<class 'numpy.uint16'>"
+    with pytest.raises(TypeError):
+        set_array_storage_type_from_config("fake_type")
 
 def test_random_hex_colour_generator():
     random_cols = random_hex_colour_generator()

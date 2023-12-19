@@ -48,6 +48,12 @@ def argparser():
                         help="Set custom RGB codes for the swatches. Should be a string wrapped in quotations of the form \n"
                              "`#FF0000,#00FF00,#0000FF,#00FAFF,#FF00FF,#FFFF00,#FFFFFF`",
                         dest="swatches", default=None, type=str)
+    parser.add_argument('-at', "--array-type", action="store",
+                        help="Set the preferred numpy array type for storing arrays in session. Options are `float` for "
+                             "np.float32, or `int` for np.uint16. Float arrays will have more precision and may "
+                             "be required for array values between 0 and 1, but uint arrays will likely consume less memory. "
+                             "Default is float",
+                        dest="array_type", default="float", type=str, choices=["float", "int"])
 
     return parser
 
@@ -65,7 +71,8 @@ def main(sysargs = sys.argv[1:]):
     CLI_CONFIG = {"use_local_dialog": args.use_local_dialog,
                   'use_loading': args.loading,
                   'persistence': args.persistence,
-                  'swatches': args.swatches}
+                  'swatches': args.swatches,
+                  'array_store_type': args.array_type}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:

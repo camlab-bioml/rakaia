@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.0] - 2023-12-12
+## [0.11.0] - 2023-12-19
 
 ### Changed
 
@@ -26,6 +26,8 @@ mask to ROI
 - Added ability to upload cluster assignments in CSV format to annotate an applied mask
 by colour (auto-generated or default random) #82
 - First draft: ability to read in quantification sheets from anndata/h5ad #54
+- CLI toggle option to toggle the backend array store type from 32 byte float (default) to
+unsigned 16 byte integer, with a tradeoff of precision vs. memory and speed
 
 ### Fixed
 
