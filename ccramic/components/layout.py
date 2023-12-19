@@ -588,9 +588,12 @@ def register_app_layout(config, cache_dest):
                                 text='Import cluster annotations in CSV format',
                                 chunk_size=100, max_total_size=10000, max_files=1, filetypes=['csv'],
                                 default_style={"height": "0.1%"})], style={"height": "auto"}),
-                                daq.ToggleSwitch(label='Apply cluster annotations to mask',
+                                html.Div([daq.ToggleSwitch(label='Apply cluster annotations',
                                 id='toggle-cluster-annotations', labelPosition='bottom', color="blue",
                                 style={"margin-right": "15px", "margin-top": "10px"}),
+                                dcc.RadioItems(['mask', 'circles'], 'mask', id='cluster-annotation-type',
+                                style={"margin-top": "7.5px", "margin-left": "15px"})],
+                                style={"display": 'flex', 'margin-left': '10px', 'margin-top': '7.5px'}),
                                 html.Br(),
                                 html.Div([dcc.Dropdown(id='cluster-label-list', multi=False, options=[],
                                 style={'width': '60%',
@@ -681,10 +684,13 @@ def register_app_layout(config, cache_dest):
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
+                                html.Div([html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
+                                daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap', labelPosition='bottom',
+                                    color="blue", value=True)], style={"display": "flex", "margin-bottom": "-15px"}),
                                 dbc.Tabs(id='cell-quant-tabs', children=[
                                     dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
                                     children=[html.Br(),
+                                    # TODO: add toggle for normalization
                                     dcc.Graph(id="quantification-heatmap-full",
                                     figure={'layout': dict(xaxis_showgrid=False, autosize=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),

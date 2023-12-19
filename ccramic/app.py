@@ -1,7 +1,7 @@
 
 import tempfile
 import dash_uploader as du
-from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend, LogTransform
+from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
 from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
 from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
@@ -39,7 +39,7 @@ def init_dashboard(server, authentic_id, config=None):
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
 
-        du.configure_upload(dash_app, tmpdirname)
+        du.configure_upload(dash_app, cache_dest)
 
     #TODO: for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
     # useful when serverside components can cache large stores much more effectively

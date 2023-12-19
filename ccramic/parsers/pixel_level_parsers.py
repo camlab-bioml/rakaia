@@ -3,10 +3,13 @@ import h5py
 from pathlib import Path
 from tifffile import TiffFile
 import os
-from ccramic.utils.pixel_level_utils import convert_to_below_255,  split_string_at_pattern
+from ccramic.utils.pixel_level_utils import (
+    convert_to_below_255,
+    split_string_at_pattern,
+    set_array_storage_type_from_config)
 from readimc import MCDFile, TXTFile
 
-def populate_upload_dict(uploaded_files):
+def populate_upload_dict(uploaded_files, array_store_type="float"):
     """
     Populate a dictionary based on the uploaded files.
     """
@@ -92,7 +95,8 @@ def populate_upload_dict(uploaded_files):
                                 # identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
                                 #     len(tif.pages) > 1 else str(basename)
                                 identifier = str("channel_" + str(multi_channel_index))
-                                upload_dict[roi][identifier] = convert_to_below_255(page.asarray())
+                                upload_dict[roi][identifier] = page.asarray().astype(
+                                    set_array_storage_type_from_config(array_store_type))
                                 # add in a generic description for the ROI per tiff file
                                 if multi_channel_index == 1:
                                     dataset_information["ROI"].append(str(roi))
@@ -190,7 +194,8 @@ def populate_upload_dict(uploaded_files):
                             for image in acq:
                                 image_label = txt_channel_labels[image_index - 1]
                                 identifier = txt_channel_names[image_index - 1]
-                                upload_dict[roi][identifier] = convert_to_below_255(image)
+                                upload_dict[roi][identifier] = convert_to_below_255(image).astype(
+                                    set_array_storage_type_from_config(array_store_type))
                                 if image_index == 1:
                                     dataset_information["ROI"].append(str(roi))
                                     dataset_information["Dimensions"].append(f"{image.shape[1]}x{image.shape[0]}")
@@ -238,7 +243,7 @@ def create_new_blending_dict(uploaded):
     return current_blend_dict
 
 
-def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config):
+def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config, array_store_type="float"):
     """
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
@@ -263,7 +268,8 @@ def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config):
                             channel_index = 0
                             img = mcd_file.read_acquisition(acq)
                             for channel in img:
-                                upload_dict[dataset_selection][channel_names[channel_index]] = channel
+                                upload_dict[dataset_selection][channel_names[channel_index]] = channel.astype(
+                                    set_array_storage_type_from_config(array_store_type))
                                 channel_index += 1
         return upload_dict
     except (KeyError, AssertionError, AttributeError):

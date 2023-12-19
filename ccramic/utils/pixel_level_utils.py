@@ -16,6 +16,15 @@ import numexpr as ne
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
 
+
+def set_array_storage_type_from_config(array_type="float"):
+    """
+    Set the array storage type within the application. Options are either 32-byte float or 16-byte int
+    """
+    if array_type not in ["float", "int"]:
+        raise TypeError("the array type requested must be either float or int")
+    return np.float32 if array_type == "float" else np.uint16
+
 def is_rgb_color(value):
     """
     Return if a particular string is in the format of RGB hex code or not

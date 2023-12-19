@@ -8,7 +8,6 @@ from dash_extensions.enrich import Output, Input, State, html, Serverside
 from tifffile import imwrite
 from ccramic.inputs.pixel_level_inputs import (
     wrap_canvas_in_loading_screen_for_large_images,
-    add_scale_value_to_figure,
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text)
@@ -35,8 +34,8 @@ from ccramic.utils.pixel_level_utils import (
     path_to_mask,
     create_new_coord_bounds,
     get_first_image_from_roi_dictionary)
-from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
-from ccramic.utils.session import remove_ccramic_caches
+# from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
+# from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
 from ccramic.io.display import generate_area_statistics_dataframe
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
@@ -46,7 +45,7 @@ from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     adjust_option_height_from_list_length)
-from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
+# from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -60,8 +59,6 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
 from scipy.ndimage import median_filter
-import plotly.express as px
-from PIL import Image
 from natsort import natsorted
 from ccramic.io.readers import DashUploaderFileReader
 
@@ -226,7 +223,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                         "and ensure that all imported datasets share the same panel.\n\n" + message
             else:
                 error_config["error"] = message
-            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files)
+            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files,
+                                                    array_store_type=app_config['array_store_type'])
             session_dict['unique_images'] = unique_images
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
@@ -329,7 +327,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # imp: use the channel label for the dropdown view and the name in the background to retrieve
                 try:
                     image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
-                                                     session_config=session_config)
+                                session_config=session_config, array_store_type=app_config['array_store_type'])
                     assert data_selection in image_dict.keys()
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if all([image_dict[data_selection][elem] is not None for \
@@ -964,6 +962,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('toggle-cluster-annotations', 'value'),
                        Input('cluster-colour-assignments-dict', 'data'),
                        State('imported-cluster-frame', 'data'),
+                       Input('cluster-annotation-type', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -976,7 +975,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 pixel_ratio, invert_annot, overlay_grid, legend_orientation,
                                                 global_apply_filter, global_filter_type, global_filter_val,
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                                                cluster_frame):
+                                                cluster_frame, cluster_type):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -1003,169 +1002,32 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation)
             try:
-                # image = sum([canvas_layers[data_selection][elem].astype(np.float32) for \
-                #              elem in currently_selected if \
-                #              elem in canvas_layers[data_selection].keys()]).astype(np.float32)
-                # image = np.clip(image, 0, 255)
-                # if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
-                #     if image.shape[0] == mask_config[mask_selection]["array"].shape[0] and \
-                #             image.shape[1] == mask_config[mask_selection]["array"].shape[1]:
-                #         # set the mask blending level based on the slider, by default use an equal blend
-                #         mask_level = float(mask_blending_level / 100) if mask_blending_level is not None else 1
-                #         image = cv2.addWeighted(image.astype(np.uint8), 1,
-                #                                 mask_config[mask_selection]["array"].astype(np.uint8), mask_level, 0)
-                #         if add_mask_boundary and mask_config[mask_selection]["boundary"] is not None:
-                #             # add the border of the mask after converting back to greyscale to derive the conversion
-                #             image = cv2.addWeighted(image.astype(np.uint8), 1,
-                #                                     mask_config[mask_selection]["boundary"].astype(np.uint8), 1, 0)
-                #
-                # if ' overlay grid' in overlay_grid:
-                #     image = cv2.addWeighted(image.astype(np.uint8), 1,
-                #                         generate_greyscale_grid_array((image.shape[0], image.shape[1])), 1, 0)
-                #
-                # fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
-                # fig.update(data=[{'customdata': )
                 canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                  mask_config, mask_selection, mask_blending_level,
                  overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter,
                 global_filter_type, global_filter_val, global_filter_sigma,
-                apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                apply_cluster_on_mask, cluster_assignments_dict, cluster_frame, cluster_type)
                 fig = canvas.generate_canvas()
-                # fig.update_traces(hoverinfo="skip")
-                # x_axis_placement = 0.00001 * image_shape[1]
-                # # make sure the placement is min 0.05 and max 0.1
-                # x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
-                # if invert_annot:
-                #     x_axis_placement = 1 - x_axis_placement
-                # # if the current graph already has an image, take the existing layout and apply it to the new figure
-                # # otherwise, set the uirevision for the first time
-                # # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
-                # # do not update if there is already a hover template as it will be too slow
-                # # scalebar is y = 0.06
-                # # legend is y = 0.05
-                # hover_template_exists = 'data' in cur_graph and 'customdata' in cur_graph['data'] and \
-                #                         cur_graph['data']['customdata'] is not None
-                # if 'layout' in cur_graph and 'uirevision' in cur_graph['layout'] and \
-                #         cur_graph['layout']['uirevision'] and not hover_template_exists:
-                #     try:
-                #         # fig['layout'] = cur_graph['layout']
-                #         cur_graph['data'] = fig['data']
-                #         # if taking the old layout, remove the current legend and remake with the new layers
-                #         # imp: do not remove the current scale bar value if its there
-                #         if 'annotations' in cur_graph['layout'] and len(cur_graph['layout']['annotations']) > 0:
-                #             cur_graph['layout']['annotations'] = [annotation for annotation in \
-                #                                           cur_graph['layout']['annotations'] if \
-                #                                                   annotation['y'] == 0.06 and toggle_scalebar]
-                #         if 'shapes' in cur_graph['layout'] and len(cur_graph['layout']['shapes']):
-                #             cur_graph['layout']['shapes'] = [shape for shape in cur_graph['layout']['shapes'] if \
-                #                                              shape['type'] != 'line']
-                #         fig = cur_graph
-                #         # del cur_graph
-                #     # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
-                #     except (KeyError, TypeError):
-                #         fig['layout']['uirevision'] = True
-                #
-                #         if toggle_scalebar:
-                #             fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                #                 x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio, invert=invert_annot)
-                #
-                #         fig = go.Figure(fig)
-                #         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                #                           xaxis=XAxis(showticklabels=False, domain=[0, 1]),
-                #                           yaxis=YAxis(showticklabels=False),
-                #                           margin=dict(
-                #                               l=10,
-                #                               r=0,
-                #                               b=25,
-                #                               t=35,
-                #                               pad=0
-                #                           ))
-                #         fig.update_layout(hovermode="x")
-                # else:
-                #     # del cur_graph
-                #     # if making the fig for the firs time, set the uirevision
-                #     fig['layout']['uirevision'] = True
-                #
-                #     if toggle_scalebar:
-                #         fig = add_scale_value_to_figure(fig, image_shape, font_size=legend_size,
-                #                                         x_axis_left=x_axis_placement, pixel_ratio=pixel_ratio,
-                #                                         invert=invert_annot)
-                #
-                #     fig = go.Figure(fig)
-                #     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                #                   xaxis=XAxis(showticklabels=False),
-                #                   yaxis=YAxis(showticklabels=False),
-                #                   margin=dict(
-                #                       l=10,
-                #                       r=0,
-                #                       b=25,
-                #                       t=35,
-                #                       pad=0
-                #                   ))
-                #     fig.update_layout(hovermode="x")
-                #
-                # fig = go.Figure(fig)
-                # fig.update_layout(newshape=dict(line=dict(color="white")))
-                #
-                # # set how far in from the lefthand corner the scale bar and colour legends should be
-                # # higher values mean closer to the centre
-                # # fig = canvas_layers[image_type][currently_selected[0]]
-                # if legend_text != '' and toggle_legend:
-                #     fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
-                #                            yref='paper',
-                #                            x=(1 - x_axis_placement),
-                #                            # xanchor='right',
-                #                            y=0.05,
-                #                            # yanchor='bottom',
-                #                            bgcolor="black",
-                #                            showarrow=False)
-                #
-                # # set the x-axis scale placement based on the size of the image
-                # # for adding a scale bar
-                # if toggle_scalebar:
-                #     # set the x0 and x1 depending on if the bar is inverted or not
-                #     x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
-                #     x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
-                #     fig.add_shape(type="line",
-                #                   xref="paper", yref="paper",
-                #                   x0=x_0, y0=0.05, x1=x_1,
-                #                   y1=0.05, line=dict(color="white", width=2))
-                #
-                # # set the custom hovertext if is is requested
-                # # the masking mask ID get priority over the channel intensity hover
-                # # TODO: combine both the mask ID and channel intensity into one hover if both are requested
-                #
-                # if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0 and \
-                #         ' show mask ID on hover' in add_cell_id_hover:
-                #     try:
-                #         # fig.update(data=[{'customdata': None}])
-                #         fig.update(data=[{'customdata': mask_config[mask_selection]["hover"]}])
-                #         new_hover = per_channel_intensity_hovertext(["mask ID"])
-                #     except KeyError:
-                #         new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                #
-                # elif " show channel intensities on hover" in show_each_channel_intensity:
-                #     # fig.update(data=[{'customdata': None}])
-                #     hover_stack = np.stack(tuple(raw_data_dict[data_selection][elem] for elem in currently_selected),
-                #                            axis=-1)
-                #     fig.update(data=[{'customdata': hover_stack}])
-                #     # set the labels for the hover from the aliases
-                #     hover_labels = []
-                #     for label in currently_selected:
-                #         if label in aliases.keys():
-                #             hover_labels.append(aliases[label])
-                #         else:
-                #             hover_labels.append(label)
-                #     new_hover = per_channel_intensity_hovertext(hover_labels)
-                #     # fig.update_traces(hovertemplate=new_hover)
-                # else:
-                #     fig.update(data=[{'customdata': None}])
-                #     new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-                # fig.update_traces(hovertemplate=new_hover)
-                # # fig.update_layout(dragmode="zoom")
+                if cluster_type == 'mask' or not apply_cluster_on_mask:
+                    fig = CanvasLayout(fig)
+                    fig = fig.remove_cluster_annotation_shapes()
+                elif apply_cluster_on_mask:
+                    fig = CanvasLayout(fig)
+                    fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
+                        pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
                 return fig, Serverside(canvas.get_image())
+                # else:
+                #     fig = CanvasLayout(cur_graph)
+                #     if apply_cluster_on_mask:
+                #         fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
+                #                 pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
+                #     elif not apply_cluster_on_mask:
+                #         fig = fig.remove_cluster_annotation_shapes()
+                #     else:
+                #         fig = fig.get_fig()
+                #     return go.Figure(fig), dash.no_update
             except (ValueError, AttributeError, KeyError, IndexError):
                 raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions

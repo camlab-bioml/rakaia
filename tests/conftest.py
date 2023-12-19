@@ -11,7 +11,7 @@ def get_current_dir():
 @pytest.fixture(scope="module")
 def ccramic_flask_test_app():
     app = init_app(cli_config={'use_local_dialog': False, 'use_loading': True,
-                               'persistence': True, 'swatches': None})
+                               'persistence': True, 'swatches': None, 'array_store_type': 'float'})
     app.config.update({
         "TESTING": True,
     })

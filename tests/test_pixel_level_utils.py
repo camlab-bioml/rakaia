@@ -25,7 +25,8 @@ from ccramic.utils.pixel_level_utils import (
     generate_default_swatches,
     random_hex_colour_generator,
     get_additive_image,
-    get_first_image_from_roi_dictionary)
+    get_first_image_from_roi_dictionary,
+    set_array_storage_type_from_config)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -39,6 +40,12 @@ def test_identify_rgb_codes():
     assert not is_rgb_color('#FAF0')
     assert not is_rgb_color('#NotRgb')
     assert not is_rgb_color('FAF0E6')
+
+def test_return_array_dtype():
+    assert str(set_array_storage_type_from_config()) == "<class 'numpy.float32'>"
+    assert str(set_array_storage_type_from_config("int")) == "<class 'numpy.uint16'>"
+    with pytest.raises(TypeError):
+        set_array_storage_type_from_config("fake_type")
 
 def test_random_hex_colour_generator():
     random_cols = random_hex_colour_generator()
@@ -225,6 +232,19 @@ def test_filtering_intensity_changes_low(get_current_dir):
 
     assert np.max(greyscale) >= np.max(filtered_1)
 
+def test_filtering_intensity_changes_same_vals(get_current_dir):
+    greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
+    greyscale = np.array(greyscale_image)
+    filtered_1 = filter_by_upper_and_lower_bound(greyscale, lower_bound=100, upper_bound=100)
+    original_pixels = Image.fromarray(greyscale).load()
+    new_pixels = Image.fromarray(filtered_1).load()
+    # assert that when a low upper bound is used, it scales up to the max of 255
+    assert int(round(np.max(filtered_1))) == 0
+    for i in range(greyscale_image.height):
+        for j in range(greyscale_image.width):
+            if original_pixels[i, j] < 1:
+                assert new_pixels[i, j] == 0
+    assert np.max(greyscale) >= np.max(filtered_1)
 
 def test_generate_histogram(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
@@ -336,6 +356,9 @@ def test_coord_navigation():
     assert new_coords[0] == 450.0
     assert new_coords[1] == 550.0
     assert new_coords[1] - new_coords[0] == 100.0
+
+    window_dict = {"x_high": 50, "x_low": 100, "y_high": 10}
+    assert create_new_coord_bounds(window_dict, 500, 500) is None
 
 
 def test_get_statistics_from_rect_array(get_current_dir):

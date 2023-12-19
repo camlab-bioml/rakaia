@@ -4,6 +4,7 @@ import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd
 import os
+from PIL import Image
 
 def test_basic_canvas_image():
 
@@ -35,13 +36,15 @@ def test_basic_canvas_image():
     apply_cluster_on_mask = False
     cluster_assignments_dict = None
     cluster_frame = None
+    cluster_type = 'mask'
 
     canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                 mask_config, mask_selection, mask_blending_level,
                 overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
+                         cluster_frame, cluster_type)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, dict)
@@ -54,7 +57,8 @@ def test_basic_canvas_image():
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                         global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                         global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                         cluster_assignments_dict, cluster_frame, cluster_type)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, dict)
@@ -71,7 +75,8 @@ def test_basic_canvas_image():
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type)
     assert isinstance(canvas_2, CanvasImage)
     canvas_fig = canvas_2.generate_canvas()
     assert isinstance(canvas_fig, dict)
@@ -86,50 +91,55 @@ def test_basic_canvas_image():
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type)
     canvas_fig_3 = canvas_3.generate_canvas()
     assert isinstance(canvas_fig_3, dict)
 
 
     cur_graph = {'data': {'customdata': np.full((100, 100), 10)}, 'layout': {'uirevision': True}}
     canvas_4 = CanvasImage(canvas_layers, data_selection, currently_selected,
-                           mask_config, mask_selection, mask_blending_level,
-                           overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
-                           legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                         mask_config, mask_selection, mask_blending_level,
+                         overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                         legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type)
 
     canvas_fig_4 = canvas_4.generate_canvas()
     assert isinstance(canvas_fig_4, dict)
 
     cur_graph = {'data': {'customdata': None}, 'layout': {'uirevision': True}}
     canvas_5 = CanvasImage(canvas_layers, data_selection, currently_selected,
-                           mask_config, mask_selection, mask_blending_level,
-                           overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
-                           legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                         mask_config, mask_selection, mask_blending_level,
+                         overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                         legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type)
 
     canvas_fig_5 = canvas_5.generate_canvas()
     assert isinstance(canvas_fig_5, dict)
 
     add_cell_id_hover = []
     canvas_6 = CanvasImage(canvas_layers, data_selection, currently_selected,
-                           mask_config, mask_selection, mask_blending_level,
-                           overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
-                           legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                         mask_config, mask_selection, mask_blending_level,
+                         overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                         legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type)
     canvas_fig_6 = canvas_6.generate_canvas()
     assert isinstance(canvas_fig_6, dict)
 
     cur_graph = {'data': {'customdata': None}, 'layout': {'uirevision': True, 'shapes': [{'fake_key': 'fake_val'}]}}
     canvas_7 = CanvasImage(canvas_layers, data_selection, currently_selected,
-                           mask_config, mask_selection, mask_blending_level,
-                           overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
-                           legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, cluster_frame)
+                         mask_config, mask_selection, mask_blending_level,
+                         overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                         legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type)
     canvas_fig_7 = canvas_7.generate_canvas()
     assert isinstance(canvas_fig_7, dict)
 
@@ -143,12 +153,12 @@ def test_basic_canvas_image():
                              "raw": np.full((100, 100), 1).astype(np.float32)}}
     overlay_grid = [' overlay grid']
     canvas_8 = CanvasImage(canvas_layers, data_selection, currently_selected,
-                           mask_config, mask_selection, mask_blending_level,
-                           overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
-                           legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                           global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                           cluster_frame)
+                         mask_config, mask_selection, mask_blending_level,
+                         overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                         legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                 global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type)
     canvas_fig_8 = canvas_8.generate_canvas()
     assert isinstance(canvas_fig_8, dict)
 
@@ -237,3 +247,15 @@ def test_canvas_layout_editor(get_current_dir):
     assert len(fig['layout']['shapes']) == len(shapes)
     for shape in fig['layout']['shapes']:
         assert 'label' not in shape
+
+    image = np.full((1079, 1095, 3), 255).astype(np.uint8)
+    clusters = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
+    colors = {"roi_1": {"Type_1": "red", "Type_2": "blue", "Type_3": "yellow"}}
+    fig = go.Figure(px.imshow(image))
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
+    fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask, clusters, colors, "roi_1")
+    assert len(fig['layout']['shapes']) > 1000
+
+    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
+    assert len(fig['layout']['shapes']) == 1

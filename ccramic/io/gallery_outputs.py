@@ -24,12 +24,12 @@ def generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layo
                 x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
                 y_range_low = math.floor(int(canvas_layout['yaxis.range[1]']))
                 y_range_high = math.floor(int(canvas_layout['yaxis.range[0]']))
-                assert x_range_high >= x_range_low
-                assert y_range_high >= y_range_low
                 try:
+                    assert x_range_high >= x_range_low
+                    assert y_range_high >= y_range_low
                     image_render = value[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                             range(int(x_range_low), int(x_range_high), 1))]
-                except IndexError as e:
+                except (IndexError, AssertionError):
                     image_render = value
             else:
                 image_render = resize_for_canvas(value)
