@@ -186,18 +186,26 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     return array
 
 
-def pixel_hist_from_array(array, subset_number=1000000):
+def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
+    """
+    Generate a pixel histogram from a channel array. If the number of array elements is larger than the subset number,
+    create a down-sample
+    If `keep_max` is True, then the final histogram will always retain the max of the original array cast
+    to an integer so that it matches the range slider
+    """
     # try:
     # IMP: do not use the conversion to L as it will automatically set the max to 255
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
-    hist_data = np.hstack(array)
-    max_hist = np.max(array)
-    hist = np.random.choice(hist_data, subset_number) if hist_data.shape[0] > subset_number else hist_data
+    hist_data = np.hstack(array).astype(np.uint16)
+    max_hist = int(np.max(array)) if int(np.max(array)) > 1 else 1
+    hist = np.random.choice(hist_data, subset_number).astype(np.uint16) if \
+        hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     # ensure that the min of the hist max is 1
-    max_hist = float(max(hist)) if max(hist) > 1 else 1
     try:
-        hist = np.concatenate([np.array(hist), np.array([max_hist])])
+        if keep_max:
+            hist = np.concatenate([np.array(hist).astype(np.uint16),
+                                   np.array([max_hist]).astype(np.uint16)])
     except ValueError:
         pass
     return go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist]), \

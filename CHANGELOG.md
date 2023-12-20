@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.0] - 2023-12-19
+## [0.11.0] - 2023-12-20
 
 ### Changed
 
@@ -33,6 +33,7 @@ unsigned 16 byte integer, with a tradeoff of precision vs. memory and speed
 
 - Fixed extraneous callback on the canvas redraw the channel order is triggered
 but the order has not changed
+- Fixed improper intensity histogram max range due to sub-setting
 
 ## [0.10.0] - 2023-11-27
 

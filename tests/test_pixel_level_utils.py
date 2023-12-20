@@ -254,8 +254,20 @@ def test_generate_histogram(get_current_dir):
     assert histogram["data"] is not None
     assert histogram["layout"] is not None
     values = histogram["data"][0]['x']
+    assert int(max(values)) == int(array_max)
     assert len(values) == 360001
     assert array_max == int(np.max(greyscale))
+
+    larger_array = np.full((2000, 2000), 10)
+    larger_array[10, 10] = 56487
+    histogram, array_max = pixel_hist_from_array(larger_array)
+    assert isinstance(histogram, plotly.graph_objs._figure.Figure)
+    assert histogram["data"] is not None
+    assert histogram["layout"] is not None
+    values = histogram["data"][0]['x']
+    assert int(max(values)) == int(array_max)
+    assert len(values) == 1000001
+    assert array_max == 56487
 
 
 def test_basic_blend_dict_params():
