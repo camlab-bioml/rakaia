@@ -25,6 +25,7 @@ mask to ROI
 - Added ability to add custom colour swatches through CLI as a comma separated string #81
 - Added ability to upload cluster assignments in CSV format to annotate an applied mask
 by colour (auto-generated or default random) #82
+- Ability to re-import point annotations and populate shapes in canvas #83
 - First draft: ability to read in quantification sheets from anndata/h5ad #54
 - CLI toggle option to toggle the backend array store type from 32 byte float (default) to
 unsigned 16 byte integer, with a tradeoff of precision vs. memory and speed
