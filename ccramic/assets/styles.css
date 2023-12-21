@@ -28,3 +28,8 @@
 .modal {
   margin: 0 auto;
 }
+
+div#dash-uploader {
+    min-height: auto !important;
+    line-height: normal !important;
+  }

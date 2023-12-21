@@ -14,9 +14,9 @@ from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import anndata
 import sys
 from sklearn.preprocessing import StandardScaler
+import scanpy as sc
 
-def drop_columns_from_measurements_csv(measurements_csv,
-                                       cols_to_drop=set_columns_to_drop()):
+def drop_columns_from_measurements_csv(measurements_csv):
     cols_to_drop = set_columns_to_drop(measurements_csv)
     try:
         for col in cols_to_drop:
@@ -58,8 +58,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
         raise PreventUpdate
 
 
-def validate_incoming_measurements_csv(measurements_csv, current_image=None, validate_with_image=True,
-                                       required_columns=set_mandatory_columns()):
+def validate_incoming_measurements_csv(measurements_csv, required_columns=set_mandatory_columns()):
     """
     Validate an incoming measurements CSV against the current canvas, and ensure that it has the required
     information columns
@@ -110,7 +109,7 @@ def get_quantification_filepaths_from_drag_and_drop(status):
         raise PreventUpdate
 
 
-def parse_and_validate_measurements_csv(session_dict, error_config=None, image_to_validate=None,
+def parse_and_validate_measurements_csv(session_dict, error_config=None,
                                         use_percentile=False):
     """
     Validate the measurements CSV and return a clean version
@@ -118,23 +117,25 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, image_t
     """
     if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
         if str(session_dict['uploads'][0]).endswith('.csv'):
-            quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]),
-                                            current_image=image_to_validate, validate_with_image=True)
+            quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]))
         elif str(session_dict['uploads'][0]).endswith('.h5ad'):
-            quantification_worksheet, warning = validate_quantification_from_anndata(session_dict['uploads'][0])
+            # TODO: add parsing function for h5ad
+            quantification_worksheet, warning = validate_quantification_from_anndata(
+                parse_quantification_sheet_from_h5ad(session_dict['uploads'][0]))
         else:
             quantification_worksheet, warning = None, "Error: could not find a valid quantification sheet."
         # TODO: establish where to use the percentile filtering on the measurements
         measurements_return = filter_measurements_csv_by_channel_percentile(
             quantification_worksheet).to_dict(orient="records") if use_percentile else \
-            quantification_worksheet.to_dict(orient="records")
+            quantification_worksheet.to_dict(orient="records") if quantification_worksheet is not None else None
+        cols_return = quantification_worksheet.columns if quantification_worksheet is not None else None
         warning_return = dash.no_update
         if warning is not None:
             if error_config is None:
                 error_config = {"error": None}
             error_config["error"] = warning
             warning_return = error_config
-        return measurements_return, quantification_worksheet.columns, warning_return
+        return measurements_return, cols_return, warning_return
     else:
         raise PreventUpdate
 
@@ -175,7 +176,7 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                     else:
                         mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
                         boundary_import = np.array(Image.fromarray(
-                            convert_mask_to_cell_boundary(page.asarray().astype(np.uint16))).convert('RGB'))
+                            convert_mask_to_cell_boundary(page.asarray().astype(np.uint32))).convert('RGB'))
                     mask_name_use = single_mask_name if single_mask_name is not None else mask_name
                     cur_mask_dict[mask_name_use] = {"array": mask_import, "boundary": boundary_import,
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
@@ -187,8 +188,11 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
 
 
 def validate_quantification_from_anndata(anndata_obj, required_columns=set_mandatory_columns()):
-    obj = anndata.read_h5ad(anndata_obj)
-    frame = pd.DataFrame(obj.obs)
+    if isinstance(anndata_obj, str):
+        obj = anndata.read_h5ad(anndata_obj)
+        frame = pd.DataFrame(obj.obs)
+    else:
+        frame = anndata_obj
     if not all([column in frame.columns for column in required_columns]):
         return None, None
     else:
@@ -259,9 +263,11 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
     Parse the ROIs included in a view of a subset quantification sheet
     """
     # get the merged frames to pull the sample names in the subset
-    full_frame = pd.DataFrame(quantification_dict)
-    merged = subset_frame.merge(full_frame, how="inner", on=subset_frame.columns.tolist())
-    # get the roi names from either the description or the sample name
+    # IMP: use cbind concat instead of merge as the values might be different depending on if normalization was used
+    # TODO: need to fix duplicate columns on concat
+    # merged = pd.concat([subset_frame, pd.DataFrame(quantification_dict)], axis=1,
+    #                    join="inner").reset_index(drop=True)
+    merged = pd.DataFrame(quantification_dict).iloc[list(subset_frame.index.values)]
     if 'description' in list(merged.columns):
         indices_query = {'names': list(merged['description'].value_counts().to_dict().keys())}
     else:
@@ -271,7 +277,6 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
         except ValueError:
             # may occur if the split doesn't give integers i.e. if there are other underscores in the name
             indices_query = None
-
     freq_counts = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
                     not None else None
 
@@ -291,16 +296,8 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
     if mask_options is not None and data_selection in mask_options:
         mask_return = data_selection
     else:
-        if "+++" in data_selection:
-            exp, slide, acq = split_string_at_pattern(data_selection)
-            if mask_options is not None and exp in mask_options:
-                mask_return = exp
-            elif mask_options is not None and acq in mask_options:
-                mask_return = acq
-
-        # if the return value is still None, look for indices
-        if mask_return is None and mask_options is not None and roi_options is not None:
-            # try to match the index of the data selection to an index in the mask options
+        # first, check to see if the pattern matches based on the pipeline mask name output
+        if mask_options is not None and roi_options is not None:
             data_index = roi_options.index(data_selection)
             for mask in mask_options:
                 try:
@@ -312,6 +309,19 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                         mask_return = mask
                 except (TypeError, IndexError, ValueError):
                     pass
+        if mask_return is None and "+++" in data_selection:
+            exp, slide, acq = split_string_at_pattern(data_selection)
+            if mask_options is not None and exp in mask_options:
+                mask_return = exp
+            elif mask_options is not None and acq in mask_options:
+                mask_return = acq
+            # begin looking for partial matches if not direct match between experiment/ROI name and mask
+            elif mask_options is not None:
+                for mask_name in mask_options:
+                    # check if any overlap with the mask options and the current data selection
+                    # IMP: assumes that the mask name contains all of the experiment or ROI name somewhere in the label
+                    if exp in mask_name or acq in mask_name:
+                        mask_return = mask_name
     return mask_return
 
 
@@ -324,21 +334,58 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sa
     if mask_selection in cell_id_list:
         sam_id = mask_selection
     else:
-        try:
-            split_1 = mask_selection.split("_ac_IA_mask")[0]
-            # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
-            index = int(split_1.split("_")[-1].replace("a", ""))
-            for sample in sorted(cell_id_list):
-                if sample == mask_selection:
-                    sam_id = sample
-                elif sample_col_id == "sample":
-                    split = sample.split("_")
-                    try:
-                        if int(split[-1]) == int(index):
-                            sam_id = sample
-                    except ValueError:
-                        pass
-            return sam_id
-        except (KeyError, TypeError):
-            pass
+        # also look for partial match of the cell id list to the mark name
+        for roi_id in cell_id_list:
+            if roi_id in mask_selection:
+                sam_id = roi_id
+        # if this pattern exists, try to match to the sample name by index
+        # otherwise, try matching directly by name
+        if sam_id is None and "_ac_IA_mask" in mask_selection:
+            try:
+                split_1 = mask_selection.split("_ac_IA_mask")[0]
+                # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
+                index = int(split_1.split("_")[-1].replace("a", ""))
+                for sample in sorted(cell_id_list):
+                    if sample == mask_selection:
+                        sam_id = sample
+                    elif sample_col_id == "sample":
+                        split = sample.split("_")
+                        try:
+                            if int(split[-1]) == int(index):
+                                sam_id = sample
+                        except ValueError:
+                            pass
+                return sam_id
+            except (KeyError, TypeError):
+                pass
     return sam_id
+
+def validate_imported_csv_annotations(annotations_csv):
+    """
+    Validate that the imported annotations CSV has the correct format and columns
+    """
+    frame = pd.DataFrame(annotations_csv)
+    return "x" in list(frame.columns) and "y" in list(frame.columns)
+
+
+def validate_coordinate_set_for_image(x=None, y=None, image=None):
+    """
+    Validate that a pair of xy coordinates can fit inside an image's dimensions
+    """
+    if None not in (x, y) and image is not None:
+        return int(x) <= image.shape[1] and int(y) <= image.shape[0]
+    else:
+        return False
+
+def parse_quantification_sheet_from_h5ad(h5ad_file):
+    """
+    Parse the quantification results from an h5ad files. Assumes the following format:
+    - Channel expression is held as an array in h5ad_file.X
+    - Channel names are held in h5ad_file.var_names
+    - Additional metadata variables are held in h5ad_file.obs
+    """
+    quantification_frame = sc.read_h5ad(h5ad_file)
+    expression = pd.DataFrame(quantification_frame.X, columns=list(quantification_frame.var_names)).reset_index(
+        drop=True)
+    # return the merged version of the data frames to mimic the pipeline
+    return expression.join(quantification_frame.obs.reset_index(drop=True))

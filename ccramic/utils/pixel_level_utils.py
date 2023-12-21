@@ -9,12 +9,58 @@ from scipy import ndimage
 from scipy.ndimage import median_filter
 from dash.exceptions import PreventUpdate
 import cv2
+import re
+import random
+import numexpr as ne
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
 
 
+def set_array_storage_type_from_config(array_type="float"):
+    """
+    Set the array storage type within the application. Options are either 32-byte float or 16-byte int
+    """
+    if array_type not in ["float", "int"]:
+        raise TypeError("the array type requested must be either float or int")
+    return np.float32 if array_type == "float" else np.uint16
+
+def is_rgb_color(value):
+    """
+    Return if a particular string is in the format of RGB hex code or not
+    # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string
+    """
+    _rgbstring = re.compile(r'#[a-fA-F0-9]{6}$')
+    return bool(_rgbstring.match(value))
+
+def generate_default_swatches(config):
+    """
+    Return a list of default swatches for the mantine ColorPicker based on the contents of the config
+    """
+    DEFAULTS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
+    try:
+        # set the split based on if the swatches are given as a string or list
+        if isinstance(config['swatches'], str):
+            split = config['swatches'].split(',')
+        elif isinstance(config['swatches'], list):
+            split = config['swatches']
+        else:
+            split = None
+        if split is not None:
+            swatches = [str(i) for i in split if is_rgb_color(i)] if \
+            config['swatches'] is not None else DEFAULTS
+            swatches = swatches if len(swatches) > 0 else DEFAULTS
+            return swatches
+        else:
+            return DEFAULTS
+    except KeyError:
+        return DEFAULTS
+
+
 def recolour_greyscale(array, colour):
+    """
+    Convert a greyscale image into an RGB with a designated colour
+    """
     if colour not in ['#ffffff', '#FFFFFF']:
         image = Image.fromarray(array)
         image = image.convert('RGB')
@@ -27,8 +73,7 @@ def recolour_greyscale(array, colour):
         new_array[:, :, 1] = green
         new_array[:, :, 2] = blue
 
-        converted = new_array * (np.array(image) / 255)
-        # print(converted)
+        converted = ne.evaluate("new_array * image / 255")
         return converted.astype(np.uint8)
 
     else:
@@ -82,8 +127,8 @@ def get_area_statistics_from_closed_path(array, svgpath):
     return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array])
 
 
-def convert_to_below_255(array):
-    return array if np.max(array) < 65000 else (array // 256).astype(np.uint8)
+# def convert_to_below_255(array):
+#     return array if np.max(array) < 65000 else (array // 256).astype(np.uint8)
 
 
 def resize_for_canvas(image, basewidth=400, return_array=True):
@@ -137,22 +182,30 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     else:
         scale_factor = 1
     if scale_factor > 0 and scale_factor != 1:
-        array = array * scale_factor
+        array = ne.evaluate("array * scale_factor")
     return array
 
 
-def pixel_hist_from_array(array, subset_number=1000000):
+def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
+    """
+    Generate a pixel histogram from a channel array. If the number of array elements is larger than the subset number,
+    create a down-sample
+    If `keep_max` is True, then the final histogram will always retain the max of the original array cast
+    to an integer so that it matches the range slider
+    """
     # try:
     # IMP: do not use the conversion to L as it will automatically set the max to 255
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
-    hist_data = np.hstack(array)
-    max_hist = np.max(array)
-    hist = np.random.choice(hist_data, subset_number) if hist_data.shape[0] > subset_number else hist_data
+    hist_data = np.hstack(array).astype(np.uint16)
+    max_hist = int(np.max(array)) if int(np.max(array)) > 1 else 1
+    hist = np.random.choice(hist_data, subset_number).astype(np.uint16) if \
+        hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     # ensure that the min of the hist max is 1
-    max_hist = float(max(hist)) if max(hist) > 1 else 1
     try:
-        hist = np.concatenate([np.array(hist), np.array([max_hist])])
+        if keep_max:
+            hist = np.concatenate([np.array(hist).astype(np.uint16),
+                                   np.array([max_hist]).astype(np.uint16)])
     except ValueError:
         pass
     return go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist]), \
@@ -342,3 +395,37 @@ def select_random_colour_for_channel(blend_dict, current_channel, default_colour
             blend_dict[current_channel]['color'] = default
             break
     return blend_dict
+
+
+def random_hex_colour_generator(number=10):
+    """
+    Generate a list of random hex colours. The number provided will be the length of the list
+    """
+    #
+    r = lambda: random.randint(0, 255)
+    colours = []
+    index = 0
+    while index < number:
+        colour = '#%02X%02X%02X' % (r(), r(), r())
+        if colour not in colours:
+            colours.append(colour)
+            index += 1
+    return colours
+
+
+def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
+    image_shape = layer_dict[channel_list[0]].shape
+    image = np.zeros(image_shape)
+    for elem in channel_list:
+        blend = layer_dict[elem]
+        image = ne.evaluate("image + blend")
+    return image.astype(np.float32)
+
+def get_first_image_from_roi_dictionary(roi_dictionary):
+    """
+    Return the first image in a dictionary that specifies an ROI. This assumes that
+    all of the other channel arrays in the dictionary have the same shape
+    """
+    first_image_name = list(roi_dictionary.keys())[0]
+    image_for_validation = roi_dictionary[first_image_name]
+    return image_for_validation

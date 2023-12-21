@@ -53,7 +53,7 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True):
             all([elem in measurements.columns for elem in cols_include]):
         measurements = measurements[cols_include]
     return px.imshow(measurements, x=measurements.columns, y=measurements.index,
-                    labels=dict(x="Channel", y="Cells", color="Cell Channel Mean"),
+                    labels=dict(x="Channel", y="Cells", color="Expression Mean"),
                     title=f"Channel expression per cell ({len(measurements)} cells)")
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
@@ -84,7 +84,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
         if None not in (category_column, category_subset):
             frame = frame[frame[category_column].isin(category_subset)]
         if cols_drop is not None:
-            frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
+            frame = drop_columns_from_measurements_csv(frame)
         # TODO: for now, o not allow the bar plot to reflect a canvas subset (assign values only from the UMAP)
         # if canvas_layout is not None and \
         #         all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
@@ -119,8 +119,9 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
 
 
 def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings, zoom_keys,
-                                                triggered_id, cols_drop=None,
-                                                category_column=None, category_subset=None, cols_include=None):
+                                                triggered_id, cols_drop=True,
+                                                category_column=None, category_subset=None, cols_include=None,
+                                                normalize=True):
     """
     Generate a heatmap of the quantification frame, trimmed to only the channel columns, based on an interactive
     subset from the UMAP graph
@@ -130,18 +131,25 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         # IMP: perform category subsetting before removing columns
         if None not in (category_column, category_subset):
             frame = frame[frame[category_column].isin(category_subset)]
-        if cols_drop is not None:
-            frame = drop_columns_from_measurements_csv(frame, cols_to_drop=cols_drop)
+        if cols_drop:
+            frame = drop_columns_from_measurements_csv(frame)
+        # TODO: important: need to normalize before  the subset occurs so that it is relative to the entire
+        # frame, not just the subset
+        # TODO: add min max normalization to have ranges between 0 and 1
+        if normalize:
+            frame = ((frame - frame.min()) / (frame.max() - frame.min()))
         if umap_layout is not None and \
                 all([key in umap_layout for key in zoom_keys]):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
                         pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2']), umap_layout)
         else:
             subset_frame = frame
-        subset_frame = subset_frame.reset_index(drop=True)
+        # IMP: do not reset the subset index here as the indices are needed for the query subset!!!!
+        # subset_frame = subset_frame.reset_index(drop=True)
         # only recreate the graph if new data are passed from the UMAP, not on a recolouring of the UMAP
         if triggered_id not in ["umap-projection-options"] or category_column is None:
-            fig = generate_channel_heatmap(subset_frame, cols_include=cols_include)
+            # IMP: reset the index for the heatmap to avoid uneven box sizes
+            fig = generate_channel_heatmap(subset_frame.reset_index(drop=True), cols_include=cols_include)
             fig['layout']['uirevision'] = True
         else:
             fig = dash.no_update

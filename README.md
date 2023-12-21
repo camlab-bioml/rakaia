@@ -122,6 +122,13 @@ the load screens for data manipulation, use the `-dl` CLI option:
 ccramic -dl
 ```
 
+ccramic supports custom default colour swatches that are input by
+the user. An example using 14 custom colours:
+
+```commandline
+ccramic -sc "#25262b,#868e96,#fa5252,#e64980,#be4bdb,#7950f2,#4c6ef5,#228be6,#15aabf,#12b886,#40c057,#82c91e,#fab005,#fd7e14"
+```
+
 ## Basic authentication
 
 ccramic uses basic authentication upon a new session. The credentials are as follows:
@@ -203,3 +210,32 @@ for the ccramic session caching. In general, the user should aim
 for at least 2x the total dataset size of temporary storage (So for
 analysis of a 10GB dataset, at least 20GB of temp disk space should
 be kept free.)
+
+## Performance
+
+### Array casting
+
+By default, ccramic will store imported data as 32 byte float arrays.
+Information on numpy dtypes can be found [here](https://numpy.org/doc/stable/reference/arrays.dtypes.html).
+To reduce memory consumption and the amount of temporary disk storage required, users can choose
+to have arrays stored as 16 byte unsigned integers instead by invoking the
+CLI option `--array-type` (from v0.11.0 onwards):
+
+```commandline
+ccramic -at int
+```
+
+In many instances, using integer array types will save up to 50%
+of the disk space required for storing the same array in float32 format.
+
+This option will work well for the majority of user cases, as arrays
+are always converted into integers when recoloured and blended in the canvas. **However**,
+there are two specific use cases where storing the arrays as float are beneficial or necessary:
+
+- When the channel array has values between 0 and 1: these values will automatically be converted
+to 0 or 1 with integer casting, so any decimal precision will be lost for this channel.
+- When the array channel has a maximum value over 65535: Unsigned 16 byte integers
+in numpy have a maximum positive range of 65535, so any array values that are greater
+will be clipped to this value
+
+For the use cases above, users are advised to use the default array storage type.

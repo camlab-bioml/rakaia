@@ -19,12 +19,71 @@ from ccramic.utils.pixel_level_utils import (
     path_to_mask,
     get_area_statistics_from_closed_path,
     get_bounding_box_for_svgpath,
-    select_random_colour_for_channel)
+    select_random_colour_for_channel,
+    apply_preset_to_blend_dict,
+    is_rgb_color,
+    generate_default_swatches,
+    random_hex_colour_generator,
+    get_additive_image,
+    get_first_image_from_roi_dictionary,
+    set_array_storage_type_from_config)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 from PIL import Image
 import numpy as np
+
+
+def test_identify_rgb_codes():
+    # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string
+    assert is_rgb_color('#FAF0E6')
+    assert not is_rgb_color('#FAF0')
+    assert not is_rgb_color('#NotRgb')
+    assert not is_rgb_color('FAF0E6')
+
+def test_return_array_dtype():
+    assert str(set_array_storage_type_from_config()) == "<class 'numpy.float32'>"
+    assert str(set_array_storage_type_from_config("int")) == "<class 'numpy.uint16'>"
+    with pytest.raises(TypeError):
+        set_array_storage_type_from_config("fake_type")
+
+def test_random_hex_colour_generator():
+    random_cols = random_hex_colour_generator()
+    assert len(random_cols) == 10
+    assert len(set(random_cols)) == 10
+
+    random_cols = random_hex_colour_generator(75)
+    assert len(random_cols) == 75
+    assert len(set(random_cols)) == 75
+    assert all([len(elem) == 7 for elem in random_cols])
+
+def test_generate_default_swatches():
+    config = {'swatches': ["#0000FF", "#0000FF", "#0000FF", "#0000FF"]}
+    swatches = generate_default_swatches(config)
+    assert len(swatches) == 4
+    config = {'swatches': "#0000FF,#0000FF,#0000FF,#0000FF"}
+    swatches = generate_default_swatches(config)
+    assert len(swatches) == 4
+
+
+    config = {'swatches': ["#0000FF", "#0000FF", "fake", "#0000FF"]}
+    swatches = generate_default_swatches(config)
+    assert len(swatches) == 3
+    config = {'swatches': "#0000FF,fake,#0000FF,#0000FF"}
+    swatches = generate_default_swatches(config)
+    assert len(swatches) == 3
+
+    config = {'swatches': []}
+    swatches = generate_default_swatches(config)
+    assert len(swatches) == 7
+
+    config = {'swatches': "None"}
+    swatches = generate_default_swatches(config)
+    assert len(swatches) == 7
+
+    config = {'fake_key': "None"}
+    swatches = generate_default_swatches(config)
+    assert len(swatches) == 7
 
 def test_basic_recolour_non_white(get_current_dir):
     greyscale = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
@@ -173,6 +232,19 @@ def test_filtering_intensity_changes_low(get_current_dir):
 
     assert np.max(greyscale) >= np.max(filtered_1)
 
+def test_filtering_intensity_changes_same_vals(get_current_dir):
+    greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
+    greyscale = np.array(greyscale_image)
+    filtered_1 = filter_by_upper_and_lower_bound(greyscale, lower_bound=100, upper_bound=100)
+    original_pixels = Image.fromarray(greyscale).load()
+    new_pixels = Image.fromarray(filtered_1).load()
+    # assert that when a low upper bound is used, it scales up to the max of 255
+    assert int(round(np.max(filtered_1))) == 0
+    for i in range(greyscale_image.height):
+        for j in range(greyscale_image.width):
+            if original_pixels[i, j] < 1:
+                assert new_pixels[i, j] == 0
+    assert np.max(greyscale) >= np.max(filtered_1)
 
 def test_generate_histogram(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
@@ -182,8 +254,20 @@ def test_generate_histogram(get_current_dir):
     assert histogram["data"] is not None
     assert histogram["layout"] is not None
     values = histogram["data"][0]['x']
+    assert int(max(values)) == int(array_max)
     assert len(values) == 360001
     assert array_max == int(np.max(greyscale))
+
+    larger_array = np.full((2000, 2000), 10)
+    larger_array[10, 10] = 56487
+    histogram, array_max = pixel_hist_from_array(larger_array)
+    assert isinstance(histogram, plotly.graph_objs._figure.Figure)
+    assert histogram["data"] is not None
+    assert histogram["layout"] is not None
+    values = histogram["data"][0]['x']
+    assert int(max(values)) == int(array_max)
+    assert len(values) == 1000001
+    assert array_max == 56487
 
 
 def test_basic_blend_dict_params():
@@ -231,6 +315,15 @@ def test_basic_blend_dict_params():
         for blend_param in blend_dict[channel].values():
             assert blend_param not in possibilities
 
+def test_basic_preset_apply_blend_dict():
+    blend_dict = {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None, "filter_sigma": None}
+    preset_dict = {"color": "#FF00FF", "x_lower_bound": 1, "x_upper_bound": 100, "filter_type": "median",
+                   "filter_val": 3, "filter_sigma": 1}
+    blend_dict = apply_preset_to_blend_dict(blend_dict, preset_dict)
+    for key, value in blend_dict.items():
+        if key != 'color':
+            assert value == preset_dict[key]
+
 def test_calculate_percentile_intensity(get_current_dir):
     array = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
     default_val = get_default_channel_upper_bound_by_percentile(array=array)
@@ -275,6 +368,9 @@ def test_coord_navigation():
     assert new_coords[0] == 450.0
     assert new_coords[1] == 550.0
     assert new_coords[1] - new_coords[0] == 100.0
+
+    window_dict = {"x_high": 50, "x_low": 100, "y_high": 10}
+    assert create_new_coord_bounds(window_dict, 500, 500) is None
 
 
 def test_get_statistics_from_rect_array(get_current_dir):
@@ -367,3 +463,31 @@ def test_random_colour_selector():
     assert DEFAULT_COLOURS[1] == blend_dict['Cytoplasm']['color']
     blend_dict = select_random_colour_for_channel(blend_dict, "Nuclear", DEFAULT_COLOURS)
     assert DEFAULT_COLOURS[0] == blend_dict['Nuclear']['color']
+
+
+def test_get_additive_image():
+    layer_dict = {"channel_1": np.full((200, 200, 3), 3),
+                  "channel_2": np.full((200, 200, 3), 6),
+                  "channel_3": np.full((200, 200, 3), 9)}
+
+    additive = get_additive_image(layer_dict, list(layer_dict.keys()))
+    assert np.max(additive) == 18.0
+    assert np.min(additive) == 18.0
+    assert np.mean(additive) == 18.0
+
+    layer_dict = {"channel_1": np.full((200, 200, 3), 1000),
+                  "channel_2": np.full((200, 200, 3), 2000),
+                  "channel_3": np.full((200, 200, 3), 3000)}
+
+    additive = get_additive_image(layer_dict, list(layer_dict.keys()))
+    assert np.max(additive) == 6000.0
+    assert np.min(additive) == 6000.0
+    assert np.mean(additive) == 6000.0
+
+def test_retrieval_first_roi_dict_image():
+    layer_dict = {"channel_1": np.full((200, 200, 3), 1000),
+                  "channel_2": np.full((200, 200, 3), 2000),
+                  "channel_3": np.full((200, 200, 3), 3000)}
+    first_array = get_first_image_from_roi_dictionary(layer_dict)
+    assert first_array.shape == (200, 200, 3)
+    assert np.mean(first_array) == 1000

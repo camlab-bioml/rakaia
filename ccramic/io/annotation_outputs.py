@@ -3,6 +3,7 @@ from ccramic.utils.cell_level_utils import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box,
     validate_mask_shape_matches_image)
+from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.utils.pixel_level_utils import path_to_mask
 import os
 import tifffile
@@ -93,8 +94,7 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
             points = {'ROI': [], 'x': [], 'y': [], 'annotation_col': [], 'annotation': []}
             try:
                 if None not in (image_dict, data_selection):
-                    first_image = list(image_dict[data_selection].keys())[0]
-                    first_image = image_dict[data_selection][first_image]
+                    first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
                 else:
                     first_image = None
             except (KeyError, TypeError):

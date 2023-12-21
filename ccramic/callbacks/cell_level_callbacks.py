@@ -9,6 +9,7 @@ from ccramic.parsers.cell_level_parsers import (
     get_quantification_filepaths_from_drag_and_drop,
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
+    validate_imported_csv_annotations
 )
 from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
@@ -20,12 +21,14 @@ from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
     generate_umap_plot,
     )
+from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
     callback_remove_canvas_annotation_shapes)
 from ccramic.io.annotation_outputs import export_annotations_as_masks, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
-from ccramic.utils.pixel_level_utils import split_string_at_pattern
+from ccramic.utils.pixel_level_utils import split_string_at_pattern, random_hex_colour_generator
+from ccramic.io.readers import DashUploaderFileReader
 import os
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
 from dash import dcc
@@ -36,6 +39,7 @@ from dash_extensions.enrich import Output, Input, State, Serverside
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
+from dash import html
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -55,31 +59,29 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('session_config_quantification', 'data'),
                        State('session_alert_config', 'data'),
-                       State('uploaded_dict', 'data'),
-                       State('data-collection', 'value'),
                        prevent_initial_call=True)
-    def populate_quantification_table_from_upload(session_dict, error_config, upload_dict, data_selection):
-        if None not in (data_selection, upload_dict):
-            first_image = list(upload_dict[data_selection].keys())[0]
-            image_for_validation = upload_dict[data_selection][first_image]
+    def populate_quantification_table_from_upload(session_dict, error_config):
+        if session_dict is not None:
+            quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config)
+            return Serverside(quant_dict), cols, alert
         else:
-            image_for_validation = None
-        quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config,
-                                                   image_to_validate=image_for_validation)
-        return Serverside(quant_dict), cols, alert
+            raise PreventUpdate
 
     @du.callback(Output('umap-projection', 'data'),
                  id='upload-umap-coordinates')
     # @cache.memoize())
-    def get_quantification_upload_from_drag_and_drop(status: du.UploadStatus):
-        filenames = [str(x) for x in status.uploaded_files]
-        if filenames and float(status.progress) == 1.0:
-            frame = pd.read_csv(filenames[0])
+    def get_umap_upload_from_drag_and_drop(status: du.UploadStatus):
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files:
+            frame = pd.read_csv(files[0])
             if len(frame.columns) == 2:
                 frame.columns = ['UMAP1', 'UMAP2']
                 return Serverside(frame.to_dict(orient="records"))
             else:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
 
     @dash_app.callback(Output('quantification-heatmap-full', 'figure'),
                        Output('umap-legend-categories', 'data'),
@@ -97,10 +99,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('umap-legend-categories', 'data'),
                        Input('quant-heatmap-channel-list', 'value'),
                        State('quant-heatmap-channel-list', 'options'),
+                       Input('normalize-heatmap', 'value'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings,
                                             annot_cols, restyle_data, umap_col_selection, prev_categories,
-                                            channels_to_display, heatmap_channel_options):
+                                            channels_to_display, heatmap_channel_options, normalize_heatmap):
         # TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
@@ -127,8 +130,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
 
             try:
                 fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
-                        umap_layout, embeddings, zoom_keys, ctx.triggered_id, annot_cols, umap_col_selection,
-                        subtypes, channels_to_display)
+                        umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
+                        subtypes, channels_to_display, normalize=normalize_heatmap)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             if frame is not None:
@@ -137,8 +140,13 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                     # also return the current count of the umap category selected to update the distribution table
                 # only store the cell id lists if zoom subsetting is used
                 if umap_layout is not None and all([key in umap_layout.keys() for key in zoom_keys]):
-                    full_frame = pd.DataFrame(quantification_dict)
-                    merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
+                    # merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
+                    # merged = pd.merge(pd.DataFrame(frame), pd.DataFrame(quantification_dict),
+                    #          left_index=True, right_index=True).reset_index(drop=True)
+                    # TODO: need to fix duplicate columns on concat
+                    # merged = pd.concat([frame, pd.DataFrame(quantification_dict)], axis=1,
+                    #           join="inner").reset_index(drop=True)
+                    merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
                     cell_id_dict = generate_dict_of_roi_cell_ids(merged)
                 else:
                     cell_id_dict = None
@@ -155,7 +163,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict), cols_return, cols_selected
         else:
             raise PreventUpdate
-
 
     # @dash_app.callback(Output('quantification-bar-full', 'figure'),
     #                    Input('quantification-dict', 'data'),
@@ -289,7 +296,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             raise PreventUpdate
 
 
-
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
     # @cache.memoize())
@@ -395,7 +401,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                                 mask_selection, sample_name=sample_name, id_column=id_column)
         return Serverside(quant_frame), annotations
 
-
     @dash_app.callback(
         Output("download-edited-annotations", "data"),
         Input("btn-download-annotations", "n_clicks"),
@@ -445,8 +450,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                                  data_selection, image_dict, mask_dict, apply_mask, mask_selection):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
-            first_image = list(image_dict[data_selection].keys())[0]
-            first_image = image_dict[data_selection][first_image]
+            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
@@ -583,3 +587,100 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             if n1:
                 return not is_open
             return is_open
+
+    @du.callback(Output('imported-annotations-csv', 'data'),
+                 id='upload-point-annotations')
+    # @cache.memoize())
+    def import_point_annotations_from_drag_and_drop(status: du.UploadStatus):
+        """
+        Import a CSV of point annotations to re-render on the canvas
+        """
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files:
+            frame = pd.read_csv(files[0])
+            if validate_imported_csv_annotations(frame):
+                return Serverside(frame.to_dict(orient="records"))
+            else:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @du.callback(Output('imported-cluster-frame', 'data'),
+                 id='upload-cluster-annotations')
+    # @cache.memoize())
+    def get_cluster_assignment_upload_from_drag_and_drop(status: du.UploadStatus):
+        uploader = DashUploaderFileReader(status)
+        files = uploader.return_filenames()
+        if files:
+            frame = pd.read_csv(files[0])
+            # TODO: for now, use set column names, but epand in the future
+            if len(frame.columns) == 2 and all([elem in list(frame.columns) for elem in ['cell_id', 'cluster']]):
+                return Serverside(frame.to_dict(orient="records"))
+            else:
+                raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Input('imported-cluster-frame', 'data'),
+                 State('data-collection', 'value'),
+                 Output('cluster-colour-assignments-dict', 'data'),
+                Output('cluster-label-list', 'options'))
+    # @cache.memoize())
+    def generate_cluster_colour_assignment(cluster_frame, data_selection):
+        if None not in (cluster_frame, data_selection):
+            unique_clusters = pd.DataFrame(cluster_frame)['cluster'].unique().tolist()
+            unique_colours = random_hex_colour_generator(len(unique_clusters))
+            cluster_assignments = {data_selection: {}}
+            for clust, colour in zip(unique_clusters, unique_colours):
+                cluster_assignments[data_selection][clust] = colour
+            return cluster_assignments, list(unique_clusters)
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Input('data-collection', 'value'),
+                       State('cluster-colour-assignments-dict', 'data'),
+                       Output('cluster-label-list', 'options', allow_duplicate=True))
+    # @cache.memoize())
+    def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame):
+        if None not in (data_selection, cluster_frame) and data_selection in cluster_frame.keys():
+            return list(cluster_frame[data_selection].keys())
+        else:
+            return []
+
+    @dash_app.callback(Output('cluster-assignments', 'children', allow_duplicate=True),
+                       Input('cluster-colour-assignments-dict', 'data'),
+                       Input('data-collection', 'value'))
+    def render_cluster_colour_legend(cluster_assignments_dict, data_selection):
+        """
+        render the html H6 html span legend for the cluster annotation colours
+        """
+        if None not in (cluster_assignments_dict, data_selection):
+            if data_selection in cluster_assignments_dict:
+                children = [html.Span("Cluster assignments\n", style={"color": "black"}), html.Br()]
+                for key, value in cluster_assignments_dict[data_selection].items():
+                    children.append(html.Span(f"{str(key)}\n", style={"color": str(value)}))
+                    children.append(html.Br())
+                return children
+            else:
+                return []
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
+                       Input('cluster-color-picker', 'value'),
+                       State('cluster-label-list', 'value'),
+                       State('data-collection', 'value'),
+                       State('cluster-colour-assignments-dict', 'data'))
+    def assign_colour_to_cluster_label(colour_selection, cluster_selection, data_selection, clust_dict):
+        """
+        Assign the designated colour from the colour picker to the selected cluster label
+        """
+        if None not in (colour_selection, cluster_selection, data_selection, clust_dict):
+            try:
+                clust_dict[data_selection][cluster_selection] = colour_selection['hex']
+                return clust_dict
+            except KeyError:
+              raise PreventUpdate
+        else:
+            raise PreventUpdate

@@ -214,3 +214,23 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
             num_ticks = int(max_value) + 1
         # sets the dictionary for the string and int values to be shown in the pixel intensity range slider
         return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1
+
+
+def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical"):
+    """
+    Generate the string annotation text for a canvas based on the channels and selected colour of the channel
+    """
+    legend_text = ''
+    # cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
+    #                                   shape is not None and 'label' in shape and \
+    #                                   shape['label'] is not None and 'texttemplate' not in shape[
+    #                                       'label']]
+    gap = "" if legend_orientation == "vertical" else " "
+    line_break = "<br>" if legend_orientation == "vertical" else ""
+    for image in channel_order:
+        # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
+        label = aliases[image] if aliases is not None and image in aliases.keys() else image
+        legend_text = legend_text + f'<span style="color:' \
+                                    f'{blend_colour_dict[image]["color"]}"' \
+                                    f'>{label}{gap}</span>{line_break}'
+    return legend_text

@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.11.0] - 2023-12-21
+
+### Changed
+
+- Added persistence variable logging to select variables (session + canvas
+appearance) that are cached in the browser for future sessions based on user preferences
+- Additive image blending for channels is now handled through `numexpr` instead of numpy
+for faster performance (applies to additive blending, recolouring, and intensity thresholds)
+- Modify pattern matching for mask names to ROI names in datasets and quantification sheets to include partial match of
+mask to ROI
+- Move the canvas tiff download out of the download dropdown to prevent using
+Serverside storage for every canvas image (saves tmp disk space): now uses `dcc.send_file`
+instead of an `html.A` hyperlink
+
+### Added
+
+- Toggle feature to cast the canvas legend as horizontal instead of vertical
+  (horizontal = all channel names on one line)
+- Added ability to add custom colour swatches through CLI as a comma separated string #81
+- Added ability to upload cluster assignments in CSV format to annotate an applied mask
+by colour (auto-generated or default random) #82
+- Ability to re-import point annotations and populate shapes in canvas #83
+- First draft: ability to read in quantification sheets from anndata/h5ad #54
+- CLI toggle option to toggle the backend array store type from 32 byte float (default) to
+unsigned 16 byte integer, with a tradeoff of precision vs. memory and speed
+
+### Fixed
+
+- Fixed extraneous callback on the canvas redraw the channel order is triggered
+but the order has not changed
+- Fixed improper intensity histogram max range due to sub-setting
+
 ## [0.10.0] - 2023-11-27
 
 ### Changed

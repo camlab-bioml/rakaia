@@ -95,6 +95,7 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
             error_config = {"error": None}
         error_config["error"] = "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes."
+        cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
         return cur_canvas, error_config
     else:
         raise PreventUpdate

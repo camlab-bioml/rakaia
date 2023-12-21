@@ -14,6 +14,8 @@ def test_generate_channel_gallery_children():
     gallery_dict = {"im_1": np.zeros((1000, 1000)), "im_2": np.zeros((1000, 1000)),
                     "im_3": np.zeros((1000, 1000)),
                   "im_4": np.zeros((1000, 1000)), "im_5": np.zeros((1000, 1000))}
+
+    # use a zoom feature for the gallery
     canvas_layout = {'xaxis.range[0]': 100, 'xaxis.range[1]': 200, 'yaxis.range[1]': 100, 'yaxis.range[0]': 200}
     zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]']
     blend_colour_dict = {"im_1": {"color": "#0000FF", "x_lower_bound": None,
@@ -28,6 +30,38 @@ def test_generate_channel_gallery_children():
                                   "x_upper_bound": None, "filter_type": None, "filter_val": None}}
     data_selection = "roi_1"
     aliases = {key: key for key in blend_colour_dict.keys()}
+    row_children = generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys,
+                                                          blend_colour_dict, data_selection, None, None, aliases, 0,
+                                                          toggle_gallery_zoom=True, toggle_scaling_gallery=True)
+    assert len(row_children) == len(gallery_dict)
+    for elem in row_children:
+        assert isinstance(elem, dbc.Col)
+        assert isinstance(elem.children, dbc.Card)
+
+    # assert that the gallery will still render if there is an index incompatibility
+
+    blend_colour_dict = {"im_1": {"color": "#0000FF", "x_lower_bound": None,
+                                  "filter_type": None, "filter_val": None},
+                         "im_2": {"color": "#0000FF", "x_lower_bound": None,
+                                 "filter_type": None, "filter_val": None},
+                         "im_3": {"color": "#0000FF", "x_lower_bound": None,
+                                  "filter_type": None, "filter_val": None},
+                         "im_4": {"color": "#0000FF", "x_lower_bound": None,
+                                  "filter_type": None, "filter_val": None},
+                         "im_5": {"color": "#0000FF", "x_lower_bound": None,
+                                  "filter_type": None, "filter_val": None}}
+
+    canvas_layout = {'xaxis.range[0]': 200, 'xaxis.range[1]': 100, 'yaxis.range[1]': 200, 'yaxis.range[0]': 100}
+    row_children = generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys,
+                                                          blend_colour_dict, data_selection, None, None, aliases, 0,
+                                                          toggle_gallery_zoom=True, toggle_scaling_gallery=True)
+    assert len(row_children) == len(gallery_dict)
+    for elem in row_children:
+        assert isinstance(elem, dbc.Col)
+        assert isinstance(elem.children, dbc.Card)
+
+    # do not use a zoom feature for the channel gallery
+    canvas_layout = {}
     row_children = generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys,
                                                           blend_colour_dict, data_selection, None, None, aliases, 0,
                                                           toggle_gallery_zoom=True, toggle_scaling_gallery=True)

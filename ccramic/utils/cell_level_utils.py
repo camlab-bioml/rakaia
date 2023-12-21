@@ -1,6 +1,10 @@
 import numpy
 import pandas as pd
-from ccramic.utils.pixel_level_utils import path_to_mask, get_bounding_box_for_svgpath, split_string_at_pattern
+from ccramic.utils.pixel_level_utils import (
+    path_to_mask,
+    get_bounding_box_for_svgpath,
+    split_string_at_pattern,
+    recolour_greyscale)
 from dash.exceptions import PreventUpdate
 from PIL import Image
 import matplotlib.pyplot as plt
@@ -21,13 +25,14 @@ def set_columns_to_drop(measurements_csv=None):
         # drop every column from sample and after, as these don't represent channels
         try:
             cols = list(measurements_csv.columns)
-            return cols[cols.index('sample'): len(cols)]
+            index_find = min(cols.index('sample'), cols.index('cell_id'))
+            return cols[index_find: len(cols)]
         except (ValueError, IndexError):
             return defaults
 
 def set_mandatory_columns(only_sample=True):
     if only_sample:
-        return ['sample']
+        return ['sample', 'cell_id']
     else:
         return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
@@ -90,7 +95,7 @@ def convert_mask_to_cell_boundary(mask):
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
 
 
-def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict):
+def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict, normalized_values=None):
     """
     Subset measurements frame based on a range of UMAP coordinates in the x and y axes
     Expects that the length of both frames are equal
@@ -108,7 +113,9 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
                          f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
         # if len(measurements) != len(umap_frame):
         #     query.reset_index()
-        subset = measurements.loc[query.index.tolist()]
+        # use the normalized values if they exist
+        measurements_to_use = normalized_values if normalized_values is not None else measurements
+        subset = measurements_to_use.loc[query.index.tolist()]
         return subset
     except AssertionError:
         return None
@@ -237,7 +244,7 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
         measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
                                                (measurements[id_column] == sample_name), cell_type,
                                                measurements[annotation_column])
-    except KeyError as e:
+    except KeyError:
         pass
     return measurements
 
@@ -460,7 +467,7 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
-    prioritized as the name of the ROI, and sample is the fiel name with a 1-indxed counter such as {file_name}_1
+    prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1
     """
     quantification_frame = pd.DataFrame(quantification_frame)
     exp, slide, acq = split_string_at_pattern(data_selection)
@@ -475,3 +482,26 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
             return None, None
     else:
         return None, None
+
+def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
+                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True):
+    """
+    Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
+    remain as greyscale values
+    Returns a mask in RGB format
+    """
+    cluster_frame = pd.DataFrame(cluster_frame)
+    empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
+    for cell_type in cluster_frame[cluster_col].unique().tolist():
+        cell_list = cluster_frame[(cluster_frame[cluster_col] == cell_type)][cell_id_col].tolist()
+        annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
+        annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
+        empty = empty + annot_mask
+    # Find where the cells are annotated, and add back in the ones that are not
+    if retain_cells:
+        already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
+        mask_array[already_cells] = 0
+        # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
+        return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
+    else:
+        return empty.astype(np.uint8)

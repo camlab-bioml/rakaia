@@ -62,6 +62,7 @@ multiprocess==0.70.14
 natsort==8.3.1
 networkx==3.1
 numba==0.57.0
+numexpr==2.8.7
 numpy==1.24.3
 oauthlib==3.2.2
 opencv-python-headless==4.7.0.72

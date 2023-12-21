@@ -213,9 +213,11 @@ def test_output_annotations_pdf():
         mask_config = {"mask": {"array": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB')),
                                 "raw": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB')),
                                 "boundary": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}
-        annotations_dict = {data_selection: {range_tuple: {'title': 'Title', 'body': 'body',
+        rect_tuple = tuple(sorted({'x0': 50, 'x1': 100,
+                                    'y0': 50, 'y1': 100}.items()))
+        annotations_dict = {data_selection: {rect_tuple: {'title': 'Title', 'body': 'body',
                                                            'cell_type': 'cell_type', 'imported': False,
-                                                           'type': 'zoom', 'channels': ['channel_1'],
+                                                           'type': 'rect', 'channels': ['channel_1'],
                                                            'use_mask': True,
                                                            'mask_selection': "mask",
                                                            'mask_blending_level': 35,
@@ -223,11 +225,46 @@ def test_output_annotations_pdf():
 
         output_pdf = generate_annotations_output_pdf(annotations_dict, layers_dict, data_selection,
                                                      mask_config=mask_config, aliases=aliases, dest_dir=tmpdirname)
+
+
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)
 
         assert not os.path.exists(file_path)
+
+        # test on an svgpath, make the image and masks bigger than 500x500
+        layers_dict = {"exp1+++slide0+++roi_1":
+                           {"channel_1": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB'))}}
+        mask_config = {"mask": {"array": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB')),
+                                "raw": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB')),
+                                "boundary": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB'))}}
+        svgpath = 'M670.7797603577856,478.9708311618908L675.5333177884905,487.2270098573258L676.0336922548805,' \
+                  '492.2307545212258L671.2801348241755,500.73712044985575L669.7790114250056,' \
+                  '501.98805661583077L668.0277007926405,501.4876821494408L665.7760156938856,' \
+                  '499.2359970506858L663.5243305951306,497.9850608847108L662.2733944291556,' \
+                  '496.23375025234577L661.7730199627656,492.9813162208108L661.7730199627656,' \
+                  '491.2300055884458L662.7737688955456,490.47944388886077L665.0254539943006,' \
+                  '490.47944388886077L665.7760156938856,486.4764481577408L665.2756412274956,' \
+                  '484.72513752537577L664.7752667611055,482.7236396598158L666.0262029270806,' \
+                  '477.2195205295258L667.2771390930556,480.7221417942558L667.5273263262505,' \
+                  '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
+
+        annotations_dict = {data_selection: {svgpath: {'title': 'Title', 'body': 'body',
+                                                          'cell_type': 'cell_type', 'imported': False,
+                                                          'type': 'path', 'channels': ['channel_1'],
+                                                          'use_mask': True,
+                                                          'mask_selection': "mask",
+                                                          'mask_blending_level': 35,
+                                                          'add_mask_boundary': True}}}
+
+        output_pdf = generate_annotations_output_pdf(annotations_dict, layers_dict, data_selection,
+                                                     mask_config=None, aliases=aliases, dest_dir=tmpdirname)
+        assert os.path.exists(output_pdf)
+        if os.access(output_pdf, os.W_OK):
+            os.remove(output_pdf)
+
+        assert not os.path.exists(output_pdf)
 
         blend_dict = {"channel_1": {'color': '#FFFFFF'}}
 
@@ -345,3 +382,23 @@ def test_annotation_column_from_umap_(get_current_dir):
             assert measurements["broad_class"].tolist()[index] == "test_cell_type"
         else:
             assert measurements["broad_class"].tolist()[index] == "None"
+
+
+def test_apply_cluster_annotations_to_mask(get_current_dir):
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
+    cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
+    cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
+    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict)
+    assert with_annotations.shape == (mask.shape[0], mask.shape[1], 3)
+    # assert where type 1 is
+    assert list(with_annotations[449, 414]) == list(with_annotations[484, 852]) == [147, 38, 82]
+    # assert where no cells are
+    assert list(with_annotations[623, 420]) == list(with_annotations[787, 709]) == [0, 0, 0]
+    # assert where there are cells that are not annotated (remain as white)
+    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]
+
+    # run without keeping the cells that are not annotated
+    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                              retain_cells=False)
+    # assert that where cells were before, there is nothing
+    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
