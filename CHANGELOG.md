@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.11.0] - 2023-12-20
+## [0.11.0] - 2023-12-21
 
 ### Changed
 
@@ -17,6 +17,9 @@ appearance) that are cached in the browser for future sessions based on user pre
 for faster performance (applies to additive blending, recolouring, and intensity thresholds)
 - Modify pattern matching for mask names to ROI names in datasets and quantification sheets to include partial match of
 mask to ROI
+- Move the canvas tiff download out of the download dropdown to prevent using
+Serverside storage for every canvas image (saves tmp disk space): now uses `dcc.send_file`
+instead of an `html.A` hyperlink
 
 ### Added
 

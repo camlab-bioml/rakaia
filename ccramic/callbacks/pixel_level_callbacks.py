@@ -5,7 +5,6 @@ import dash_uploader as du
 import flask
 from dash import ctx, ALL
 from dash_extensions.enrich import Output, Input, State, html, Serverside
-from tifffile import imwrite
 from ccramic.inputs.pixel_level_inputs import (
     wrap_canvas_in_loading_screen_for_large_images,
     invert_annotations_figure,
@@ -28,7 +27,6 @@ from ccramic.utils.pixel_level_utils import (
     get_all_images_by_channel_name,
     set_channel_list_order,
     pixel_hist_from_array,
-    per_channel_intensity_hovertext,
     validate_incoming_metadata_table,
     make_metadata_column_editable,
     path_to_mask,
@@ -37,7 +35,7 @@ from ccramic.utils.pixel_level_utils import (
 # from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
-from ccramic.io.display import generate_area_statistics_dataframe
+from ccramic.io.display import generate_area_statistics_dataframe, output_current_canvas_as_tiff
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
 from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
@@ -450,6 +448,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if error_config is None:
             error_config = {"error": None}
 
+        # TODO: add the ability to read back in the global filter parameters from JSON
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
             panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict['channels'])
@@ -667,7 +666,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
         if None not in (slider_values, layer, data_selection, uploaded_w_data) and \
                 all([elem is not None for elem in slider_values]):
-            # do not update if the range values in the slider match the curernt blend params:
+            # do not update if the range values in the slider match the current blend params:
             try:
                 slider_values = [float(elem) for elem in slider_values]
                 lower_bound = min(slider_values)
@@ -929,7 +928,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('annotation_canvas', 'figure'),
                        # Output('annotation_canvas', 'relayoutData'),
-                       Output('current_canvas_image', 'data'),
+                       Output('download-canvas-image-tiff', 'data'),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -963,6 +962,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('cluster-colour-assignments-dict', 'data'),
                        State('imported-cluster-frame', 'data'),
                        Input('cluster-annotation-type', 'value'),
+                       Input('btn-download-canvas-tiff', 'n_clicks'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -975,7 +975,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 pixel_ratio, invert_annot, overlay_grid, legend_orientation,
                                                 global_apply_filter, global_filter_type, global_filter_val,
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                                                cluster_frame, cluster_type):
+                                                cluster_frame, cluster_type, download_canvas_tiff):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -1017,8 +1017,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig = CanvasLayout(fig)
                     fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
                         pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
-                return fig, Serverside(canvas.get_image())
-                # else:
+                # set if the image is to be downloaded or not
+                dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
+                canvas_tiff = dash.no_update
+                if ctx.triggered_id == "btn-download-canvas-tiff":
+                    fig = dash.no_update
+                    canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
+                                                dest_dir=dest_path))
+                return fig, canvas_tiff
+                # else
                 #     fig = CanvasLayout(cur_graph)
                 #     if apply_cluster_on_mask:
                 #         fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
@@ -1466,7 +1473,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             raise PreventUpdate
 
     @dash_app.callback(Output('download-link', 'href'),
-                       Output('download-link-canvas-tiff', 'href'),
                        Output('download-canvas-interactive-html', 'href'),
                        Output('download-blend-config', 'href'),
                        State('uploaded_dict', 'data'),
@@ -1493,15 +1499,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
             dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
 
-            # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
-            # buf = io.BytesIO(fig_bytes)
-            # img = Image.open(buf)
-            dest_file = dash.no_update
-            if current_image_tiff is not None:
-                dest_file = str(os.path.join(dest_path, "canvas.tiff"))
-                if not os.path.exists(dest_path):
-                    os.makedirs(dest_path)
-                imwrite(dest_file, current_image_tiff.astype(np.uint8), photometric='rgb')
+            # # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
+            # # buf = io.BytesIO(fig_bytes)
+            # # img = Image.open(buf)
+            # dest_file = dash.no_update
+            # if current_image_tiff is not None:
+            #     dest_file = str(os.path.join(dest_path, "canvas.tiff"))
+            #     if not os.path.exists(dest_path):
+            #         os.makedirs(dest_path)
+            #     imwrite(dest_file, current_image_tiff.astype(np.uint8), photometric='rgb')
 
             download_dir = os.path.join(tmpdirname,
                                         authentic_id,
@@ -1583,10 +1589,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig_return = dash.no_update
                 param_json = str(os.path.join(download_dir, 'param.json'))
                 with open(param_json, "w") as outfile:
+                    # TODO: write the current global filters to the blend JSON
                     dict_write = {"channels": blend_dict, "config": {"blend": blend_layers}}
                     json.dump(dict_write, outfile)
 
-                return str(relative_filename), dest_file, fig_return, param_json
+                return str(relative_filename), fig_return, param_json
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
                 raise PreventUpdate

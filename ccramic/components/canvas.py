@@ -56,13 +56,6 @@ class CanvasImage:
         self.cluster_frame = cluster_frame
         self.cluster_type = cluster_type
 
-        # TODO: summing up the arrays is the bottleneck for speed. try to fix with better broadcasting
-        # if len(self.currently_selected) > 1:
-        #     image = np.sum([self.canvas_layers[self.data_selection][elem].astype(np.float32) for \
-        #              elem in self.currently_selected if \
-        #              elem in self.canvas_layers[self.data_selection].keys()], axis=0).astype(np.float32)
-        # else:
-        #     image = self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
             self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)

@@ -3,6 +3,9 @@ from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_a
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
 from ccramic.utils.region import RectangleRegion, FreeFormRegion
+import os
+from tifffile import imwrite
+import numpy as np
 
 def generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict,
                                        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]',
@@ -131,3 +134,17 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
     else:
         return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
                              'Min': []}).to_dict(orient='records')
+
+
+def output_current_canvas_as_tiff(canvas_image, dest_dir="/tmp/", output_file="canvas.tiff"):
+    """
+    Output the current canvas image as a photometric tiff
+    """
+    if canvas_image is not None:
+        dest_file = str(os.path.join(dest_dir, output_file))
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+        imwrite(dest_file, canvas_image.astype(np.uint8), photometric='rgb')
+        return dest_file
+    else:
+        return None

@@ -1,6 +1,11 @@
-from ccramic.io.display import generate_area_statistics_dataframe
+import os.path
+
+from ccramic.io.display import (
+    generate_area_statistics_dataframe,
+    output_current_canvas_as_tiff)
 import numpy as np
 import pandas as pd
+import tempfile
 
 def test_generate_channel_statistics_dataframe():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.full((1000, 1000), 100),
@@ -224,3 +229,16 @@ def test_generate_channel_statistics_dataframe_errors():
                                            aliases))
 
     assert len(stats_none_4) == 0
+
+
+def test_output_canvas_tiff_to_file():
+    canvas_image = np.full((100, 100, 3), 7)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file_path = os.path.join(tmpdirname, "canvas.tiff")
+        assert not os.path.exists(file_path)
+        canvas_link = output_current_canvas_as_tiff(canvas_image, tmpdirname)
+        assert os.path.exists(file_path)
+        assert str(file_path) == str(canvas_link)
+        if os.access(canvas_link, os.W_OK):
+            os.remove(canvas_link)
+        assert not os.path.exists(canvas_link)
