@@ -59,6 +59,7 @@ import plotly.graph_objs as go
 from scipy.ndimage import median_filter
 from natsort import natsorted
 from ccramic.io.readers import DashUploaderFileReader
+from scipy.sparse import csr_matrix
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -532,8 +533,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[elem] = {'color': None,
                                                                  'x_lower_bound': 0,
                                                                  'x_upper_bound':
-                                                                     get_default_channel_upper_bound_by_percentile(
-                                                                uploaded_w_data[data_selection][elem]),
+                                                                get_default_channel_upper_bound_by_percentile(
+                                                                uploaded_w_data[data_selection][elem].toarray(order='C')),
                                                                  'filter_type': None,
                                                                  'filter_val': None, 'filter_sigma': None}
                     # TODO: default colour is white, but can set auto selection here for starting colours
@@ -558,7 +559,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     if current_blend_dict[elem]['x_upper_bound'] is None:
                         current_blend_dict[elem]['x_upper_bound'] = \
                         get_default_channel_upper_bound_by_percentile(
-                        uploaded_w_data[data_selection][elem])
+                        uploaded_w_data[data_selection][elem].toarray(order='C'))
                     if current_blend_dict[elem]['x_lower_bound'] is None:
                         current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
@@ -566,7 +567,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # affects if a channel is added and dropped
                     if (data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys()) or \
                             autofill_channel_colours:
-                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
+                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem].toarray(order='C'),
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
@@ -612,7 +613,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
 
-            array = uploaded_w_data[data_selection][layer]
+            array = uploaded_w_data[data_selection][layer].toarray(order='C')
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
@@ -680,7 +681,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[layer]['x_lower_bound'] = float(lower_bound)
                     current_blend_dict[layer]['x_upper_bound'] = float(upper_bound)
 
-                    array = apply_preset_to_array(uploaded_w_data[data_selection][layer],
+                    array = apply_preset_to_array(uploaded_w_data[data_selection][layer].toarray(order='C'),
                                   current_blend_dict[layer])
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
@@ -757,7 +758,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         filter_sigma) and not only_options_changed:
 
             try:
-                array = uploaded[data_selection][layer]
+                array = uploaded[data_selection][layer].toarray(order='C')
             except KeyError:
                 array = None
 
@@ -1762,8 +1763,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
 
                 if views is not None:
-                    row_children = generate_channel_tile_gallery_children(gallery_data, views, canvas_layout, zoom_keys,
-                                blend_colour_dict, data_selection, preset_selection, preset_dict, aliases, nclicks,
+                    row_children = generate_channel_tile_gallery_children(views, canvas_layout, zoom_keys,
+                                blend_colour_dict, preset_selection, preset_dict, aliases, nclicks,
                                     toggle_gallery_zoom, toggle_scaling_gallery)
                 else:
                     row_children = []
@@ -1920,12 +1921,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             blend_return = dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend"]:
-                    fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel])
+                    fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel].toarray(order='C'))
                     fig.update_layout(showlegend=False, yaxis={'title': None},
                                       xaxis={'title': None}, margin=dict(pad=0))
                 else:
                     fig = dash.no_update
-                    hist_max = float(np.max(uploaded[data_selection][selected_channel]))
+                    hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='C')))
             except (ValueError, TypeError):
                 fig = dash.no_update
                 hist_max = 100
@@ -1947,7 +1948,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         lower_bound = 0
                         upper_bound = get_default_channel_upper_bound_by_percentile(
-                                        uploaded[data_selection][selected_channel])
+                                        uploaded[data_selection][selected_channel].toarray(order='C'))
                         current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
@@ -1972,7 +1973,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 else:
                     lower_bound = 0
                     upper_bound = get_default_channel_upper_bound_by_percentile(
-                        uploaded[data_selection][selected_channel])
+                        uploaded[data_selection][selected_channel].toarray(order='C'))
                     current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
@@ -1991,9 +1992,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
                             hist_max = float(cur_slider_values[1])
                         else:
-                            hist_max = float(np.max(uploaded[data_selection][selected_channel]))
+                            hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='C')))
                     else:
-                        hist_max = float(np.max(uploaded[data_selection][selected_channel]))
+                        hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='C')))
                     tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, step_size
                 except IndexError:

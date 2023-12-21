@@ -8,10 +8,10 @@ from ccramic.utils.pixel_level_utils import (
     resize_for_canvas,
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array)
+from ccramic.parsers.pixel_level_parsers import dense_array_to_sparse
 
-
-def generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
-                                           data_selection, preset_selection, preset_dict, aliases, nclicks_preset,
+def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
+                                           preset_selection, preset_dict, aliases, nclicks_preset,
                                            toggle_gallery_zoom=False, toggle_scaling_gallery=False):
     """
     Generate the children for the image gallery comprised of the single channel images for one ROI
@@ -19,6 +19,8 @@ def generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layo
     row_children = []
     if gallery_dict is not None and len(gallery_dict) > 0:
         for key, value in gallery_dict.items():
+            # TODO: check if the array is sparse
+            value = dense_array_to_sparse(value)
             if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
                 x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
                 x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
@@ -40,7 +42,7 @@ def generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layo
                     if blend_colour_dict[key]['x_upper_bound'] is None:
                         blend_colour_dict[key]['x_upper_bound'] = \
                                 get_default_channel_upper_bound_by_percentile(
-                            image_dict[data_selection][key])
+                            value)
                     image_render = apply_preset_to_array(image_render,
                                                      blend_colour_dict[key])
                 except (KeyError, TypeError):

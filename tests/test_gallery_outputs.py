@@ -30,8 +30,8 @@ def test_generate_channel_gallery_children():
                                   "x_upper_bound": None, "filter_type": None, "filter_val": None}}
     data_selection = "roi_1"
     aliases = {key: key for key in blend_colour_dict.keys()}
-    row_children = generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys,
-                                                          blend_colour_dict, data_selection, None, None, aliases, 0,
+    row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
+                                                          blend_colour_dict, None, None, aliases, 0,
                                                           toggle_gallery_zoom=True, toggle_scaling_gallery=True)
     assert len(row_children) == len(gallery_dict)
     for elem in row_children:
@@ -52,8 +52,8 @@ def test_generate_channel_gallery_children():
                                   "filter_type": None, "filter_val": None}}
 
     canvas_layout = {'xaxis.range[0]': 200, 'xaxis.range[1]': 100, 'yaxis.range[1]': 200, 'yaxis.range[0]': 100}
-    row_children = generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys,
-                                                          blend_colour_dict, data_selection, None, None, aliases, 0,
+    row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
+                                                          blend_colour_dict, None, None, aliases, 0,
                                                           toggle_gallery_zoom=True, toggle_scaling_gallery=True)
     assert len(row_children) == len(gallery_dict)
     for elem in row_children:
@@ -62,8 +62,8 @@ def test_generate_channel_gallery_children():
 
     # do not use a zoom feature for the channel gallery
     canvas_layout = {}
-    row_children = generate_channel_tile_gallery_children(image_dict, gallery_dict, canvas_layout, zoom_keys,
-                                                          blend_colour_dict, data_selection, None, None, aliases, 0,
+    row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
+                                                          blend_colour_dict, None, None, aliases, 0,
                                                           toggle_gallery_zoom=True, toggle_scaling_gallery=True)
     assert len(row_children) == len(gallery_dict)
     for elem in row_children:

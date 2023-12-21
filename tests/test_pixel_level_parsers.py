@@ -1,5 +1,7 @@
 import pytest
 from ccramic.parsers.pixel_level_parsers import *
+from scipy.sparse import csr_matrix
+import numpy as np
 
 def test_basic_parser_tiff_to_dict(get_current_dir):
     uploaded = populate_upload_dict([os.path.join(get_current_dir, "for_recolour.tiff")])
@@ -53,3 +55,11 @@ def test_basic_parser_from_h5py(get_current_dir):
     assert 'metadata' in uploaded_dict.keys()
     assert 'cycA1A2_Ir_TBS_3_8+++slide0+++0' in uploaded_dict.keys()
     assert len(uploaded_dict['cycA1A2_Ir_TBS_3_8+++slide0+++0'].keys()) == 4
+
+def test_identify_sparse_matrices():
+    array = np.full((700, 700), 3)
+    array_return = dense_array_to_sparse(array)
+    assert np.array_equal(array, array_return)
+    sparse = csr_matrix(array)
+    array_return = dense_array_to_sparse(sparse)
+    assert not np.array_equal(sparse, array_return)

@@ -97,7 +97,8 @@ class CanvasImage:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     generate_greyscale_grid_array((image.shape[0], image.shape[1])), 1, 0)
 
-        self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)))
+        self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
+                                binary_compression_level=5)
         # fig.update(data=[{'customdata':)
     def generate_canvas(self) -> Union[go.Figure, dict]:
         x_axis_placement = 0.00001 * self.image.shape[1]
