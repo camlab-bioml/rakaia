@@ -59,7 +59,6 @@ import plotly.graph_objs as go
 from scipy.ndimage import median_filter
 from natsort import natsorted
 from ccramic.io.readers import DashUploaderFileReader
-from scipy.sparse import csr_matrix
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -228,7 +227,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
             blend_return = blend_dict if current_blend is None or len(current_blend) == 0 else dash.no_update
-            return Serverside(upload_dict), session_dict, blend_return, columns, data, error_config
+            return Serverside(upload_dict, key="upload_dict"), session_dict, blend_return, columns, data, error_config
         else:
             raise PreventUpdate
 
@@ -354,10 +353,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         channels_selected = []
                     return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict), canvas_return, \
+                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict, key="upload_dict"), canvas_return, \
                         f"Current ROI: {roi_name}", dim_return
                 except AssertionError:
-                    return [], [], Serverside(image_dict), canvas_return, \
+                    return [], [], Serverside(image_dict, key="upload_dict"), canvas_return, \
                         f"Current ROI: {roi_name}", dim_return
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
@@ -477,7 +476,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
                         current_blend_dict.keys() for elem in new_blend_dict['config']['blend']]):
                     channel_list_return = new_blend_dict['config']['blend']
-                return Serverside(all_layers), current_blend_dict, error_config, channel_list_return
+                return Serverside(all_layers, key="layer_dict"), current_blend_dict, error_config, channel_list_return
             else:
                 error_config["error"] = "Error: the blend parameters uploaded from JSON do not " \
                                         "match the current panel length. The update did not occur."
@@ -534,7 +533,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                                  'x_lower_bound': 0,
                                                                  'x_upper_bound':
                                                                 get_default_channel_upper_bound_by_percentile(
-                                                                uploaded_w_data[data_selection][elem].toarray(order='C')),
+                                                                uploaded_w_data[data_selection][elem].toarray(order='F')),
                                                                  'filter_type': None,
                                                                  'filter_val': None, 'filter_sigma': None}
                     # TODO: default colour is white, but can set auto selection here for starting colours
@@ -559,7 +558,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     if current_blend_dict[elem]['x_upper_bound'] is None:
                         current_blend_dict[elem]['x_upper_bound'] = \
                         get_default_channel_upper_bound_by_percentile(
-                        uploaded_w_data[data_selection][elem].toarray(order='C'))
+                        uploaded_w_data[data_selection][elem].toarray(order='F'))
                     if current_blend_dict[elem]['x_lower_bound'] is None:
                         current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
@@ -567,12 +566,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # affects if a channel is added and dropped
                     if (data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys()) or \
                             autofill_channel_colours:
-                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem].toarray(order='C'),
+                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem].toarray(order='F'),
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
 
-            return current_blend_dict, Serverside(all_layers), param_dict, channel_modify
+            return current_blend_dict, Serverside(all_layers, key="layer_dict"), param_dict, channel_modify
         else:
             raise PreventUpdate
 
@@ -613,7 +612,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
 
-            array = uploaded_w_data[data_selection][layer].toarray(order='C')
+            array = uploaded_w_data[data_selection][layer].toarray(order='F')
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
@@ -643,7 +642,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                                                  colour['hex'])).astype(np.uint8)
 
-                    return current_blend_dict, Serverside(all_layers)
+                    return current_blend_dict, Serverside(all_layers, key="layer_dict")
                 else:
                     raise PreventUpdate
             else:
@@ -681,13 +680,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[layer]['x_lower_bound'] = float(lower_bound)
                     current_blend_dict[layer]['x_upper_bound'] = float(upper_bound)
 
-                    array = apply_preset_to_array(uploaded_w_data[data_selection][layer].toarray(order='C'),
+                    array = apply_preset_to_array(uploaded_w_data[data_selection][layer].toarray(order='F'),
                                   current_blend_dict[layer])
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                          current_blend_dict[layer]['color']))
 
-                    return current_blend_dict, Serverside(all_layers)
+                    return current_blend_dict, Serverside(all_layers, key="layer_dict")
             except TypeError:
                 raise PreventUpdate
         else:
@@ -723,7 +722,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                                              current_blend_dict[
                                                                                  layer][
                                                                                  'color']))
-            return current_blend_dict, Serverside(all_layers)
+            return current_blend_dict, Serverside(all_layers, key="layer_dict")
 
         else:
             raise PreventUpdate
@@ -758,7 +757,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         filter_sigma) and not only_options_changed:
 
             try:
-                array = uploaded[data_selection][layer].toarray(order='C')
+                array = uploaded[data_selection][layer].toarray(order='F')
             except KeyError:
                 array = None
 
@@ -817,7 +816,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                                                      layer][
                                                                                      'color'])).astype(np.uint8)
 
-                    return current_blend_dict, Serverside(all_layers)
+                    return current_blend_dict, Serverside(all_layers, key="layer_dict")
             else:
                 raise PreventUpdate
         else:
@@ -1921,12 +1920,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             blend_return = dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend"]:
-                    fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel].toarray(order='C'))
+                    fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel].toarray(order='F'))
                     fig.update_layout(showlegend=False, yaxis={'title': None},
                                       xaxis={'title': None}, margin=dict(pad=0))
                 else:
                     fig = dash.no_update
-                    hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='C')))
+                    hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
             except (ValueError, TypeError):
                 fig = dash.no_update
                 hist_max = 100
@@ -1948,7 +1947,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         lower_bound = 0
                         upper_bound = get_default_channel_upper_bound_by_percentile(
-                                        uploaded[data_selection][selected_channel].toarray(order='C'))
+                                        uploaded[data_selection][selected_channel].toarray(order='F'))
                         current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
@@ -1973,7 +1972,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 else:
                     lower_bound = 0
                     upper_bound = get_default_channel_upper_bound_by_percentile(
-                        uploaded[data_selection][selected_channel].toarray(order='C'))
+                        uploaded[data_selection][selected_channel].toarray(order='F'))
                     current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
@@ -1992,9 +1991,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
                             hist_max = float(cur_slider_values[1])
                         else:
-                            hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='C')))
+                            hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
                     else:
-                        hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='C')))
+                        hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
                     tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, step_size
                 except IndexError:
@@ -2025,9 +2024,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         percentile)
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and reset > 0:
-            hist_max = float(np.max(uploaded[data_selection][selected_channel]))
+            hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
             upper_bound = float(get_default_channel_upper_bound_by_percentile(
-                uploaded[data_selection][selected_channel]))
+                uploaded[data_selection][selected_channel].toarray(order='F')))
             if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
                 vals_return = [0, upper_bound]
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
@@ -2462,7 +2461,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                              'mask_selection': mask_selection,
                                                              'mask_blending_level': mask_blending_level,
                                                              'add_mask_boundary': add_mask_boundary}
-            return Serverside(annotations_dict)
+            return Serverside(annotations_dict, key="annotation_dict")
         else:
             raise PreventUpdate
 
@@ -2630,7 +2629,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 else:
                     fig = dash.no_update
 
-                return Serverside(annotations_dict), html.H6(f"Point {x, y} updated with "
+                return Serverside(annotations_dict, key="annotation_dict"), html.H6(f"Point {x, y} updated with "
                                                  f"{annotation_cell_type} in {annot_col}"), True, fig
             except KeyError:
                 return dash.no_update, html.H6("Error in annotating point"), True, dash.no_update

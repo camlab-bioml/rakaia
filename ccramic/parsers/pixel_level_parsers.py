@@ -7,7 +7,7 @@ from ccramic.utils.pixel_level_utils import (
     split_string_at_pattern,
     set_array_storage_type_from_config)
 from readimc import MCDFile, TXTFile
-from scipy.sparse import csr_matrix, issparse
+from scipy.sparse import issparse, csc_matrix
 
 def populate_upload_dict(uploaded_files, array_store_type="float"):
     """
@@ -95,7 +95,7 @@ def populate_upload_dict(uploaded_files, array_store_type="float"):
                                 # identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
                                 #     len(tif.pages) > 1 else str(basename)
                                 identifier = str("channel_" + str(multi_channel_index))
-                                upload_dict[roi][identifier] = csr_matrix(page.asarray().astype(
+                                upload_dict[roi][identifier] = csc_matrix(page.asarray().astype(
                                     set_array_storage_type_from_config(array_store_type)))
                                 # add in a generic description for the ROI per tiff file
                                 if multi_channel_index == 1:
@@ -194,7 +194,7 @@ def populate_upload_dict(uploaded_files, array_store_type="float"):
                             for image in acq:
                                 image_label = txt_channel_labels[image_index - 1]
                                 identifier = txt_channel_names[image_index - 1]
-                                upload_dict[roi][identifier] = csr_matrix(image.astype(
+                                upload_dict[roi][identifier] = csc_matrix(image.astype(
                                     set_array_storage_type_from_config(array_store_type)))
                                 if image_index == 1:
                                     dataset_information["ROI"].append(str(roi))
@@ -268,7 +268,7 @@ def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config, 
                             channel_index = 0
                             img = mcd_file.read_acquisition(acq)
                             for channel in img:
-                                upload_dict[dataset_selection][channel_names[channel_index]] = csr_matrix(channel.astype(
+                                upload_dict[dataset_selection][channel_names[channel_index]] = csc_matrix(channel.astype(
                                     set_array_storage_type_from_config(array_store_type)))
                                 channel_index += 1
         return upload_dict

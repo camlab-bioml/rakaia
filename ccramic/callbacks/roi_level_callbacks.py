@@ -132,7 +132,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
                                             data_selection, channels_to_quantify, aliases, dataset_options)
                 quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant,
                                                                      data_selection)
-                return Serverside(quant_frame.to_dict(orient="records")), dash.no_update, {'display': 'None'}, None
+                return Serverside(quant_frame.to_dict(orient="records"), key="quantification_dict"), \
+                    dash.no_update, {'display': 'None'}, None
             else:
                 error_config["error"] = "The dimensions of the mask do not agree with the current ROI."
                 return dash.no_update, error_config, dash.no_update, dash.no_update

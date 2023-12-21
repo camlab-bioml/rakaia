@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Raw imaging data are stored as row-wise sparse arrays (`scipy.sparse.csr_matrix`) in server-side
 caches to reduce the tmp disk storage required
+- Add string keys to Serverside objects to allow overriding of previous disk caches to
+reduce storage requirements and duplicate data writing
 
 ## [0.11.0] - 2023-12-21
 
