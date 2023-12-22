@@ -1,5 +1,8 @@
 from pathlib import Path
-from ccramic.utils.pixel_level_utils import apply_preset_to_array, recolour_greyscale
+from ccramic.utils.pixel_level_utils import (
+    apply_preset_to_array,
+    recolour_greyscale,
+    apply_filter_to_array)
 from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
 from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
 from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi, match_mask_name_to_quantification_sheet_roi
@@ -11,7 +14,8 @@ import cv2
 def generate_multi_roi_images_from_query(session_config, blend_dict,
                                          currently_selected_channels, num_queries=5, rois_exclude=None,
                                          predefined_indices=None, mask_dict=None, dataset_options=None,
-                                         query_cell_id_lists=None):
+                                         query_cell_id_lists=None, global_apply_filter=False,
+                                         global_filter_type="median", global_filter_val=3, global_filter_sigma=1):
     """
     Generate a gallery of images for multiple ROIs using the current parameters of the current ROI
     Important: ignores the current ROI
@@ -77,6 +81,9 @@ def generate_multi_roi_images_from_query(session_config, blend_dict,
                                 label = f"{basename}+++slide{slide_index}+++{acq.description}"
                                 matched_mask = match_mask_name_with_roi(label, mask_dict, dataset_options)
                                 summed_image = sum([image for image in acq_image]).astype(np.float32)
+                                summed_image = apply_filter_to_array(summed_image, global_apply_filter,
+                                                                     global_filter_type, global_filter_val,
+                                                                     global_filter_sigma)
                                 summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
                                 # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
                                 if matched_mask is not None and matched_mask in mask_dict.keys() and \

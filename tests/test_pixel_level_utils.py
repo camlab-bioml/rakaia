@@ -26,7 +26,8 @@ from ccramic.utils.pixel_level_utils import (
     random_hex_colour_generator,
     get_additive_image,
     get_first_image_from_roi_dictionary,
-    set_array_storage_type_from_config)
+    set_array_storage_type_from_config,
+    apply_filter_to_array)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -362,6 +363,10 @@ def test_make_hovertext_from_channel_list():
                                                             "<br>channel_2: " \
                                                             "%{customdata[1]} <br><extra></extra>"
 
+    # assert that the default hover text is used if a malformed channel input is passed
+    assert per_channel_intensity_hovertext("not_a_list") == "x: %{x}, y: %{y} <br><extra></extra>"
+
+
 def test_coord_navigation():
     window_dict = {"x_high": 200, "x_low": 100, "y_high": 200, "y_low": 100}
     new_coords = create_new_coord_bounds(window_dict, 500, 500)
@@ -491,3 +496,38 @@ def test_retrieval_first_roi_dict_image():
     first_array = get_first_image_from_roi_dictionary(layer_dict)
     assert first_array.shape == (200, 200, 3)
     assert np.mean(first_array) == 1000
+
+def test_apply_filter_to_array(get_current_dir):
+    greyscale = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
+    median_filter_3 = apply_filter_to_array(greyscale, ['apply filter'], "median", 3, 1)
+    assert not np.array_equal(greyscale, median_filter_3)
+
+    median_filter_1 = apply_filter_to_array(greyscale, True, "median", 1, 1)
+    assert np.array_equal(greyscale, median_filter_1)
+
+    gaussian_filter_5 = apply_filter_to_array(greyscale, True, "gaussian", 5, 1)
+    assert not np.array_equal(greyscale, gaussian_filter_5)
+
+    gaussian_filter_1 = apply_filter_to_array(greyscale, True, "gaussian", 1, 1)
+    assert np.array_equal(greyscale, gaussian_filter_1)
+
+    median_negative = apply_filter_to_array(greyscale, True, "median", -1, 0)
+    assert np.array_equal(greyscale, median_negative)
+
+    gaussian_negative = apply_filter_to_array(greyscale, True, "gaussian", -1, 0)
+    assert np.array_equal(greyscale, gaussian_negative)
+
+    even_value = apply_filter_to_array(greyscale, True, "median", 4, 0)
+    assert np.array_equal(greyscale, even_value)
+
+    with pytest.raises(TypeError):
+        apply_filter_to_array(greyscale, True, "fake_filter", 4, 0)
+
+    median_high = apply_filter_to_array(greyscale, True, "median", 99, 0)
+    assert np.array_equal(greyscale, median_high)
+
+    no_filter = apply_filter_to_array(greyscale, [], "median", 1, 1)
+    assert np.array_equal(greyscale, no_filter)
+
+    no_filter = apply_filter_to_array(greyscale, False, "median", 1, 1)
+    assert np.array_equal(greyscale, no_filter)

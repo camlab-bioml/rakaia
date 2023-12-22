@@ -7,7 +7,10 @@ from PIL import Image
 from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
-from ccramic.utils.pixel_level_utils import per_channel_intensity_hovertext, get_additive_image
+from ccramic.utils.pixel_level_utils import (
+    per_channel_intensity_hovertext,
+    get_additive_image,
+    apply_filter_to_array)
 from ccramic.utils.cell_level_utils import generate_mask_with_cluster_annotations
 from plotly.graph_objs.layout import YAxis, XAxis
 from ccramic.utils.shapes import is_cluster_annotation_circle, is_bad_shape
@@ -59,18 +62,20 @@ class CanvasImage:
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
             self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
-        if len(self.global_apply_filter) > 0 and None not in (self.global_filter_type, self.global_filter_val) and \
-                int(self.global_filter_val) % 2 != 0:
-            if self.global_filter_type == "median" and int(self.global_filter_val) >= 1:
-                try:
-                    image = cv2.medianBlur(image, int(self.global_filter_val))
-                except (ValueError, cv2.error):
-                    pass
-            else:
-                # array = gaussian_filter(array, int(filter_value))
-                if int(self.global_filter_val) >= 1:
-                    image = cv2.GaussianBlur(image, (int(self.global_filter_val),
-                                                     int(self.global_filter_val)), float(self.global_filter_sigma))
+        # if len(self.global_apply_filter) > 0 and None not in (self.global_filter_type, self.global_filter_val) and \
+        #         int(self.global_filter_val) % 2 != 0:
+        #     if self.global_filter_type == "median" and int(self.global_filter_val) >= 1:
+        #         try:
+        #             image = cv2.medianBlur(image, int(self.global_filter_val))
+        #         except (ValueError, cv2.error):
+        #             pass
+        #     else:
+        #         # array = gaussian_filter(array, int(filter_value))
+        #         if int(self.global_filter_val) >= 1:
+        #             image = cv2.GaussianBlur(image, (int(self.global_filter_val),
+        #                                              int(self.global_filter_val)), float(self.global_filter_sigma))
+        image = apply_filter_to_array(image, self.global_apply_filter, self.global_filter_type, self.global_filter_val,
+                                      self.global_filter_sigma)
         image = np.clip(image, 0, 255)
         self.image = image
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:

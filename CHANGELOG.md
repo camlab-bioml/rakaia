@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add string keys to Serverside objects to allow overriding of previous disk caches to
 reduce storage requirements and eliminate duplicate data writing for the same `dcc.Store` objects
 - JSON I/O supports the values for global filters
+- Apply global filter to ROI query thumbnails
 
 ## [0.11.0] - 2023-12-21
 

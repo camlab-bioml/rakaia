@@ -429,3 +429,29 @@ def get_first_image_from_roi_dictionary(roi_dictionary):
     first_image_name = list(roi_dictionary.keys())[0]
     image_for_validation = roi_dictionary[first_image_name]
     return image_for_validation
+
+
+def apply_filter_to_array(image, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
+    """
+    Apply a filter to an array from a dictionary of global filter values
+    Note: incorrect values applied to the array will not return an error, but will return the original array,
+    as this function is meant to be used in the application
+    """
+    if global_filter_type not in ['gaussian', 'median']:
+        raise TypeError("The global filter type should be either gaussian or median.")
+    global_filter_applied = (isinstance(global_apply_filter, bool) and global_apply_filter) or (
+        isinstance(global_apply_filter, list) and len(global_apply_filter) > 0)
+    if global_filter_applied and None not in (global_filter_type, global_filter_val) and \
+            int(global_filter_val) % 2 != 0:
+        if global_filter_type == "median" and int(global_filter_val) >= 1:
+            try:
+                image = cv2.medianBlur(image, int(global_filter_val))
+            except (ValueError, cv2.error):
+                pass
+        elif global_filter_type == "gaussian":
+            # array = gaussian_filter(array, int(filter_value))
+            if int(global_filter_val) >= 1:
+                image = cv2.GaussianBlur(image, (int(global_filter_val),
+                                                 int(global_filter_val)),
+                                                 float(global_filter_sigma))
+    return image

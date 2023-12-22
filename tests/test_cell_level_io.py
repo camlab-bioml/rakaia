@@ -1,6 +1,3 @@
-import numpy as np
-
-import os
 import tempfile
 import pytest
 import platform
@@ -136,3 +133,24 @@ def test_output_point_annotations_as_csv():
                                                         'Patient1+++slide0+++pos1_1',
                                                         mask_dict, True, 'mask', None,
                                                         authentic_id, tmpdirname)
+
+        # annotations_dict_empty = {'Patient1+++slide0+++pos1_1': {}}
+        # export_point_annotations_as_csv(1, 'pos1_1', annotations_dict_empty,
+        #                                                 'Patient1+++slide0+++pos1_1',
+        #                                                 mask_dict, True, 'mask', None,
+        #                                                 authentic_id, tmpdirname)
+        #
+        # annotations_malformed_2 = {'Patient1+++slide0+++pos1_1': {
+        #     "{'points': [{'curveNumber': 0, 'x': 235, 'y': 124, 'color': "
+        #     "{'0': 0, '1': 0, '2': 255, '3': 1}, 'colormodel': 'rgba256', "
+        #     "'z': {'0': 0, '1': 0, '2': 255, '3': 1}, 'bbox': "
+        #     "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
+        #         {'title': None, 'body': None, 'cell_type': 'immune', 'imported': False,
+        #          'annotation_column': 'ccramic_cell_annotation', 'fake_type': 'point', 'channels': None,
+        #          'use_mask': None, 'mask_selection': None, 'mask_blending_level': None, 'add_mask_boundary': None}
+        # }}
+        #
+        # export_point_annotations_as_csv(1, 'pos1_1', annotations_malformed_2,
+        #                                 'Patient1+++slide0+++pos1_1',
+        #                                 mask_dict, True, 'mask', None,
+        #                                 authentic_id, tmpdirname)
