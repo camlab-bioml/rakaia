@@ -44,6 +44,7 @@ from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     adjust_option_height_from_list_length)
+from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json
 # from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
@@ -437,6 +438,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('image_layers', 'value', allow_duplicate=True),
+                       Output('bool-apply-global-filter', 'value', allow_duplicate=True),
+                       Output('global-filter-type', 'value', allow_duplicate=True),
+                       Output("global-kernel-val-filter", 'value', allow_duplicate=True),
+                       Output("global-sigma-val-filter", 'value', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json(uploaded_w_data, new_blend_dict, data_selection,
                                                add_to_layer, all_layers, current_blend_dict, error_config):
@@ -477,14 +482,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
                         current_blend_dict.keys() for elem in new_blend_dict['config']['blend']]):
                     channel_list_return = new_blend_dict['config']['blend']
-                return Serverside(all_layers, key="layer_dict"), current_blend_dict, error_config, channel_list_return
+                # TODO: get the global filter values from the config
+                global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
+                parse_global_filter_values_from_json(new_blend_dict['config'])
+                return Serverside(all_layers, key="layer_dict"), current_blend_dict, error_config, channel_list_return, \
+                    global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma
             else:
                 error_config["error"] = "Error: the blend parameters uploaded from JSON do not " \
                                         "match the current panel length. The update did not occur."
-                return dash.no_update, dash.no_update, error_config, dash.no_update
+                return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
+                    dash.no_update, dash.no_update, dash.no_update
         elif data_selection is None:
             error_config["error"] = "Please select an ROI before importing blend parameters from JSON."
-            return dash.no_update, dash.no_update, error_config, dash.no_update
+            return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
+                    dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -1482,15 +1493,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input("open-download-collapse", "n_clicks"),
                        Input("download-collapse", "is_open"),
                        State('data-collection', 'value'),
-                       State('current_canvas_image', 'data'),
                        State('annotation_canvas', 'figure'),
                        State('image_layers', 'value'),
                        State('annotation_canvas', 'style'),
                        State('annotation_canvas', 'relayoutData'),
-                       State('graph-subset-download', 'value'))
+                       State('graph-subset-download', 'value'),
+                       State('bool-apply-global-filter', 'value'),
+                       State('global-filter-type', 'value'),
+                       State("global-kernel-val-filter", 'value'),
+                       State("global-sigma-val-filter", 'value'))
     # @cache.memoize())
     def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                current_image_tiff, current_canvas, blend_layers, canvas_style, canvas_layout, graph_subset):
+                                current_canvas, blend_layers, canvas_style, canvas_layout, graph_subset,
+                                global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
@@ -1591,7 +1606,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 param_json = str(os.path.join(download_dir, 'param.json'))
                 with open(param_json, "w") as outfile:
                     # TODO: write the current global filters to the blend JSON
-                    dict_write = {"channels": blend_dict, "config": {"blend": blend_layers}}
+                    dict_write = {"channels": blend_dict, "config":
+                        {"blend": blend_layers, "filter":
+                        {"global_apply_filter": global_apply_filter, "global_filter_type": global_filter_type,
+                         "global_filter_val": global_filter_val, "global_filter_sigma": global_filter_sigma}}}
                     json.dump(dict_write, outfile)
 
                 return str(relative_filename), fig_return, param_json

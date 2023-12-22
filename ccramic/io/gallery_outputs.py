@@ -19,7 +19,6 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
     row_children = []
     if gallery_dict is not None and len(gallery_dict) > 0:
         for key, value in gallery_dict.items():
-            # TODO: check if the array is sparse
             value = sparse_array_to_dense(value)
             if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
                 x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
