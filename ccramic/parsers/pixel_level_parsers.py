@@ -9,7 +9,7 @@ from ccramic.utils.pixel_level_utils import (
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 
-def populate_upload_dict(uploaded_files, array_store_type="float"):
+def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="sparse"):
     """
     Populate a dictionary based on the uploaded files.
     """
@@ -95,8 +95,9 @@ def populate_upload_dict(uploaded_files, array_store_type="float"):
                                 # identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
                                 #     len(tif.pages) > 1 else str(basename)
                                 identifier = str("channel_" + str(multi_channel_index))
-                                upload_dict[roi][identifier] = csc_matrix(page.asarray().astype(
-                                    set_array_storage_type_from_config(array_store_type)))
+                                upload_dict[roi][identifier] = convert_between_dense_sparse_array(
+                                    page.asarray().astype(set_array_storage_type_from_config(array_store_type)),
+                                    array_type=array_cast)
                                 # add in a generic description for the ROI per tiff file
                                 if multi_channel_index == 1:
                                     dataset_information["ROI"].append(str(roi))
@@ -194,8 +195,8 @@ def populate_upload_dict(uploaded_files, array_store_type="float"):
                             for image in acq:
                                 image_label = txt_channel_labels[image_index - 1]
                                 identifier = txt_channel_names[image_index - 1]
-                                upload_dict[roi][identifier] = csc_matrix(image.astype(
-                                    set_array_storage_type_from_config(array_store_type)))
+                                upload_dict[roi][identifier] = convert_between_dense_sparse_array(image.astype(
+                                    set_array_storage_type_from_config(array_store_type)), array_type=array_cast)
                                 if image_index == 1:
                                     dataset_information["ROI"].append(str(roi))
                                     dataset_information["Dimensions"].append(f"{image.shape[1]}x{image.shape[0]}")
@@ -243,7 +244,8 @@ def create_new_blending_dict(uploaded):
     return current_blend_dict
 
 
-def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config, array_store_type="float"):
+def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config, array_store_type="float",
+                                array_cast="dense"):
     """
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
@@ -268,19 +270,28 @@ def populate_upload_dict_by_roi(upload_dict, dataset_selection, session_config, 
                             channel_index = 0
                             img = mcd_file.read_acquisition(acq)
                             for channel in img:
-                                upload_dict[dataset_selection][channel_names[channel_index]] = csc_matrix(channel.astype(
-                                    set_array_storage_type_from_config(array_store_type)))
+                                upload_dict[dataset_selection][channel_names[channel_index]] = \
+                                    convert_between_dense_sparse_array(channel.astype(
+                                    set_array_storage_type_from_config(array_store_type)), array_type=array_cast)
                                 channel_index += 1
         return upload_dict
     except (KeyError, AssertionError, AttributeError):
         return upload_dict
 
 
-def dense_array_to_sparse(array):
+def sparse_array_to_dense(array):
     """
     Return a dense representation of the array if it is sparse, otherwise return as is
     """
     if issparse(array):
-        return array.toarray(order='C')
+        return array.toarray(order='F')
     else:
         return array
+
+def convert_between_dense_sparse_array(array, array_type="dense"):
+    """
+    Convert between dense and sparse arrays. Sparse arrays are stored column wise
+    """
+    if array_type not in ["dense", "sparse"]:
+        raise TypeError("The array type must be either dense or sparse")
+    return csc_matrix(sparse_array_to_dense(array)) if array_type == "sparse" else sparse_array_to_dense(array)

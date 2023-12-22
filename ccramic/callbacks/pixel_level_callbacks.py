@@ -13,7 +13,8 @@ from ccramic.inputs.pixel_level_inputs import (
 from ccramic.parsers.pixel_level_parsers import (
     populate_upload_dict,
     populate_upload_dict_by_roi,
-    create_new_blending_dict)
+    create_new_blending_dict,
+    sparse_array_to_dense)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
     split_string_at_pattern,
@@ -533,7 +534,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                                  'x_lower_bound': 0,
                                                                  'x_upper_bound':
                                                                 get_default_channel_upper_bound_by_percentile(
-                                                                uploaded_w_data[data_selection][elem].toarray(order='F')),
+                                                                sparse_array_to_dense(uploaded_w_data[data_selection][elem])),
                                                                  'filter_type': None,
                                                                  'filter_val': None, 'filter_sigma': None}
                     # TODO: default colour is white, but can set auto selection here for starting colours
@@ -558,7 +559,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     if current_blend_dict[elem]['x_upper_bound'] is None:
                         current_blend_dict[elem]['x_upper_bound'] = \
                         get_default_channel_upper_bound_by_percentile(
-                        uploaded_w_data[data_selection][elem].toarray(order='F'))
+                        sparse_array_to_dense(uploaded_w_data[data_selection][elem]))
                     if current_blend_dict[elem]['x_lower_bound'] is None:
                         current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
@@ -566,7 +567,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # affects if a channel is added and dropped
                     if (data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys()) or \
                             autofill_channel_colours:
-                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem].toarray(order='F'),
+                        array_preset = apply_preset_to_array(sparse_array_to_dense(uploaded_w_data[data_selection][elem]),
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
@@ -612,7 +613,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
 
-            array = uploaded_w_data[data_selection][layer].toarray(order='F')
+            array = sparse_array_to_dense(uploaded_w_data[data_selection][layer])
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
@@ -680,7 +681,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[layer]['x_lower_bound'] = float(lower_bound)
                     current_blend_dict[layer]['x_upper_bound'] = float(upper_bound)
 
-                    array = apply_preset_to_array(uploaded_w_data[data_selection][layer].toarray(order='F'),
+                    array = apply_preset_to_array(sparse_array_to_dense(uploaded_w_data[data_selection][layer]),
                                   current_blend_dict[layer])
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
@@ -757,7 +758,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         filter_sigma) and not only_options_changed:
 
             try:
-                array = uploaded[data_selection][layer].toarray(order='F')
+                array = sparse_array_to_dense(uploaded[data_selection][layer])
             except KeyError:
                 array = None
 
@@ -1920,12 +1921,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             blend_return = dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend"]:
-                    fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel].toarray(order='F'))
+                    fig, hist_max = pixel_hist_from_array(sparse_array_to_dense(uploaded[data_selection][selected_channel]))
                     fig.update_layout(showlegend=False, yaxis={'title': None},
                                       xaxis={'title': None}, margin=dict(pad=0))
                 else:
                     fig = dash.no_update
-                    hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
+                    hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
             except (ValueError, TypeError):
                 fig = dash.no_update
                 hist_max = 100
@@ -1947,7 +1948,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         lower_bound = 0
                         upper_bound = get_default_channel_upper_bound_by_percentile(
-                                        uploaded[data_selection][selected_channel].toarray(order='F'))
+                                        sparse_array_to_dense(uploaded[data_selection][selected_channel]))
                         current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
@@ -1972,7 +1973,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 else:
                     lower_bound = 0
                     upper_bound = get_default_channel_upper_bound_by_percentile(
-                        uploaded[data_selection][selected_channel].toarray(order='F'))
+                        sparse_array_to_dense(uploaded[data_selection][selected_channel]))
                     current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
@@ -1991,9 +1992,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
                             hist_max = float(cur_slider_values[1])
                         else:
-                            hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
+                            hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
                     else:
-                        hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
+                        hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
                     tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, step_size
                 except IndexError:
@@ -2024,9 +2025,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         percentile)
         """
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and reset > 0:
-            hist_max = float(np.max(uploaded[data_selection][selected_channel].toarray(order='F')))
+            hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
             upper_bound = float(get_default_channel_upper_bound_by_percentile(
-                uploaded[data_selection][selected_channel].toarray(order='F')))
+                sparse_array_to_dense(uploaded[data_selection][selected_channel])))
             if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
                 vals_return = [0, upper_bound]
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)

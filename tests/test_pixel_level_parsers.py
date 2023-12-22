@@ -1,6 +1,8 @@
 import pytest
+import scipy.sparse
+
 from ccramic.parsers.pixel_level_parsers import *
-from scipy.sparse import csr_matrix
+from scipy.sparse import csc_matrix
 import numpy as np
 
 def test_basic_parser_tiff_to_dict(get_current_dir):
@@ -58,8 +60,22 @@ def test_basic_parser_from_h5py(get_current_dir):
 
 def test_identify_sparse_matrices():
     array = np.full((700, 700), 3)
-    array_return = dense_array_to_sparse(array)
+    array_return = sparse_array_to_dense(array)
     assert np.array_equal(array, array_return)
-    sparse = csr_matrix(array)
-    array_return = dense_array_to_sparse(sparse)
+    sparse = csc_matrix(array)
+    array_return = sparse_array_to_dense(sparse)
     assert not np.array_equal(sparse, array_return)
+
+def test_conversion_between_sparse_dense_matrices():
+    array = np.full((700, 700), 3)
+    sparse = convert_between_dense_sparse_array(array, "sparse")
+    assert issparse(sparse)
+    array_back = convert_between_dense_sparse_array(sparse, "dense")
+    assert not issparse(array_back)
+    sparse_to_sparse = convert_between_dense_sparse_array(sparse, "sparse")
+    assert issparse(sparse_to_sparse)
+    dense_to_dense = convert_between_dense_sparse_array(array, "dense")
+    assert not issparse(dense_to_dense)
+
+    with pytest.raises(TypeError):
+        convert_between_dense_sparse_array(array, "fake_type")
