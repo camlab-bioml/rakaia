@@ -45,6 +45,7 @@ from ccramic.inputs.loaders import (
     next_roi_trigger,
     adjust_option_height_from_list_length)
 from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json
+from ccramic.io.session import write_blend_config_to_json, write_session_data_to_h5py
 # from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
@@ -457,6 +458,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # TODO: add the ability to read back in the global filter parameters from JSON
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
+            # reformat the blend dict to remove the metadata key if reported with h5py so it will match
+            current_blend_dict = {key: value for key, value in current_blend_dict.items() if \
+                                  'metadata' not in key}
             panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict['channels'])
             match_all = current_blend_dict is None and all([len(uploaded_w_data[roi]) == \
                         len(new_blend_dict['channels']) for roi in uploaded_w_data.keys() if '+++' in roi])
@@ -482,7 +486,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
                         current_blend_dict.keys() for elem in new_blend_dict['config']['blend']]):
                     channel_list_return = new_blend_dict['config']['blend']
-                # TODO: get the global filter values from the config
                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
                 parse_global_filter_values_from_json(new_blend_dict['config'])
                 return Serverside(all_layers, key="layer_dict"), current_blend_dict, error_config, channel_list_return, \
@@ -859,7 +862,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
         if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
 
-
             for key, value in current_blend_dict.items():
                 current_blend_dict[key] = apply_preset_to_blend_dict(value, preset_dict[preset_selection])
             return current_blend_dict
@@ -1148,26 +1150,29 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if None not in (x_request, y_request, current_window) and \
                         nclicks_coord is not None and nclicks_coord > 0:
                     try:
-                        # calculate midway distance for each coord. this distance is
-                        # added on either side of the x and y requests
-                        new_x_low, new_x_high, new_y_low, new_y_high = create_new_coord_bounds(current_window,
-                                                                                               x_request,
-                                                                                               y_request)
-                        new_layout = {'xaxis.range[0]': new_x_low, 'xaxis.range[1]': new_x_high,
-                                      'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
-                        # IMP: for yaxis, need to set the min and max in the reverse order
-                        fig = go.Figure(data=cur_graph['data'], layout=cur_graph['layout'])
-                        shapes = cur_graph['layout']['shapes']
-                        annotations = cur_graph['layout']['annotations']
-                        fig['layout']['shapes'] = None
-                        fig['layout']['annotations'] = None
-                        fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
-                                          yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
-                        fig.update_layout(newshape=dict(line=dict(color="white")))
-                        # cur_graph['layout']['xaxis']['domain'] = [0, 1]
-                        # cur_graph['layout']['dragmode'] = "zoom"
-                        fig['layout']['shapes'] = shapes
-                        fig['layout']['annotations'] = annotations
+                        # # calculate midway distance for each coord. this distance is
+                        # # added on either side of the x and y requests
+                        # new_x_low, new_x_high, new_y_low, new_y_high = create_new_coord_bounds(current_window,
+                        #                                                                        x_request,
+                        #                                                                        y_request)
+                        # new_layout = {'xaxis.range[0]': new_x_low, 'xaxis.range[1]': new_x_high,
+                        #               'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
+                        # # IMP: for yaxis, need to set the min and max in the reverse order
+                        # fig = go.Figure(data=cur_graph['data'], layout=cur_graph['layout'])
+                        # shapes = cur_graph['layout']['shapes']
+                        # annotations = cur_graph['layout']['annotations']
+                        # fig['layout']['shapes'] = None
+                        # fig['layout']['annotations'] = None
+                        # fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
+                        #                   yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
+                        # fig.update_layout(newshape=dict(line=dict(color="white")))
+                        # # cur_graph['layout']['xaxis']['domain'] = [0, 1]
+                        # # cur_graph['layout']['dragmode'] = "zoom"
+                        # fig['layout']['shapes'] = shapes
+                        # fig['layout']['annotations'] = annotations
+                        # return fig, new_layout
+                        fig, new_layout = CanvasLayout(cur_graph).update_coordinate_window(current_window,
+                                                                                     x_request, y_request)
                         return fig, new_layout
                     except (AssertionError, TypeError):
                         raise PreventUpdate
@@ -1213,28 +1218,29 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
         if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
             try:
-                cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
-                pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
-                for annotations in cur_graph['layout']['annotations']:
-                    # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
-                    if annotations['y'] == 0.06:
-                        if custom_scale_val is None:
-                            high = max(cur_graph['layout']['xaxis']['range'][1],
-                                       cur_graph['layout']['xaxis']['range'][0])
-                            low = min(cur_graph['layout']['xaxis']['range'][1],
-                                      cur_graph['layout']['xaxis']['range'][0])
-                            x_range_high = math.ceil(int(high))
-                            x_range_low = math.floor(int(low))
-                            assert x_range_high >= x_range_low
-                            custom_scale_val = int(float(math.ceil(int(0.075 *
-                                                (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
-                        scale_annot = str(custom_scale_val) + "μm"
-                        scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                        # get the index of the list element corresponding to this text annotation
-                        index = cur_graph['layout']['annotations'].index(annotations)
-                        cur_graph['layout']['annotations'][index]['text'] = scale_text
-                fig = go.Figure(cur_graph)
-                fig.update_layout(newshape=dict(line=dict(color="white")))
+                # cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
+                # pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
+                # for annotations in cur_graph['layout']['annotations']:
+                #     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
+                #     if annotations['y'] == 0.06:
+                #         if custom_scale_val is None:
+                #             high = max(cur_graph['layout']['xaxis']['range'][1],
+                #                        cur_graph['layout']['xaxis']['range'][0])
+                #             low = min(cur_graph['layout']['xaxis']['range'][1],
+                #                       cur_graph['layout']['xaxis']['range'][0])
+                #             x_range_high = math.ceil(int(high))
+                #             x_range_low = math.floor(int(low))
+                #             assert x_range_high >= x_range_low
+                #             custom_scale_val = int(float(math.ceil(int(0.075 *
+                #                                 (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
+                #         scale_annot = str(custom_scale_val) + "μm"
+                #         scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                #         # get the index of the list element corresponding to this text annotation
+                #         index = cur_graph['layout']['annotations'].index(annotations)
+                #         cur_graph['layout']['annotations'][index]['text'] = scale_text
+                # fig = go.Figure(cur_graph)
+                # fig.update_layout(newshape=dict(line=dict(color="white")))
+                fig = CanvasLayout(cur_graph).use_custom_scalebar_value(custom_scale_val, pixel_ratio)
             except (KeyError, AssertionError):
                 fig = dash.no_update
             return fig
@@ -1513,31 +1519,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
 
             first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
-            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
-
-            # # fig_bytes = pio.to_image(fig, height=image.shape[1], width=image.shape[0])
-            # # buf = io.BytesIO(fig_bytes)
-            # # img = Image.open(buf)
-            # dest_file = dash.no_update
-            # if current_image_tiff is not None:
-            #     dest_file = str(os.path.join(dest_path, "canvas.tiff"))
-            #     if not os.path.exists(dest_path):
-            #         os.makedirs(dest_path)
-            #     imwrite(dest_file, current_image_tiff.astype(np.uint8), photometric='rgb')
-
-            download_dir = os.path.join(tmpdirname,
-                                        authentic_id,
-                                        'downloads')
-            relative_filename = os.path.join(download_dir, 'data.h5')
+            download_dir = os.path.join(tmpdirname, authentic_id, 'downloads')
             if not os.path.exists(download_dir):
                 os.makedirs(download_dir)
-            hf = None
-            try:
-                hf = h5py.File(relative_filename, 'w')
-            except OSError:
-                os.remove(relative_filename)
-            if hf is None:
-                hf = h5py.File(relative_filename, 'w')
+            # TODO: create testable function for the download mask
             try:
                 mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
@@ -1550,44 +1535,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                 new_mask = path_to_mask(path, first_image.shape)
                                 mask = np.logical_or(mask, new_mask)
 
-                meta_to_write = pd.DataFrame(metadata_sheet) if metadata_sheet is not None else \
-                    pd.DataFrame(uploaded['metadata'])
-                for col in meta_to_write:
-                    meta_to_write[col] = meta_to_write[col].astype(str)
-                hf.create_dataset('metadata', data=meta_to_write.to_numpy())
-                hf.create_dataset('metadata_columns', data=meta_to_write.columns.values.astype('S'))
-                hf.create_group(data_selection)
-                for key, value in uploaded[data_selection].items():
-                    if key not in hf[data_selection]:
-                        hf[data_selection].create_group(key)
-                        if 'image' not in hf[data_selection][key] and value is not None:
-                            # iuse the mask if provided
-                            if mask is not None:
-                                value[~mask] = 0
-                            hf[data_selection][key].create_dataset('image', data=value)
-                            if blend_dict is not None and key in blend_dict.keys():
-                                for blend_key, blend_val in blend_dict[key].items():
-                                    data_write = str(blend_val) if blend_val is not None else "None"
-                                    hf[data_selection][key].create_dataset(blend_key, data=data_write)
-                            else:
-                                pass
-                try:
-                    hf.close()
-                except:
-                    pass
-                # instead, give a measure at the bottom converting pixels to distance
-                # aspect_ratio = float(current_image_tiff.shape[1] / current_image_tiff.shape[0])
-                # only change the colour to black if the aspect ratio is not wide, otherwise the image will still
-                # fill the HTML so want to keep white
-                # scale_update = 'black' if aspect_ratio < 1.75 else 'white'
-                # for annotation in current_canvas['layout']['annotations']:
-                #     if 'μm' in annotation['text']:
-                #         annotation['text'] = f'<span style="color: {scale_update}">1 pixel = 1μm (unzoomed)</span><br>'
-                # for shape in current_canvas['layout']['shapes']:
-                #     if shape['type'] == 'line' and shape['y0'] == 0.05 and 'line' in shape:
-                #         current_canvas['layout']['shapes'].remove(shape)
-
-                # can set the canvas width and height from the canvas style to retain the in-dash aspect ratio
+                relative_filename = write_session_data_to_h5py(download_dir, metadata_sheet, uploaded,
+                                                               data_selection, blend_dict, mask)
                 if not ' use graph subset on download' in graph_subset:
                     try:
                         fig = go.Figure(current_canvas)
@@ -1596,21 +1545,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         #                   yaxis=YAxis(showticklabels=False),
                         #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
                         fig.update_layout(dragmode="zoom")
-                        fig.write_html(str(os.path.join(download_dir, "canvas.html")), default_width = canvas_style['width'],
-                               default_height = canvas_style['height'])
+                        fig.write_html(str(os.path.join(download_dir, "canvas.html")),
+                            default_width = canvas_style['width'], default_height = canvas_style['height'])
                         fig_return = str(os.path.join(download_dir, "canvas.html"))
                     except ValueError:
                         fig_return = dash.no_update
                 else:
                     fig_return = dash.no_update
-                param_json = str(os.path.join(download_dir, 'param.json'))
-                with open(param_json, "w") as outfile:
-                    # TODO: write the current global filters to the blend JSON
-                    dict_write = {"channels": blend_dict, "config":
-                        {"blend": blend_layers, "filter":
-                        {"global_apply_filter": global_apply_filter, "global_filter_type": global_filter_type,
-                         "global_filter_val": global_filter_val, "global_filter_sigma": global_filter_sigma}}}
-                    json.dump(dict_write, outfile)
+                # param_json = str(os.path.join(download_dir, 'param.json'))
+                # with open(param_json, "w") as outfile:
+                #     dict_write = {"channels": blend_dict, "config":
+                #         {"blend": blend_layers, "filter":
+                #         {"global_apply_filter": global_apply_filter, "global_filter_type": global_filter_type,
+                #          "global_filter_val": global_filter_val, "global_filter_sigma": global_filter_sigma}}}
+                #     json.dump(dict_write, outfile)
+                param_json = write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
+                               global_filter_type, global_filter_val, global_filter_sigma)
 
                 return str(relative_filename), fig_return, param_json
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet

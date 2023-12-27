@@ -10,10 +10,12 @@ from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
 from ccramic.utils.pixel_level_utils import (
     per_channel_intensity_hovertext,
     get_additive_image,
-    apply_filter_to_array)
+    apply_filter_to_array,
+    create_new_coord_bounds)
 from ccramic.utils.cell_level_utils import generate_mask_with_cluster_annotations
 from plotly.graph_objs.layout import YAxis, XAxis
 from ccramic.utils.shapes import is_cluster_annotation_circle, is_bad_shape
+from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 import pandas as pd
 import math
 from skimage import measure
@@ -427,6 +429,31 @@ class CanvasLayout:
         # return fig
         return self.figure
 
+    def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio):
+        self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
+        pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
+        for annotations in self.figure['layout']['annotations']:
+            # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
+            if annotations['y'] == 0.06:
+                if custom_scale_val is None:
+                    high = max(self.figure['layout']['xaxis']['range'][1],
+                               self.figure['layout']['xaxis']['range'][0])
+                    low = min(self.figure['layout']['xaxis']['range'][1],
+                              self.figure['layout']['xaxis']['range'][0])
+                    x_range_high = math.ceil(int(high))
+                    x_range_low = math.floor(int(low))
+                    assert x_range_high >= x_range_low
+                    custom_scale_val = int(float(math.ceil(int(0.075 *
+                                        (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
+                scale_annot = str(custom_scale_val) + "μm"
+                scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                # get the index of the list element corresponding to this text annotation
+                index = self.figure['layout']['annotations'].index(annotations)
+                self.figure['layout']['annotations'][index]['text'] = scale_text
+        fig = go.Figure(self.figure)
+        fig.update_layout(newshape=dict(line=dict(color="white")))
+        return fig.to_dict()
+
     def clear_improper_shapes(self):
 
         for shape in self.cur_shapes:
@@ -474,3 +501,26 @@ class CanvasLayout:
                 new_shapes.append(shape)
         self.figure['layout']['shapes'] = new_shapes
         return self.figure
+
+    def update_coordinate_window(self, current_window, x_request, y_request):
+        # calculate midway distance for each coord. this distance is
+        # added on either side of the x and y requests
+        new_x_low, new_x_high, new_y_low, new_y_high = create_new_coord_bounds(current_window,
+                                                                               x_request,
+                                                                               y_request)
+        new_layout = {'xaxis.range[0]': new_x_low, 'xaxis.range[1]': new_x_high,
+                      'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
+        # IMP: for yaxis, need to set the min and max in the reverse order
+        fig = go.Figure(data=self.figure['data'], layout=self.figure['layout'])
+        shapes = self.figure['layout']['shapes']
+        annotations = self.figure['layout']['annotations']
+        fig['layout']['shapes'] = None
+        fig['layout']['annotations'] = None
+        fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
+                          yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
+        fig.update_layout(newshape=dict(line=dict(color="white")))
+        # cur_graph['layout']['xaxis']['domain'] = [0, 1]
+        # cur_graph['layout']['dragmode'] = "zoom"
+        fig['layout']['shapes'] = shapes
+        fig['layout']['annotations'] = annotations
+        return fig.to_dict(), new_layout

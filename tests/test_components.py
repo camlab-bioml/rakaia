@@ -259,3 +259,17 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
     assert len(fig['layout']['shapes']) == 1
+
+    fig = go.Figure(px.imshow(image))
+    # canvas_layout = {'xaxis.range[1]': 50, 'xaxis.range[0]': 60}
+    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    fig = CanvasLayout(fig).use_custom_scalebar_value(23, 1)
+    assert '<span style="color: white">23μm</span><br>' in fig['layout']['annotations'][0]['text']
+
+    window_dict = {'y_low': 100, 'y_high': 150, 'x_low': 100, 'x_high': 150}
+    fig = go.Figure(px.imshow(image))
+    fig, window_layout = CanvasLayout(fig).update_coordinate_window(window_dict, 250, 250)
+    assert window_layout == {'xaxis.range[0]': 225.0, 'xaxis.range[1]': 275.0,
+                             'yaxis.range[0]': 275.0, 'yaxis.range[1]': 225.0}
+    assert fig['layout']['xaxis']['range'] == [225.0, 275.0]
+    assert fig['layout']['yaxis']['range'] == [275.0, 225.0]
