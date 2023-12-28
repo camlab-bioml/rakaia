@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2023-12-22
+## [0.12.0] - 2023-12-28
 
 ### Changed
 
@@ -15,6 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 reduce storage requirements and eliminate duplicate data writing for the same `dcc.Store` objects
 - JSON I/O supports the values for global filters
 - Apply global filter to ROI query thumbnails
+
+### Fixed
+
+- imported JSON configurations will now match the proper length of datasets
+imported from h5py
+- Annotating the UMAP from the UMAP plot will trigger the recent annotation to be applied to the visualization
 
 ## [0.11.0] - 2023-12-21
 

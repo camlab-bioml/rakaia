@@ -2,6 +2,8 @@ import os
 import json
 import h5py
 import pandas as pd
+import numpy as np
+from ccramic.utils.pixel_level_utils import path_to_mask
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
                                global_filter_type, global_filter_val, global_filter_sigma):
     """
@@ -57,3 +59,22 @@ def write_session_data_to_h5py(dest_dir, metadata_frame, data_dict, data_selecti
         pass
 
     return str(relative_filename)
+
+
+def subset_mask_for_data_export(canvas_layout, array_shape):
+    """
+    Generate a numpy array mask from the last svg path shape in the canvas layout
+    """
+    mask = None
+    try:
+        for shape in canvas_layout['shapes']:
+            if shape['type'] == 'path':
+                path = shape['path']
+                if mask is None:
+                    mask = path_to_mask(path, array_shape)
+                else:
+                    new_mask = path_to_mask(path, array_shape)
+                    mask = np.logical_or(mask, new_mask)
+    except KeyError:
+        pass
+    return mask

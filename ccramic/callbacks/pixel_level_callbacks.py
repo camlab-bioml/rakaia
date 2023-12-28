@@ -45,7 +45,10 @@ from ccramic.inputs.loaders import (
     next_roi_trigger,
     adjust_option_height_from_list_length)
 from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json
-from ccramic.io.session import write_blend_config_to_json, write_session_data_to_h5py
+from ccramic.io.session import (
+    write_blend_config_to_json,
+    write_session_data_to_h5py,
+    subset_mask_for_data_export)
 # from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
@@ -636,11 +639,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                     if current_blend_dict[layer]['x_lower_bound'] is not None and \
                         current_blend_dict[layer]['x_upper_bound'] is not None:
-                        array = filter_by_upper_and_lower_bound(array,
-                                                            float(current_blend_dict[layer][
-                                                                      'x_lower_bound']),
-                                                            float(current_blend_dict[layer][
-                                                                      'x_upper_bound']))
+                        array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
+                                float(current_blend_dict[layer]['x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
                         if filter_name == "median" and int(filter_value) >= 1:
@@ -655,7 +655,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                                  int(filter_value)), float(filter_sigma))
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
-                                                                                 colour['hex'])).astype(np.uint8)
+                                                        colour['hex'])).astype(np.uint8)
 
                     return current_blend_dict, Serverside(all_layers, key="layer_dict")
                 else:
@@ -827,9 +827,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         current_blend_dict[layer]['filter_sigma'] = None
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
-                                                                                 current_blend_dict[
-                                                                                     layer][
-                                                                                     'color'])).astype(np.uint8)
+                                                        current_blend_dict[layer]['color'])).astype(np.uint8)
 
                     return current_blend_dict, Serverside(all_layers, key="layer_dict")
             else:
@@ -1526,14 +1524,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
-                    for shape in canvas_layout['shapes']:
-                        if shape['type'] == 'path':
-                            path = shape['path']
-                            if mask is None:
-                                mask = path_to_mask(path, first_image.shape)
-                            else:
-                                new_mask = path_to_mask(path, first_image.shape)
-                                mask = np.logical_or(mask, new_mask)
+                    mask = subset_mask_for_data_export(canvas_layout, first_image.shape)
 
                 relative_filename = write_session_data_to_h5py(download_dir, metadata_sheet, uploaded,
                                                                data_selection, blend_dict, mask)

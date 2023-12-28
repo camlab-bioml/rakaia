@@ -49,7 +49,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
             if umap_obj is not None:
                 scaled = StandardScaler().fit_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
-                return Serverside(embedding), cols
+                return Serverside(embedding, key="umap-embedding"), cols
             else:
                 raise PreventUpdate
         else:
@@ -182,7 +182,7 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
                                                                                     page.asarray().shape[1], 1)),
                                                    "raw": page.asarray()}
-        return Serverside(cur_mask_dict), list(cur_mask_dict.keys())
+        return Serverside(cur_mask_dict, key="mask-dict"), list(cur_mask_dict.keys())
     else:
         raise PreventUpdate
 

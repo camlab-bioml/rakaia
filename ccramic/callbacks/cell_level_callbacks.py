@@ -260,7 +260,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
-                       State('quantification-dict', 'data'),
+                       Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
@@ -306,6 +306,10 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('mask-uploads', 'data'),
                        prevent_initial_call=True)
     def input_mask_name_on_upload(mask_uploads):
+        """
+        Allow the user to change the mask upload name if only a single mask is uploaded
+        If multiple are uploaded, use the file basename by default
+        """
         if mask_uploads is not None and len(mask_uploads) > 0 and len(mask_uploads) == 1:
             return list(mask_uploads.keys())[0]
         else:
