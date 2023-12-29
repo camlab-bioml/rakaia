@@ -50,3 +50,9 @@ class AtlasDatabaseConnection:
                                             global_filter_type, global_filter_val, global_filter_sigma))
     def username_password_pair(self):
         return {'username': self.username, 'password': self.password}
+
+    def remove_blend_document_by_name(self, config_name):
+        """
+        Remove a document by the `name` key of the document
+        """
+        delete = self.blend_collection.delete_many({"user": self.username, "name": config_name})

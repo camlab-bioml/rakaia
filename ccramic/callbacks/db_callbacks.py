@@ -3,8 +3,8 @@ from dash_extensions.enrich import Output, Input, State, html, Serverside
 from ccramic.db.connection import AtlasDatabaseConnection
 from dash.exceptions import PreventUpdate
 from ccramic.utils.db import preview_dataframe_from_db_config_list
-from dash import ctx
 import pandas as pd
+from dash import ctx
 
 def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -78,7 +78,8 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('db-config-submit-alert', 'children'),
                        Output('db-config-submit-alert', 'is_open'),
                        Input('db-save-cur-config', 'n_clicks'),
-                       Input('database-connection', 'data'),
+                       Input('db-remove-select-config', 'n_clicks'),
+                       State('database-connection', 'data'),
                        State('db-config-name', 'value'),
                        State('blending_colours', 'data'),
                        State('image_layers', 'value'),
@@ -86,15 +87,22 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('global-filter-type', 'value'),
                        State("global-kernel-val-filter", 'value'),
                        State("global-sigma-val-filter", 'value'))
-    def save_current_configuration_to_db(save_to_db, credentials, db_config_name, blend_dict, channel_selection,
+    def insert_or_remove_configuration(save_to_db, remove_from_db, credentials, db_config_name, blend_dict, channel_selection,
                                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
         """
         Save the current session configuration (blend dictionary and parameters) as a mongoDB document to the db
+        or
+        remove the current config from the database if it exists
         """
-        if save_to_db > 0 and None not in (credentials, db_config_name, blend_dict):
+        if ctx.triggered_id == "db-save-cur-config" and save_to_db > 0 and \
+                None not in (credentials, db_config_name, blend_dict):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
             connection.insert_blend_config(db_config_name, blend_dict, channel_selection,
                                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma)
             return f"{db_config_name} submitted successfully", True
+        elif ctx.triggered_id == "db-remove-select-config" and remove_from_db > 0 and None not in (db_config_name, credentials):
+            connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
+            connection.remove_blend_document_by_name(db_config_name)
+            return f"{db_config_name} removed successfully", True
         else:
             raise PreventUpdate
