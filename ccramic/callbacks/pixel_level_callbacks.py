@@ -459,12 +459,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if error_config is None:
             error_config = {"error": None}
-        # TODO: establish logic for reading the config from the database
-        if ctx.triggered_id == "db-config-options":
+        if ctx.triggered_id == "db-config-options" and db_config_selection is not None:
             for config in db_config_list:
                 if config['name'] == db_config_selection:
                     new_blend_dict = config
-        # TODO: add the ability to read back in the global filter parameters from JSON
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
@@ -504,7 +502,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                         "match the current panel length. The update did not occur."
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update
-        elif data_selection is None:
+        elif data_selection is None and new_blend_dict is not None:
             error_config["error"] = "Please select an ROI before importing blend parameters from JSON."
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update
@@ -553,13 +551,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                 if elem not in current_blend_dict.keys():
-                    current_blend_dict[elem] = {'color': None,
-                                                                 'x_lower_bound': 0,
-                                                                 'x_upper_bound':
-                                                                get_default_channel_upper_bound_by_percentile(
-                                                                sparse_array_to_dense(uploaded_w_data[data_selection][elem])),
-                                                                 'filter_type': None,
-                                                                 'filter_val': None, 'filter_sigma': None}
+                    current_blend_dict[elem] = {'color': None, 'x_lower_bound': 0, 'x_upper_bound':
+                        get_default_channel_upper_bound_by_percentile(
+                        sparse_array_to_dense(uploaded_w_data[data_selection][elem])),
+                            'filter_type': None, 'filter_val': None, 'filter_sigma': None}
                     # TODO: default colour is white, but can set auto selection here for starting colours
                     current_blend_dict[elem]['color'] = '#FFFFFF'
                     if autofill_channel_colours:

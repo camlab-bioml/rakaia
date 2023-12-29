@@ -2,6 +2,9 @@ import dash
 from dash_extensions.enrich import Output, Input, State, html, Serverside
 from ccramic.db.connection import AtlasDatabaseConnection
 from dash.exceptions import PreventUpdate
+from ccramic.utils.db import preview_dataframe_from_db_config_list
+from dash import ctx
+import pandas as pd
 
 def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -10,7 +13,6 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     dash_app.config.suppress_callback_exceptions = True
 
     @dash_app.callback(Output('database-connection', 'data'),
-                       #TODO: insert outputs for alert
                        Output('db-connect-alert', 'children'),
                        Output('db-connect-alert', 'is_open'),
                        Output('db-connect-alert', 'color'),
@@ -30,6 +32,8 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('db-saved-configs', 'data'),
                        Output('db-config-options', 'options'),
+                       Output('db-config-preview-table', 'data'),
+                       Output('db-config-preview-table', 'columns'),
                        Input('database-connection', 'data'),
                        prevent_initial_call=True)
     def populate_blend_config_list_from_database(credentials):
@@ -40,9 +44,57 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
             connected, ping = connection.ping_connection()
             if connected:
-                configs, list = connection.blend_configs_by_user()
-                return Serverside(configs), list
+                configs, list_configs = connection.blend_configs_by_user()
+                config_preview = preview_dataframe_from_db_config_list(configs)
+                return Serverside(configs, key="dg-config-list"), \
+                    list_configs, pd.DataFrame(config_preview).to_dict(orient='records'), \
+                    [{'id': p, 'name': p, 'editable': False, "presentation": "markdown"} for p in config_preview.keys()]
             else:
                 raise PreventUpdate
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(
+        Output("db-config-preview", "is_open"),
+        Input('view-db-config-list', 'n_clicks'),
+        [State("db-config-preview", "is_open")])
+    def toggle_db_config_preview_table(n1, is_open):
+        """
+        Toggle open the dataframe containing the preview of imported configs from mongoDB
+        """
+        if n1:
+            return not is_open
+        return is_open
+
+    @dash_app.callback(Output('db-config-name', 'value'),
+                       Input('db-config-options', 'value'),
+                       prevent_initial_call=True)
+    def load_selected_db_config_name_into_save(selected_db_config):
+        """
+        If a config file from the database is loaded, replace the name input used to save the configuration
+        """
+        return selected_db_config if selected_db_config is not None else None
+
+    @dash_app.callback(Output('db-config-submit-alert', 'children'),
+                       Output('db-config-submit-alert', 'is_open'),
+                       Input('db-save-cur-config', 'n_clicks'),
+                       Input('database-connection', 'data'),
+                       State('db-config-name', 'value'),
+                       State('blending_colours', 'data'),
+                       State('image_layers', 'value'),
+                       State('bool-apply-global-filter', 'value'),
+                       State('global-filter-type', 'value'),
+                       State("global-kernel-val-filter", 'value'),
+                       State("global-sigma-val-filter", 'value'))
+    def save_current_configuration_to_db(save_to_db, credentials, db_config_name, blend_dict, channel_selection,
+                                global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
+        """
+        Save the current session configuration (blend dictionary and parameters) as a mongoDB document to the db
+        """
+        if save_to_db > 0 and None not in (credentials, db_config_name, blend_dict):
+            connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
+            connection.insert_blend_config(db_config_name, blend_dict, channel_selection,
+                                global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma)
+            return f"{db_config_name} submitted successfully", True
         else:
             raise PreventUpdate
