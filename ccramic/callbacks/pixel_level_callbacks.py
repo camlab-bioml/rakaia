@@ -433,11 +433,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(State('uploaded_dict', 'data'),
                        Input('param_blend_config', 'data'),
+                       Input('db-config-options', 'value'),
                        State('data-collection', 'value'),
                        State('image_layers', 'value'),
                        State('canvas-layers', 'data'),
                        State('blending_colours', 'data'),
                        State('session_alert_config', 'data'),
+                       State('db-saved-configs', 'data'),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -447,8 +449,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output("global-kernel-val-filter", 'value', allow_duplicate=True),
                        Output("global-sigma-val-filter", 'value', allow_duplicate=True),
                        prevent_initial_call=True)
-    def update_parameters_from_config_json(uploaded_w_data, new_blend_dict, data_selection,
-                                               add_to_layer, all_layers, current_blend_dict, error_config):
+    def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
+                                        add_to_layer, all_layers, current_blend_dict, error_config, db_config_list):
         """
         Update the blend layer dictionary and currently selected channels from a JSON upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
@@ -457,7 +459,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if error_config is None:
             error_config = {"error": None}
-
+        # TODO: establish logic for reading the config from the database
+        if ctx.triggered_id == "db-config-options":
+            for config in db_config_list:
+                if config['name'] == db_config_selection:
+                    new_blend_dict = config
         # TODO: add the ability to read back in the global filter parameters from JSON
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
