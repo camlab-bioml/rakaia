@@ -25,7 +25,7 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             connection = AtlasDatabaseConnection(username=username, password=password)
             connected, ping = connection.ping_connection()
             pair = connection.username_password_pair() if connected else dash.no_update
-            del connection
+            connection.close()
             return pair, ping, True, "success" if connected else "danger"
         else:
             raise PreventUpdate
@@ -86,9 +86,10 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('bool-apply-global-filter', 'value'),
                        State('global-filter-type', 'value'),
                        State("global-kernel-val-filter", 'value'),
-                       State("global-sigma-val-filter", 'value'))
+                       State("global-sigma-val-filter", 'value'),
+                       State('alias-dict', 'data'))
     def insert_or_remove_configuration(save_to_db, remove_from_db, credentials, db_config_name, blend_dict, channel_selection,
-                                global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
+                            global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, aliases):
         """
         Save the current session configuration (blend dictionary and parameters) as a mongoDB document to the db
         or
@@ -98,11 +99,12 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 None not in (credentials, db_config_name, blend_dict):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
             connection.insert_blend_config(db_config_name, blend_dict, channel_selection,
-                                global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma)
+                        global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, aliases)
             return f"{db_config_name} submitted successfully", True
         elif ctx.triggered_id == "db-remove-select-config" and remove_from_db > 0 and None not in (db_config_name, credentials):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
             connection.remove_blend_document_by_name(db_config_name)
+            connection.close()
             return f"{db_config_name} removed successfully", True
         else:
             raise PreventUpdate

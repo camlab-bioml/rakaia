@@ -65,6 +65,9 @@ import plotly.graph_objs as go
 from scipy.ndimage import median_filter
 from natsort import natsorted
 from ccramic.io.readers import DashUploaderFileReader
+from ccramic.utils.db import (
+    match_db_config_to_request_str,
+    extract_alias_labels_from_db_document)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -107,7 +110,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, import_type):
         if path is not None and clicks > 0:
-            # TODO: fix ability to read in multiple files at different times
             session_config = cur_session if cur_session is not None and \
                                             len(cur_session['uploads']) > 0 else {'uploads': []}
             if error_config is None:
@@ -212,8 +214,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if error_config is None:
                 error_config = {"error": None}
             message = "Read in the following files:\n"
-            # TODO: establish whether or not to use natural sorting on the filenames and applications for when to use
-            # i.e. useful for ordinal serial section files
             files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
             for upload in files:
                 suffix = pathlib.Path(upload).suffix
@@ -258,7 +258,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 selection_return = dash.no_update if cur_data_selection in datasets else None
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0:
                     channels_return = cur_layers_selected
-            #TODO: figure out how to change the option height of the dropdown for very long names
             height_update = adjust_option_height_from_list_length(datasets)
             return datasets, selection_return, channels_return, height_update
         else:
@@ -317,7 +316,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if the dimensions are above 3000 for either axis
         """
         # set the default canvas to return without a load screen
-        #TODO: establish whether a change to the metadata names can be separated from the update of the ROI loading
         if image_dict and data_selection and names:
             exp, slide, roi_name = split_string_at_pattern(data_selection)
             roi_name = str(roi_name) + f" ({str(exp)})" if "acq" in str(roi_name) else str(roi_name)
@@ -440,6 +438,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('blending_colours', 'data'),
                        State('session_alert_config', 'data'),
                        State('db-saved-configs', 'data'),
+                       State("imc-metadata-editable", "data"),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -448,21 +447,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('global-filter-type', 'value', allow_duplicate=True),
                        Output("global-kernel-val-filter", 'value', allow_duplicate=True),
                        Output("global-sigma-val-filter", 'value', allow_duplicate=True),
+                       Output("imc-metadata-editable", "data", allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
-                                        add_to_layer, all_layers, current_blend_dict, error_config, db_config_list):
+                            add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata):
         """
         Update the blend layer dictionary and currently selected channels from a JSON upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
         they will be modified on future selection
         Requires that the channel modification menu be empty to make sure that parameters are updated properly
         """
+        metadata_return = dash.no_update
         if error_config is None:
             error_config = {"error": None}
         if ctx.triggered_id == "db-config-options" and db_config_selection is not None:
-            for config in db_config_list:
-                if config['name'] == db_config_selection:
-                    new_blend_dict = config
+            # TODO: decide if the alias key needs to be removed from the blend dict imported from mongoDB
+            new_blend_dict = match_db_config_to_request_str(db_config_list, db_config_selection)
+            metadata_return = extract_alias_labels_from_db_document(new_blend_dict, cur_metadata)
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
@@ -496,16 +497,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
                 parse_global_filter_values_from_json(new_blend_dict['config'])
                 return Serverside(all_layers, key="layer_dict"), current_blend_dict, error_config, channel_list_return, \
-                    global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma
+                    global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, metadata_return
             else:
                 error_config["error"] = "Error: the blend parameters uploaded from JSON do not " \
                                         "match the current panel length. The update did not occur."
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update
         elif data_selection is None and new_blend_dict is not None:
             error_config["error"] = "Please select an ROI before importing blend parameters from JSON."
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update
         else:
             raise PreventUpdate
 
@@ -1594,11 +1595,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def update_canvas_size(value, current_canvas, cur_graph_layout, data_selection,
                            image_dict, add_layer, cur_sizing):
         # zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-        # only update the resolution if not using zoom or panning
-        # TODO: change the canvas sizing update to allow panning and zooming
-        # if all([elem not in cur_graph_layout for elem in zoom_keys]) and \
-        #         'dragmode' not in cur_graph_layout.keys() and \
-        #         add_layer is not None and value is not None:
         if None not in (add_layer, value, data_selection, image_dict):
             try:
                 first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])

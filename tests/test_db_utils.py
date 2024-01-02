@@ -1,6 +1,8 @@
 from ccramic.utils.db import (
     preview_dataframe_from_db_config_list,
-    format_blend_config_document_for_insert)
+    format_blend_config_document_for_insert,
+    match_db_config_to_request_str,
+    extract_alias_labels_from_db_document)
 import pandas as pd
 import datetime
 
@@ -13,6 +15,12 @@ def test_generate_config_preview_table():
     frame = pd.DataFrame(preview_dataframe_from_db_config_list(config_list))
     assert len(frame) == 2
     assert list(frame['Names']) == ['first_blend_config', 'second_blend_config']
+
+def test_basic_iteration_config_list():
+    config_list = [{"name": "config_1", "blend": "insert_blend_here"}, {"name": "config_2", "blend": "new_blend"}]
+    config_return = match_db_config_to_request_str(config_list, "config_1")
+    assert config_return == {'name': 'config_1', 'blend': 'insert_blend_here'}
+    assert match_db_config_to_request_str(config_list, "fake_key") is None
 
 def test_create_insert_document_blend_config():
     blend_dict = {"ArAr80": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None,
@@ -407,3 +415,33 @@ def test_create_insert_document_blend_config():
                        'global_filter_val': 3}},
  'name': 'first_config',
  'user': 'fake_user'}
+
+
+def test_extract_alias_labels():
+    metadata_frame = pd.DataFrame({"channel": ['channel_1', 'channel_2'],
+                                   'ccramic Label': ['channel_1', 'channel_2']})
+    config = {"user": "user",
+     "name": "test_config",
+     "channels": {"channel_1": {"alias": "ch1"},
+                  "channel_2": {"alias": "ch2"}},
+
+     "config": {}}
+    label_list = extract_alias_labels_from_db_document(config, metadata_frame)
+    assert label_list ==[{'ccramic Label': 'ch1', 'channel': 'channel_1'},
+        {'ccramic Label': 'ch2', 'channel': 'channel_2'}]
+
+    config = {"user": "user",
+              "name": "test_config",
+              "channels": {"channel_1": {"alias": "ch1"},
+                           "channel_2": {"alias": "ch2"},
+                           "channel_3": {}},
+
+              "config": {}}
+    metadata_frame = pd.DataFrame({"channel": ['channel_1', 'channel_2', 'channel_3'],
+                                   'ccramic Label': ['channel_1', 'channel_2', 'channel_3']})
+    label_list = extract_alias_labels_from_db_document(config, metadata_frame)
+    assert label_list == [{'ccramic Label': 'ch1', 'channel': 'channel_1'},
+    {'ccramic Label': 'ch2', 'channel': 'channel_2'},
+    {'ccramic Label': 'channel_3', 'channel': 'channel_3'}]
+
+    assert extract_alias_labels_from_db_document({"user": "fake_user"}) is None
