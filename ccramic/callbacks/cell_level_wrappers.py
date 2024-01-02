@@ -11,6 +11,7 @@ from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 import ast
 from dash.exceptions import PreventUpdate
+from ccramic.utils.alert import AlertMessage
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                                       mask_config, mask_toggle, mask_selection, sample_name=None,
@@ -93,8 +94,7 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
                 cur_canvas['layout']['shapes']) > 0):
         if error_config is None:
             error_config = {"error": None}
-        error_config["error"] = "There are annotation shapes in the current layout. \n" \
-                                "Switch to zoom or pan before removing the annotation shapes."
+        error_config["error"] = AlertMessage().warnings["invalid_annotation_shapes"]
         cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
         return cur_canvas, error_config
     else:

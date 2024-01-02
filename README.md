@@ -159,6 +159,17 @@ docker run -p 5000:5000 -v /home/:/home/ ccramic:latest ccramic
 
 Navigate to the local address `http://0.0.0.0:5000/` or `http://127.0.0.1:5000/`
 
+## mongoDB
+
+From ccramic v0.12.0, users can use a registered mongoDB account for the
+`ccramic-db` mongoDB instance to import, save, and remove past saved configurations.
+Login information for the shared lab account is as follows:
+
+```commandline
+username: jacksonlab
+password: ccramic-user
+```
+
 ## Documentation
 
 The official documentation and user manual for ccramic is in progress. For some FAQ,

@@ -68,6 +68,7 @@ from ccramic.io.readers import DashUploaderFileReader
 from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
+from ccramic.utils.alert import AlertMessage
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -76,6 +77,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     dash_app.config.suppress_callback_exceptions = True
     DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
+    ALERT = AlertMessage()
 
     @du.callback(Output('uploads', 'data'),
                  id='upload-image')
@@ -121,10 +123,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     error_config["error"] = None
                     return session_config, dash.no_update
                 else:
-                    error_config["error"] = "Invalid filepath provided. Please verify the following: \n\n" \
-                                        "- That the file path provided is a valid local file \n" \
-                                        "- If running using Docker or a web version, " \
-                                        "local file paths will not be available."
+                    error_config["error"] = ALERT.warnings["invalid_filepath"]
                     return dash.no_update, error_config
             elif import_type == "directory":
                 if os.path.isdir(path):
@@ -135,10 +134,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     session_config['uploads'] = [str(elem) for elem in session_config['uploads']]
                     return session_config, dash.no_update
                 else:
-                    error_config["error"] = "Invalid directory provided. Please verify the following: \n\n" \
-                                            "- That the directory provided exists in the local filesystem \n" \
-                                            "- If running using Docker or a web version, " \
-                                            "local directories will not be available."
+                    error_config["error"] = ALERT.warnings["invalid_directory"]
                     return dash.no_update, error_config
             else:
                 raise PreventUpdate
@@ -221,10 +217,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if suffix not in unique_suffixes:
                     unique_suffixes.append(suffix)
             if len(unique_suffixes) > 1:
-                error_config["error"] = "Warning: Multiple different file types were detected on upload. " \
-                                        "This may cause problems during analysis. For best performance, " \
-                                        "it is recommended to analyze datasets all from the same file type extension " \
-                                        "and ensure that all imported datasets share the same panel.\n\n" + message
+                error_config["error"] = ALERT.warnings["multiple_filetypes"] + message
             else:
                 error_config["error"] = message
             upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files,
@@ -489,7 +482,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                                                current_blend_dict[elem][
                                                                                    'color'])).astype(np.uint8)
-                error_config["error"] = "Blend parameters successfully updated from JSON."
+                error_config["error"] = ALERT.warnings["json_update_success"]
                 channel_list_return = dash.no_update
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
                         current_blend_dict.keys() for elem in new_blend_dict['config']['blend']]):
@@ -499,12 +492,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return Serverside(all_layers, key="layer_dict"), current_blend_dict, error_config, channel_list_return, \
                     global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, metadata_return
             else:
-                error_config["error"] = "Error: the blend parameters uploaded from JSON do not " \
-                                        "match the current panel length. The update did not occur."
+                error_config["error"] = ALERT.warnings["json_update_error"]
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update, dash.no_update
         elif data_selection is None and new_blend_dict is not None:
-            error_config["error"] = "Please select an ROI before importing blend parameters from JSON."
+            error_config["error"] = ALERT.warnings["json_requires_roi"]
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update, dash.no_update
         else:
@@ -1438,12 +1430,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         p in metadata_validated.keys()], \
                     pd.DataFrame(metadata_validated).to_dict(orient='records'), dash.no_update
             else:
-                error_config["error"] = "Could not import custom metadata. Ensure that: \n \n- The dataset " \
-                                        "containing the images is " \
-                                        "uploaded first" \
-                                        "\n - the columns `Channel Name` and " \
-                                        "`Channel Label` are present \n - the number of rows matches the number of " \
-                                        "channels in the current dataset. \n"
+                error_config["error"] = ALERT.warnings["custom_metadata_error"]
                 return dash.no_update, dash.no_update, error_config
         else:
             raise PreventUpdate
@@ -2327,9 +2314,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  elem in metadata_editable]):
             if error_config is None:
                 error_config = {"error": None}
-            error_config["error"] = "Warning: the edited metadata appears to be incorrectly formatted. " \
-                                    "Ensure that the number of " \
-                                    "channels matches the provided channel labels."
+            error_config["error"] = ALERT.warnings["metadata_format_error"]
             return error_config
         else:
             raise PreventUpdate

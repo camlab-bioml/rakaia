@@ -12,6 +12,7 @@ from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Serverside
+from ccramic.utils.alert import AlertMessage
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
     """
@@ -140,9 +141,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
                 return Serverside(quant_frame.to_dict(orient="records"), key="quantification_dict"), \
                     dash.no_update, {'display': 'None'}, None
             else:
-                error_config["error"] = "The dimensions of the mask do not agree with the current ROI."
+                error_config["error"] = AlertMessage().warnings["invalid_dimensions"]
                 return dash.no_update, error_config, dash.no_update, dash.no_update
         else:
-            error_config["error"] = "Quantification requires an ROI with a compatible mask that has been applied to the" \
-                                    " canvas. Please review the required inputs."
+            error_config["error"] = AlertMessage().warnings["quantification_missing_mask"]
             return dash.no_update, error_config, dash.no_update, dash.no_update

@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2023-12-28
+## [0.12.0] - 2024-01-02
+
+### Added
+
+- mongoDB database persistence: Users can use a registered a mongoDB account for the `cccramic-db` Atlas instance
+to and/remove current and saved session configurations
+(blend parameters, global filters, channel selection, naming/aliases)
 
 ### Changed
 
@@ -15,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 reduce storage requirements and eliminate duplicate data writing for the same `dcc.Store` objects
 - JSON I/O supports the values for global filters
 - Apply global filter to ROI query thumbnails
+- Modal alerts now use `pydantic` basemodel
 
 ### Fixed
 
