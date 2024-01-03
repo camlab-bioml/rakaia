@@ -51,7 +51,8 @@ from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_fr
 from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
-    subset_mask_for_data_export)
+    subset_mask_for_data_export,
+    create_download_dir)
 # from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
@@ -840,15 +841,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Input('data-collection', 'value'),
-        Output('canvas-layers', 'data', allow_duplicate=True),
-        Output("download-collapse", "is_open"))
+        Output('canvas-layers', 'data', allow_duplicate=True))
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
         retain memory. Should be cleared on a new ROI selection
         """
         if data_selection is not None:
-            return None, False
+            return None
         else:
             raise PreventUpdate
 
@@ -1502,8 +1502,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (cur_graph, uploaded, blend_dict) and download_html > 0:
             try:
                 download_dir = os.path.join(tmpdirname, authentic_id, 'downloads')
-                if not os.path.exists(download_dir):
-                    os.makedirs(download_dir)
+                create_download_dir(download_dir)
                 html_path = dcc.send_file(output_current_canvas_as_html(cur_graph, canvas_style, download_dir))
             except (ValueError, KeyError):
                 html_path = dash.no_update
@@ -1511,77 +1510,53 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         else:
             raise PreventUpdate
 
-    @dash_app.callback(Output('download-link', 'href'),
-                       # Output('download-canvas-interactive-html', 'href'),
-                       Output('download-blend-config', 'href'),
-                       State('uploaded_dict', 'data'),
-                       State('imc-metadata-editable', 'data'),
+    @dash_app.callback(Output('download-session-config-json', 'data'),
+                       Input('btn-download-session-config-json', 'n_clicks'),
                        State('blending_colours', 'data'),
-                       Input("open-download-collapse", "n_clicks"),
-                       Input("download-collapse", "is_open"),
-                       State('data-collection', 'value'),
-                       State('annotation_canvas', 'figure'),
                        State('image_layers', 'value'),
-                       State('annotation_canvas', 'style'),
-                       State('annotation_canvas', 'relayoutData'),
-                       State('graph-subset-download', 'value'),
                        State('bool-apply-global-filter', 'value'),
                        State('global-filter-type', 'value'),
                        State("global-kernel-val-filter", 'value'),
                        State("global-sigma-val-filter", 'value'))
     # @cache.memoize())
-    def update_download_href_h5(uploaded, metadata_sheet, blend_dict, nclicks, download_open, data_selection,
-                                current_canvas, blend_layers, canvas_style, canvas_layout, graph_subset,
+    def download_session_config_json(download_json, blend_dict, blend_layers,
                                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
+        if blend_dict is not None and download_json > 0:
+            download_dir = os.path.join(tmpdirname, authentic_id, 'downloads')
+            create_download_dir(download_dir)
+            return dcc.send_file(write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
+                                                global_filter_type, global_filter_val, global_filter_sigma))
+        else:
+            raise PreventUpdate
+
+    @dash_app.callback(Output('download-roi-h5py', 'data'),
+                       # Output('download-canvas-interactive-html', 'href'),
+                       Input('btn-download-roi-h5py', 'n_clicks'),
+                       State('uploaded_dict', 'data'),
+                       State('imc-metadata-editable', 'data'),
+                       State('blending_colours', 'data'),
+                       State('data-collection', 'value'),
+                       State('annotation_canvas', 'relayoutData'),
+                       State('graph-subset-download', 'value'))
+    # @cache.memoize())
+    def update_download_href_h5(download_h5py, uploaded, metadata_sheet, blend_dict, data_selection,
+                                canvas_layout, graph_subset):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
-        if None not in (uploaded, blend_dict) and nclicks > 0 and download_open:
-
+        if None not in (uploaded, blend_dict) and download_h5py > 0:
             first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
             download_dir = os.path.join(tmpdirname, authentic_id, 'downloads')
-            if not os.path.exists(download_dir):
-                os.makedirs(download_dir)
+            create_download_dir(download_dir)
             try:
                 mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
                     mask = subset_mask_for_data_export(canvas_layout, first_image.shape)
-
-                relative_filename = write_session_data_to_h5py(download_dir, metadata_sheet, uploaded,
-                                                               data_selection, blend_dict, mask)
-                # param_json = str(os.path.join(download_dir, 'param.json'))
-                # with open(param_json, "w") as outfile:
-                #     dict_write = {"channels": blend_dict, "config":
-                #         {"blend": blend_layers, "filter":
-                #         {"global_apply_filter": global_apply_filter, "global_filter_type": global_filter_type,
-                #          "global_filter_val": global_filter_val, "global_filter_sigma": global_filter_sigma}}}
-                #     json.dump(dict_write, outfile)
-                param_json = write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
-                               global_filter_type, global_filter_val, global_filter_sigma)
-
-                return str(relative_filename), param_json
+                return dcc.send_file(write_session_data_to_h5py(download_dir, metadata_sheet, uploaded,
+                                                               data_selection, blend_dict, mask))
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError:
-                raise PreventUpdate
-        else:
-            raise PreventUpdate
-
-    @dash_app.callback(
-        Input('current_canvas_image', 'data'),
-        Input('annotation_canvas', 'figure'),
-        State("download-collapse", "is_open"),
-        Input('annotation_canvas', 'relayoutData'),
-        Output("download-collapse", "is_open", allow_duplicate=True),
-        prevent_initial_call=True)
-    def reset_canvas_layers_on_new_dataset(current_image, current_canvas, currently_open, canvas_layout):
-        """
-        Close the collapsible download when an update is made to the canvas to prevent extraneous downloading
-        """
-        if None not in (current_canvas, canvas_layout):
-            if currently_open:
-                return False
-            else:
                 raise PreventUpdate
         else:
             raise PreventUpdate
@@ -1781,16 +1756,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         else:
             return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), \
                         {"sortable": False, "filter": False}
-
-    @dash_app.callback(
-        Output("download-collapse", "is_open", allow_duplicate=True),
-        [Input("open-download-collapse", "n_clicks")],
-        [State("download-collapse", "is_open")])
-    # @cache.memoize())
-    def toggle_download_collapse(n, is_open):
-        if n:
-            return not is_open
-        return is_open
 
     @dash_app.callback(
         Output("area-stats-collapse", "is_open", allow_duplicate=True),

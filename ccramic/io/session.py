@@ -4,6 +4,14 @@ import h5py
 import pandas as pd
 import numpy as np
 from ccramic.utils.pixel_level_utils import path_to_mask
+
+def create_download_dir(dest_dir):
+    """
+    Creates the download directory
+    """
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
+
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
                                global_filter_type, global_filter_val, global_filter_sigma):
     """
