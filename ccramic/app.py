@@ -77,8 +77,8 @@ def init_dashboard(server, authentic_id, config=None):
     dash_app.enable_dev_tools(debug=True)
 
     init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, config)
-    init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
-    init_roi_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, config)
+    init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, config)
     init_db_callbacks(dash_app, tmpdirname, authentic_id, config)
 
     return dash_app.server

@@ -35,13 +35,14 @@ from dash import dcc
 import matplotlib
 from werkzeug.exceptions import BadRequest
 import dash_uploader as du
-from dash_extensions.enrich import Output, Input, State, Serverside
+from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 from dash import html
+from ccramic.io.session import SessionServerside
 
-def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
+def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with cell level analysis (object detection, quantification, dimensional reduction)
     """
@@ -63,7 +64,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     def populate_quantification_table_from_upload(session_dict, error_config):
         if session_dict is not None:
             quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config)
-            return Serverside(quant_dict, key="quantification_dict"), cols, alert
+            return SessionServerside(quant_dict, key="quantification_dict",
+                    use_unique_key=app_config['serverside_overwrite']), cols, alert
         else:
             raise PreventUpdate
 
@@ -77,7 +79,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             frame = pd.read_csv(files[0])
             if len(frame.columns) == 2:
                 frame.columns = ['UMAP1', 'UMAP2']
-                return Serverside(frame.to_dict(orient="records"), key="umap_coordinates")
+                return SessionServerside(frame.to_dict(orient="records", ), key="umap_coordinates",
+                                         use_unique_key=app_config['serverside_overwrite'])
             else:
                 raise PreventUpdate
         else:
@@ -160,7 +163,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 cols_selected = list(frame.columns)
             else:
                 cols_selected = list(frame.columns) if not heatmap_channel_options else dash.no_update
-            return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict, key="cell_id_list"), cols_return, cols_selected
+            return fig, keep, indices_query, freq_counts_cat, SessionServerside(cell_id_dict,
+                key="cell_id_list", use_unique_key=app_config['serverside_overwrite']), cols_return, cols_selected
         else:
             raise PreventUpdate
 
@@ -250,7 +254,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             try:
                 if n_clicks > 0:
                     return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
-                                                                  current_umap=current_umap)
+                            current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite'])
                 else:
                     raise PreventUpdate
             except ValueError:
@@ -289,9 +293,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         be applied to the current cells in the UMAP frame
         """
         if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation > 0:
-            return Serverside(populate_quantification_frame_column_from_umap_subsetting(
+            return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
                             pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col,
-                annot_value).to_dict(orient='records'), key="annotation_dict")
+                annot_value).to_dict(orient='records'), key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         else:
             raise PreventUpdate
 
@@ -362,7 +366,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
         if multi_upload or single_upload:
             dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
-                                                             cur_mask_dict, derive_cell_boundary)
+                            cur_mask_dict, derive_cell_boundary, unique_key_serverside=app_config['serverside_overwrite'])
             # if any of the names are longer than 40 characters, increase the height to make them visible
             height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
             return dict, options, height_update
@@ -403,7 +407,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
                                 quantification_frame, data_selection, mask_config, mask_toggle,
                                 mask_selection, sample_name=sample_name, id_column=id_column)
-        return Serverside(quant_frame, key="quantification_dict"), annotations
+        return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=app_config['serverside_overwrite']), annotations
 
     @dash_app.callback(
         Output("download-edited-annotations", "data"),
@@ -500,7 +504,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         if n_clicks > 0 and None not in (cur_annotation_dict, data_selection):
             try:
                 cur_annotation_dict[data_selection] = {}
-                return Serverside(cur_annotation_dict, key="annotation_dict")
+                return SessionServerside(cur_annotation_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
             except KeyError:
                 raise PreventUpdate
         else:
@@ -604,7 +608,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         if files:
             frame = pd.read_csv(files[0])
             if validate_imported_csv_annotations(frame):
-                return Serverside(frame.to_dict(orient="records"), key="point_annotations")
+                return SessionServerside(frame.to_dict(orient="records"), key="point_annotations",
+                                         use_unique_key=app_config['serverside_overwrite'])
             else:
                 raise PreventUpdate
         else:
@@ -620,7 +625,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             frame = pd.read_csv(files[0])
             # TODO: for now, use set column names, but epand in the future
             if len(frame.columns) == 2 and all([elem in list(frame.columns) for elem in ['cell_id', 'cluster']]):
-                return Serverside(frame.to_dict(orient="records"), key="cluster_assignments")
+                return SessionServerside(frame.to_dict(orient="records"), key="cluster_assignments",
+                        use_unique_key=app_config['serverside_overwrite'])
             else:
                 raise PreventUpdate
         else:

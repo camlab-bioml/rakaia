@@ -5,7 +5,19 @@ import numpy as np
 from ccramic.io.session import (write_blend_config_to_json,
                                 write_session_data_to_h5py,
                                 subset_mask_for_data_export,
-                                create_download_dir)
+                                create_download_dir,
+                                SessionServerside)
+
+def test_session_serverside_objects():
+    blend_dict = {"channel_1": np.full((1000, 1000), 1)}
+    # with the default local configuration, assert that the
+    serverside = SessionServerside(blend_dict, key="test_blend")
+    assert serverside.key == "test_blend" == serverside.identifier
+    # assert that the key is replaced with a uuid if the invocation is shared
+    serverside = SessionServerside(blend_dict, key="test_blend", use_unique_key=False)
+    assert serverside.key != "test_blend"
+    assert serverside.identifier == "test_blend"
+    assert serverside.value == blend_dict
 
 def test_basic_download_dir():
     with tempfile.TemporaryDirectory() as tmpdirname:

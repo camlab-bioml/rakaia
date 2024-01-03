@@ -4,7 +4,6 @@ from dash.exceptions import PreventUpdate
 import os
 from tifffile import TiffFile
 import numpy as np
-from dash_extensions.enrich import Serverside
 from PIL import Image
 from ccramic.utils.cell_level_utils import (
     set_mandatory_columns,
@@ -15,6 +14,7 @@ import anndata
 import sys
 from sklearn.preprocessing import StandardScaler
 import scanpy as sc
+from ccramic.io.session import SessionServerside
 
 def drop_columns_from_measurements_csv(measurements_csv):
     cols_to_drop = set_columns_to_drop(measurements_csv)
@@ -27,7 +27,7 @@ def drop_columns_from_measurements_csv(measurements_csv):
         return measurements_csv
 
 def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True,
-                                                   rerun=True):
+                                                   rerun=True, unique_key_serverside=True):
     if quantification_dict is not None:
         data_frame = pd.DataFrame(quantification_dict)
         cols = list(data_frame.columns)
@@ -49,7 +49,8 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
             if umap_obj is not None:
                 scaled = StandardScaler().fit_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
-                return Serverside(embedding, key="umap-embedding"), cols
+                return SessionServerside(embedding, key="umap-embedding",
+                                         use_unique_key=unique_key_serverside), cols
             else:
                 raise PreventUpdate
         else:
@@ -156,7 +157,8 @@ def parse_masks_from_filenames(status):
     else:
         raise PreventUpdate
 
-def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
+def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
+                                     set_mask, cur_mask_dict, derive_cell_boundary, unique_key_serverside=True):
     #TODO: establish parsing for single mask upload and bulk
     single_upload = len(mask_uploads) == 1 and set_mask > 0
     multi_upload = len(mask_uploads) > 1
@@ -182,7 +184,8 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask, c
                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
                                                                                     page.asarray().shape[1], 1)),
                                                    "raw": page.asarray()}
-        return Serverside(cur_mask_dict, key="mask-dict"), list(cur_mask_dict.keys())
+        return SessionServerside(cur_mask_dict, key="mask-dict",
+                                 use_unique_key=unique_key_serverside), list(cur_mask_dict.keys())
     else:
         raise PreventUpdate
 

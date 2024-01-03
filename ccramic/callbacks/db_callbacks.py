@@ -1,10 +1,11 @@
 import dash
-from dash_extensions.enrich import Output, Input, State, html, Serverside
+from dash_extensions.enrich import Output, Input, State
 from ccramic.db.connection import AtlasDatabaseConnection
 from dash.exceptions import PreventUpdate
 from ccramic.utils.db import preview_dataframe_from_db_config_list
 import pandas as pd
 from dash import ctx
+from ccramic.io.session import SessionServerside
 
 def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -46,7 +47,7 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if connected:
                 configs, list_configs = connection.blend_configs_by_user()
                 config_preview = preview_dataframe_from_db_config_list(configs)
-                return Serverside(configs, key="dg-config-list"), \
+                return SessionServerside(configs, key="dg-config-list"), \
                     list_configs, pd.DataFrame(config_preview).to_dict(orient='records'), \
                     [{'id': p, 'name': p, 'editable': False, "presentation": "markdown"} for p in config_preview.keys()]
             else:

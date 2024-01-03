@@ -17,8 +17,10 @@ to and/remove current and saved session configurations
 
 ### Changed
 
-- Add string keys to Serverside objects to allow overriding of previous disk caches to
-reduce storage requirements and eliminate duplicate data writing for the same `dcc.Store` objects
+- toggleable child class of `dash_extensions` `Serverside`: ability to add string keys
+to Serverside objects to allow overriding of previous disk caches to
+reduce storage requirements and eliminate duplicate data writing for the same `dcc.Store` objects. Default is enabled,
+can be turned off in CLI options
 - JSON I/O supports the values for global filters
 - Apply global filter to ROI query thumbnails
 - Modal alerts now use `pydantic` basemodel

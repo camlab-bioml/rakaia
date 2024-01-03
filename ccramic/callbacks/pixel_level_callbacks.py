@@ -4,7 +4,7 @@ import dash.exceptions
 import dash_uploader as du
 import flask
 from dash import ctx, ALL
-from dash_extensions.enrich import Output, Input, State, html, Serverside
+from dash_extensions.enrich import Output, Input, State, html
 from ccramic.inputs.pixel_level_inputs import (
     wrap_canvas_in_loading_screen_for_large_images,
     invert_annotations_figure,
@@ -30,8 +30,6 @@ from ccramic.utils.pixel_level_utils import (
     pixel_hist_from_array,
     validate_incoming_metadata_table,
     make_metadata_column_editable,
-    path_to_mask,
-    create_new_coord_bounds,
     get_first_image_from_roi_dictionary)
 # from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 # from ccramic.utils.session import remove_ccramic_caches
@@ -52,7 +50,8 @@ from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
     subset_mask_for_data_export,
-    create_download_dir)
+    create_download_dir,
+    SessionServerside)
 # from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
@@ -230,7 +229,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
             data = pd.DataFrame(dataset_information).to_dict(orient='records')
             blend_return = blend_dict if current_blend is None or len(current_blend) == 0 else dash.no_update
-            return Serverside(upload_dict, key="upload_dict"), session_dict, blend_return, columns, data, error_config
+            return SessionServerside(upload_dict, key="upload_dict",
+                use_unique_key=app_config['serverside_overwrite']), session_dict, blend_return, columns, data, error_config
         else:
             raise PreventUpdate
 
@@ -354,11 +354,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         channels_selected = []
                     return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], channels_selected, Serverside(image_dict, key="upload_dict"), canvas_return, \
-                        f"Current ROI: {roi_name}", dim_return
+                        i not in ['', ' ', None]], channels_selected, \
+                        SessionServerside(image_dict, key="upload_dict", use_unique_key=app_config['serverside_overwrite']), \
+                        canvas_return, f"Current ROI: {roi_name}", dim_return
                 except AssertionError:
-                    return [], [], Serverside(image_dict, key="upload_dict"), canvas_return, \
-                        f"Current ROI: {roi_name}", dim_return
+                    return [], [], SessionServerside(image_dict, key="upload_dict", use_unique_key=
+                    app_config['serverside_overwrite']), canvas_return, f"Current ROI: {roi_name}", dim_return
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
                         i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update, \
@@ -493,7 +494,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     channel_list_return = new_blend_dict['config']['blend']
                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
                 parse_global_filter_values_from_json(new_blend_dict['config'])
-                return Serverside(all_layers, key="layer_dict"), current_blend_dict, error_config, channel_list_return, \
+                return SessionServerside(all_layers, key="layer_dict", use_unique_key=app_config['serverside_overwrite']), \
+                    current_blend_dict, error_config, channel_list_return, \
                     global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, metadata_return
             else:
                 error_config["error"] = ALERT.warnings["json_update_error"]
@@ -587,7 +589,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
 
-            return current_blend_dict, Serverside(all_layers, key="layer_dict"), param_dict, channel_modify
+            return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
+                use_unique_key=app_config['serverside_overwrite']), param_dict, channel_modify
         else:
             raise PreventUpdate
 
@@ -655,7 +658,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                         colour['hex'])).astype(np.uint8)
 
-                    return current_blend_dict, Serverside(all_layers, key="layer_dict")
+                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
+                                                use_unique_key=app_config['serverside_overwrite'])
                 else:
                     raise PreventUpdate
             else:
@@ -699,7 +703,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                          current_blend_dict[layer]['color']))
 
-                    return current_blend_dict, Serverside(all_layers, key="layer_dict")
+                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
+                                                                 use_unique_key=app_config['serverside_overwrite'])
             except TypeError:
                 raise PreventUpdate
         else:
@@ -735,7 +740,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                                              current_blend_dict[
                                                                                  layer][
                                                                                  'color']))
-            return current_blend_dict, Serverside(all_layers, key="layer_dict")
+            return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
+                                                         use_unique_key=app_config['serverside_overwrite'])
 
         else:
             raise PreventUpdate
@@ -827,7 +833,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                         current_blend_dict[layer]['color'])).astype(np.uint8)
 
-                    return current_blend_dict, Serverside(all_layers, key="layer_dict")
+                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
+                                                use_unique_key=app_config['serverside_overwrite'])
             else:
                 raise PreventUpdate
         else:
@@ -2375,7 +2382,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                              'mask_selection': mask_selection,
                                                              'mask_blending_level': mask_blending_level,
                                                              'add_mask_boundary': add_mask_boundary}
-            return Serverside(annotations_dict, key="annotation_dict")
+            return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         else:
             raise PreventUpdate
 
@@ -2543,7 +2550,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 else:
                     fig = dash.no_update
 
-                return Serverside(annotations_dict, key="annotation_dict"), html.H6(f"Point {x, y} updated with "
+                return SessionServerside(annotations_dict, key="annotation_dict"), html.H6(f"Point {x, y} updated with "
                                                  f"{annotation_cell_type} in {annot_col}"), True, fig
             except KeyError:
                 return dash.no_update, html.H6("Error in annotating point"), True, dash.no_update

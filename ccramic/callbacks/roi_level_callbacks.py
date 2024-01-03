@@ -11,10 +11,10 @@ from dash import ALL
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
-from dash_extensions.enrich import Serverside
 from ccramic.utils.alert import AlertMessage
+from ccramic.io.session import SessionServerside
 
-def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
+def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with ROI level and cross dataset queries
     """
@@ -138,8 +138,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
                                             data_selection, channels_to_quantify, aliases, dataset_options)
                 quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant,
                                                                      data_selection)
-                return Serverside(quant_frame.to_dict(orient="records"), key="quantification_dict"), \
-                    dash.no_update, {'display': 'None'}, None
+                return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",
+                        use_unique_key=app_config['serverside_overwrite']), dash.no_update, {'display': 'None'}, None
             else:
                 error_config["error"] = AlertMessage().warnings["invalid_dimensions"]
                 return dash.no_update, error_config, dash.no_update, dash.no_update

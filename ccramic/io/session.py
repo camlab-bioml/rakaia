@@ -4,6 +4,21 @@ import h5py
 import pandas as pd
 import numpy as np
 from ccramic.utils.pixel_level_utils import path_to_mask
+from dash_extensions.enrich import Serverside
+
+class SessionServerside(Serverside):
+    """
+    This class defines the string identification for Serverside objects depending on the session invocation
+    `use_unique_key` should be set to True for local runs where there are no concurrent users, and the user wishes to
+    have the callbacks overwrite previous callback stores
+    For public or sessions with concurrent users (i.e. Docker), `use_unique_key` should be set to False so that
+    each callback invocation produces a unique Serverside cache
+    """
+    def __init__(self, data, key, use_unique_key: bool=True):
+        self.use_unique_key = use_unique_key
+        self.identifier = key
+        key = key if self.use_unique_key else None
+        Serverside.__init__(self, value=data, key=key)
 
 def create_download_dir(dest_dir):
     """

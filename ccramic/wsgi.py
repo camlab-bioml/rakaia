@@ -44,6 +44,11 @@ def argparser():
     parser.add_argument('-dp', "--disable-persistence", action="store_false",
                         help="Disable saving persistent session variable values in the browser. By default, persistence is enabled.",
                         dest="persistence")
+    parser.add_argument('-dc', "--disable-cache-overwriting", action="store_false",
+                        help="Disable cache overwriting for server side stores. By default, ccramic will overwrite `Serverside` objects\n"
+                             "on each callback invocation to save disk space. However, overwriting should be disabled for concurrent sessions\n"
+                             "that host multiple users, such as containerized or public instances.",
+                        dest="serverside_overwrite")
     parser.add_argument('-sc', "--swatch-colors", action="store",
                         help="Set custom RGB codes for the swatches. Should be a string wrapped in quotations of the form \n"
                              "`#FF0000,#00FF00,#0000FF,#00FAFF,#FF00FF,#FFFF00,#FFFFFF`",
@@ -72,7 +77,8 @@ def main(sysargs = sys.argv[1:]):
                   'use_loading': args.loading,
                   'persistence': args.persistence,
                   'swatches': args.swatches,
-                  'array_store_type': args.array_type}
+                  'array_store_type': args.array_type,
+                  'serverside_overwrite': args.serverside_overwrite}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:
