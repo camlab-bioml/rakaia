@@ -95,6 +95,8 @@ def generate_multi_roi_images_from_query(session_config, blend_dict,
                                     if query_cell_id_lists is not None:
                                         sam_names = list(query_cell_id_lists.keys())
                                         # match the sample name in te quant sheet to the matched mask name
+                                        # TODO: update logic here when the names do not match exactly from
+                                        # in-app quantification
                                         sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
                                         if sam_name is not None:
                                             mask_to_use = subset_mask_outline_using_cell_id_list(

@@ -4,7 +4,17 @@ import numpy as np
 
 from ccramic.io.session import (write_blend_config_to_json,
                                 write_session_data_to_h5py,
-                                subset_mask_for_data_export)
+                                subset_mask_for_data_export,
+                                create_download_dir)
+
+def test_basic_download_dir():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        download_dir = os.path.join(tmpdirname, "fdsdfsdlfkdn", 'downloads')
+        create_download_dir(download_dir)
+        assert os.path.isdir(download_dir)
+        if os.access(download_dir, os.W_OK):
+            os.rmdir(download_dir)
+        assert not os.path.isdir(download_dir)
 
 def test_write_config_json():
     with tempfile.TemporaryDirectory() as tmpdirname:

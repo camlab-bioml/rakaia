@@ -7,8 +7,7 @@ import math
 from ccramic.utils.pixel_level_utils import (
     resize_for_canvas,
     get_default_channel_upper_bound_by_percentile,
-    apply_preset_to_array,
-    apply_filter_to_array)
+    apply_preset_to_array)
 from ccramic.parsers.pixel_level_parsers import sparse_array_to_dense
 
 def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,

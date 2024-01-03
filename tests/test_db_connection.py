@@ -1,8 +1,10 @@
 import pytest
 from ccramic.db.connection import AtlasDatabaseConnection
 import pymongo
-from pymongo.errors import OperationFailure, InvalidOperation
+from pymongo.errors import OperationFailure, InvalidOperation, ServerSelectionTimeoutError
+from conftest import skip_on
 
+@skip_on(ServerSelectionTimeoutError, "A connection to the mongoDB server could not be established")
 def test_db_connection():
     fake_connection = AtlasDatabaseConnection(username="fake", password="fake")
     assert isinstance(fake_connection, AtlasDatabaseConnection)

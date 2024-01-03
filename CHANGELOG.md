@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-02
+## [0.12.0] - 2024-01-03
 
 ### Added
 
@@ -22,6 +22,8 @@ reduce storage requirements and eliminate duplicate data writing for the same `d
 - JSON I/O supports the values for global filters
 - Apply global filter to ROI query thumbnails
 - Modal alerts now use `pydantic` basemodel
+- Session downloads are now removed from the collapsible and use individual `dcc.send_file`
+prompts instead of an `html.A` hyperlink
 
 ### Fixed
 

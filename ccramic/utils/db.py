@@ -41,7 +41,12 @@ def preview_dataframe_from_db_config_list(config_list):
         preview["Panel"].append(len(result['channels'].keys()))
         selected_channels = ""
         for channel in result['config']['blend']:
-            selected_channels = selected_channels + str(channel) + " \\\n "
+            try:
+                label = result['channels'][channel]['alias']
+            except KeyError:
+                label = channel
+            # TODO: use the label alias instead of the internal label for better readability
+            selected_channels = selected_channels + str(label) + " \\\n "
         preview["Selection"].append(selected_channels)
         filters = ""
         for key, value in result['config']['filter'].items():
