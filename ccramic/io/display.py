@@ -6,6 +6,7 @@ from ccramic.utils.region import RectangleRegion, FreeFormRegion
 import os
 from tifffile import imwrite
 import numpy as np
+import plotly.graph_objs as go
 
 def generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict,
                                        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]',
@@ -148,3 +149,18 @@ def output_current_canvas_as_tiff(canvas_image, dest_dir="/tmp/", output_file="c
         return dest_file
     else:
         return None
+
+def output_current_canvas_as_html(cur_graph, canvas_style, dest_dir=None):
+    """
+    Output the current `dcc.Graph` object as HTML with the same aspect ratio as the underlying array
+    Returns the filepath string for `dcc.send_file`
+    """
+    fig = go.Figure(cur_graph)
+    # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+    #                   xaxis=XAxis(showticklabels=False),
+    #                   yaxis=YAxis(showticklabels=False),
+    #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
+    fig.update_layout(dragmode="zoom")
+    fig.write_html(str(os.path.join(dest_dir, 'canvas.html')), default_width=canvas_style['width'],
+                   default_height=canvas_style['height'])
+    return str(os.path.join(dest_dir, 'canvas.html'))
