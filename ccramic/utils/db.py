@@ -35,22 +35,28 @@ def preview_dataframe_from_db_config_list(config_list):
     Generate a dataframe preview of the configs that are available from a list of configs dictionaries
     imported from mongoDB
     """
-    preview = {"Names": [], "Panel": [], "Selection": [], "Filter": []}
+    preview = {"Names": [], "Panel Length": [], "Selected Channels": [], "Filter": []}
     for result in config_list:
         preview["Names"].append(result['name'])
-        preview["Panel"].append(len(result['channels'].keys()))
+        preview["Panel Length"].append(len(result['channels'].keys()))
         selected_channels = ""
+        selected_index = 0
         for channel in result['config']['blend']:
             try:
                 label = result['channels'][channel]['alias']
             except KeyError:
                 label = channel
             # TODO: use the label alias instead of the internal label for better readability
-            selected_channels = selected_channels + str(label) + " \\\n "
-        preview["Selection"].append(selected_channels)
+            delimiter_channel = " \\\n " if selected_index < (len(result['config']['blend']) - 1) else ""
+            selected_channels = selected_channels + str(label) + delimiter_channel
+            selected_index += 1
+        preview["Selected Channels"].append(selected_channels)
         filters = ""
+        filter_index = 0
         for key, value in result['config']['filter'].items():
-            filters = filters + f"{str(key)}: {str(value)}" + " \\\n "
+            delimiter_filter = " \\\n " if filter_index < (len(result['config']['filter']) - 1) else ""
+            filters = filters + f"{str(key)}: {str(value)}" + delimiter_filter
+            filter_index += 1
         preview["Filter"].append(filters)
     return preview
 

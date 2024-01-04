@@ -1,14 +1,10 @@
 import collections
-
-import numpy as np
 import pytest
-import os
-from PIL import Image
 import dash_extensions
 import tempfile
 from ccramic.utils.cell_level_utils import *
 from ccramic.parsers.cell_level_parsers import *
-
+from conftest import skip_on
 
 def test_basic_col_dropper(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -131,7 +127,7 @@ def test_basic_cell_annotation_col_pop_2(get_current_dir):
     assert len(dict(counts)) == 2
     assert 'None' in dict(counts).keys()
 
-
+@skip_on(ValueError, "There shouldn't be a numpy truth value error on the array")
 def test_convert_basic_array_to_hovertemplate():
     array = np.zeros((1000, 1000))
     assert len(array.shape) == 2

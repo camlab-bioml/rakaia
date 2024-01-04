@@ -41,6 +41,7 @@ from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 from dash import html
 from ccramic.io.session import SessionServerside
+import uuid
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -434,7 +435,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers,
                                  data_selection, mask_config, aliases, blend_dict):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
-            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
+            dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             return dcc.send_file(generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection,
@@ -459,7 +460,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
-            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
+            dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads', 'annotation_masks')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             # check that the mask is compatible with the current image

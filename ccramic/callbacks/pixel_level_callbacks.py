@@ -58,9 +58,7 @@ from plotly.graph_objs.layout import YAxis, XAxis
 import json
 import pathlib
 import cv2
-import math
 from dash import dcc
-import h5py
 from dash.exceptions import PreventUpdate
 import pandas as pd
 import numpy as np
@@ -72,6 +70,7 @@ from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
 from ccramic.utils.alert import AlertMessage
+import uuid
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -1034,7 +1033,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
                         pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
                 # set if the image is to be downloaded or not
-                dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
+                dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 canvas_tiff = dash.no_update
                 if ctx.triggered_id == "btn-download-canvas-tiff":
                     fig = dash.no_update
@@ -1497,7 +1496,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_interactive_html_canvas(download_html, cur_graph, uploaded, blend_dict, canvas_style):
         if None not in (cur_graph, uploaded, blend_dict) and download_html > 0:
             try:
-                download_dir = os.path.join(tmpdirname, authentic_id, 'downloads')
+                download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 create_download_dir(download_dir)
                 html_path = dcc.send_file(output_current_canvas_as_html(cur_graph, canvas_style, download_dir))
             except (ValueError, KeyError):
@@ -1518,7 +1517,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_session_config_json(download_json, blend_dict, blend_layers,
                                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
         if blend_dict is not None and download_json > 0:
-            download_dir = os.path.join(tmpdirname, authentic_id, 'downloads')
+            download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             create_download_dir(download_dir)
             return dcc.send_file(write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
                                                 global_filter_type, global_filter_val, global_filter_sigma))
@@ -1543,7 +1542,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (uploaded, blend_dict) and download_h5py > 0:
             first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
-            download_dir = os.path.join(tmpdirname, authentic_id, 'downloads')
+            download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             create_download_dir(download_dir)
             try:
                 mask = None
