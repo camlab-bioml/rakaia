@@ -12,7 +12,7 @@ import cv2
 import re
 import random
 import numexpr as ne
-
+from scipy.sparse import issparse
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
 
@@ -157,6 +157,8 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Uses linear scaling instead of 0 to max upper bound scaling: pixels close to the boundary of the lower bound
     are scaled relative to their intensity to the lower bound instead of the full scale factor
     """
+    # if issparse(array):
+    #     array = array.toarray(order='F')
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
     # array = np.array(Image.fromarray(array).convert('L'))
     # original_max = np.max(array) if np.max(array) > 255 else 255
@@ -196,20 +198,28 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     # try:
     # IMP: do not use the conversion to L as it will automatically set the max to 255
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
-    hist_data = np.hstack(array).astype(np.uint16)
-    max_hist = int(np.max(array)) if int(np.max(array)) > 1 else 1
-    hist = np.random.choice(hist_data, subset_number).astype(np.uint16) if \
+    # set the array cast type based on the max
+    cast_type = np.uint16 if np.max(array) > 1 else np.float32
+    hist_data = np.hstack(array).astype(cast_type)
+    max_hist = float(np.max(array)) if int(np.max(array)) > 1 else 1
+    hist = np.random.choice(hist_data, subset_number).astype(cast_type) if \
         hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     # ensure that the min of the hist max is 1
     try:
         if keep_max:
-            hist = np.concatenate([np.array(hist).astype(np.uint16),
-                                   np.array([max_hist]).astype(np.uint16)])
+            hist = np.concatenate([np.array(hist).astype(cast_type),
+                                   np.array([max_hist]).astype(cast_type)])
     except ValueError:
         pass
     return go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist]), \
-        int(np.max(array))
+        float(np.max(array))
+
+def upper_bound_for_range_slider(array):
+    """
+    Return the pixel max of a channel array for the range slider, or return 1 if the max value is less than 1
+    """
+    return float(np.max(array)) if float(np.max(array)) > 1.0 else 1.0
 
 
 def apply_preset_to_array(array, preset):

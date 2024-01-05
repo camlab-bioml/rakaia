@@ -205,7 +205,7 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
     Set the number and spacing of the tick markers used for the pixel range slider using the histogram maximum
     Note: the slider minimum is always set to 0
     """
-    if float(max_value) < 1:
+    if float(max_value) <= 1.0:
         return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 10), 2))
     else:
         # set the default number of tick marks to 4

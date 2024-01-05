@@ -13,8 +13,7 @@ from ccramic.inputs.pixel_level_inputs import (
 from ccramic.parsers.pixel_level_parsers import (
     populate_upload_dict,
     populate_upload_dict_by_roi,
-    create_new_blending_dict,
-    sparse_array_to_dense)
+    create_new_blending_dict)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
     split_string_at_pattern,
@@ -30,7 +29,8 @@ from ccramic.utils.pixel_level_utils import (
     pixel_hist_from_array,
     validate_incoming_metadata_table,
     make_metadata_column_editable,
-    get_first_image_from_roi_dictionary)
+    get_first_image_from_roi_dictionary,
+    upper_bound_for_range_slider)
 # from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
@@ -550,8 +550,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                 if elem not in current_blend_dict.keys():
                     current_blend_dict[elem] = {'color': None, 'x_lower_bound': 0, 'x_upper_bound':
-                        get_default_channel_upper_bound_by_percentile(
-                        sparse_array_to_dense(uploaded_w_data[data_selection][elem])),
+                        get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem]),
                             'filter_type': None, 'filter_val': None, 'filter_sigma': None}
                     # TODO: default colour is white, but can set auto selection here for starting colours
                     current_blend_dict[elem]['color'] = '#FFFFFF'
@@ -574,8 +573,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # set a default upper bound for the channel if the value is None
                     if current_blend_dict[elem]['x_upper_bound'] is None:
                         current_blend_dict[elem]['x_upper_bound'] = \
-                        get_default_channel_upper_bound_by_percentile(
-                        sparse_array_to_dense(uploaded_w_data[data_selection][elem]))
+                        get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem])
                     if current_blend_dict[elem]['x_lower_bound'] is None:
                         current_blend_dict[elem]['x_lower_bound'] = 0
                     # TODO: evaluate whether there should be a conditional here if the elem is already
@@ -583,7 +581,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # affects if a channel is added and dropped
                     if (data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys()) or \
                             autofill_channel_colours:
-                        array_preset = apply_preset_to_array(sparse_array_to_dense(uploaded_w_data[data_selection][elem]),
+                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
@@ -630,7 +628,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if layer is not None and current_blend_dict is not None and data_selection is not None and \
                 current_blend_dict is not None:
 
-            array = sparse_array_to_dense(uploaded_w_data[data_selection][layer])
+            array = uploaded_w_data[data_selection][layer]
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
@@ -696,11 +694,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[layer]['x_lower_bound'] = float(lower_bound)
                     current_blend_dict[layer]['x_upper_bound'] = float(upper_bound)
 
-                    array = apply_preset_to_array(sparse_array_to_dense(uploaded_w_data[data_selection][layer]),
-                                  current_blend_dict[layer])
+                    array = apply_preset_to_array(uploaded_w_data[data_selection][layer], current_blend_dict[layer])
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
-                                                         current_blend_dict[layer]['color']))
+                                                    current_blend_dict[layer]['color']))
 
                     return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
                                                                  use_unique_key=app_config['serverside_overwrite'])
@@ -775,7 +772,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         filter_sigma) and not only_options_changed:
 
             try:
-                array = sparse_array_to_dense(uploaded[data_selection][layer])
+                array = uploaded[data_selection][layer]
             except KeyError:
                 array = None
 
@@ -802,11 +799,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                     if current_blend_dict[layer]['x_lower_bound'] is not None and \
                         current_blend_dict[layer]['x_upper_bound'] is not None:
-                        array = filter_by_upper_and_lower_bound(array,
-                                                            float(current_blend_dict[layer][
-                                                                      'x_lower_bound']),
-                                                            float(current_blend_dict[layer][
-                                                                      'x_upper_bound']))
+                        array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
+                                float(current_blend_dict[layer]['x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
                         if filter_name == "median" and int(filter_value) >= 1:
@@ -818,7 +812,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             # array = gaussian_filter(array, int(filter_value))
                             if int(filter_value) % 2 != 0:
                                 array = cv2.GaussianBlur(array, (int(filter_value),
-                                                                 int(filter_value)), float(filter_sigma))
+                                            int(filter_value)), float(filter_sigma))
 
                         current_blend_dict[layer]['filter_type'] = filter_name
                         current_blend_dict[layer]['filter_val'] = filter_value
@@ -915,9 +909,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             canvas_return = dash.no_update
             if 'shapes' in cur_canvas['layout'] and len(cur_canvas['layout']['shapes']) > 0:
                 other_shapes = [shape for shape in cur_canvas['layout']['shapes'] if \
-                                                    shape is not None and 'type' in shape and \
-                                                (shape['type'] in ['path', 'rect', 'circle'] or \
-                                                  any(elem in ['rect', 'path', 'circle'] for elem in shape.keys()))]
+                            shape is not None and 'type' in shape and (shape['type'] in ['path', 'rect', 'circle'] or \
+                            any(elem in ['rect', 'path', 'circle'] for elem in shape.keys()))]
                 if len(other_shapes) > 0:
                     for shape in cur_canvas['layout']['shapes']:
                         if 'label' in shape and 'texttemplate' in shape['label']:
@@ -1626,8 +1619,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 nclicks and stats_table_open:
             return generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict)
         elif stats_table_open:
-            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                 'Min': []}).to_dict(orient='records')
+            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [], 'Min': []}).to_dict(orient='records')
         else:
             raise PreventUpdate
 
@@ -1794,10 +1786,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if blend is None or len(blend) == 0 and len(current_selection) > 0:
             fig = go.Figure()
-            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                          xaxis=XAxis(showticklabels=False),
-                          yaxis=YAxis(showticklabels=False),
-                          margin=dict(l=5, r=5, b=15, t=20, pad=0))
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                          yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))
             cur_canvas['data'] = []
             return fig, cur_canvas, [None, None], [], None
         else:
@@ -1842,23 +1832,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             blend_return = dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend"]:
-                    fig, hist_max = pixel_hist_from_array(sparse_array_to_dense(uploaded[data_selection][selected_channel]))
+                    fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel])
                     fig.update_layout(showlegend=False, yaxis={'title': None},
                                       xaxis={'title': None}, margin=dict(pad=0))
                 else:
                     fig = dash.no_update
-                    hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
+                    hist_max = float(np.max(uploaded[data_selection][selected_channel]))
             except (ValueError, TypeError):
                 fig = dash.no_update
-                hist_max = 100
+                hist_max = 100.0
             try:
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             except ValueError:
-                hist_max = 100
+                hist_max = 100.0
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             # set the min of the hist max to be 1 for very low images to also match the min for the pixel hist max
-            hist_max = hist_max if hist_max > 1 else 1
+            hist_max = float(hist_max if hist_max > 1 else 1)
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
                     # if the current selection has already had a histogram bound on it, update the histogram with it
@@ -1869,7 +1859,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         lower_bound = 0
                         upper_bound = get_default_channel_upper_bound_by_percentile(
-                                        sparse_array_to_dense(uploaded[data_selection][selected_channel]))
+                            uploaded[data_selection][selected_channel])
                         current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
@@ -1894,7 +1884,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 else:
                     lower_bound = 0
                     upper_bound = get_default_channel_upper_bound_by_percentile(
-                        sparse_array_to_dense(uploaded[data_selection][selected_channel]))
+                        uploaded[data_selection][selected_channel])
                     current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
@@ -1913,9 +1903,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
                             hist_max = float(cur_slider_values[1])
                         else:
-                            hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
+                            hist_max = upper_bound_for_range_slider(uploaded[data_selection][selected_channel])
                     else:
-                        hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
+                        # if the toggle is reset, make sure it works properly for values below 1
+                        hist_max = upper_bound_for_range_slider(uploaded[data_selection][selected_channel])
                     tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, step_size
                 except IndexError:
@@ -1945,10 +1936,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Reset the range slider for the current channel to the default values (min of 0 and max of 99th pixel
         percentile)
         """
+        # TODO: figure out why the values do not update properly when the max is less than 1
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and reset > 0:
-            hist_max = float(np.max(sparse_array_to_dense(uploaded[data_selection][selected_channel])))
-            upper_bound = float(get_default_channel_upper_bound_by_percentile(
-                sparse_array_to_dense(uploaded[data_selection][selected_channel])))
+            hist_max = upper_bound_for_range_slider(uploaded[data_selection][selected_channel])
+            upper_bound = float(get_default_channel_upper_bound_by_percentile(uploaded[data_selection][selected_channel]))
             if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
                 vals_return = [0, upper_bound]
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
@@ -2176,15 +2167,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             fig = go.Figure(cur_canvas)
             fig.update_layout(dragmode='pan')
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                              xaxis=XAxis(showticklabels=False),
-                              yaxis=YAxis(showticklabels=False),
-                              margin=dict(
-                                  l=0,
-                                  r=0,
-                                  b=0,
-                                  t=0,
-                                  pad=0
-                              ))
+                              xaxis=XAxis(showticklabels=False), yaxis=YAxis(showticklabels=False),
+                              margin=dict(l=0, r=0, b=0, t=0, pad=0))
             return fig, cur_layout
         else:
             return {}, None
@@ -2374,12 +2358,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         annotation_list[tuple(sorted(key.items()))] = "rect"
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = {'title': annotation_title, 'body': annotation_body,
-                                                               'cell_type': annotation_cell_type, 'imported': False,
-                                                         'annotation_column': annot_col,
-                                                            'type': value, 'channels': cur_layers,
-                                                             'use_mask': mask_toggle,
-                                                             'mask_selection': mask_selection,
-                                                             'mask_blending_level': mask_blending_level,
+                                                        'cell_type': annotation_cell_type, 'imported': False,
+                                                         'annotation_column': annot_col, 'type': value,
+                                                         'channels': cur_layers, 'use_mask': mask_toggle,
+                                                        'mask_selection': mask_selection,
+                                                         'mask_blending_level': mask_blending_level,
                                                              'add_mask_boundary': add_mask_boundary}
             return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         else:

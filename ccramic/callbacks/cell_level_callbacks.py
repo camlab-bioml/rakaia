@@ -125,8 +125,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id not in ["umap-projection-options"] and umap_layout is not None:
                 try:
                     subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict,
-                                                                          umap_col_selection,
-                                                                          prev_categories)
+                                                                          umap_col_selection, prev_categories)
                 except TypeError:
                     subtypes, keep = None, None
             else:
@@ -470,8 +469,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             else:
                 mask_used = None
             return dcc.send_file(export_annotations_as_masks(annotations_dict, dest_path, data_selection,
-                                                             (first_image.shape[0], first_image.shape[1]),
-                                                             mask_used))
+                                                             (first_image.shape[0], first_image.shape[1]), mask_used))
         else:
             raise PreventUpdate
 
@@ -556,9 +554,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
                                           mask_dict, apply_mask, mask_selection, image_dict):
         exp, slide, acq = split_string_at_pattern(data_selection)
-        return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection,
-                                          mask_dict, apply_mask, mask_selection, image_dict,
-                                               authentic_id, tmpdirname)
+        return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection, mask_dict, apply_mask,
+                                               mask_selection, image_dict, authentic_id, tmpdirname)
 
     @dash_app.callback(
         Output("download-umap-projection", "data"),

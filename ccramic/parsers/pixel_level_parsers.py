@@ -95,9 +95,8 @@ def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="s
                                 # identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
                                 #     len(tif.pages) > 1 else str(basename)
                                 identifier = str("channel_" + str(multi_channel_index))
-                                upload_dict[roi][identifier] = convert_between_dense_sparse_array(
-                                    page.asarray().astype(set_array_storage_type_from_config(array_store_type)),
-                                    array_type=array_cast)
+                                upload_dict[roi][identifier] = page.asarray().astype(
+                                    set_array_storage_type_from_config(array_store_type))
                                 # add in a generic description for the ROI per tiff file
                                 if multi_channel_index == 1:
                                     dataset_information["ROI"].append(str(roi))
@@ -195,8 +194,8 @@ def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="s
                             for image in acq:
                                 image_label = txt_channel_labels[image_index - 1]
                                 identifier = txt_channel_names[image_index - 1]
-                                upload_dict[roi][identifier] = convert_between_dense_sparse_array(image.astype(
-                                    set_array_storage_type_from_config(array_store_type)), array_type=array_cast)
+                                upload_dict[roi][identifier] = image.astype(
+                                    set_array_storage_type_from_config(array_store_type))
                                 if image_index == 1:
                                     dataset_information["ROI"].append(str(roi))
                                     dataset_information["Dimensions"].append(f"{image.shape[1]}x{image.shape[0]}")

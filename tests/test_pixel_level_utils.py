@@ -33,6 +33,7 @@ import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 from PIL import Image
 import numpy as np
+from scipy.sparse import csc_matrix
 
 
 def test_identify_rgb_codes():
@@ -257,7 +258,7 @@ def test_generate_histogram(get_current_dir):
     values = histogram["data"][0]['x']
     assert int(max(values)) == int(array_max)
     assert len(values) == 360001
-    assert array_max == int(np.max(greyscale))
+    assert array_max == np.max(greyscale)
 
     larger_array = np.full((2000, 2000), 10)
     larger_array[10, 10] = 56487
