@@ -11,8 +11,9 @@ from ccramic.inputs.pixel_level_inputs import (
     set_range_slider_tick_markers,
     generate_canvas_legend_text)
 from ccramic.parsers.pixel_level_parsers import (
-    populate_upload_dict,
-    populate_upload_dict_by_roi,
+    # populate_upload_dict,
+    FileParser,
+    populate_image_dict_from_lazy_load,
     create_new_blending_dict)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
@@ -222,13 +223,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 error_config["error"] = ALERT.warnings["multiple_filetypes"] + message
             else:
                 error_config["error"] = message
-            upload_dict, blend_dict, unique_images, dataset_information = populate_upload_dict(files,
-                                                    array_store_type=app_config['array_store_type'])
-            session_dict['unique_images'] = unique_images
-            columns = [{'id': p, 'name': p, 'editable': False} for p in dataset_information.keys()]
-            data = pd.DataFrame(dataset_information).to_dict(orient='records')
-            blend_return = blend_dict if current_blend is None or len(current_blend) == 0 else dash.no_update
-            return SessionServerside(upload_dict, key="upload_dict",
+            fileparser = FileParser(files, array_store_type=app_config['array_store_type'])
+            session_dict['unique_images'] = fileparser.unique_image_names
+            columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
+            data = pd.DataFrame(fileparser.dataset_information_frame).to_dict(orient='records')
+            blend_return = fileparser.blend_config if current_blend is None or len(current_blend) == 0 else dash.no_update
+            return SessionServerside(fileparser.image_dict, key="upload_dict",
                 use_unique_key=app_config['serverside_overwrite']), session_dict, blend_return, columns, data, error_config
         else:
             raise PreventUpdate
@@ -324,7 +324,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # load the specific ROI requested into the dictionary
                 # imp: use the channel label for the dropdown view and the name in the background to retrieve
                 try:
-                    image_dict = populate_upload_dict_by_roi(image_dict.copy(), dataset_selection=data_selection,
+                    image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
                                 session_config=session_config, array_store_type=app_config['array_store_type'])
                     assert data_selection in image_dict.keys()
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
