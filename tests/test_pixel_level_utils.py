@@ -33,8 +33,6 @@ import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 from PIL import Image
 import numpy as np
-from scipy.sparse import csc_matrix
-
 
 def test_identify_rgb_codes():
     # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string

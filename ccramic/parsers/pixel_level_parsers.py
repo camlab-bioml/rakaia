@@ -8,8 +8,9 @@ from ccramic.utils.pixel_level_utils import (
     set_array_storage_type_from_config)
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
+from ccramic.utils.alert import PanelMismatchError
 
-def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="sparse"):
+def populate_upload_dict(uploaded_files, array_store_type="float"):
     """
     Populate a dictionary based on the uploaded files.
     """
@@ -77,9 +78,9 @@ def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="s
                             # the files have different channels/panels
                             # pass if this is the cases
                             if len(upload_dict['metadata']) > 0:
-                                assert all(len(value) == len(tif.pages) for value in \
-                                           list(upload_dict['metadata'].values()))
-
+                                if not all(len(value) == len(tif.pages) for value in list(upload_dict['metadata'].values())):
+                                    raise PanelMismatchError("The tiff file(s) appear to have different panels"
+                                                             ". This is currently not supported by ccramic.")
                             file_name, file_extension = os.path.splitext(tiff_path)
                             # set different image labels based on the basename of the file (ome.tiff vs .tiff)
                             # if "ome" in upload:
@@ -150,12 +151,13 @@ def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="s
                                     # i.e. how to handle minor spelling mistakes
                                     # assert all(label in acq.channel_labels for label in channel_labels)
                                     # assert all(name in acq.channel_names for name in channel_names)
-                                    assert len(acq.channel_labels) == len(channel_labels)
+                                    # assert len(acq.channel_labels) == len(channel_labels)
+                                    if len(acq.channel_labels) != len(channel_labels):
+                                        raise PanelMismatchError("The mcd file appears that have ROIs with different"
+                                                                 "panels. This is currently not supported by ccramic.")
                                 # img = mcd_file.read_acquisition(acq)
                                 channel_index = 0
                                 for channel in acq.channel_names:
-                                    # TODO: implement lazy loading (only read in images in
-                                    #  ROI selection from the dropdown)
                                     upload_dict[roi][channel] = None
                                     if channel_names[channel_index] not in unique_image_names:
                                         unique_image_names.append(channel_names[channel_index])
@@ -181,12 +183,17 @@ def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="s
                             txt_channel_names = acq_text_read.channel_names
                             txt_channel_labels = acq_text_read.channel_labels
                             # assert that the channel names and labels are the same if an upload has already passed
+                            # TODO: add custom exception rule here for mismatched panels
                             if len(metadata_channels) > 0:
-                                assert len(metadata_channels) == len(txt_channel_names)
-                                assert all([elem in txt_channel_names for elem in metadata_channels])
-                            if len(metadata_labels) > 0:
-                                assert len(metadata_labels) == len(txt_channel_labels)
-                                assert all([elem in txt_channel_labels for elem in metadata_labels])
+                                if not len(metadata_channels) == len(txt_channel_names) or \
+                                        not len(metadata_labels) == len(txt_channel_labels):
+                                    raise PanelMismatchError("The txt file(s) appear to have different panels"
+                                                             ". This is currently not supported by ccramic.")
+                                # assert len(metadata_channels) == len(txt_channel_names)
+                            #     # assert all([elem in txt_channel_names for elem in metadata_channels])
+                            # if len(metadata_labels) > 0:
+                            #     assert len(metadata_labels) == len(txt_channel_labels)
+                            #     assert all([elem in txt_channel_labels for elem in metadata_labels])
                             basename = str(Path(upload).stem)
                             roi = f"{str(basename)}+++slide{str(slide_index)}" \
                                   f"+++{str(acq_index)}"
@@ -194,6 +201,7 @@ def populate_upload_dict(uploaded_files, array_store_type="float", array_cast="s
                             for image in acq:
                                 image_label = txt_channel_labels[image_index - 1]
                                 identifier = txt_channel_names[image_index - 1]
+                                # TODO: potentially implement lazy loading here for .txt files
                                 upload_dict[roi][identifier] = image.astype(
                                     set_array_storage_type_from_config(array_store_type))
                                 if image_index == 1:

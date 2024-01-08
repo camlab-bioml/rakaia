@@ -231,11 +231,13 @@ def register_app_layout(config, cache_dest):
                                 dbc.Form([
                                 html.Div([dbc.Label("Username", html_for="db-username"),
                                 dbc.Input(type="text", id="db-username", placeholder="Enter username",
-                                style={"width": "75%"})], className="mb-3"),
+                                style={"width": "75%"}, persistence=config['persistence'],
+                                persistence_type='local')], className="mb-3"),
                                 html.Div([
                                 dbc.Label("Password", html_for="db-password"),
                                 dbc.Input(type="password", id="db-password", placeholder="Enter password",
-                                          style={"width": "75%"}),
+                                          style={"width": "75%"}, persistence=config['persistence'],
+                                          persistence_type='local'),
                                 dbc.FormText("Enter your credentials for the mongoDB instance", color="secondary"),
                                 ], className="mb-3")
                                 ]),

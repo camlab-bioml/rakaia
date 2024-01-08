@@ -11,9 +11,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- mongoDB database persistence: Users can use a registered a mongoDB account for the `cccramic-db` Atlas instance
+- mongoDB database persistence: Users can use a registered a mongoDB account for the `ccramic-db` Atlas instance
 to and/remove current and saved session configurations
 (blend parameters, global filters, channel selection, naming/aliases)
+- Custom exception for panel mismatches on file parsing
 
 ### Changed
 
@@ -32,6 +33,7 @@ prompts instead of an `html.A` hyperlink
 - imported JSON configurations will now match the proper length of datasets
 imported from h5py
 - Annotating the UMAP from the UMAP plot will trigger the recent annotation to be applied to the visualization
+- Fix improper range slider tick markers and maximum for channels with a max below 1
 
 ## [0.11.0] - 2023-12-21
 

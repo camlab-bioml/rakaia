@@ -35,3 +35,7 @@ class AlertMessage(BaseModel):
                       "invalid_dimensions": "The dimensions of the mask do not agree with the current ROI.",
                       "quantification_missing_mask": "Quantification requires an ROI with a compatible mask that has been applied to the" \
                                     " canvas. Please review the required inputs."}
+
+
+class PanelMismatchError(Exception):
+    pass
