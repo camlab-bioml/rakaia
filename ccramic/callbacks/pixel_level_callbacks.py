@@ -955,7 +955,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('toggle-canvas-scalebar', 'value'),
                        Input('mask-blending-slider', 'value'),
                        Input('add-mask-boundary', 'value'),
-                       Input('channel-order', 'data'),
+                       State('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
                        Input('add-cell-id-mask-hover', 'value'),
                        State('pixel-size-ratio', 'value'),
@@ -999,7 +999,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                   "global-sigma-val-filter"] and not global_apply_filter
         channel_order_same = ctx.triggered_id in ["channel-order"] and channel_order == currently_selected
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
-                data_selection is not None and len(currently_selected) > 0 and len(canvas_children) > 0 and \
+                data_selection is not None and currently_selected and len(canvas_children) > 0 and \
                 len(channel_order) > 0 and not global_not_enabled and not channel_order_same:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             # try:
@@ -1033,20 +1033,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                                                 dest_dir=dest_path))
                 return fig, canvas_tiff
-                # else
-                #     fig = CanvasLayout(cur_graph)
-                #     if apply_cluster_on_mask:
-                #         fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
-                #                 pd.DataFrame(cluster_frame), cluster_assignments_dict, data_selection)
-                #     elif not apply_cluster_on_mask:
-                #         fig = fig.remove_cluster_annotation_shapes()
-                #     else:
-                #         fig = fig.get_fig()
-                #     return go.Figure(fig), dash.no_update
             except (ValueError, AttributeError, KeyError, IndexError):
                 raise PreventUpdate
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
-
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
         #     fig = cur_graph if cur_graph is not None else go.Figure()
         #     if 'data' in fig:
@@ -1097,45 +1086,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             if ctx.triggered_id == "annotation_canvas":
                 try:
-                    # fig = go.Figure(cur_graph)
-                    # # find the text annotation that has um in the text and the correct location
-                    # for annotations in cur_graph['layout']['annotations']:
-                    #     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
-                    #     if annotations['y'] == 0.06:
-                    #         if cur_graph_layout not in [{'autosize': True}]:
-                    #             x_range_high = 0
-                    #             x_range_low = 0
-                    #             # use different variables depending on how the ranges are written in the dict
-                    #             # IMP: the variables will be written differently after a tab change
-                    #             if 'xaxis' in cur_graph['layout']:
-                    #                 high = max(cur_graph['layout']['xaxis']['range'][1],
-                    #                        cur_graph['layout']['xaxis']['range'][0])
-                    #                 low = min(cur_graph['layout']['xaxis']['range'][1],
-                    #                       cur_graph['layout']['xaxis']['range'][0])
-                    #                 x_range_high = math.ceil(int(high))
-                    #                 x_range_low = math.floor(int(low))
-                    #             elif 'xaxis.range[0]' and 'xaxis.range[1]' in cur_graph_layout:
-                    #                 high = max(cur_graph_layout['xaxis.range[1]'],
-                    #                        cur_graph_layout['xaxis.range[0]'])
-                    #                 low = min(cur_graph_layout['xaxis.range[1]'],
-                    #                       cur_graph_layout['xaxis.range[0]'])
-                    #                 x_range_high = math.ceil(int(high))
-                    #                 x_range_low = math.ceil(int(low))
-                    #
-                    #             assert x_range_high >= x_range_low
-                    #             # assert that all values must be above 0 for the scale value to render during panning
-                    #             # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
-                    #             scale_val = int(float(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1) * float(
-                    #                 pixel_ratio))
-                    #             scale_val = scale_val if scale_val > 0 else 1
-                    #             scale_annot = str(scale_val) + "μm"
-                    #             scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                    #             # get the index of the list element corresponding to this text annotation
-                    #             index = cur_graph['layout']['annotations'].index(annotations)
-                    #             cur_graph['layout']['annotations'][index]['text'] = scale_text
-                    #
-                    #             fig = go.Figure(cur_graph)
-                    #             fig.update_layout(newshape=dict(line=dict(color="white")))
                     fig = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio)
                     return fig, cur_graph_layout
                 except (ValueError, KeyError, AssertionError):
@@ -1144,27 +1094,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if None not in (x_request, y_request, current_window) and \
                         nclicks_coord is not None and nclicks_coord > 0:
                     try:
-                        # # calculate midway distance for each coord. this distance is
-                        # # added on either side of the x and y requests
-                        # new_x_low, new_x_high, new_y_low, new_y_high = create_new_coord_bounds(current_window,
-                        #                                                                        x_request,
-                        #                                                                        y_request)
-                        # new_layout = {'xaxis.range[0]': new_x_low, 'xaxis.range[1]': new_x_high,
-                        #               'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
-                        # # IMP: for yaxis, need to set the min and max in the reverse order
-                        # fig = go.Figure(data=cur_graph['data'], layout=cur_graph['layout'])
-                        # shapes = cur_graph['layout']['shapes']
-                        # annotations = cur_graph['layout']['annotations']
-                        # fig['layout']['shapes'] = None
-                        # fig['layout']['annotations'] = None
-                        # fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
-                        #                   yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
-                        # fig.update_layout(newshape=dict(line=dict(color="white")))
-                        # # cur_graph['layout']['xaxis']['domain'] = [0, 1]
-                        # # cur_graph['layout']['dragmode'] = "zoom"
-                        # fig['layout']['shapes'] = shapes
-                        # fig['layout']['annotations'] = annotations
-                        # return fig, new_layout
                         fig, new_layout = CanvasLayout(cur_graph).update_coordinate_window(current_window,
                                                                                      x_request, y_request)
                         return fig, new_layout
@@ -1212,28 +1141,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
         if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
             try:
-                # cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
-                # pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
-                # for annotations in cur_graph['layout']['annotations']:
-                #     # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
-                #     if annotations['y'] == 0.06:
-                #         if custom_scale_val is None:
-                #             high = max(cur_graph['layout']['xaxis']['range'][1],
-                #                        cur_graph['layout']['xaxis']['range'][0])
-                #             low = min(cur_graph['layout']['xaxis']['range'][1],
-                #                       cur_graph['layout']['xaxis']['range'][0])
-                #             x_range_high = math.ceil(int(high))
-                #             x_range_low = math.floor(int(low))
-                #             assert x_range_high >= x_range_low
-                #             custom_scale_val = int(float(math.ceil(int(0.075 *
-                #                                 (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
-                #         scale_annot = str(custom_scale_val) + "μm"
-                #         scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                #         # get the index of the list element corresponding to this text annotation
-                #         index = cur_graph['layout']['annotations'].index(annotations)
-                #         cur_graph['layout']['annotations'][index]['text'] = scale_text
-                # fig = go.Figure(cur_graph)
-                # fig.update_layout(newshape=dict(line=dict(color="white")))
                 fig = CanvasLayout(cur_graph).use_custom_scalebar_value(custom_scale_val, pixel_ratio)
             except (KeyError, AssertionError):
                 fig = dash.no_update
@@ -1289,62 +1196,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 legend_text = generate_canvas_legend_text(blend_colour_dict,
                             channel_order, aliases, legend_orientation)  if toggle_legend else ''
                 return CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
-                # cur_annotations = [annot for annot in cur_annotations if \
-                #                    annot is not None and 'y' in annot and annot['y'] != 0.05]
-                # cur_canvas['layout']['annotations'] = cur_annotations
-                # if not toggle_legend:
-                #     return cur_canvas
-                # else:
-                #     fig = go.Figure(cur_canvas)
-                #     fig.update_layout(newshape=dict(line=dict(color="white")))
-                #     if legend_text != '':
-                #         fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
-                #                                yref='paper',
-                #                                x=(1 - x_axis_placement),
-                #                                # xanchor='right',
-                #                                y=0.05,
-                #                                # yanchor='bottom',
-                #                                bgcolor="black",
-                #                                showarrow=False)
-                #     return fig
             elif ctx.triggered_id == "toggle-canvas-scalebar":
-                # if not toggle_scalebar:
-                #     cur_shapes = [shape for shape in cur_shapes if \
-                #                       shape is not None and 'type' in shape and shape['type'] \
-                #                       in ['rect', 'path', 'circle']]
-                #     cur_annotations = [annot for annot in cur_annotations if \
-                #                            annot is not None and 'y' in annot and annot['y'] != 0.06]
-                #     cur_canvas['layout']['annotations'] = cur_annotations
-                #     cur_canvas['layout']['shapes'] = cur_shapes
-                #     return cur_canvas
-                # else:
-                #     fig = go.Figure(cur_canvas)
-                #     # set the x0 and x1 depending on if the bar is inverted or not
-                #     x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
-                #     x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
-                #     fig.add_shape(type="line",
-                #                   xref="paper", yref="paper",
-                #                   x0=x_0, y0=0.05, x1=x_1,
-                #                   y1=0.05, line=dict(color="white", width=2))
-                #
-                #     try:
-                #         high = max(cur_canvas['layout']['xaxis']['range'][1],
-                #                    cur_canvas['layout']['xaxis']['range'][0])
-                #         low = min(cur_canvas['layout']['xaxis']['range'][1],
-                #                   cur_canvas['layout']['xaxis']['range'][0])
-                #         x_range_high = math.ceil(int(high))
-                #         x_range_low = math.floor(int(low))
-                #         assert x_range_high >= x_range_low
-                #         custom_scale_val = int(float(math.ceil(int(0.075 *
-                #                                                    (x_range_high - x_range_low))) + 1) * float(
-                #             pixel_ratio))
-                #     except KeyError:
-                #         custom_scale_val = None
-                #
-                #     fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                #                                     font_size=legend_size, x_axis_left=x_axis_placement,
-                #                                     invert=invert_annot)
-                # fig.update_layout(newshape=dict(line=dict(color="white")))
                 return CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
                                                                 pixel_ratio, image_shape, legend_size)
         else:
@@ -1377,16 +1229,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if cur_graph is not None:
             try:
-                # annotations_copy = cur_graph['layout']['annotations'].copy()
-                # for annotation in annotations_copy:
-                #     # the scalebar is always slightly smaller
-                #     if annotation['y'] == 0.06:
-                #         annotation['font']['size'] = legend_size
-                #     elif annotation['y'] == 0.05 and 'color' in annotation['text']:
-                #         annotation['font']['size'] = legend_size + 1
-                # cur_graph['layout']['annotations'] = [elem for elem in cur_graph['layout']['annotations'] if \
-                #                                   elem is not None and 'texttemplate' not in elem]
-                # return cur_graph
                 return CanvasLayout(cur_graph).change_annotation_size(legend_size)
             except KeyError:
                 raise PreventUpdate
@@ -1659,9 +1501,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                           ["data-collection", "uploaded_dict", "annotation_canvas"] and \
                 active_tab == 'gallery-tab'
             use_zoom = gallery_data is not None and ctx.triggered_id == 'annotation_canvas'
-            if new_collection or gallery_mod_in_tab or use_zoom:
+            zoom_not_needed = ctx.triggered_id == 'annotation_canvas' and not toggle_gallery_zoom
+            if (new_collection or gallery_mod_in_tab or use_zoom) and not zoom_not_needed:
                 zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-                views = None
                 # maintain the original order of channels that is dictated by the metadata
                 # decide if channel view or ROI view is selected
                 # channel view
@@ -1725,7 +1567,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             label = aliases[key] if aliases is not None and key in aliases.keys() else key
                             cell_styling_conditions.append( {"condition": f"params.value == '{label}'",
                             "style": {"color": f"{blend_colours[key]['color']}"}})
-                    except KeyError as e:
+                    except KeyError:
                         pass
                 if len(in_blend) > 0:
                     to_return = pd.DataFrame(in_blend, columns=["Channel"]).to_dict(orient="records")

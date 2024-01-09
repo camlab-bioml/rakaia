@@ -309,7 +309,7 @@ def register_app_layout(config, cache_dest):
                                         "justifyContent": "right", "margin-left": "200px", "margin-top": "12px"},
                                         persistence=config['persistence'], persistence_type='local')],
                                                    style={"display": "flex"}),
-                                          dcc.Dropdown(id='image_layers', multi=True,
+                                          dcc.Dropdown(id='image_layers', multi=True, value=[],
                                      style={"margin-top": "10px"})],
                                          width=6, style={"display": "inline-block"}),
                         dbc.Col([html.H6("Canvas size"),
