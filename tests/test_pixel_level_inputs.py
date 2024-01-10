@@ -11,7 +11,8 @@ from ccramic.inputs.pixel_level_inputs import (
     add_local_file_dialog,
     invert_annotations_figure,
     set_range_slider_tick_markers,
-    generate_canvas_legend_text)
+    generate_canvas_legend_text,
+    set_x_axis_placement_of_scalebar)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -154,3 +155,15 @@ def test_generate_legend_text():
     assert "<br>" in legend_text
     assert "dna" in legend_text
     assert not "DNA" in legend_text
+
+
+def test_register_x_axis_placement_scalebar():
+    image = np.zeros((1500, 1500))
+    placement = set_x_axis_placement_of_scalebar(image.shape[1], False)
+    assert placement == 0.05
+    invert = set_x_axis_placement_of_scalebar(image.shape[1], True)
+    assert invert == 0.95
+
+    large = np.zeros((5260, 5260))
+    placement = set_x_axis_placement_of_scalebar(large.shape[1], False)
+    assert placement == 0.000025 * large.shape[1]

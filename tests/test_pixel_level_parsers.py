@@ -17,6 +17,7 @@ def test_basic_parser_tiff_to_dict(get_current_dir):
     assert 'for_recolour+++slide0+++acq0' in uploaded_dict.keys()
     assert not 'experiment1' in uploaded_dict.keys()
     assert len(uploaded_dict['for_recolour+++slide0+++acq0'].keys()) == 1
+    assert all([elem is None for elem in uploaded_dict['for_recolour+++slide0+++acq0'].values()])
 
     blending_dict = create_new_blending_dict(uploaded_dict)
     assert all([elem in ['#FFFFFF', None] for elem in \
@@ -81,6 +82,7 @@ def test_basic_parser_from_text(get_current_dir):
     assert 'metadata' in uploaded_dict.keys()
     assert 'query_from_text+++slide0+++0' in uploaded_dict.keys()
     assert len(uploaded_dict['query_from_text+++slide0+++0'].keys()) == 4
+    assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++0'].values()])
 
 def test_basic_parser_from_h5py(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "data.h5")])

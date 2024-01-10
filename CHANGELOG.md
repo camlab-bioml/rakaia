@@ -27,6 +27,7 @@ can be turned off in CLI options
 - Modal alerts now use `pydantic` basemodel
 - Session downloads are now removed from the collapsible and use individual `dcc.send_file`
 prompts instead of an `html.A` hyperlink
+- custom scalebar value now sets the length of the scalebar by the value input
 
 ### Fixed
 

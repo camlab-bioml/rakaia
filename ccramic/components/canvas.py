@@ -31,7 +31,7 @@ class CanvasImage:
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                                                cluster_frame, cluster_type):
+                                                cluster_frame, cluster_type, custom_scale_val):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -60,6 +60,7 @@ class CanvasImage:
         self.cluster_assignments_dict = cluster_assignments_dict
         self.cluster_frame = cluster_frame
         self.cluster_type = cluster_type
+        self.custom_scale_val = custom_scale_val
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
@@ -80,6 +81,7 @@ class CanvasImage:
                                       self.global_filter_sigma)
         image = np.clip(image, 0, 255)
         self.image = image
+        self.proportion = 0.075 if self.custom_scale_val is None else float(custom_scale_val / image.shape[1])
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
             if self.image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
                     self.image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
@@ -203,8 +205,8 @@ class CanvasImage:
         # for adding a scale bar
         if self.toggle_scalebar:
             # set the x0 and x1 depending on if the bar is inverted or not
-            x_0 = x_axis_placement if not self.invert_annot else (x_axis_placement - 0.075)
-            x_1 = (x_axis_placement + 0.075) if not self.invert_annot else x_axis_placement
+            x_0 = x_axis_placement if not self.invert_annot else (x_axis_placement - self.proportion)
+            x_1 = (x_axis_placement + self.proportion) if not self.invert_annot else x_axis_placement
             fig.add_shape(type="line",
                           xref="paper", yref="paper",
                           x0=x_0, y0=0.05, x1=x_1,
@@ -278,11 +280,14 @@ class CanvasLayout:
     def get_fig(self):
         return self.figure
 
-    def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size):
+    def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size,
+                     proportion=0.075):
         fig = go.Figure(self.figure)
+        # TODO: request for custom scalebar value to change the length of the bar, can implement here
+        # default length is 0.075 (7.5% of the canvas), but want to make adjustable
         # set the x0 and x1 depending on if the bar is inverted or not
-        x_0 = x_axis_placement if not invert_annot else (x_axis_placement - 0.075)
-        x_1 = (x_axis_placement + 0.075) if not invert_annot else x_axis_placement
+        x_0 = x_axis_placement if not invert_annot else (x_axis_placement - proportion)
+        x_1 = (x_axis_placement + proportion) if not invert_annot else x_axis_placement
         fig.add_shape(type="line",
                       xref="paper", yref="paper",
                       x0=x_0, y0=0.05, x1=x_1,
@@ -296,14 +301,14 @@ class CanvasLayout:
             x_range_high = math.ceil(int(high))
             x_range_low = math.floor(int(low))
             assert x_range_high >= x_range_low
-            custom_scale_val = int(float(math.ceil(int(0.075 *
-                                                       (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
+            custom_scale_val = int(float(math.ceil(int(proportion *
+                                (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
         except (KeyError, TypeError):
             custom_scale_val = None
 
         fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
                                         font_size=legend_size, x_axis_left=x_axis_placement,
-                                        invert=invert_annot)
+                                        invert=invert_annot, proportion=proportion)
 
         fig.update_layout(newshape=dict(line=dict(color="white")))
         return fig.to_dict()
@@ -333,7 +338,8 @@ class CanvasLayout:
         else:
             return self.add_legend_text(legend_text, x_axis_placement, legend_size)
 
-    def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size):
+    def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot,
+                        pixel_ratio, image_shape, legend_size, proportion=0.075):
         cur_shapes = [shape for shape in self.cur_shapes if \
                       shape is not None and 'type' in shape and shape['type'] \
                       in ['rect', 'path', 'circle']]
@@ -344,7 +350,8 @@ class CanvasLayout:
         if not toggle_scalebar:
             return self.figure
         else:
-            return self.add_scalebar(x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size)
+            return self.add_scalebar(x_axis_placement, invert_annot,
+                    pixel_ratio, image_shape, legend_size, proportion)
 
     def change_annotation_size(self, legend_size):
         """
@@ -383,7 +390,7 @@ class CanvasLayout:
         self.figure['layout']['shapes'] = self.cur_shapes
         return self.figure
 
-    def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio):
+    def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio, proportion=0.075):
         """
         update the scalebar value when zoom is used
         Loop through the annotations to identify the scalebar value when y = 0.06
@@ -392,44 +399,43 @@ class CanvasLayout:
         for annotations in self.figure['layout']['annotations']:
             # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
             if annotations['y'] == 0.06:
-                if current_graph_layout not in [{'autosize': True}]:
-                    x_range_high = 0
-                    x_range_low = 0
-                    # use different variables depending on how the ranges are written in the dict
-                    # IMP: the variables will be written differently after a tab change
-                    if 'xaxis.range[0]' and 'xaxis.range[1]' in current_graph_layout:
-                        high = max(current_graph_layout['xaxis.range[1]'],
-                                   current_graph_layout['xaxis.range[0]'])
-                        low = min(current_graph_layout['xaxis.range[1]'],
-                                  current_graph_layout['xaxis.range[0]'])
-                        x_range_high = math.ceil(int(high))
-                        x_range_low = math.ceil(int(low))
-                    elif 'xaxis' in self.figure['layout'] and 'range' in self.figure['layout']['xaxis'] and \
-                            self.figure['layout']['xaxis']:
-                        high = max(self.figure['layout']['xaxis']['range'][1],
-                                   self.figure['layout']['xaxis']['range'][0])
-                        low = min(self.figure['layout']['xaxis']['range'][1],
-                                  self.figure['layout']['xaxis']['range'][0])
-                        x_range_high = math.ceil(int(high))
-                        x_range_low = math.floor(int(low))
-                    assert x_range_high >= x_range_low
-                    # assert that all values must be above 0 for the scale value to render during panning
-                    # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
-                    scale_val = int(float(math.ceil(int(0.075 * (x_range_high - x_range_low))) + 1) * float(
-                        pixel_ratio))
-                    scale_val = scale_val if scale_val > 0 else 1
-                    scale_annot = str(scale_val) + "μm"
-                    scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
-                    # get the index of the list element corresponding to this text annotation
-                    index = self.figure['layout']['annotations'].index(annotations)
-                    self.figure['layout']['annotations'][index]['text'] = scale_text
+                x_range_high = 0
+                x_range_low = 0
+                # use different variables depending on how the ranges are written in the dict
+                # IMP: the variables will be written differently after a tab change
+                if 'xaxis.range[0]' and 'xaxis.range[1]' in current_graph_layout:
+                    high = max(current_graph_layout['xaxis.range[1]'],
+                               current_graph_layout['xaxis.range[0]'])
+                    low = min(current_graph_layout['xaxis.range[1]'],
+                              current_graph_layout['xaxis.range[0]'])
+                    x_range_high = math.ceil(int(high))
+                    x_range_low = math.ceil(int(low))
+                elif 'xaxis' in self.figure['layout'] and 'range' in self.figure['layout']['xaxis'] and \
+                        self.figure['layout']['xaxis']:
+                    high = max(self.figure['layout']['xaxis']['range'][1],
+                               self.figure['layout']['xaxis']['range'][0])
+                    low = min(self.figure['layout']['xaxis']['range'][1],
+                              self.figure['layout']['xaxis']['range'][0])
+                    x_range_high = math.ceil(int(high))
+                    x_range_low = math.floor(int(low))
+                assert x_range_high >= x_range_low
+                # assert that all values must be above 0 for the scale value to render during panning
+                # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
+                scale_val = int(float(math.ceil(int(proportion * (x_range_high - x_range_low))) + 1) * float(
+                    pixel_ratio))
+                scale_val = scale_val if scale_val > 0 else 1
+                scale_annot = str(scale_val) + "μm"
+                scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                # get the index of the list element corresponding to this text annotation
+                index = self.figure['layout']['annotations'].index(annotations)
+                self.figure['layout']['annotations'][index]['text'] = scale_text
 
         # fig = go.Figure(self.figure)
         # fig.update_layout(newshape=dict(line=dict(color="white")))
         # return fig
         return self.figure
 
-    def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio):
+    def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio, proportion=0.075):
         self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
         pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
         for annotations in self.figure['layout']['annotations']:
@@ -443,8 +449,10 @@ class CanvasLayout:
                     x_range_high = math.ceil(int(high))
                     x_range_low = math.floor(int(low))
                     assert x_range_high >= x_range_low
-                    custom_scale_val = int(float(math.ceil(int(0.075 *
+                    custom_scale_val = int(float(math.ceil(int(proportion *
                                         (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
+                else:
+                    custom_scale_val = int(float(custom_scale_val) * float(pixel_ratio))
                 scale_annot = str(custom_scale_val) + "μm"
                 scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
                 # get the index of the list element corresponding to this text annotation

@@ -12,13 +12,18 @@ class AtlasDatabaseConnection:
         self.password = password
         self.connection_string = f"mongodb+srv://{self.username}:{self.password}@ccramic-db" \
         f".uzqznla.mongodb.net/?retryWrites=true&w=majority"
-        self.client = MongoClient(self.connection_string, server_api=ServerApi('1'))
-        # set the name of the database and collection
-        self.database = self.client[database_name]
-        self.blend_collection = self.database[blend_collection_name]
+        self.database_name = database_name
+        self.blend_collection_name = blend_collection_name
+        self.client = None
+        self.database = None
+        self.blend_collection = None
 
-    def ping_connection(self):
+    def create_connection(self):
         try:
+            self.client = MongoClient(self.connection_string, server_api=ServerApi('1'))
+            # set the name of the database and collection
+            self.database = self.client[self.database_name]
+            self.blend_collection = self.database[self.blend_collection_name]
             self.client.admin.command('ping')
             return True, "Connection to ccramic-db successful"
         except Exception as e:
@@ -58,4 +63,5 @@ class AtlasDatabaseConnection:
         delete = self.blend_collection.delete_many({"user": self.username, "name": config_name})
 
     def close(self):
-        self.client.close()
+        if self.client is not None:
+            self.client.close()

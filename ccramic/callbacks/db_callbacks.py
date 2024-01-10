@@ -24,9 +24,9 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def create_database_connection(connect, username, password):
         if None not in (username, password) and connect > 0:
             connection = AtlasDatabaseConnection(username=username, password=password)
-            connected, ping = connection.ping_connection()
+            connected, ping = connection.create_connection()
             pair = connection.username_password_pair() if connected else dash.no_update
-            connection.close()
+            # connection.close()
             return pair, ping, True, "success" if connected else "danger"
         else:
             raise PreventUpdate
@@ -43,7 +43,7 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if credentials:
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
-            connected, ping = connection.ping_connection()
+            connected, ping = connection.create_connection()
             if connected:
                 configs, list_configs = connection.blend_configs_by_user()
                 config_preview = preview_dataframe_from_db_config_list(configs)
@@ -99,13 +99,15 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "db-save-cur-config" and save_to_db > 0 and \
                 None not in (credentials, db_config_name, blend_dict):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
+            connection.create_connection()
             connection.insert_blend_config(db_config_name, blend_dict, channel_selection,
                         global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, aliases)
             return f"{db_config_name} submitted successfully", True
         elif ctx.triggered_id == "db-remove-select-config" and remove_from_db > 0 and None not in (db_config_name, credentials):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
+            connection.create_connection()
             connection.remove_blend_document_by_name(db_config_name)
-            connection.close()
+            # connection.close()
             return f"{db_config_name} removed successfully", True
         else:
             raise PreventUpdate

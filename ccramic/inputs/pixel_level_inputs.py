@@ -62,19 +62,20 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
         return render_default_annotation_canvas(fullscreen_mode=enable_zoom)
 
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
-                              invert=False):
+                              invert=False, proportion=0.075):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
     if scale_value is None:
-        scale_val = int(float(0.075 * image_shape[1]) * float(pixel_ratio))
+        scale_val = int(float(proportion * image_shape[1]) * float(pixel_ratio))
     else:
         scale_val = scale_value
     scale_annot = str(scale_val) + "μm"
     scale_text = f'<span style="color: white">{scale_annot}</span><br>'
     figure = go.Figure(figure)
+    half = float(proportion) / 2
     # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
-    x = float((x_axis_left + 0.0375) if not invert else (x_axis_left - 0.0375))
+    x = float((x_axis_left + half) if not invert else (x_axis_left - half))
     figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
@@ -234,3 +235,16 @@ def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legen
                                     f'{blend_colour_dict[image]["color"]}"' \
                                     f'>{label}{gap}</span>{line_break}'
     return legend_text
+
+
+def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False):
+    """
+    Set the x-axis placement of the scalebar using a formula based on the image width
+    `image_x_shape`: The dimension, in pixels, of the x-axis (width) of the image in the canvas
+    """
+    x_axis_placement = 0.000025 * image_x_shape
+    # make sure the placement is min 0.05 and max 0.1
+    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+    if invert_annot:
+        x_axis_placement = 1 - x_axis_placement
+    return x_axis_placement

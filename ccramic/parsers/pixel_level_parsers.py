@@ -11,6 +11,10 @@ from ccramic.utils.alert import PanelMismatchError
 class FileParser:
     """
     Parses a list of filepaths into a dictionary of image arrays, grouped by region (ROI) identifiers
+    When using lazy loading, the dictionary will be created as a placeholder and a dataframe of ROI information
+    will be created, but the dictionary will contain None values in place of image arrays. When lazy loading is
+    turned off, greyscale image arrays are read into the dictionary slots with the numpy array type specified
+    in `array_store_type`
     """
     def __init__(self, filepaths: list, array_store_type="float", lazy_load=True,
                  single_roi_parse=True, roi_name=None, internal_name=None):
@@ -33,6 +37,8 @@ class FileParser:
             self.roi_name = roi_name
             self.internal_name = internal_name
             for upload in self.filepaths:
+                # IMP: split reading a single mcd ROI from the entire mcd, as mcds can contain multiple ROIs
+                # this is currently unique to mcds: all other files have one ROI per file
                 if upload.endswith('.mcd') and not lazy_load and single_roi_parse and \
                         None not in (roi_name, internal_name):
                    self.read_single_roi_from_mcd(upload, self.internal_name, self.roi_name)
@@ -299,13 +305,13 @@ def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_c
             if str(Path(files_uploaded).stem) == basename:
                 file_path = files_uploaded
         if file_path is not None:
-            upload_dict = FileParser(filepaths=[file_path], array_store_type=array_store_type,
+            upload_dict_new = FileParser(filepaths=[file_path], array_store_type=array_store_type,
                                      lazy_load=False, single_roi_parse=True, internal_name=dataset_selection,
                                      roi_name=acq_name).image_dict
+            return upload_dict_new
         return upload_dict
     except (KeyError, AssertionError, AttributeError):
         return upload_dict
-
 
 def sparse_array_to_dense(array):
     """

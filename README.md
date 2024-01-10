@@ -40,6 +40,17 @@ pip install -r requirements.txt
 pip install .
 ```
 
+### with Make
+
+ccramic contains a Makefile that wraps the pip installation
+commands above. Installation can be done as follows:
+
+```
+# cd ccramic
+make
+make install
+```
+
 ## Updating local installations
 
 From source, ccramic can be updated locally using the following commands:
