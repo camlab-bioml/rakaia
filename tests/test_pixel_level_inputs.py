@@ -1,7 +1,6 @@
 import dash
 import numpy as np
 import plotly.graph_objs as go
-import pytest
 from dash_extensions.enrich import html
 from ccramic.inputs.pixel_level_inputs import (
     render_default_annotation_canvas,
@@ -20,7 +19,6 @@ import os
 from ccramic.utils.pixel_level_utils import recolour_greyscale
 import plotly.express as px
 import dash_bootstrap_components as dbc
-from dash.exceptions import PreventUpdate
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()

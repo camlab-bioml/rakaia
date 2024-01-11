@@ -466,7 +466,7 @@ def register_app_layout(config, cache_dest):
                                     persistence=config['persistence'], persistence_type='local'),
                                     html.Div([html.H6("Scalebar length (unzoomed)", style={'width': '150%'}),
                                 dcc.Input(id="custom-scale-val", type="number", value=None,
-                                    style={"width": "60%", "margin-left": "30px"})],
+                                    style={"width": "60%", "margin-left": "30px"}, debounce = True)],
                                     style={"display": "block"}),
                                     html.Div([html.H6("Scale ratio\n(μm/pixel)", style={'width': '75%', 'margin-left': '30px'}),
                                     dcc.Input(id="pixel-size-ratio", type="number", value=1,

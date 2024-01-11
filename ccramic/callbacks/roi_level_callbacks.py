@@ -1,7 +1,7 @@
 import dash
 import pandas as pd
 
-from ccramic.parsers.roi_parsers import generate_multi_roi_images_from_query
+from ccramic.parsers.roi_parsers import RegionThumbnail
 from ccramic.io.gallery_outputs import generate_roi_query_gallery_children
 from ccramic.utils.quantification import (
     quantify_multiple_channels_per_roi,
@@ -70,9 +70,9 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id == "execute-dataset-query" and execute_query > 0:
                 rois_exclude = [data_selection]
                 row_children = []
-            images = generate_multi_roi_images_from_query(session_config, blend_colour_dict,
-                    currently_selected, int(num_queries), rois_exclude, rois_decided, mask_dict, dataset_options,
-                    query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma)
+            images = RegionThumbnail(session_config, blend_colour_dict, currently_selected,
+                    int(num_queries), rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists,
+                    global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma).get_image_dict()
             new_row_children, roi_list = generate_roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load":

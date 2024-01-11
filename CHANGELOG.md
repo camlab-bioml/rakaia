@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-03
+## [0.12.0] - 2024-01-11
 
 ### Added
 
@@ -27,7 +27,10 @@ can be turned off in CLI options
 - Modal alerts now use `pydantic` basemodel
 - Session downloads are now removed from the collapsible and use individual `dcc.send_file`
 prompts instead of an `html.A` hyperlink
-- custom scalebar value now sets the length of the scalebar by the value input
+- custom scalebar value now sets the length of the scalebar by the value input and combines
+with the pixel ratio
+- ROI thumbnail queries can now be generated from tiff and txt files
+
 
 ### Fixed
 
