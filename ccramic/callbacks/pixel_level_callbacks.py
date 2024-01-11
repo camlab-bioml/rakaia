@@ -1097,13 +1097,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 try:
                     # TODO: add ability to include the proportion here for custom scalebar lengths
                     image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
-                    proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.075
+                    proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                     # if ctx.triggered_id == 'annotation_canvas':
                     cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion)
-                    if ctx.triggered_id == "custom-scale-val":
-                        pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
-                        x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
-                        cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
+                    # if ctx.triggered_id == "custom-scale-val":
+                    pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
+                    x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
+                    cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
                                                         pixel_ratio, image_shape, legend_size, proportion)
                     # elif ctx.triggered_id == 'pixel-size-ratio':
                     #     cur_graph = CanvasLayout(cur_graph).use_custom_scalebar_value(custom_scale_val, pixel_ratio, proportion)
@@ -1148,6 +1148,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #             raise PreventUpdate
     #     else:
     #         raise PreventUpdate
+
 
     # @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
     #                    State('annotation_canvas', 'figure'),
@@ -1215,7 +1216,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             channel_order, aliases, legend_orientation)  if toggle_legend else ''
                 return CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
             elif ctx.triggered_id in ["toggle-canvas-scalebar"]:
-                proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.075
+                proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                 return CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
                                                                 pixel_ratio, image_shape, legend_size, proportion)
         else:

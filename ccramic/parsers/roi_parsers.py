@@ -11,6 +11,8 @@ import random
 import numpy as np
 import cv2
 
+
+# TODO: reformat as class to accommodate other file types
 def generate_multi_roi_images_from_query(session_config, blend_dict,
                                          currently_selected_channels, num_queries=5, rois_exclude=None,
                                          predefined_indices=None, mask_dict=None, dataset_options=None,

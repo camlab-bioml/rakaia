@@ -62,7 +62,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
         return render_default_annotation_canvas(fullscreen_mode=enable_zoom)
 
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
-                              invert=False, proportion=0.075):
+                              invert=False, proportion=0.1):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -89,7 +89,8 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
 
 def get_additive_image_with_masking(currently_selected, data_selection, canvas_layers, mask_config,
                                     mask_toggle, mask_selection, show_canvas_legend,
-                                    mask_blending_level, add_mask_boundary, legend_text, annotation_size=12):
+                                    mask_blending_level, add_mask_boundary, legend_text, annotation_size=12,
+                                    proportion=0.1):
     """
     Generate an additiive image from one or more channel arrays. Optionally, project a mask on top of the additive image
     using a specified blend ratio with cv2
@@ -138,7 +139,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
             if show_canvas_legend:
                 fig.add_shape(type="line",
                           xref="paper", yref="paper",
-                          x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + 0.075),
+                          x0=x_axis_placement, y0=0.05, x1=(x_axis_placement + proportion),
                           y1=0.05,
                           line=dict(
                               color="white",

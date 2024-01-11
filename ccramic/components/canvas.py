@@ -43,7 +43,7 @@ class CanvasImage:
         self.add_mask_boundary = add_mask_boundary
         self.invert_annot = invert_annot
         self.cur_graph = cur_graph
-        self.pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
+        self.pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         self.legend_text = legend_text
         self.toggle_scalebar = toggle_scalebar
         self.legend_size = legend_size
@@ -81,7 +81,8 @@ class CanvasImage:
                                       self.global_filter_sigma)
         image = np.clip(image, 0, 255)
         self.image = image
-        self.proportion = 0.075 if self.custom_scale_val is None else float(custom_scale_val / image.shape[1])
+        self.proportion = 0.1 if self.custom_scale_val is None else \
+            float(custom_scale_val / (image.shape[1] * self.pixel_ratio))
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
             if self.image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
                     self.image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
@@ -147,7 +148,7 @@ class CanvasImage:
                 if self.toggle_scalebar:
                     fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
                                                     x_axis_left=x_axis_placement, pixel_ratio=self.pixel_ratio,
-                                                    invert=self.invert_annot)
+                                                    invert=self.invert_annot, proportion=self.proportion)
 
                 fig = go.Figure(fig)
                 fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -170,7 +171,7 @@ class CanvasImage:
             if self.toggle_scalebar:
                 fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
                                                 x_axis_left=x_axis_placement, pixel_ratio=self.pixel_ratio,
-                                                invert=self.invert_annot)
+                                                invert=self.invert_annot, proportion=self.proportion)
 
             fig = go.Figure(fig)
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -281,10 +282,14 @@ class CanvasLayout:
         return self.figure
 
     def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size,
-                     proportion=0.075):
+                     proportion=0.1):
+        try:
+            proportion = float(proportion / pixel_ratio)
+        except ZeroDivisionError:
+            pass
         fig = go.Figure(self.figure)
         # TODO: request for custom scalebar value to change the length of the bar, can implement here
-        # default length is 0.075 (7.5% of the canvas), but want to make adjustable
+        # default length is 0.1 (10% of the canvas), but want to make adjustable
         # set the x0 and x1 depending on if the bar is inverted or not
         x_0 = x_axis_placement if not invert_annot else (x_axis_placement - proportion)
         x_1 = (x_axis_placement + proportion) if not invert_annot else x_axis_placement
@@ -339,7 +344,7 @@ class CanvasLayout:
             return self.add_legend_text(legend_text, x_axis_placement, legend_size)
 
     def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot,
-                        pixel_ratio, image_shape, legend_size, proportion=0.075):
+                        pixel_ratio, image_shape, legend_size, proportion=0.1):
         cur_shapes = [shape for shape in self.cur_shapes if \
                       shape is not None and 'type' in shape and shape['type'] \
                       in ['rect', 'path', 'circle']]
@@ -390,11 +395,15 @@ class CanvasLayout:
         self.figure['layout']['shapes'] = self.cur_shapes
         return self.figure
 
-    def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio, proportion=0.075):
+    def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio, proportion=0.1):
         """
         update the scalebar value when zoom is used
         Loop through the annotations to identify the scalebar value when y = 0.06
         """
+        try:
+            proportion = float(proportion / pixel_ratio)
+        except ZeroDivisionError:
+            pass
         # find the text annotation that has um in the text and the correct location
         for annotations in self.figure['layout']['annotations']:
             # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
@@ -435,9 +444,9 @@ class CanvasLayout:
         # return fig
         return self.figure
 
-    def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio, proportion=0.075):
+    def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio, proportion=0.1):
         self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
-        pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
+        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         for annotations in self.figure['layout']['annotations']:
             # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
             if annotations['y'] == 0.06:

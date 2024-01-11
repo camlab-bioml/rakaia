@@ -45,7 +45,7 @@ def test_add_scalebar_to_canvas(get_current_dir):
     assert len(image['layout']['annotations']) == 0
     with_scaleval = add_scale_value_to_figure(image, recoloured.shape)
     assert len(with_scaleval['layout']['annotations']) != 0
-    assert with_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert with_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">60μm</span><br>'
 
     custom_scaleval = add_scale_value_to_figure(image, recoloured.shape, scale_value=51)
     assert custom_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">51μm</span><br>'
@@ -69,7 +69,7 @@ def test_basic_additive_image():
     assert isinstance(image, go.Figure)
     assert image['data'] is not None
     assert image['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
-    assert image['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert image['layout']['annotations'][0]['text'] == '<span style="color: white">60μm</span><br>'
     assert image['layout']['uirevision']
 
     bad_col = get_additive_image_with_masking(["fake_channel"], data_selection="experiment0+++slide0+++acq0",
@@ -89,7 +89,7 @@ def test_basic_additive_image():
     assert isinstance(image_mask, go.Figure)
     assert image_mask['data'] is not None
     assert image_mask['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
-    assert image_mask['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert image_mask['layout']['annotations'][0]['text'] == '<span style="color: white">60μm</span><br>'
     assert image_mask['layout']['uirevision']
 
 
@@ -113,11 +113,11 @@ def test_invert_annotations_figure():
                                             mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
                                             add_mask_boundary=False, legend_text='')
 
-    assert image['layout']['annotations'][0]['x'] == 0.0875
+    assert image['layout']['annotations'][0]['x'] == 0.1
     assert image['layout']['shapes'][0]['x0'] == 0.05
 
     image = invert_annotations_figure(image)
-    assert image['layout']['annotations'][0]['x'] == (1 - 0.0875)
+    assert image['layout']['annotations'][0]['x'] == (1 - 0.1)
     assert image['layout']['shapes'][0]['x0'] == (1 - 0.05)
 
     image_2 = go.Figure()

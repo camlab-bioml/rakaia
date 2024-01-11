@@ -225,15 +225,15 @@ def test_canvas_layout_editor(get_current_dir):
 
     fig = go.Figure(px.imshow(image))
     fig.update_layout(xaxis=dict(range=[50, 60]), yaxis=dict(range=[50, 60]))
-    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 0, image.shape, 12)
     fig = CanvasLayout(fig).update_scalebar_zoom_value({"test": "test"}, 1)
-    assert 'color: white">1μm</span><br>' in fig['layout']['annotations'][0]['text']
+    assert 'color: white">2μm</span><br>' in fig['layout']['annotations'][0]['text']
 
     fig = go.Figure(px.imshow(image))
     canvas_layout = {'xaxis.range[1]': 50, 'xaxis.range[0]': 60}
     fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
     fig = CanvasLayout(fig).update_scalebar_zoom_value(canvas_layout, 1)
-    assert 'color: white">1μm</span><br>' in fig['layout']['annotations'][0]['text']
+    assert 'color: white">2μm</span><br>' in fig['layout']['annotations'][0]['text']
 
     shapes = [{'line': {'color': 'white', 'width': 2}, 'type': 'line', 'x0': 0.875, 'x1': 0.95, 'xref': 'paper', 'y0': 0.05, 'y1': 0.05, 'yref': 'paper'}, {'editable': True, 'line': {'color': 'white'}, 'type': 'circle', 'x0': 763, 'x1': 779, 'xref': 'x', 'y0': 284, 'y1': 300, 'yref': 'y', 'label': {'texttemplate': ''}}, {'editable': True, 'line': {'color': 'white'}, 'type': 'circle', 'x0': 796, 'x1': 812, 'xref': 'x', 'y0': 293, 'y1': 309, 'yref': 'y'}]
     fig = go.Figure(px.imshow(image))
