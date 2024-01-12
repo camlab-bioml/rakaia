@@ -7,7 +7,6 @@ from ccramic.inputs.pixel_level_inputs import (
     add_local_file_dialog)
 from ccramic.inputs.loaders import wrap_child_in_loading
 from ccramic.utils.pixel_level_utils import generate_default_swatches
-# from sd_material_ui import AutoComplete
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
 from plotly.graph_objs.layout import YAxis, XAxis
@@ -504,6 +503,7 @@ def register_app_layout(config, cache_dest):
                                                         disabled=True, min=0, max=9, step=0.1)],
                                     style={"display": "flex", "margin": "20px"}),
                                     html.Br(),
+                                    # TODO: add tab for mask gating by channel quantification
                                     html.H5("Mask configuration"),
                                     html.Br(),
                                     html.H6("Set mask array and opacity"),

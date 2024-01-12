@@ -36,7 +36,6 @@ class RegionThumbnail:
         self.mask_dict = mask_dict
         self.dataset_options = dataset_options if dataset_options else []
         self.query_cell_id_lists = query_cell_id_lists if predefined_indices is not None else None
-        # self.query_cell_id_lists = query_cell_id_lists
         self.global_filter_apply = global_apply_filter
         self.global_filter_type = global_filter_type
         self.global_filter_val = global_filter_val

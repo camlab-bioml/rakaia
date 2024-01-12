@@ -446,6 +446,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output("global-kernel-val-filter", 'value', allow_duplicate=True),
                        Output("global-sigma-val-filter", 'value', allow_duplicate=True),
                        Output("imc-metadata-editable", "data", allow_duplicate=True),
+                       Output('db-config-options', 'value', allow_duplicate=True),
+                       Output('db-config-name', 'value', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
                             add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata):
@@ -495,16 +497,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
                 parse_global_filter_values_from_json(new_blend_dict['config'])
                 return SessionServerside(all_layers, key="layer_dict", use_unique_key=app_config['serverside_overwrite']), \
-                    current_blend_dict, error_config, channel_list_return, \
-                    global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, metadata_return
+                    current_blend_dict, error_config, channel_list_return, global_apply_filter, global_filter_type, \
+                    global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update
+            # IMP: if the update does not occur, clear the database selection and autofilled config name
             else:
                 error_config["error"] = ALERT.warnings["json_update_error"]
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None
         elif data_selection is None and new_blend_dict is not None:
             error_config["error"] = ALERT.warnings["json_requires_roi"]
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None
         else:
             raise PreventUpdate
 

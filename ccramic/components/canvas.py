@@ -6,7 +6,9 @@ import plotly.express as px
 from PIL import Image
 from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
-from ccramic.inputs.pixel_level_inputs import add_scale_value_to_figure
+from ccramic.inputs.pixel_level_inputs import (
+    add_scale_value_to_figure,
+    set_x_axis_placement_of_scalebar)
 from ccramic.utils.pixel_level_utils import (
     per_channel_intensity_hovertext,
     get_additive_image,
@@ -111,11 +113,7 @@ class CanvasImage:
                                 binary_compression_level=5)
         # fig.update(data=[{'customdata':)
     def generate_canvas(self) -> Union[go.Figure, dict]:
-        x_axis_placement = 0.00001 * self.image.shape[1]
-        # make sure the placement is min 0.05 and max 0.1
-        x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
-        if self.invert_annot:
-            x_axis_placement = 1 - x_axis_placement
+        x_axis_placement = set_x_axis_placement_of_scalebar(self.image.shape[1], self.invert_annot)
         # if the current graph already has an image, take the existing layout and apply it to the new figure
         # otherwise, set the uirevision for the first time
         # fig = add_scale_value_to_figure(fig, image_shape, x_axis_placement)
