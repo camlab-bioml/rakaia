@@ -504,45 +504,40 @@ def register_app_layout(config, cache_dest):
                                     style={"display": "flex", "margin": "20px"}),
                                     html.Br(),
                                     # TODO: add tab for mask gating by channel quantification
+                                    dbc.Tabs(id='mask-gate-config',
+                                    children=[dbc.Tab(id='mask-config', label='Mask',
+                                    children=[html.Br(),
                                     html.H5("Mask configuration"),
                                     html.Br(),
                                     html.H6("Set mask array and opacity"),
-                                    dcc.Loading(
-                                        dcc.Dropdown(id='mask-options', multi=False,
-                                                     options=[],
-                                                     style={'width': '100%',
-                                                            'display': 'inline-block',
-                                                            'margin-right': '-50'}),
-                                        type="default", fullscreen=False),
+                                    dcc.Loading(dcc.Dropdown(id='mask-options', multi=False,
+                                        options=[], style={'width': '100%', 'display': 'inline-block',
+                                        'margin-right': '-50'}), type="default", fullscreen=False),
                                     dcc.Slider(0, 100, 2.5, value=35,
-                                               id='mask-blending-slider',
-                                               marks={0: '0%', 25: '25%',
-                                                      50: '50%', 75: '75%',
-                                                      100: '100%'}),
-                                    html.Div([html.Div([daq.ToggleSwitch(
-                                        label='Apply mask', id='apply-mask',
-                                        labelPosition='bottom', color="blue",
-                                        style={"margin-left": "60px"}),
-                                        html.Abbr(dcc.Checklist(
-                                            options=[
-                                                ' add boundary'],
-                                            value=[' add boundary'],
-                                            id="add-mask-boundary",
-                                            style={
-                                                "margin-left": "35px",
-                                                "margin-top": "10px"}),
-                                            title="Use this feature only if the cell "
-                                                  "boundary was not derived on import"),
-                                        dcc.Checklist(
-                                            options=[
-                                                ' show mask ID on hover'],
-                                            value=[],
-                                            id="add-cell-id-mask-hover",
-                                            style={
-                                                "margin-left": "35px",
-                                                "margin-top": "10px"}),
-                                    ],
+                                        id='mask-blending-slider', marks={0: '0%', 25: '25%',
+                                        50: '50%', 75: '75%', 100: '100%'}),
+                                    html.Div([html.Div([daq.ToggleSwitch(label='Apply mask', id='apply-mask',
+                                        labelPosition='bottom', color="blue", style={"margin-left": "60px"}),
+                                    html.Abbr(dcc.Checklist(options=[' add boundary'], value=[' add boundary'],
+                                        id="add-mask-boundary", style={"margin-left": "35px",
+                                        "margin-top": "10px"}),
+                                        title="Use this feature only if the cell boundary was not derived on import"),
+                                    dcc.Checklist(options=[' show mask ID on hover'],
+                                        value=[], id="add-cell-id-mask-hover",
+                                        style={"margin-left": "35px","margin-top": "10px"})],
                                         style={"display": "flex"})])
+                                                               ]),
+                                    # dbc.Tab(id='gating-config', label='Gating',
+                                    #     children=[
+                                    # html.Br(),
+                                    # html.H5("Gating configuration"),
+                                    # html.Br(),
+                                    # html.H6("Set channel for mask gating"),
+                                    # dcc.Dropdown(id='gating-channel-options', multi=False,
+                                    # options=[], style={'width': '100%', 'display': 'inline-block',
+                                    #                    'margin-right': '-50'})
+                                    #     ])
+                                ]),
                                 ]),
                                 dbc.Tab(label="Region/Presets",
                                 tab_id='region-config-tab',
