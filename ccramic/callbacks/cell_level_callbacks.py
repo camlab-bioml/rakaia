@@ -15,12 +15,12 @@ from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
     identify_column_matching_roi_to_quantification,
-    generate_annotations_output_pdf,
     validate_mask_shape_matches_image)
 from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
     generate_umap_plot,
     )
+from ccramic.io.pdf import AnnotationPDFWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
@@ -42,6 +42,8 @@ import plotly.graph_objs as go
 from dash import html
 from ccramic.io.session import SessionServerside
 import uuid
+from ccramic.utils.session import non_truthy_to_prevent_update
+
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -429,17 +431,21 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('data-collection', 'value'),
         State('mask-dict', 'data'),
         State('alias-dict', 'data'),
-        State('blending_colours', 'data'))
+        State('blending_colours', 'data'),
+        State('bool-apply-global-filter', 'value'),
+        State('global-filter-type', 'value'),
+        State("global-kernel-val-filter", 'value'),
+        State("global-sigma-val-filter", 'value'))
     # @cache.memoize())
-    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers,
-                                 data_selection, mask_config, aliases, blend_dict):
+    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers, data_selection, mask_config, aliases,
+                blend_dict, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
             dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
-            return dcc.send_file(generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection,
-                mask_config, aliases, blend_dict=blend_dict,
-                dest_dir=dest_path, output_file="annotations.pdf"), type="application/pdf")
+            return dcc.send_file(non_truthy_to_prevent_update(AnnotationPDFWriter(annotations_dict, canvas_layers,
+                data_selection, mask_config, aliases, dest_path, "annotations.pdf", blend_dict, global_apply_filter,
+                global_filter_type, global_filter_val, global_filter_sigma).generate_annotation_pdf()), type="application/pdf")
         else:
             raise PreventUpdate
 

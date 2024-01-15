@@ -8,6 +8,7 @@ from tifffile import imwrite
 import numpy as np
 import plotly.graph_objs as go
 
+# TODO: re-write to reduce cyclomatic complexity
 def generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict,
                                        zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]',
                                                   'yaxis.range[1]', 'yaxis.range[0]'],

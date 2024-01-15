@@ -1,5 +1,6 @@
 import math
 from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path
+from pydantic import BaseModel
 
 class ChannelRegion:
     """
@@ -31,6 +32,11 @@ class ChannelRegion:
         """
         return self.max_exp
 
+class RectangularKeys(BaseModel):
+    keys: dict = {"zoom": ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]'),
+                  "rect": ('x0', 'x1', 'y0', 'y1'),
+                  "rect_redrawn": ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')}
+
 class RectangleRegion(ChannelRegion):
     """
     This class defines a channel region created using the zoom feature
@@ -39,13 +45,18 @@ class RectangleRegion(ChannelRegion):
         super().__init__(channel_array, coordinates)
         self.type = reg_type
         self.redrawn = redrawn
-        if self.type == "zoom":
-            self.required_keys = ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]')
-        elif self.type == "rect":
-            if self.redrawn:
-                self.required_keys = ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')
-            else:
-                self.required_keys = ('x0', 'x1', 'y0', 'y1')
+        self.key_dict = RectangularKeys().keys
+        if self.type == "rect" and self.redrawn:
+            self.required_keys = self.key_dict["rect_redrawn"]
+        else:
+            self.required_keys = self.key_dict[self.type]
+        # if self.type == "zoom":
+        #     self.required_keys = ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]')
+        # elif self.type == "rect":
+        #     if self.redrawn:
+        #         self.required_keys = ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')
+        #     else:
+        #         self.required_keys = ('x0', 'x1', 'y0', 'y1')
         if all([elem in self.coordinate_dict] for elem in self.required_keys):
             try:
                 assert all([elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)])

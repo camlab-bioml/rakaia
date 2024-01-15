@@ -470,7 +470,7 @@ def register_app_layout(config, cache_dest):
                                     html.Div([html.H6("Scale ratio\n(μm/pixel)", style={'width': '75%', 'margin-left': '30px'}),
                                     dcc.Input(id="pixel-size-ratio", type="number", value=1,
                                     style={"width": "60%", "margin-left": "30px"},
-                                              persistence=config['persistence'], persistence_type='local')],
+                                    persistence=config['persistence'], persistence_type='local', debounce=True)],
                                     style={"display": "block"})
                                           ], style={"display": "flex"}),
                                     html.Br(),

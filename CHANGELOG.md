@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-11
+## [0.12.0] - 2024-01-15
 
 ### Added
 
@@ -38,6 +38,7 @@ with the pixel ratio
 imported from h5py
 - Annotating the UMAP from the UMAP plot will trigger the recent annotation to be applied to the visualization
 - Fix improper range slider tick markers and maximum for channels with a max below 1
+- Add global filter variables to annotation PDF writer
 
 ## [0.11.0] - 2023-12-21
 
