@@ -1,7 +1,7 @@
 import os.path
 
 from ccramic.io.display import (
-    generate_area_statistics_dataframe,
+    RegionSummary,
     output_current_canvas_as_tiff,
     output_current_canvas_as_html)
 import numpy as np
@@ -22,8 +22,8 @@ def test_generate_channel_statistics_dataframe():
 
     # First stats option: when zoom is used for two channels
 
-    stats_1 = pd.DataFrame(generate_area_statistics_dataframe(graph_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
-                                                 aliases))
+    stats_1 = pd.DataFrame(RegionSummary(graph_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                                 aliases).get_summary_frame())
     assert len(stats_1) == 2
     assert list(stats_1['Max'] == [100, 300])
     assert list(stats_1['Min'] == [100, 300])
@@ -54,8 +54,8 @@ def test_generate_channel_statistics_dataframe():
                                           '283.7814371257485L219.1107784431138,277.4940119760479Z'}]}
 
     stats_2 = pd.DataFrame(
-        generate_area_statistics_dataframe(graph_layout_2, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(graph_layout_2, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
     assert len(stats_2) == 1
     assert list(stats_2['Min']) == [200]
 
@@ -77,8 +77,8 @@ def test_generate_channel_statistics_dataframe():
                                   'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
 
     stats_3 = pd.DataFrame(
-        generate_area_statistics_dataframe(graph_layout_3, upload_dict, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(graph_layout_3, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
 
     assert len(stats_3) == 4
     assert list(stats_3['Max'] == [100, 300, 100, 300])
@@ -100,8 +100,8 @@ def test_generate_channel_statistics_dataframe():
                                         '392.0149700598802L343.062874251497,392.0149700598802Z'}
 
     stats_4 = pd.DataFrame(
-        generate_area_statistics_dataframe(graph_layout_4, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(graph_layout_4, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
     assert len(stats_4) == 1
     assert list(stats_4['Min']) == [200]
 
@@ -112,8 +112,8 @@ def test_generate_channel_statistics_dataframe():
                       'shapes[1].y0': 111.32634730538922, 'shapes[1].y1': 311.62574850299404}
 
     stats_5 = pd.DataFrame(
-        generate_area_statistics_dataframe(graph_layout_5, upload_dict, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(graph_layout_5, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
 
     assert len(stats_5) == 2
     assert list(stats_5['Max'] == [100, 300])
@@ -126,8 +126,8 @@ def test_generate_channel_statistics_dataframe():
     empty_layout = {'display': None}
 
     stats_6 = pd.DataFrame(
-        generate_area_statistics_dataframe(empty_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(empty_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
     assert len(stats_6) == 0
 
 
@@ -161,8 +161,8 @@ def test_generate_channel_statistics_dataframe_errors():
                                   'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
 
     stats = pd.DataFrame(
-        generate_area_statistics_dataframe(graph_layout_bad, upload_dict, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(graph_layout_bad, upload_dict, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
     assert len(stats) == 4
     assert list(stats['Max'] == [0, 0, 100, 300])
     assert list(stats['Min'] == [0, 0, 100, 300])
@@ -180,8 +180,8 @@ def test_generate_channel_statistics_dataframe_errors():
     aliases = {"DNA": "DNA", "Cytoplasm": "Cytoplasm", "Nuclear": "Nuclear"}
 
     stats_none = pd.DataFrame(
-        generate_area_statistics_dataframe(graph_layout, upload_dict_none, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(graph_layout, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
     assert len(stats_none) == 0
 
 
@@ -189,8 +189,8 @@ def test_generate_channel_statistics_dataframe_errors():
                       'shapes[1].y0': 111.32634730538922, 'shapes[1].y1': 311.62574850299404}
 
     stats_none_2 = pd.DataFrame(
-        generate_area_statistics_dataframe(shape_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(shape_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
 
     assert len(stats_none_2 ) == 0
 
@@ -206,8 +206,8 @@ def test_generate_channel_statistics_dataframe_errors():
                                         '392.0149700598802L343.062874251497,392.0149700598802Z'}
 
     stats_none_3 = pd.DataFrame(
-        generate_area_statistics_dataframe(path_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(path_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
 
     assert len(stats_none_3) == 0
 
@@ -228,8 +228,8 @@ def test_generate_channel_statistics_dataframe_errors():
                                   'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
 
     stats_none_4 = pd.DataFrame(
-        generate_area_statistics_dataframe(graph_layout_shapes, upload_dict_none, layers, "experiment0+++slide0+++acq0",
-                                           aliases))
+        RegionSummary(graph_layout_shapes, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+                                           aliases).get_summary_frame())
 
     assert len(stats_none_4) == 0
 

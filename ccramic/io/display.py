@@ -1,5 +1,3 @@
-import math
-from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
 from ccramic.utils.region import RectangleRegion, FreeFormRegion
@@ -8,18 +6,43 @@ from tifffile import imwrite
 import numpy as np
 import plotly.graph_objs as go
 
-# TODO: re-write to reduce cyclomatic complexity
-def generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict,
-                                       zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]',
-                                                  'yaxis.range[1]', 'yaxis.range[0]'],
-                                       modified_rect_keys=['shapes[1].x0', 'shapes[1].x1',
-                                                           'shapes[1].y0', 'shapes[1].y1']):
+class RegionSummary:
     """
-    Generate a Pandas Dataframe of channel information for selected region(s)
-    Regions can be drawn on the `dcc.Graph` using zoom, rectangles, or closed freeform shapes with an svgpath
+    Produces a dictionary or dataframe of one or more regions of one of more channels
+    with summary pixel-level statistics for minimum, mean, and maximum array values
+    Statistics may be computed for various types of shapes drawn on the interactive canvas,
+    and identified from the `dash`-based graph layout: zoom, rectangle shapes, and svg freeform paths
     """
-    # option 1: if shapes are drawn on the canvas
-    if 'shapes' in graph_layout and len(graph_layout['shapes']) > 0:
+    def __init__(self, graph_layout, image_dict, layers, data_selection, aliases_dict):
+        self.graph_layout = graph_layout
+        self.image_dict = image_dict
+        self.data_selection = data_selection
+        self.aliases = aliases_dict
+        # these are the zoom keys by default
+        self.zoom_keys  = ('xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]')
+        # if a rectangle is modified in the canvas, these are the new keys in the layout dictionary
+        self.modified_rect_keys = ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')
+        self.selected_channels = layers
+        # initialize the empty frame
+        self.summary_frame = pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
+                             'Min': []}).to_dict(orient='records')
+
+        if 'shapes' in self.graph_layout and len(self.graph_layout['shapes']) > 0:
+            self.compute_statistics_shapes()
+        elif ('shapes' not in self.graph_layout or len(self.graph_layout['shapes']) <= 0) and \
+                all([elem in self.graph_layout for elem in self.zoom_keys]):
+            self.compute_statistics_rectangle(reg_type="zoom", redrawn=False)
+        elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
+                all([elem in graph_layout for elem in self.modified_rect_keys]):
+            self.compute_statistics_rectangle(reg_type="rect", redrawn=True)
+        elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
+                all(['shapes' in elem and 'path' in elem for elem in graph_layout.keys()]):
+            self.compute_statistics_modified_svg_path()
+
+    def compute_statistics_shapes(self):
+        """
+        Compute the region statistics when new shapes are drawn on the canvas and are not modified
+        """
         # these are for each sample
         mean_panel = []
         max_panel = []
@@ -27,26 +50,27 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
         aliases = []
         region = []
         region_index = 1
-        shapes_keep = [shape for shape in graph_layout['shapes'] if shape['type'] not in ['line']]
+        shapes_keep = [shape for shape in self.graph_layout['shapes'] if shape['type'] not in ['line']]
         for shape in shapes_keep:
             try:
                 # option 1: if the shape is drawn with a rectangle
                 if shape['type'] == 'rect':
-                    for layer in layers:
-                        region_shape = RectangleRegion(upload[data_selection][layer], shape, reg_type="rect")
+                    for layer in self.selected_channels:
+                        region_shape = RectangleRegion(self.image_dict[self.data_selection][layer],
+                                                       shape, reg_type="rect")
                         mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                         max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                         min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
+                        aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                         region.append(region_index)
                     # option 2: if a closed form shape is drawn
                 elif shape['type'] == 'path' and 'path' in shape:
-                    for layer in layers:
-                        region_shape = FreeFormRegion(upload[data_selection][layer], shape)
+                    for layer in self.selected_channels:
+                        region_shape = FreeFormRegion(self.image_dict[self.data_selection][layer], shape)
                         mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                         max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                         min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
-                        aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
+                        aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                         region.append(region_index)
                 region_index += 1
                 # mean_panel.append(round(sum(shapes_mean) / len(shapes_mean), 2))
@@ -60,82 +84,60 @@ def generate_area_statistics_dataframe(graph_layout, upload, layers, data_select
 
         layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
                       'Region': region}
-        return pd.DataFrame(layer_dict).to_dict(orient='records')
+        self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
-    # option 2: if the zoom is used
-    elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-            all([elem in graph_layout for elem in zoom_keys]):
-
+    def compute_statistics_rectangle(self, reg_type="zoom", redrawn=False):
+        """
+        Compute the region statistics when a rectangular shape or zoom is enabled
+        `reg_type` will specify the type of shape or zoom used for the region,
+        and `redrawn` specifies if the keys are modified when an existing shape is changed
+        """
         try:
             mean_panel = []
             max_panel = []
             min_panel = []
             aliases = []
 
-            for layer in layers:
-                region = RectangleRegion(upload[data_selection][layer], graph_layout, reg_type="zoom")
+            for layer in self.selected_channels:
+                region = RectangleRegion(self.image_dict[self.data_selection][layer],
+                                         self.graph_layout, reg_type=reg_type, redrawn=redrawn)
                 mean_panel.append(round(float(region.compute_pixel_mean()), 2))
                 max_panel.append(round(float(region.compute_pixel_max()), 2))
                 min_panel.append(round(float(region.compute_pixel_min()), 2))
-                aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
+                aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
 
             layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
 
-            return pd.DataFrame(layer_dict).to_dict(orient='records')
+            self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
         except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
-            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                 'Min': []}).to_dict(orient='records')
+            pass
 
-    # option 3: if a shape has already been created and is modified
-    elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-            all([elem in graph_layout for elem in modified_rect_keys]):
+    def compute_statistics_modified_svg_path(self):
+        """
+        Compute the region statistics when a freeform svg path is drawn, then modified on the canvas
+        """
         try:
             mean_panel = []
             max_panel = []
             min_panel = []
             aliases = []
-
-            for layer in layers:
-                region_shape = RectangleRegion(upload[data_selection][layer], graph_layout,
-                                               reg_type="rect", redrawn=True)
-                mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
-                max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
-                min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
-                aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
-            layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
-            return pd.DataFrame(layer_dict).to_dict(orient='records')
-
-        except (AssertionError, ValueError, ZeroDivisionError, _ArrayMemoryError, TypeError):
-            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                 'Min': []}).to_dict(orient='records')
-
-    # option 4: if an svg path has already been created and it is modified
-    elif ('shapes' not in graph_layout or len(graph_layout['shapes']) <= 0) and \
-            all(['shapes' in elem and 'path' in elem for elem in graph_layout.keys()]):
-        try:
-            mean_panel = []
-            max_panel = []
-            min_panel = []
-            aliases = []
-            for layer in layers:
-                for shape_path in graph_layout.values():
-                    region_shape = FreeFormRegion(upload[data_selection][layer], shape_path)
+            for layer in self.selected_channels:
+                for shape_path in self.graph_layout.values():
+                    region_shape = FreeFormRegion(self.image_dict[self.data_selection][layer], shape_path)
                     mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                     max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                     min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
-                aliases.append(aliases_dict[layer] if layer in aliases_dict.keys() else layer)
+                aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
             layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
 
-            return pd.DataFrame(layer_dict).to_dict(orient='records')
+            self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
         except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError, AttributeError):
-            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                                 'Min': []}).to_dict(orient='records')
-    else:
-        return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                             'Min': []}).to_dict(orient='records')
+            pass
+
+    def get_summary_frame(self):
+        return self.summary_frame
 
 
 def output_current_canvas_as_tiff(canvas_image, dest_dir="/tmp/", output_file="canvas.tiff"):

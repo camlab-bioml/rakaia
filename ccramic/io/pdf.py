@@ -59,22 +59,7 @@ class AnnotationPDFWriter:
                             image = np.clip(image, 0, 255)
                         except KeyError:
                             image = None
-                        if value['use_mask'] and None not in (self.mask_config, value['mask_selection']) and \
-                                len(self.mask_config) > 0:
-                            if image.shape[0] == self.mask_config[value['mask_selection']]["array"].shape[0] and \
-                                image.shape[1] == self.mask_config[value['mask_selection']]["array"].shape[1]:
-                                # set the mask blending level based on the slider, by default use an equal blend
-                                mask_level = float(value['mask_blending_level'] / 100) if \
-                                value['mask_blending_level'] is not None else 1
-                                image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                                self.mask_config[value['mask_selection']]["array"].astype(np.uint8),
-                                                mask_level, 0)
-                            if value['add_mask_boundary'] and \
-                                    self.mask_config[value['mask_selection']]["boundary"] is not None:
-                                    # add the border of the mask after converting back to greyscale to derive the conversion
-                                reconverted = np.array(Image.fromarray(self.mask_config[value['mask_selection']][
-                                                                                  "boundary"]).convert('RGB'))
-                                image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
+                        image = self.generate_additive_image_for_pdf(image, value)
                         region = np.array(image[np.ix_(range(int(y_min), int(y_max), 1),
                                                range(int(x_min), int(x_max), 1))]).astype(np.uint8)
                         aspect_ratio = image.shape[1] / image.shape[0]
@@ -93,17 +78,8 @@ class AnnotationPDFWriter:
                         ax.set_yticks([])
                         x_dims = float(x_max) - float(x_min)
                         y_dims = float(y_max) - float(y_min)
-                        patches = []
-                        for channel in value['channels']:
-                            label = self.aliases[channel] if channel in self.aliases.keys() else channel
-                            if self.blend_dict is not None:
-                                try:
-                                    col_use = self.blend_dict[channel]['color']
-                                except KeyError:
-                                    col_use = 'white'
-                            else:
-                                col_use = 'white'
-                            patches.append(mpatches.Patch(color=col_use, label=label))
+                        # TODO: add patches function
+                        patches = self.pdf_patches_legend(value)
                         body = str(value['body']).replace(r'\n', '\n')
                         description = "Description:\n" + body + "\n\n" + "" \
                                 "Region dimensions: " + str(int(x_dims)) + "x" + str(int(y_dims))
@@ -119,3 +95,36 @@ class AnnotationPDFWriter:
                 pdf.savefig()
             return self.filepath
         return None
+
+    def generate_additive_image_for_pdf(self, image, value):
+        if value['use_mask'] and None not in (self.mask_config, value['mask_selection']) and \
+                len(self.mask_config) > 0:
+            if image.shape[0] == self.mask_config[value['mask_selection']]["array"].shape[0] and \
+                    image.shape[1] == self.mask_config[value['mask_selection']]["array"].shape[1]:
+                # set the mask blending level based on the slider, by default use an equal blend
+                mask_level = float(value['mask_blending_level'] / 100) if \
+                    value['mask_blending_level'] is not None else 1
+                image = cv2.addWeighted(image.astype(np.uint8), 1,
+                                        self.mask_config[value['mask_selection']]["array"].astype(np.uint8),
+                                        mask_level, 0)
+            if value['add_mask_boundary'] and \
+                    self.mask_config[value['mask_selection']]["boundary"] is not None:
+                # add the border of the mask after converting back to greyscale to derive the conversion
+                reconverted = np.array(Image.fromarray(self.mask_config[value['mask_selection']][
+                                                           "boundary"]).convert('RGB'))
+                image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
+        return image
+
+    def pdf_patches_legend(self, value):
+        patches = []
+        for channel in value['channels']:
+            label = self.aliases[channel] if channel in self.aliases.keys() else channel
+            if self.blend_dict is not None:
+                try:
+                    col_use = self.blend_dict[channel]['color']
+                except KeyError:
+                    col_use = 'white'
+            else:
+                col_use = 'white'
+            patches.append(mpatches.Patch(color=col_use, label=label))
+        return patches

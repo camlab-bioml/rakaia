@@ -37,7 +37,7 @@ from ccramic.utils.pixel_level_utils import (
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
 from ccramic.io.display import (
-    generate_area_statistics_dataframe,
+    RegionSummary,
     output_current_canvas_as_tiff,
     output_current_canvas_as_html)
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
@@ -1482,12 +1482,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # modified_rect_keys = ['shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1']
         if graph is not None and graph_layout is not None and data_selection is not None and \
                 nclicks and stats_table_open:
-            return generate_area_statistics_dataframe(graph_layout, upload, layers, data_selection, aliases_dict)
+            return RegionSummary(graph_layout, upload, layers, data_selection, aliases_dict).get_summary_frame()
         elif stats_table_open:
             return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [], 'Min': []}).to_dict(orient='records')
         else:
             raise PreventUpdate
-
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
                        Output('blending_colours', 'data', allow_duplicate=True),
