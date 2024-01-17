@@ -212,3 +212,26 @@ def test_return_umap_dataframe_from_quantification_dict(get_current_dir):
     cur_umap = pd.DataFrame({'UMAP1': [1, 2, 3, 4, 5, 6], 'UMAP2': [1, 2, 3, 4, 5, 6]})
     umap, cols = return_umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False)
     assert isinstance(umap, dash._callback.NoUpdate)
+
+def test_gating_cell_ids(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    gating_selection = ['191Ir_DNA1', '168Er_Ki67']
+    gating_dict = {'191Ir_DNA1': [10, 20], '168Er_Ki67': [0.5, 1]}
+    cell_ids = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1")
+    assert len(cell_ids) > 0
+    cell_id_intersection = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1",
+                                                      intersection=True)
+    assert len(cell_ids) > len(cell_id_intersection)
+
+    fake_frame = pd.DataFrame({"191Ir_DNA1": [1, 2, 3, 4, 5],
+                               "168Er_Ki67": [1, 2, 3, 4, 5]})
+
+    # if there is no column to match the ids to the mask, return empty
+    assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
+                                                      intersection=True) == []
+
+    fake_frame = pd.DataFrame({"191Ir_DNA1": [1, 2, 3, 4, 5],
+                               "168Er_Ki67": [1, 2, 3, 4, 5],
+                               "description": ["roi", "roi", "roi", "roi", "roi"]})
+    assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
+                                      intersection=True) == []

@@ -502,8 +502,6 @@ def register_app_layout(config, cache_dest):
                                                         style={"width": "60%"},
                                                         disabled=True, min=0, max=9, step=0.1)],
                                     style={"display": "flex", "margin": "20px"}),
-                                    html.Br(),
-                                    # TODO: add tab for mask gating by channel quantification
                                     dbc.Tabs(id='mask-gate-config',
                                     children=[dbc.Tab(id='mask-config', label='Mask',
                                     children=[html.Br(),
@@ -527,16 +525,27 @@ def register_app_layout(config, cache_dest):
                                         style={"margin-left": "35px","margin-top": "10px"})],
                                         style={"display": "flex"})])
                                                                ]),
-                                    # dbc.Tab(id='gating-config', label='Gating',
-                                    #     children=[
-                                    # html.Br(),
-                                    # html.H5("Gating configuration"),
-                                    # html.Br(),
-                                    # html.H6("Set channel for mask gating"),
-                                    # dcc.Dropdown(id='gating-channel-options', multi=False,
-                                    # options=[], style={'width': '100%', 'display': 'inline-block',
-                                    #                    'margin-right': '-50'})
-                                    #     ])
+                                    dbc.Tab(id='gating-config', label='Gating',
+                                        children=[
+                                    html.Br(),
+                                    html.H5("Gating configuration"),
+                                    html.Br(),
+                                    html.H6("Set channel for mask gating"),
+                                    dcc.Dropdown(id='gating-channel-options', multi=False,
+                                    options=[], style={'width': '100%', 'display': 'inline-block',
+                                                       'margin-right': '-50'}),
+                                    html.Br(),
+                                    html.Br(),
+                                    html.Div([daq.ToggleSwitch(label='Apply gating', id='apply-gating',
+                                        labelPosition='bottom', value=False, color="blue",
+                                        style={"width": "45%", "margin-left": "-20px"}),
+                                    dcc.Input(id="gating-lower-bound", type="number",
+                                        placeholder="Gating (lower)",
+                                        value=None, style={"width": "35%", "height": "50%"}, debounce=True),
+                                    dcc.Input(id="gating-upper-bound", type="number",
+                                        placeholder="Gating (upper)",
+                                        value=None, style={"width": "35%", "height": "50%"}, debounce=True)
+                                        ], style={"display": "flex"})])
                                 ]),
                                 ]),
                                 dbc.Tab(label="Region/Presets",
@@ -958,6 +967,7 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id='cluster-colour-assignments-dict'),
         dcc.Store(id="database-connection"),
         dcc.Store(id="db-saved-configs"),
+        dcc.Store(id="gating-dict"),
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
         dcc.Store(id='query-cell-id-lists'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),

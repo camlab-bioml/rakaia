@@ -67,18 +67,6 @@ class CanvasImage:
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
             self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
-        # if len(self.global_apply_filter) > 0 and None not in (self.global_filter_type, self.global_filter_val) and \
-        #         int(self.global_filter_val) % 2 != 0:
-        #     if self.global_filter_type == "median" and int(self.global_filter_val) >= 1:
-        #         try:
-        #             image = cv2.medianBlur(image, int(self.global_filter_val))
-        #         except (ValueError, cv2.error):
-        #             pass
-        #     else:
-        #         # array = gaussian_filter(array, int(filter_value))
-        #         if int(self.global_filter_val) >= 1:
-        #             image = cv2.GaussianBlur(image, (int(self.global_filter_val),
-        #                                              int(self.global_filter_val)), float(self.global_filter_sigma))
         image = apply_filter_to_array(image, self.global_apply_filter, self.global_filter_type, self.global_filter_val,
                                       self.global_filter_sigma)
         image = np.clip(image, 0, 255)
@@ -87,7 +75,6 @@ class CanvasImage:
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
             if image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
                     image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
-                # TODO: establish when to apply cluster mask
                 mask_level = float(self.mask_blending_level / 100) if self.mask_blending_level is not None else 1
                 if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame) and \
                         self.data_selection in self.cluster_assignments_dict.keys() and self.cluster_type == 'mask':
@@ -138,7 +125,7 @@ class CanvasImage:
                                                      shape['type'] != 'line']
                 fig = self.cur_graph
                 # del cur_graph
-            # keyerror could happen if the canvas is reset with no layers, so rebuild from scratch
+            # key error could happen if the canvas is reset with no layers, so rebuild from scratch
             except (KeyError, TypeError):
                 fig = self.canvas
                 fig['layout']['uirevision'] = True
@@ -306,7 +293,7 @@ class CanvasLayout:
             assert x_range_high >= x_range_low
             custom_scale_val = int(float(math.ceil(int(proportion *
                                 (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, AssertionError):
             custom_scale_val = None
 
         fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,

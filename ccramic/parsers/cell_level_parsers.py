@@ -15,6 +15,7 @@ import sys
 from sklearn.preprocessing import StandardScaler
 import scanpy as sc
 from ccramic.io.session import SessionServerside
+from typing import Union
 
 def drop_columns_from_measurements_csv(measurements_csv):
     cols_to_drop = set_columns_to_drop(measurements_csv)
@@ -328,19 +329,21 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
     return mask_return
 
 
-def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list, sample_col_id="sample"):
+def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list: Union[list, None],
+                                                sample_col_id="sample"):
     """
     Match a mask name to a sample ID in the quantification sheet, either in the `description` or `sample` table
     Example: query_s0_a2_ac_IA_mask will match to query_2 in the quantification sheet
     """
     sam_id = None
-    if mask_selection in cell_id_list:
+    if cell_id_list is not None and mask_selection in cell_id_list:
         sam_id = mask_selection
     else:
         # also look for partial match of the cell id list to the mark name
-        for roi_id in cell_id_list:
-            if roi_id in mask_selection:
-                sam_id = roi_id
+        if cell_id_list is not None:
+            for roi_id in cell_id_list:
+                if roi_id in mask_selection:
+                    sam_id = roi_id
         # if this pattern exists, try to match to the sample name by index
         # otherwise, try matching directly by name
         if sam_id is None and "_ac_IA_mask" in mask_selection:
@@ -392,3 +395,49 @@ def parse_quantification_sheet_from_h5ad(h5ad_file):
         drop=True)
     # return the merged version of the data frames to mimic the pipeline
     return expression.join(quantification_frame.obs.reset_index(drop=True))
+
+def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
+                               quantification_frame: Union[dict, pd.DataFrame]=None,
+                               mask_identifier: str=None, quantification_sample_col: str='sample',
+                               quantification_object_col:str='cell_id', intersection=False):
+    """
+    Produce a list of object ids (i.e. cells from segmentation) from a mask that is gated on
+    one or more quantifiable traits. Cell ids are used to subset the mask to show only gated cells
+    gating dict has the form {channel: [lower_bound, upper_bound]} where the bounds indicate which cells
+    should be retained with expression values in the channel range
+    Can either use the intersection or union of gating on multiple traits
+    """
+    # set the query representation of intersection or union in query
+    combo = "& " if intersection else "| "
+    query = ""
+    # build a query string for each of the elements to gate on
+    gating_index = 0
+    for gating_elem in gating_selection:
+        # do not add the string combo at the end
+        combo = combo if gating_index < (len(gating_selection) - 1) else ""
+        query = query + f'(`{gating_elem}` >= {gating_dict[gating_elem][0]} &' \
+                        f'`{gating_elem}` <= {gating_dict[gating_elem][1]}) {combo}'
+        gating_index += 1
+
+    # TODO: figure out parameters for matching the mask to the quantification sheet
+    # set the possible mask names from the quantification sheet from either the description or the sample name
+    designation_column = 'sample'
+    try:
+        if 'description' in quantification_frame.columns:
+            id_list = quantification_frame['description'].to_list()
+            designation_column = 'description'
+        else:
+            id_list = quantification_frame['sample'].to_list()
+    except KeyError:
+        id_list = None
+    mask_quant_match = None
+    if None not in (mask_identifier, id_list):
+        mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier, id_list, quantification_sample_col)
+    if mask_quant_match is not None:
+        query = quantification_frame.query(query)
+        # pull the cell ids from the subset of the quantification frame from the query where the
+        # mask matches the one provided
+        cell_ids = query[query[designation_column] == mask_quant_match][quantification_object_col].tolist()
+    else:
+        cell_ids = []
+    return cell_ids

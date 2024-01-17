@@ -241,6 +241,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('umap-projection', 'data', allow_duplicate=True),
                        Output('umap-projection-options', 'options'),
+                       Output('gating-channel-options', 'options'),
                        Input('quantification-dict', 'data'),
                        State('umap-projection', 'data'),
                        Input('execute-umap-button', 'n_clicks'),
@@ -251,16 +252,17 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         of the embeddings and a list of the channels for interactive projection
         """
         if ctx.triggered_id == "quantification-dict":
-            return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
+            return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         else:
             try:
                 if n_clicks > 0:
                     return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
-                            current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite'])
+                            current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite']), \
+                        list(pd.DataFrame(quantification_dict).columns)
                 else:
                     raise PreventUpdate
             except ValueError:
-                return dash.no_update, list(pd.DataFrame(quantification_dict).columns)
+                return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
 
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Output('umap-div-holder', 'style', allow_duplicate=True),

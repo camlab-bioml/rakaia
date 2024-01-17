@@ -3,16 +3,16 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 from ccramic.utils.cell_level_utils import (
     get_min_max_values_from_zoom_box,
-    get_min_max_values_from_rect_box,
-    get_bounding_box_for_svgpath)
+    get_min_max_values_from_rect_box)
 import numpy as np
 import cv2
 from PIL import Image
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
-from ccramic.utils.pixel_level_utils import apply_filter_to_array
-
+from ccramic.utils.pixel_level_utils import (
+    apply_filter_to_array,
+    get_bounding_box_for_svgpath)
 
 class AnnotationPDFWriter:
     """

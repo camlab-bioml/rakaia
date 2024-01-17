@@ -1,7 +1,6 @@
 import collections
 import pytest
 import dash_extensions
-import tempfile
 from ccramic.utils.cell_level_utils import *
 from ccramic.parsers.cell_level_parsers import *
 from conftest import skip_on
