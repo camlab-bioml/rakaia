@@ -82,23 +82,22 @@ class CanvasImage:
         image = apply_filter_to_array(image, self.global_apply_filter, self.global_filter_type, self.global_filter_val,
                                       self.global_filter_sigma)
         image = np.clip(image, 0, 255)
-        self.image = image
         self.proportion = 0.1 if self.custom_scale_val is None else \
             float(custom_scale_val / (image.shape[1] * self.pixel_ratio))
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
-            if self.image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
-                    self.image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
+            if image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
+                    image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
                 # TODO: establish when to apply cluster mask
                 mask_level = float(self.mask_blending_level / 100) if self.mask_blending_level is not None else 1
                 if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame) and \
                         self.data_selection in self.cluster_assignments_dict.keys() and self.cluster_type == 'mask':
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
                                 self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
-                    image = cv2.addWeighted(self.image.astype(np.uint8), 1,
+                    image = cv2.addWeighted(image.astype(np.uint8), 1,
                                             annot_mask, mask_level, 0)
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
-                    image = cv2.addWeighted(self.image.astype(np.uint8), 1,
+                    image = cv2.addWeighted(image.astype(np.uint8), 1,
                                         self.mask_config[self.mask_selection]["array"].astype(np.uint8), mask_level, 0)
                 if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
                     # add the border of the mask after converting back to greyscale to derive the conversion
@@ -108,7 +107,8 @@ class CanvasImage:
         if ' overlay grid' in self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     generate_greyscale_grid_array((image.shape[0], image.shape[1])), 1, 0)
-
+        # TODO: decide if grid lines should be included in the class image for export to tiff
+        self.image = image
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
                                 binary_compression_level=5)
         # fig.update(data=[{'customdata':)
