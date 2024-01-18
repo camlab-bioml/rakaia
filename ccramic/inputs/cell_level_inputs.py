@@ -7,6 +7,7 @@ from pandas.errors import UndefinedVariableError
 import plotly.express as px
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
+import numpy as np
 
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                      subset_dict=None, drop_cols=True):
@@ -42,7 +43,7 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
     else:
         return None
 
-def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True):
+def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, subset_val=None):
     """
     Generate a heatmap of the current quantification frame (total or subset)
     """
@@ -52,9 +53,20 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True):
     if cols_include is not None and len(cols_include) > 0 and \
             all([elem in measurements.columns for elem in cols_include]):
         measurements = measurements[cols_include]
+    # add a string to the title if subsampling is used
+    subset_str = ""
+    if subset_val is not None and isinstance(subset_val, int) and subset_val < len(measurements):
+        measurements = measurements.sample(n=subset_val).reset_index(drop=True)
+        subset_str = "(Sub-sampled)"
+    # return go.Figure(go.Heatmap(
+    # z=measurements,
+    # x=measurements.columns,
+    # y=measurements.index,
+    # # colorscale='Blues',
+    # zsmooth=False))
     return px.imshow(measurements, x=measurements.columns, y=measurements.index,
                     labels=dict(x="Channel", y="Cells", color="Expression Mean"),
-                    title=f"Channel expression per cell ({len(measurements)} cells)")
+                    title=f"Channel expression per cell ({len(measurements)} cells) {subset_str}")
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
     if embeddings is not None and len(embeddings) > 0:
@@ -121,7 +133,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
 def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings, zoom_keys,
                                                 triggered_id, cols_drop=True,
                                                 category_column=None, category_subset=None, cols_include=None,
-                                                normalize=True):
+                                                normalize=True, subset_val=None):
     """
     Generate a heatmap of the quantification frame, trimmed to only the channel columns, based on an interactive
     subset from the UMAP graph
@@ -149,7 +161,8 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         # only recreate the graph if new data are passed from the UMAP, not on a recolouring of the UMAP
         if triggered_id not in ["umap-projection-options"] or category_column is None:
             # IMP: reset the index for the heatmap to avoid uneven box sizes
-            fig = generate_channel_heatmap(subset_frame.reset_index(drop=True), cols_include=cols_include)
+            fig = generate_channel_heatmap(subset_frame.reset_index(drop=True), cols_include=cols_include,
+                                           subset_val=subset_val)
             fig['layout']['uirevision'] = True
         else:
             fig = dash.no_update

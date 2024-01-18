@@ -106,10 +106,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('quant-heatmap-channel-list', 'value'),
                        State('quant-heatmap-channel-list', 'options'),
                        Input('normalize-heatmap', 'value'),
+                       Input('subset-heatmap', 'value'),
                        prevent_initial_call=True)
-    def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings,
-                                            annot_cols, restyle_data, umap_col_selection, prev_categories,
-                                            channels_to_display, heatmap_channel_options, normalize_heatmap):
+    def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings, annot_cols, restyle_data,
+                                            umap_col_selection, prev_categories, channels_to_display,
+                                            heatmap_channel_options, normalize_heatmap, subset_heatmap):
         # TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
@@ -136,7 +137,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
                         umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
-                        subtypes, channels_to_display, normalize=normalize_heatmap)
+                        subtypes, channels_to_display, normalize=normalize_heatmap, subset_val=subset_heatmap)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             if frame is not None:

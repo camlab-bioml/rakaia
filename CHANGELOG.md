@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-17
+## [0.12.0] - 2024-01-18
 
 ### Added
 
@@ -16,6 +16,7 @@ to and/remove current and saved session configurations
 (blend parameters, global filters, channel selection, naming/aliases)
 (Note: uses an 0 Sandbox version for initial testing)
 - Custom exception for panel length mismatches on file parsing
+- Optional integer input to down-sample the heatmap for proper rendering
 
 ### Changed
 
@@ -31,6 +32,7 @@ prompts instead of an `html.A` hyperlink
 - custom scalebar value now sets the length of the scalebar by the value input and combines
 with the pixel ratio
 - ROI thumbnail queries can now be generated from tiff and txt files
+- Download for the UMAP projection moved into the UMAP configuration modal
 
 
 ### Fixed
