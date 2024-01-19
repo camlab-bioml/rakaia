@@ -58,15 +58,23 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     if subset_val is not None and isinstance(subset_val, int) and subset_val < len(measurements):
         measurements = measurements.sample(n=subset_val).reset_index(drop=True)
         subset_str = "(Sub-sampled)"
+    # TODO: figure out why the colour bars won't render after a certain number of dataframe elements
+    # https://github.com/plotly/plotly.py/issues/4484
     # return go.Figure(go.Heatmap(
     # z=measurements,
     # x=measurements.columns,
     # y=measurements.index,
     # # colorscale='Blues',
     # zsmooth=False))
-    return px.imshow(measurements, x=measurements.columns, y=measurements.index,
+    array_measure = np.array(measurements)
+    zmax = 1 if np.max(array_measure) <= 1 else np.max(array_measure)
+    fig = go.Figure(px.imshow(array_measure, x=measurements.columns, y=measurements.index,
                     labels=dict(x="Channel", y="Cells", color="Expression Mean"),
-                    title=f"Channel expression per cell ({len(measurements)} cells) {subset_str}")
+                    title=f"Channel expression per cell ({len(measurements)} cells) {subset_str}",
+                              zmax=zmax))
+    fig.update_xaxes(tickangle=90)
+    fig.update_layout(xaxis = dict(tickmode = 'linear'))
+    return fig
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
     if embeddings is not None and len(embeddings) > 0:

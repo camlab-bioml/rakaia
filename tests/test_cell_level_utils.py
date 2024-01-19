@@ -1,7 +1,6 @@
 import collections
 import pytest
 import dash_extensions
-import tempfile
 from ccramic.utils.cell_level_utils import *
 from ccramic.parsers.cell_level_parsers import *
 from conftest import skip_on
@@ -47,7 +46,8 @@ def test_receive_alert_on_incompatible_mask():
     upload_dict = {"experiment0+++slide0+++acq0": {"channel_1": np.empty((50, 50))}}
     data_selection = "experiment0+++slide0+++acq0"
     mask_dict = {"mask": {"array": np.empty((50, 49))}}
-    error = send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
+    error, reset = send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, None, "mask", True)
+    assert reset is None
     assert 'error' in error.keys()
     with pytest.raises(PreventUpdate):
         # if the masks are the same, do not send error

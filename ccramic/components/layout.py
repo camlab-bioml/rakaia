@@ -638,10 +638,16 @@ def register_app_layout(config, cache_dest):
                                 dcc.Download(id="download-annotation-mask"),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
                                 style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                html.Div("Download point annotations (CSV)")], style={"display": "flex"}),
+                                html.Div("Download point/click annotations (CSV)")], style={"display": "flex"}),
                                 id="btn-download-points-csv", className="mx-auto", color=None,
                                 n_clicks=0, style={"margin-top": "10px"}),
                                 dcc.Download(id="download-point-csv"),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                html.Div("Download region annotations (CSV)")], style={"display": "flex"}),
+                                id="btn-download-region-csv", className="mx-auto", color=None, n_clicks=0,
+                                           style={"margin-top": "10px"}),
+                                dcc.Download(id="download-region-csv"),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dbc.Row([dbc.Col([html.H6("Create a region annotation")], width=8),
                                           dbc.Col([html.H6("Annotate with cell type")], width=4)]),
@@ -792,7 +798,6 @@ def register_app_layout(config, cache_dest):
                                 dbc.Tabs(id='cell-quant-tabs', children=[
                                     dbc.Tab(label='Heatmap', id='cell-quant-heatmap', tab_id='cell-quant-heatmap',
                                     children=[html.Br(),
-                                    # TODO: add toggle for normalization
                                     dcc.Graph(id="quantification-heatmap-full",
                                     figure={'layout': dict(xaxis_showgrid=False, autosize=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),

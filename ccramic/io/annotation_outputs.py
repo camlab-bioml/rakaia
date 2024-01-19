@@ -1,9 +1,12 @@
 import numpy as np
+
+from ccramic.io.session import create_download_dir
 from ccramic.utils.cell_level_utils import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box,
-    validate_mask_shape_matches_image)
-from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
+    validate_mask_shape_matches_image,
+    get_cells_in_svg_boundary_by_mask_percentage)
+from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary, split_string_at_pattern
 from ccramic.utils.pixel_level_utils import path_to_mask
 import os
 import tifffile
@@ -12,6 +15,44 @@ import shutil
 from dash import dcc
 import pandas as pd
 from dash.exceptions import PreventUpdate
+
+
+class AnnotationRegionWriter:
+    """
+    Represents an export of annotations that are not points to a CSV file.
+    Export should be done to retrieve the object ids (i.e. cell ids) from the masks for each annotation
+    This export can effectively replace the export of a quantification sheet with matched annotations in the event
+    that quantification results are not available
+    """
+    def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict):
+        self.annotation_dict = annotation_dict
+        self.roi_selection = data_selection
+        exp, slide, acq = split_string_at_pattern(data_selection)
+        self.acquisition_name = acq
+        self.mask_dict = mask_dict
+        self.region_object_frame = {"ROI": [], "mask_name": [], "cell_id": [], "annotation_col": [], "annotation": []}
+        self.filepath = None
+
+    def write_csv(self, dest_dir: str, dest_file: str="region_annotations.csv"):
+        create_download_dir(dest_dir)
+        self.filepath = str(os.path.join(dest_dir, dest_file))
+        if self.roi_selection in self.annotation_dict.keys() and \
+            len(self.annotation_dict[self.roi_selection].items()) > 0:
+            for key, value in self.annotation_dict[self.roi_selection].items():
+                # TODO: for now, just use svg paths
+                # make sure that the mask is not None so that the ids inside the mask can be extracted
+                if value['type'] == 'path' and value['mask_selection'] is not None:
+                    objects_included = get_cells_in_svg_boundary_by_mask_percentage(
+                        mask_array=self.mask_dict[value['mask_selection']]["raw"], svgpath=key)
+                    for obj in objects_included:
+                        self.region_object_frame['ROI'].append(self.acquisition_name)
+                        self.region_object_frame['mask_name'].append(str(value['mask_selection']))
+                        self.region_object_frame['cell_id'].append(int(obj))
+                        self.region_object_frame['annotation_col'].append(str(value['annotation_column']))
+                        self.region_object_frame['annotation'].append(str(value['cell_type']))
+        pd.DataFrame(self.region_object_frame).to_csv(self.filepath, index=False)
+        return self.filepath
+
 
 def export_annotations_as_masks(annotation_dict, output_dir, data_selection, mask_shape, canvas_mask=None):
     """

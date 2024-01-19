@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-18
+## [0.12.0] - 2024-01-19
 
 ### Added
 
@@ -17,6 +17,8 @@ to and/remove current and saved session configurations
 (Note: uses an 0 Sandbox version for initial testing)
 - Custom exception for panel length mismatches on file parsing
 - Optional integer input to down-sample the heatmap for proper rendering
+- Ability to export objects inside region annotations without having a matching quantification sheet:
+object ids (such as cells) can be exported in CSV format if the annotation has a corresponding mask
 
 ### Changed
 
@@ -43,6 +45,8 @@ imported from h5py
 - Fix improper range slider tick markers and maximum for channels with a max below 1
 - Add global filter variables to annotation PDF writer
 - Fixed storage step of underlying image in `CanvasImage` to allow export to tiff with mask or grid mods
+- Fixed overwriting previous annotation shapes when annotation categories are changed: shape parsing
+for annotations will now consider only the most recent shape drawn
 
 ## [0.11.0] - 2023-12-21
 

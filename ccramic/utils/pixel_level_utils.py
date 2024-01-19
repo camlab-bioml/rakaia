@@ -12,7 +12,7 @@ import cv2
 import re
 import random
 import numexpr as ne
-from scipy.sparse import issparse
+
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
 
@@ -88,7 +88,6 @@ def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low,
         return np.average(subset), np.max(subset), np.min(subset)
     except IndexError:
         return None, None, None
-
 
 def path_to_indices(path):
     """From SVG path to numpy array of coordinates, each row being a (row, col) point

@@ -21,6 +21,7 @@ from ccramic.inputs.cell_level_inputs import (
     generate_umap_plot,
     )
 from ccramic.io.pdf import AnnotationPDFWriter
+from ccramic.io.annotation_outputs import AnnotationRegionWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
@@ -323,6 +324,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             raise PreventUpdate
 
     @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
+                       Output('mask-options', 'value', allow_duplicate=True),
                        Input('mask-dict', 'data'),
                        State('data-collection', 'value'),
                        Input('uploaded_dict', 'data'),
@@ -563,6 +565,23 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         exp, slide, acq = split_string_at_pattern(data_selection)
         return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection, mask_dict, apply_mask,
                                                mask_selection, image_dict, authentic_id, tmpdirname)
+
+    @dash_app.callback(
+        Output("download-region-csv", "data"),
+        Input("btn-download-region-csv", "n_clicks"),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        State('mask-dict', 'data'),
+        prevent_initial_call=True)
+    # @cache.memoize())
+    def download_region_annotations_as_csv(n_clicks, annotations_dict, data_selection, mask_dict):
+        if n_clicks and None not in (annotations_dict, data_selection):
+            download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
+            return dcc.send_file(non_truthy_to_prevent_update(AnnotationRegionWriter(
+                annotations_dict, data_selection, mask_dict).write_csv(dest_dir=download_dir)))
+        else:
+            raise PreventUpdate
+
 
     @dash_app.callback(
         Output("download-umap-projection", "data"),
