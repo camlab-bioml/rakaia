@@ -2211,9 +2211,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if isinstance(canvas_layout, dict) and 'shapes' not in canvas_layout:
                 annotation_list[tuple(sorted(canvas_layout.items()))] = "zoom"
             # Option 2: if a shape is drawn on the canvas
-            elif 'shapes' in canvas_layout and isinstance(canvas_layout, dict):
+            elif 'shapes' in canvas_layout and isinstance(canvas_layout, dict) and len(canvas_layout['shapes']) > 0:
                 # only get the shapes that are a rect or path, the others are canvas annotations
-                for shape in canvas_layout['shapes']:
+                # TODO: set using only the most recent shape to be added to avoid duplication
+                for shape in [canvas_layout['shapes'][-1]]:
                     if shape['type'] == 'path':
                         annotation_list[shape['path']] = 'path'
                     elif shape['type'] == "rect":

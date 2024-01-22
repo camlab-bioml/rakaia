@@ -114,6 +114,12 @@ def test_quantification_heatmap(get_current_dir):
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
     assert list(fig['data'][0]['x'])[0] == "209Bi_SMA"
 
+    fig = generate_channel_heatmap(measurements_csv, cols_include=cols_include, subset_val=200)
+    assert '(200 cells)' in fig['layout']['title']['text']
+    # assert that there is only one channel in the entire
+    assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
+    assert list(fig['data'][0]['x'])[0] == "209Bi_SMA"
+
 
 def test_heatmap_from_interactive_triggers(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}

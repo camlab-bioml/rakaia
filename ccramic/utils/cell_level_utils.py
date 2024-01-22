@@ -149,6 +149,10 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
 
 def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle):
+    """
+    Send an alert if the mask selected does not match the dimensions of the current canvas ROI
+    If a mismatch, clear the selected mask name to avoid confusion
+    """
     if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
         try:
             first_image = list(upload_dict[data_selection].keys())[0]
@@ -159,7 +163,7 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
                     error_config = {"error": None}
                 error_config["error"] = "Warning: the current mask does not have " \
                                     "the same dimensions as the current ROI."
-                return error_config
+                return error_config, None
             else:
                 raise PreventUpdate
         except KeyError:
@@ -298,6 +302,8 @@ def process_mask_array_for_hovertemplate(mask_array):
     mask_array[mask_array == '0.0'] = 'None'
     mask_array[mask_array == '0'] = 'None'
     return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))
+
+
 
 def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85):
     """

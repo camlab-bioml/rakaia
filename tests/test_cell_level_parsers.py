@@ -1,10 +1,7 @@
-import dash
-import pandas as pd
 import pytest
 from dash_uploader import UploadStatus
 import dash_extensions
 from ccramic.parsers.cell_level_parsers import *
-import scanpy as sc
 
 def test_validation_of_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
