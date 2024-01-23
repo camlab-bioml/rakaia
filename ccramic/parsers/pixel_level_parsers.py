@@ -279,8 +279,9 @@ def create_new_blending_dict(uploaded):
         if "metadata" not in roi:
             if panel_length is None:
                 panel_length = len(uploaded[roi].keys())
-            else:
-                assert len(uploaded[roi].keys()) == panel_length
+            if len(uploaded[roi].keys()) != panel_length:
+                raise PanelMismatchError("The imported file(s) appear to have different panels"
+                                         ". This is currently not supported by ccramic.")
             # assert that all of the rois have the same length to use the same panel for all
     first_roi = [elem for elem in list(uploaded.keys()) if 'metadata' not in elem][0]
     for channel in uploaded[first_roi].keys():

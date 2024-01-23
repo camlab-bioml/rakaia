@@ -342,8 +342,13 @@ def test_default_min_percentile_scaling():
 
 def test_validation_of_channel_metadata(get_current_dir):
     metadata = pd.read_csv(os.path.join(get_current_dir, "channel_metadata.csv"))
-    empty_upload_dict = {"exp0": {"slide0": {"acq0": None}}}
-    assert validate_incoming_metadata_table(metadata, empty_upload_dict) is None
+    upload_dict = {"roi_1": {}}
+    for channel in metadata['Channel Name'].to_list():
+        upload_dict["roi_1"][channel] = None
+    metadata_import = pd.DataFrame(validate_incoming_metadata_table(metadata, upload_dict))
+    assert len(metadata_import) == len(metadata) == 36
+    empty_dict = {"roi_1": {}}
+    assert validate_incoming_metadata_table(metadata, empty_dict) is None
 
 def test_acquire_acq_images_for_gallery():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
@@ -448,6 +453,21 @@ def test_basic_svgpath_pixel_mask():
     assert max_2 == 5000.0
     assert min_3 == -1.0
     assert get_bounding_box_for_svgpath(svgpath) == (200, 236, 131, 162)
+
+def test_path_to_mask_over_boundary():
+    # test that a path that goes over the border stops at the border
+    border_annotation = "M598.1280487804879,225.87195121951223L507.57926829268297,235.01829268292684" \
+                        "L476.48170731707324,245.07926829268294L458.1890243902439,299.0426829268293L" \
+                        "445.3841463414634,360.3231707317073L447.2134146341464,387.7621951219512L" \
+                        "458.1890243902439,410.6280487804878L479.22560975609764,423.4329268292683L" \
+                        "537.7621951219513,449.95731707317077L557.8841463414635,449.0426829268293L" \
+                        "599.5000000000001,437.1524390243903L599.0426829268293,206.66463414634148Z"
+
+    mask = np.full((600, 600), 255).astype(np.uint8)
+    bool_mask = path_to_mask(border_annotation, mask.shape)
+    assert bool_mask[300, 500]
+    assert bool_mask[300, 599]
+    assert not bool_mask[366, 444]
 
 def test_random_colour_selector():
     DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]

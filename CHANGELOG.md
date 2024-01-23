@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-19
+## [0.12.0] - 2024-01-23
 
 ### Added
 
@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 to and/remove current and saved session configurations
 (blend parameters, global filters, channel selection, naming/aliases)
 (Note: uses an 0 Sandbox version for initial testing)
-- Custom exception for panel length mismatches on file parsing
+- Custom exception class for panel length mismatches on file parsing: verifies panel lengths both within single uploads
+and among all files in multi-upload
 - Optional integer input to down-sample the heatmap for proper rendering
 - Ability to export objects inside region annotations without having a matching quantification sheet:
 object ids (such as cells) can be exported in CSV format if the annotation has a corresponding mask
@@ -35,6 +36,8 @@ prompts instead of an `html.A` hyperlink
 with the pixel ratio
 - ROI thumbnail queries can now be generated from tiff and txt files
 - Download for the UMAP projection moved into the UMAP configuration modal
+- Annotation mask downloads (tiff in zip) will include the original mask name used to generate
+the annotations, if provided #88
 
 
 ### Fixed
@@ -47,6 +50,8 @@ imported from h5py
 - Fixed storage step of underlying image in `CanvasImage` to allow export to tiff with mask or grid mods
 - Fixed overwriting previous annotation shapes when annotation categories are changed: shape parsing
 for annotations will now consider only the most recent shape drawn
+- freeform drawn annotations will be filtered to include only indices within the boundary of the image #87
+- Fixed incorrectly formatted function for importing custom metadata table (channel labels and names)
 
 ## [0.11.0] - 2023-12-21
 

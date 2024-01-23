@@ -102,6 +102,18 @@ def path_to_mask(path, shape):
     cols, rows = path_to_indices(path).T
     rr, cc = draw.polygon(rows, cols)
     mask = np.zeros(shape, dtype=bool)
+    # trim the indices to only those that are inside of the border of the image
+    # new_cols = np.array([])
+    # new_rows = np.array([])
+    col_inside = cc < shape[1]
+    row_inside = rr < shape[0]
+    both_inside = np.logical_and(col_inside, row_inside)
+    rr = rr[both_inside]
+    cc = cc[both_inside]
+    # for row, col in zip(rr, cc):
+    #     if row < shape[0] and col < shape[1]:
+    #         new_cols = np.append(new_cols, [int(col)])
+    #         new_rows = np.append(new_rows, [int(row)])
     mask[rr, cc] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask
@@ -274,12 +286,9 @@ def validate_incoming_metadata_table(metadata, upload_dict):
         assert isinstance(metadata, pd.DataFrame)
         assert "Channel Label" in metadata.columns
         assert "Channel Name" in metadata.columns
-        for exp in list(upload_dict.keys()):
-            if 'metadata' not in exp:
-                for slide in upload_dict[exp].keys():
-                    for acq in upload_dict[exp][slide].keys():
-                        # assert that for each ROI, the length is the same as the number of rows in the metadata
-                        assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
+        for roi in list(upload_dict.keys()):
+            if 'metadata' not in roi:
+                assert len(upload_dict[roi].keys()) == len(metadata.index)
         return metadata
     except (AssertionError, AttributeError):
         return None

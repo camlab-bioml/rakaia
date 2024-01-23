@@ -66,7 +66,7 @@ def export_annotations_as_masks(annotation_dict, output_dir, data_selection, mas
     cell_class_ids = {}
     for key, value in annotation_dict[data_selection].items():
         if value['annotation_column'] not in cell_class_arrays:
-            cell_class_arrays[value['annotation_column']] = np.zeros(mask_shape)
+                cell_class_arrays[value['annotation_column']] = np.zeros(mask_shape)
         # keep track of how many cell types are in each class
         if value['annotation_column'] not in cell_class_ids:
             cell_class_ids[value['annotation_column']] = {"counts": 0, 'annotations': {}}
@@ -75,6 +75,7 @@ def export_annotations_as_masks(annotation_dict, output_dir, data_selection, mas
             cell_class_ids[value['annotation_column']]['counts'] += 1
             cell_class_ids[value['annotation_column']]['annotations'][value['cell_type']] = \
                 cell_class_ids[value['annotation_column']]['counts']
+        cell_class_ids[value['annotation_column']]['mask_used'] = value['mask_selection']
         if value['type'] in ['point', 'points', 'path', 'zoom', 'rect']:
             if value['type'] not in ['point', 'points', 'path']:
                 if value['type'] == "zoom":
@@ -114,11 +115,22 @@ def export_annotations_as_masks(annotation_dict, output_dir, data_selection, mas
         shutil.rmtree(os.path.dirname(dest_path))
     if not os.path.exists(dest_path):
         os.makedirs(dest_path)
-    for name, array in cell_class_arrays.items():
-        tifffile.imwrite(os.path.join(dest_path, f"{name}.tiff"), array.astype(np.float32))
-    for name, labels in cell_class_ids.items():
-        with open(os.path.join(dest_path, f"{name}.json"), "w") as outfile:
-            json.dump(labels, outfile)
+    for name in cell_class_arrays.keys():
+        original_name = f"{cell_class_ids[name]['mask_used']}_" if cell_class_ids[name]['mask_used'] else ""
+        mask_name = f"{original_name}{name}"
+        tifffile.imwrite(os.path.join(dest_path, f"{mask_name}.tiff"), cell_class_arrays[name].astype(np.float32))
+        with open(os.path.join(dest_path, f"{mask_name}.json"), "w") as outfile:
+            json.dump(cell_class_ids[name], outfile)
+    # for name, array in cell_class_arrays.items():
+    #     # set the name of the mask to include the original mask name if provided, otherwise none
+    #     original_name = f"{cell_class_ids[name]['name']}_" if cell_class_ids[name]['name'] else ""
+    #     mask_name = f"{original_name}{name}"
+    #     tifffile.imwrite(os.path.join(dest_path, f"{mask_name}.tiff"), array.astype(np.float32))
+    # for name, labels in cell_class_ids.items():
+    #     original_name = f"{cell_class_ids[name]['name']}_" if cell_class_ids[name]['name'] else ""
+    #     mask_name = f"{original_name}{name}"
+    #     with open(os.path.join(dest_path, f"{mask_name}.json"), "w") as outfile:
+    #         json.dump(labels, outfile)
     # TODO: convert the hash tables linking IDs to the cell type and save to dir
     shutil.make_archive(dest_path, 'zip', dest_path)
     return str(dest_path + ".zip")
