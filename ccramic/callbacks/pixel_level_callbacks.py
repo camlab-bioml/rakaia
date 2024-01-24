@@ -1283,15 +1283,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('metadata_config', 'data'),
         State('uploaded_dict_template', 'data'),
         State('session_alert_config', 'data'),
+        State('imc-metadata-editable', 'data'),
         prevent_initial_call=True)
     # @cache.memoize())
-    def populate_datatable_columns(metadata_config, uploaded, error_config):
+    def populate_datatable_columns(metadata_config, uploaded, error_config, cur_metadata):
         if metadata_config is not None and len(metadata_config['uploads']) > 0:
             if error_config is None:
                 error_config = {"error": None}
             metadata_read = pd.read_csv(metadata_config['uploads'][0])
             metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
             if metadata_validated is not None and 'ccramic Label' not in metadata_validated.keys():
+                # TODO: decide if overwrite existing metadata, or just replace editable labels
+                # make sure that the internal keys from channel names stay the same
+                metadata_validated['Channel Name'] = pd.DataFrame(cur_metadata)['Channel Name']
                 metadata_validated['ccramic Label'] = metadata_validated["Channel Label"]
                 return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                         p in metadata_validated.keys()], \
@@ -1460,7 +1464,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # elif value is not None and current_canvas is None:
         #     return {'width': f'{value}vh', 'height': f'{value}vh'}
         else:
-            raise PreventUpdate
+            return {'width': f'{value}vh', 'height': f'{value}vh'}
 
     @dash_app.callback(
         Output("selected-area-table", "data"),

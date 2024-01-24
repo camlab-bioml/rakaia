@@ -282,16 +282,19 @@ def validate_incoming_metadata_table(metadata, upload_dict):
         - be on the same length as every ROI in the dataset
         - have a column named "Column Label" that can be copied for editing
     """
-    try:
-        assert isinstance(metadata, pd.DataFrame)
-        assert "Channel Label" in metadata.columns
-        assert "Channel Name" in metadata.columns
-        for roi in list(upload_dict.keys()):
-            if 'metadata' not in roi:
-                assert len(upload_dict[roi].keys()) == len(metadata.index)
+    if isinstance(metadata, pd.DataFrame) and "Channel Label" in metadata.columns and upload_dict is not None and \
+        all([len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if \
+             roi not in ['metadata', 'metadata_columns']]):
         return metadata
-    except (AssertionError, AttributeError):
-        return None
+    return None
+    # if isinstance(metadata, pd.DataFrame) and
+    #     assert "Channel Label" in metadata.columns
+    #     assert "Channel Name" in metadata.columns
+    #     for roi in list(upload_dict.keys()):
+    #         if 'metadata' not in roi:
+    #             assert len(upload_dict[roi].keys()) == len(metadata.index)
+    #     return metadata
+    # return None
 
 
 def create_new_coord_bounds(window_dict, x_request, y_request):

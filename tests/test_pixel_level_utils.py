@@ -342,13 +342,21 @@ def test_default_min_percentile_scaling():
 
 def test_validation_of_channel_metadata(get_current_dir):
     metadata = pd.read_csv(os.path.join(get_current_dir, "channel_metadata.csv"))
-    upload_dict = {"roi_1": {}}
+    upload_dict = {"roi_1": {}, 'metadata': None, 'metadata_columns': None}
     for channel in metadata['Channel Name'].to_list():
         upload_dict["roi_1"][channel] = None
     metadata_import = pd.DataFrame(validate_incoming_metadata_table(metadata, upload_dict))
     assert len(metadata_import) == len(metadata) == 36
-    empty_dict = {"roi_1": {}}
+    empty_dict = {"roi_1": {}, 'metadata': None, 'metadata_columns': None}
     assert validate_incoming_metadata_table(metadata, empty_dict) is None
+
+    # require the properly named column to exist
+    empty_frame = pd.DataFrame({'Random': metadata['Channel Label'].to_list()})
+    assert validate_incoming_metadata_table(empty_frame, upload_dict) is None
+
+    # empty frame doesn't work
+    empty_frame = pd.DataFrame({"Channel Label": []})
+    assert validate_incoming_metadata_table(empty_frame, upload_dict) is None
 
 def test_acquire_acq_images_for_gallery():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),

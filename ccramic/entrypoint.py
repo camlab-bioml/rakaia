@@ -20,7 +20,6 @@ def init_app(cli_config):
     app = Flask(__name__, instance_relative_config=False,
                 static_url_path="", static_folder="static",
             template_folder="templates")
-
     # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
 
     cache = Cache(config = {

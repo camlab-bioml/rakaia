@@ -37,6 +37,7 @@ def init_dashboard(server, authentic_id, config=None):
                          server=server,
                          routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True,
                          prevent_initial_callbacks=True)
+        dash_app._favicon = 'ccramic.ico'
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
 

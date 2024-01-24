@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-23
+## [0.12.0] - 2024-01-24
 
 ### Added
 
@@ -38,6 +38,8 @@ with the pixel ratio
 - Download for the UMAP projection moved into the UMAP configuration modal
 - Annotation mask downloads (tiff in zip) will include the original mask name used to generate
 the annotations, if provided #88
+- Make the metadata import more generalizable based on columns present: look only for the label column
+and length match
 
 
 ### Fixed
