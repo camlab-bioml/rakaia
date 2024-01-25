@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-24
+## [0.12.0] - 2024-01-25
 
 ### Added
 
@@ -54,6 +54,8 @@ imported from h5py
 for annotations will now consider only the most recent shape drawn
 - freeform drawn annotations will be filtered to include only indices within the boundary of the image #87
 - Fixed incorrectly formatted function for importing custom metadata table (channel labels and names)
+- Fixed proper setting of debugging mode for both Flask and dash server components. By default, debugging mode will be
+enabled for troubleshooting, with the possibility of switching the default in subsequent versions
 
 ## [0.11.0] - 2023-12-21
 

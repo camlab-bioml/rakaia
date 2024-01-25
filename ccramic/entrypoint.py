@@ -23,7 +23,7 @@ def init_app(cli_config):
     # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
 
     cache = Cache(config = {
-        "DEBUG": True,  # some Flask specific configs
+        "DEBUG": cli_config['debug'],  # some Flask specific configs
         "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
         "CACHE_DEFAULT_TIMEOUT": 300
     })
