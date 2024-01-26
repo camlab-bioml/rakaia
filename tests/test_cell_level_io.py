@@ -64,9 +64,9 @@ def test_output_annotations_masks():
 
         assert not os.path.exists(os.path.join(tmpdirname, "annotation_masks.zip"))
         canvas_mask = np.full((600, 600), 7)
-        output_dir = export_annotations_as_masks(annotations_dict, tmpdirname,
+        output_dir = AnnotationMaskWriter(annotations_dict, tmpdirname,
                                                  'Patient1+++slide0+++pos1_1', (600, 600),
-                                                 canvas_mask=canvas_mask)
+                                                 canvas_mask=canvas_mask).write_annotation_masks()
         assert os.path.exists(os.path.join(output_dir))
 
 

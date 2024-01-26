@@ -1202,7 +1202,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
             # scalebar is y = 0.06
             # legend is y = 0.05
-            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
             x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
@@ -1217,11 +1216,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation"]:
                 legend_text = generate_canvas_legend_text(blend_colour_dict,
                             channel_order, aliases, legend_orientation)  if toggle_legend else ''
-                return CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
+                canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
+                return CanvasLayout(canvas).clear_improper_shapes()
             elif ctx.triggered_id in ["toggle-canvas-scalebar"]:
                 proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
-                return CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
+                canvas = CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
                                                                 pixel_ratio, image_shape, legend_size, proportion)
+                return CanvasLayout(canvas).clear_improper_shapes()
         else:
             raise PreventUpdate
 

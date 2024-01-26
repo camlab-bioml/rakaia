@@ -26,7 +26,7 @@ from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
     callback_remove_canvas_annotation_shapes)
-from ccramic.io.annotation_outputs import export_annotations_as_masks, export_point_annotations_as_csv
+from ccramic.io.annotation_outputs import AnnotationMaskWriter, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
 from ccramic.utils.pixel_level_utils import split_string_at_pattern, random_hex_colour_generator
 from ccramic.io.readers import DashUploaderFileReader
@@ -362,16 +362,15 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
                        State('mask-dict', 'data'),
-                       State('derive-cell-boundary', 'value'),
                        prevent_initial_call=True)
-    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
+    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict):
         # cases where the callback should occur: if the mask dict is longer than 1 and triggered by the dictionary
         # or, if there is a single mask and the trigger is setting the mask name
         multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
         if multi_upload or single_upload:
             dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
-                            cur_mask_dict, derive_cell_boundary, unique_key_serverside=app_config['serverside_overwrite'])
+                            cur_mask_dict, unique_key_serverside=app_config['serverside_overwrite'])
             # if any of the names are longer than 40 characters, increase the height to make them visible
             height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
             return dict, options, height_update
@@ -477,8 +476,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 mask_used = mask_dict[mask_selection]['raw']
             else:
                 mask_used = None
-            return dcc.send_file(export_annotations_as_masks(annotations_dict, dest_path, data_selection,
-                                                             (first_image.shape[0], first_image.shape[1]), mask_used))
+            return dcc.send_file(AnnotationMaskWriter(annotations_dict, dest_path, data_selection,
+                                (first_image.shape[0], first_image.shape[1]), mask_used).write_annotation_masks())
         else:
             raise PreventUpdate
 

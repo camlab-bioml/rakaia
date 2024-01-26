@@ -395,16 +395,22 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     Returns a mask in RGB format
     """
     cluster_frame = pd.DataFrame(cluster_frame)
+    cluster_frame = cluster_frame.astype(str)
     empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
+    mask_array = mask_array.astype(np.uint32)
     for cell_type in cluster_frame[cluster_col].unique().tolist():
-        cell_list = cluster_frame[(cluster_frame[cluster_col] == cell_type)][cell_id_col].tolist()
+        cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
+        # make sure that the cells are integers so that they match the array values of the mask
+        cell_list = [int(i) for i in cell_list]
         annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
+        annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
         annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
         empty = empty + annot_mask
     # Find where the cells are annotated, and add back in the ones that are not
     if retain_cells:
         already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
         mask_array[already_cells] = 0
+        # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
         # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
         return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
     else:

@@ -248,7 +248,8 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig_dict).clear_improper_shapes()
     assert len(fig['layout']['shapes']) == len(shapes)
     for shape in fig['layout']['shapes']:
-        assert 'label' not in shape
+        if len(shape) == 1:
+            assert 'label' not in shape
 
     image = np.full((1079, 1095, 3), 255).astype(np.uint8)
     clusters = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))

@@ -93,12 +93,12 @@ class CanvasImage:
                         self.data_selection in self.cluster_assignments_dict.keys() and self.cluster_type == 'mask':
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
                                 self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
-                    image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                            annot_mask, mask_level, 0)
+                    image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask, mask_level, 0)
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
-                    image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                        self.mask_config[self.mask_selection]["array"].astype(np.uint8), mask_level, 0)
+                    mask = self.mask_config[self.mask_selection]["array"].astype(np.uint8)
+                    mask = np.where(mask > 0, 255, 0)
+                    image = cv2.addWeighted(image.astype(np.uint8), 1, mask.astype(np.uint8), mask_level, 0)
                 if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
                     # add the border of the mask after converting back to greyscale to derive the conversion
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
@@ -106,7 +106,8 @@ class CanvasImage:
 
         if ' overlay grid' in self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                    generate_greyscale_grid_array((image.shape[0], image.shape[1])), 1, 0)
+                                    generate_greyscale_grid_array((image.shape[0],
+                                    image.shape[1])).astype(np.uint8), 1, 0)
         # TODO: decide if grid lines should be included in the class image for export to tiff
         self.image = image
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
@@ -260,8 +261,12 @@ class CanvasLayout:
     a `go.Figure` object as input
     """
     def __init__(self, figure: Union[dict, go.Figure]):
+        if 'layout' in figure and 'shapes' in figure['layout'] and \
+                len(figure['layout']['shapes']) > 0 and not \
+                isinstance(figure['layout']['shapes'], tuple):
+            figure['layout']['shapes'] = [shape for shape in figure['layout']['shapes'] if \
+                                          shape and not is_bad_shape(shape)]
         self.figure = figure
-
         # TODO: add condition checking whether the annotations or shapes are held in tuples (do not allow)
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
                 len(self.figure['layout']['annotations']) > 0 and not \
@@ -273,6 +278,7 @@ class CanvasLayout:
                 len(self.figure['layout']['shapes']) > 0 and not \
                 isinstance(self.figure['layout']['shapes'], tuple):
             self.cur_shapes = self.figure['layout']['shapes'].copy()
+            self.cur_shapes = [shape for shape in self.cur_shapes if shape and not is_bad_shape(shape)]
         else:
             self.cur_shapes = []
 
@@ -443,7 +449,7 @@ class CanvasLayout:
         return self.figure
 
     def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio, proportion=0.1):
-        self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
+        # self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
         pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         for annotations in self.figure['layout']['annotations']:
             # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
@@ -471,11 +477,15 @@ class CanvasLayout:
 
     def clear_improper_shapes(self):
 
-        for shape in self.cur_shapes:
+        shape_copy = self.cur_shapes.copy()
+        for shape in shape_copy:
             if is_bad_shape(shape):
                 del shape['label']
+            # if not shape or not isinstance(shape, dict):
+            #     del shape
 
-        self.figure['layout']['shapes'] = self.cur_shapes
+        # self.figure['layout']['shapes'] = self.cur_shapes if self.cur_shapes else []
+        self.figure['layout']['shapes'] = [shape for shape in shape_copy if shape]
         return self.figure
 
     def add_cluster_annotations_as_circles(self, mask, cluster_frame, cluster_assignments,
@@ -488,13 +498,18 @@ class CanvasLayout:
         cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
         data_selection = string representation of the current ROI
         """
-        region_props = measure.regionprops(mask)
         shapes = self.cur_shapes
-        for mask_id, region in zip(np.unique(mask), region_props):
-            center = region.centroid
-            annotation = cluster_frame[cluster_frame['cell_id'] == mask_id]['cluster']
-            if len(annotation) > 0:
-                annotation = str(annotation.tolist()[0])
+        cluster_frame = pd.DataFrame(cluster_frame)
+        cluster_frame = cluster_frame.astype(str)
+        for mask_id in np.unique(mask):
+            # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
+            subset = np.where(mask == int(mask_id), int(mask_id), 0)
+            region_props = measure.regionprops(subset)
+            for region in region_props:
+                center = region.centroid
+            annotation = pd.Series(cluster_frame[cluster_frame['cell_id'] == str(mask_id)]['cluster']).to_list()
+            if annotation:
+                annotation = str(annotation[0])
                 # boundary[int(center[0]), int(center[1])] = mask_id
                 shapes.append(
                     {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',

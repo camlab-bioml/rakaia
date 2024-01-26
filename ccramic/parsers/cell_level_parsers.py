@@ -158,7 +158,7 @@ def parse_masks_from_filenames(status):
         raise PreventUpdate
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
-                                     set_mask, cur_mask_dict, derive_cell_boundary, unique_key_serverside=True):
+                                     set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):
     #TODO: establish parsing for single mask upload and bulk
     single_upload = len(mask_uploads) == 1 and set_mask > 0
     multi_upload = len(mask_uploads) > 1

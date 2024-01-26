@@ -7,4 +7,6 @@ def is_cluster_annotation_circle(shape):
     return 'type' in shape and shape['type'] in ['circle'] and not shape['editable']
 
 def is_bad_shape(shape):
-    return 'label' in shape and 'texttemplate' in shape['label']
+    # has_texttemplate = shape is not None and 'label' in shape and 'texttemplate' in shape['label']
+    only_label = shape is not None and 'label' in shape and len(shape) == 1
+    return only_label
