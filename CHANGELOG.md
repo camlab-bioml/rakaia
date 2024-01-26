@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-25
+## [0.12.0] - 2024-01-26
 
 ### Added
 
@@ -40,7 +40,7 @@ with the pixel ratio
 the annotations, if provided #88
 - Make the metadata import more generalizable based on columns present: look only for the label column
 and length match
-
+- Remove redundant cell outline computation on single mask import (boundary is computed by default)
 
 ### Fixed
 
@@ -56,6 +56,8 @@ for annotations will now consider only the most recent shape drawn
 - Fixed incorrectly formatted function for importing custom metadata table (channel labels and names)
 - Fixed proper setting of debugging mode for both Flask and dash server components. By default, debugging mode will be
 enabled for troubleshooting, with the possibility of switching the default in subsequent versions
+- Fixed improper shape clearing on canvas layout adjustments
+- Fixed improper cluster imports: casting to str and fixing `skimage.measure` `regionprops` ordering for circles
 
 ## [0.11.0] - 2023-12-21
 
