@@ -1205,6 +1205,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
             x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
+            cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             # if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
             #     cur_annotations = cur_canvas['layout']['annotations'].copy()
             # else:

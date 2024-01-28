@@ -271,14 +271,13 @@ class CanvasLayout:
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
                 len(self.figure['layout']['annotations']) > 0 and not \
                 isinstance(self.figure['layout']['annotations'], tuple):
-            self.cur_annotations = self.figure['layout']['annotations'].copy()
+            self.cur_annotations = [annot for annot in self.figure['layout']['annotations'] if annot is not None]
         else:
             self.cur_annotations = []
         if 'layout' in self.figure and 'shapes' in self.figure['layout'] and \
                 len(self.figure['layout']['shapes']) > 0 and not \
                 isinstance(self.figure['layout']['shapes'], tuple):
-            self.cur_shapes = self.figure['layout']['shapes'].copy()
-            self.cur_shapes = [shape for shape in self.cur_shapes if shape and not is_bad_shape(shape)]
+            self.cur_shapes = [shape for shape in self.figure['layout']['shapes'] if shape and not is_bad_shape(shape)]
         else:
             self.cur_shapes = []
 
@@ -292,6 +291,7 @@ class CanvasLayout:
         except ZeroDivisionError:
             pass
         fig = go.Figure(self.figure)
+        fig.update_layout(newshape=dict(line=dict(color="white")))
         # TODO: request for custom scalebar value to change the length of the bar, can implement here
         # default length is 0.1 (10% of the canvas), but want to make adjustable
         # set the x0 and x1 depending on if the bar is inverted or not
@@ -315,11 +315,11 @@ class CanvasLayout:
         except (KeyError, TypeError):
             custom_scale_val = None
 
+
         fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
                                         font_size=legend_size, x_axis_left=x_axis_placement,
                                         invert=invert_annot, proportion=proportion)
 
-        fig.update_layout(newshape=dict(line=dict(color="white")))
         return fig.to_dict()
 
     def add_legend_text(self, legend_text, x_axis_placement, legend_size):
@@ -350,7 +350,7 @@ class CanvasLayout:
     def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot,
                         pixel_ratio, image_shape, legend_size, proportion=0.1):
         cur_shapes = [shape for shape in self.cur_shapes if \
-                      shape is not None and 'type' in shape and shape['type'] \
+                      shape not in [None, "None"] and 'type' in shape and shape['type'] \
                       in ['rect', 'path', 'circle']]
         cur_annotations = [annot for annot in self.cur_annotations if \
                            annot is not None and 'y' in annot and annot['y'] != 0.06]
@@ -477,15 +477,14 @@ class CanvasLayout:
 
     def clear_improper_shapes(self):
 
-        shape_copy = self.cur_shapes.copy()
-        for shape in shape_copy:
-            if is_bad_shape(shape):
-                del shape['label']
-            # if not shape or not isinstance(shape, dict):
-            #     del shape
-
-        # self.figure['layout']['shapes'] = self.cur_shapes if self.cur_shapes else []
-        self.figure['layout']['shapes'] = [shape for shape in shape_copy if shape]
+        new_shapes = []
+        for shape in self.cur_shapes:
+            try:
+                if not is_bad_shape(shape):
+                    new_shapes.append(shape)
+            except KeyError:
+                pass
+        self.figure['layout']['shapes'] = new_shapes
         return self.figure
 
     def add_cluster_annotations_as_circles(self, mask, cluster_frame, cluster_assignments,
