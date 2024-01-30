@@ -322,25 +322,6 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
     except (AssertionError, KeyError):
         return None
 
-# def copy_values_within_nested_dict(dict, current_data_selection, new_data_selection):
-#     """
-#     Copy the blend dictionary parameters (colour, filtering, scaling) from one acquisition/ROI in a nested
-#     dictionary to another
-#     """
-#     cur_exp, cur_slide, cur_acq = split_string_at_pattern(current_data_selection)
-#     new_exp, new_slide, new_acq = split_string_at_pattern(new_data_selection)
-#
-#     if new_exp not in list(dict.keys()):
-#         dict[new_exp] = {}
-#     if new_slide not in list(dict[new_exp].keys()):
-#         dict[new_exp][new_slide] = {}
-#     if new_acq not in list(dict[new_exp][new_slide].keys()):
-#         dict[new_exp][new_slide][new_acq] = {}
-#
-#     for key, value in dict[cur_exp][cur_slide][cur_acq].items():
-#         dict[new_exp][new_slide][new_acq][key] = value
-#     return dict
-
 def per_channel_intensity_hovertext(channel_list):
     """
     generate custom hovertext for the annotation canvas that shows the individual pixel intensities of ll

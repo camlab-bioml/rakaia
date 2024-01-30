@@ -367,14 +367,15 @@ def generate_greyscale_grid_array(array_shape, dim=100):
     return np.array(Image.fromarray(empty).convert('RGB')).astype(np.uint8)
 
 
-def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options):
+def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options,
+                                                   delimiter: str="+++"):
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
     prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1
     """
     quantification_frame = pd.DataFrame(quantification_frame)
-    exp, slide, acq = split_string_at_pattern(data_selection)
+    exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
     if 'description' in quantification_frame.columns and acq in quantification_frame['description'].tolist():
         return acq, 'description'
     elif 'sample' in quantification_frame.columns:

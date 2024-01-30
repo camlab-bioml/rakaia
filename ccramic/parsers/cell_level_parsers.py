@@ -286,7 +286,7 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
     return indices_query, freq_counts
 
 
-def match_mask_name_with_roi(data_selection, mask_options, roi_options):
+def match_mask_name_with_roi(data_selection, mask_options, roi_options, delimiter: str="+++"):
     """
     Attempt to match a mask name to the currently selected ROI.
     Heuristics order:
@@ -312,8 +312,8 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options):
                         mask_return = mask
                 except (TypeError, IndexError, ValueError):
                     pass
-        if mask_return is None and "+++" in data_selection:
-            exp, slide, acq = split_string_at_pattern(data_selection)
+        if mask_return is None and delimiter in data_selection:
+            exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
             if mask_options is not None and exp in mask_options:
                 mask_return = exp
             elif mask_options is not None and acq in mask_options:

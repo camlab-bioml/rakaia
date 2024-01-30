@@ -27,12 +27,18 @@ from ccramic.utils.pixel_level_utils import (
     get_additive_image,
     get_first_image_from_roi_dictionary,
     set_array_storage_type_from_config,
-    apply_filter_to_array)
+    apply_filter_to_array,
+    split_string_at_pattern)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 from PIL import Image
 import numpy as np
+
+def test_string_splitting():
+    exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
+    print(exp, slide, acq)
+
 
 def test_identify_rgb_codes():
     # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string

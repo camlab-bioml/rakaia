@@ -399,15 +399,16 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-dict', 'data'),
         State('apply-mask', 'value'),
         State('mask-options', 'value'),
+        State('dataset-delimiter', 'value'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True))
     def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      data_dropdown_options, mask_config, mask_toggle, mask_selection):
+                            data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter):
         """
         Add a region annotation to the cells of a quantification data frame
         """
         sample_name, id_column = identify_column_matching_roi_to_quantification(
-            data_selection, quantification_frame, data_dropdown_options)
+            data_selection, quantification_frame, data_dropdown_options, delimiter)
         quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
                                 quantification_frame, data_selection, mask_config, mask_toggle,
                                 mask_selection, sample_name=sample_name, id_column=id_column)
@@ -557,11 +558,12 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('apply-mask', 'value'),
         State('mask-options', 'value'),
         State('uploaded_dict', 'data'),
+        State('dataset-delimiter', 'value'),
         prevent_initial_call=True)
     # @cache.memoize())
     def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
-                                          mask_dict, apply_mask, mask_selection, image_dict):
-        exp, slide, acq = split_string_at_pattern(data_selection)
+                                          mask_dict, apply_mask, mask_selection, image_dict, delimiter):
+        exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
         return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection, mask_dict, apply_mask,
                                                mask_selection, image_dict, authentic_id, tmpdirname)
 
@@ -571,13 +573,14 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State("annotations-dict", "data"),
         State('data-collection', 'value'),
         State('mask-dict', 'data'),
+        State('dataset-delimiter', 'value'),
         prevent_initial_call=True)
     # @cache.memoize())
-    def download_region_annotations_as_csv(n_clicks, annotations_dict, data_selection, mask_dict):
+    def download_region_annotations_as_csv(n_clicks, annotations_dict, data_selection, mask_dict, delimiter):
         if n_clicks and None not in (annotations_dict, data_selection):
             download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             return dcc.send_file(non_truthy_to_prevent_update(AnnotationRegionWriter(
-                annotations_dict, data_selection, mask_dict).write_csv(dest_dir=download_dir)))
+                annotations_dict, data_selection, mask_dict, delimiter).write_csv(dest_dir=download_dir)))
         else:
             raise PreventUpdate
 

@@ -22,7 +22,7 @@ class RegionThumbnail:
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
                         global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                        global_filter_sigma=1):
+                        global_filter_sigma=1, delimiter: str="+++"):
         self.session_config = session_config
         try:
             self.file_list = [file for file in self.session_config['uploads']]
@@ -40,6 +40,7 @@ class RegionThumbnail:
         self.global_filter_type = global_filter_type
         self.global_filter_val = global_filter_val
         self.global_filter_sigma = global_filter_sigma
+        self.delimiter = delimiter
         self.query_selection = None
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
@@ -83,7 +84,7 @@ class RegionThumbnail:
                         self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
                 for query in self.query_selection:
                     acq = slide_inside.acquisitions[query]
-                    if f"{basename}+++slide{slide_index}+++{acq.description}" not in self.rois_exclude:
+                    if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}{acq.description}" not in self.rois_exclude:
                         channel_names = acq.channel_names
                         channel_index = 0
                         img = mcd_file.read_acquisition(acq)
@@ -99,7 +100,7 @@ class RegionThumbnail:
                                                                              'color'])).astype(np.float32)
                                 acq_image.append(recoloured)
                             channel_index += 1
-                        label = f"{basename}+++slide{slide_index}+++{acq.description}"
+                        label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}{acq.description}"
                         self.process_additive_image(acq_image, label)
                     else:
                         self.num_queries += 1
@@ -172,7 +173,7 @@ class RegionThumbnail:
         Process the additive image prior to appending to the gallery, includes matching the mask and
         applying global filters
         """
-        matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options)
+        matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
         summed_image = sum([image for image in image_list]).astype(np.float32)
         summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,
                                              self.global_filter_type, self.global_filter_val,

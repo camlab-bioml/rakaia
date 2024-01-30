@@ -17,7 +17,7 @@ class FileParser:
     in `array_store_type`
     """
     def __init__(self, filepaths: list, array_store_type="float", lazy_load=True,
-                 single_roi_parse=True, roi_name=None, internal_name=None):
+                 single_roi_parse=True, roi_name=None, internal_name=None, delimiter="+++"):
         if array_store_type not in ["float", "int"]:
             raise TypeError("The array stored type must be one of float or int")
         self.filepaths = [str(x) for x in filepaths]
@@ -26,6 +26,7 @@ class FileParser:
         self.unique_image_names = []
         self.dataset_information_frame = {"ROI": [], "Dimensions": [], "Panel": []}
         self.lazy_load = lazy_load
+        self.delimiter = delimiter
         if len(self.filepaths) > 0:
             self.image_dict['metadata'] = {}
             self.metadata_channels = []
@@ -108,7 +109,7 @@ class FileParser:
             #     basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
             multi_channel_index = 1
             basename = str(Path(tiff_path).stem)
-            roi = f"{basename}+++slide{str(self.slide_index)}+++acq{str(self.acq_index)}" if \
+            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq{str(self.acq_index)}" if \
                 internal_name is None else internal_name
             # treat each tiff as a its own ROI and increment the acq index for each one
             self.image_dict[roi] = {}
@@ -152,8 +153,8 @@ class FileParser:
             for slide in mcd_file.slides:
                 for acq in slide.acquisitions:
                     basename = str(Path(mcd_filepath).stem)
-                    roi = f"{str(basename)}+++slide{str(slide_index)}" \
-                          f"+++{str(acq.description)}"
+                    roi = f"{str(basename)}{self.delimiter}slide{str(slide_index)}" \
+                          f"{self.delimiter}{str(acq.description)}"
                     self.image_dict[roi] = {}
                     if channel_labels is None:
                         channel_labels = acq.channel_labels
@@ -232,8 +233,8 @@ class FileParser:
             #     assert len(metadata_labels) == len(txt_channel_labels)
             #     assert all([elem in txt_channel_labels for elem in metadata_labels])
             basename = str(Path(txt_filepath).stem)
-            roi = f"{str(basename)}+++slide{str(self.slide_index)}" \
-                  f"+++{str(self.acq_index)}" if internal_name is None else internal_name
+            roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
+                  f"{self.delimiter}{str(self.acq_index)}" if internal_name is None else internal_name
             self.image_dict[roi] = {}
             # TODO: only read the acquisition if lazy loading is off
             if not self.lazy_load:
@@ -291,28 +292,26 @@ def create_new_blending_dict(uploaded):
     return current_blend_dict
 
 
-def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_config, array_store_type="float"):
+def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_config, array_store_type="float",
+                                       delimiter="+++"):
     """
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
     #IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
     # is already contained in the dictionary
-    try:
-        split = split_string_at_pattern(dataset_selection)
-        basename, slide, acq_name = split[0], split[1], split[2]
-        # get the index of the file from the experiment number in the event that there are multiple uploads
-        file_path = None
-        for files_uploaded in session_config['uploads']:
-            if str(Path(files_uploaded).stem) == basename:
-                file_path = files_uploaded
-        if file_path is not None:
-            upload_dict_new = FileParser(filepaths=[file_path], array_store_type=array_store_type,
+    split = split_string_at_pattern(dataset_selection, pattern=delimiter)
+    basename, slide, acq_name = split[0], split[1], split[2]
+    # get the index of the file from the experiment number in the event that there are multiple uploads
+    file_path = None
+    for files_uploaded in session_config['uploads']:
+        if str(Path(files_uploaded).stem) == basename:
+            file_path = files_uploaded
+    if file_path is not None:
+        upload_dict_new = FileParser(filepaths=[file_path], array_store_type=array_store_type,
                                      lazy_load=False, single_roi_parse=True, internal_name=dataset_selection,
-                                     roi_name=acq_name).image_dict
-            return upload_dict_new
-        return upload_dict
-    except (KeyError, AssertionError, AttributeError):
-        return upload_dict
+                                     roi_name=acq_name, delimiter=delimiter).image_dict
+        return upload_dict_new
+    return upload_dict
 
 def sparse_array_to_dense(array):
     """

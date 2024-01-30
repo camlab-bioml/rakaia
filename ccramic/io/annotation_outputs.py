@@ -24,10 +24,10 @@ class AnnotationRegionWriter:
     This export can effectively replace the export of a quantification sheet with matched annotations in the event
     that quantification results are not available
     """
-    def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict):
+    def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict, delimiter: str="+++"):
         self.annotation_dict = annotation_dict
         self.roi_selection = data_selection
-        exp, slide, acq = split_string_at_pattern(data_selection)
+        exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
         self.acquisition_name = acq
         self.mask_dict = mask_dict
         self.region_object_frame = {"ROI": [], "mask_name": [], "cell_id": [], "annotation_col": [], "annotation": []}

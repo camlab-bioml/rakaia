@@ -47,6 +47,15 @@ def register_app_layout(config, cache_dest):
                     color=None, n_clicks=0, style={"display": "flex"}, outline=True),
                 dbc.Modal(children=dbc.ModalBody([
                     html.H6("Set additional session variables"),
+                    html.Br(),
+                    html.Div([html.H6("Select dataset identifier delimiter", style={"margin-right": "20px"}),
+                             dcc.Input(id="dataset-delimiter", value="+++", type="text", debounce=True,
+                              persistence=config['persistence'], persistence_type='local', style={"width": "20%"}),
+                    dbc.Tooltip("Set a custom delimiter for the string representation of datasets. "
+                                "Should be used if imported datasets contain filenames or identifiers with"
+                                "string overlap with the current delimiter.",
+                                target="dataset-delimiter")], style={"display": "flex"}),
+                    html.Br(),
                     daq.ToggleSwitch(label='Enable canvas scroll zoom', id='enable-canvas-scroll-zoom',
                                      labelPosition='bottom', color="blue", value=False,
                                      persistence=config['persistence'], persistence_type='local'),

@@ -203,8 +203,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('blending_colours', 'data'),
                        State('session_alert_config', 'data'),
                        State('natsort-uploads', 'value'),
+                       State('dataset-delimiter', 'value'),
                        prevent_initial_call=True)
-    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config, natsort):
+    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config, natsort, delimiter):
         """
         Create session variables from the list of imported file paths
         Note that a message will be supplied if more than one type of file is passed
@@ -224,7 +225,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 error_config["error"] = ALERT.warnings["multiple_filetypes"] + message
             else:
                 error_config["error"] = message
-            fileparser = FileParser(files, array_store_type=app_config['array_store_type'])
+            fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
             session_dict['unique_images'] = fileparser.unique_image_names
             columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
             data = pd.DataFrame(fileparser.dataset_information_frame).to_dict(orient='records')
@@ -305,9 +306,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('enable-canvas-scroll-zoom', 'value'),
                        State('cur_roi_dimensions', 'data'),
                        Input('data-selection-refresh', 'n_clicks'),
+                       State('dataset-delimiter', 'value'),
                        prevent_initial_call=True)
     def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config,
-                                sort_channels, enable_zoom, cur_dimensions, dataset_refresh):
+                                sort_channels, enable_zoom, cur_dimensions, dataset_refresh, delimiter):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
@@ -315,7 +317,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # set the default canvas to return without a load screen
         if image_dict and data_selection and names:
-            exp, slide, roi_name = split_string_at_pattern(data_selection)
+            exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
             roi_name = str(roi_name) + f" ({str(exp)})" if "acq" in str(roi_name) else str(roi_name)
             if ' sort (A-z)' in sort_channels:
                 channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
@@ -327,8 +329,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # imp: use the channel label for the dropdown view and the name in the background to retrieve
                 try:
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
-                                session_config=session_config, array_store_type=app_config['array_store_type'])
-                    assert data_selection in image_dict.keys()
+                    session_config=session_config, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
@@ -343,8 +344,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,
                                             enable_zoom=enable_zoom, wrap=app_config['use_loading'])]
                     else:
-                        canvas_return = dash.no_update
-                        dim_return = None
+                        # canvas_return = dash.no_update
+                        # dim_return = None
+                        raise PreventUpdate
                 except (IndexError, AssertionError) as e:
                     print(e)
                     raise PreventUpdate
@@ -439,6 +441,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_alert_config', 'data'),
                        State('db-saved-configs', 'data'),
                        State("imc-metadata-editable", "data"),
+                       State('dataset-delimiter', 'value'),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -452,7 +455,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('db-config-name', 'value', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
-                            add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata):
+            add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
         """
         Update the blend layer dictionary and currently selected channels from a JSON upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
@@ -473,7 +476,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                   'metadata' not in key}
             panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict['channels'])
             match_all = current_blend_dict is None and all([len(uploaded_w_data[roi]) == \
-                        len(new_blend_dict['channels']) for roi in uploaded_w_data.keys() if '+++' in roi])
+                        len(new_blend_dict['channels']) for roi in uploaded_w_data.keys() if delimiter in roi])
             if panels_equal or match_all:
                 current_blend_dict = new_blend_dict['channels'].copy()
                 if all_layers is None:
@@ -903,9 +906,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('mask-options', 'options'),
                        # State('image_layers', 'value'),
                        State('annotation_canvas', 'figure'),
+                       State('dataset-delimiter', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options, cur_canvas):
+    def clear_canvas_and_set_mask_on_new_dataset(new_selection, dataset_options, mask_options, cur_canvas, delimiter):
         """
         Reset the canvas to blank on an ROI change
         Will attempt to set the new mask based on the ROI name and the list of mask options
@@ -922,7 +926,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         if 'label' in shape and 'texttemplate' in shape['label']:
                             del shape['label']['texttemplate']
                     canvas_return = cur_canvas
-            return canvas_return, match_mask_name_with_roi(new_selection, mask_options, dataset_options)
+            return canvas_return, match_mask_name_with_roi(new_selection, mask_options, dataset_options, delimiter)
         else:
             raise PreventUpdate
 
