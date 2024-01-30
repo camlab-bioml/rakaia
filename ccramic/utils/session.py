@@ -1,5 +1,6 @@
 import os
 import shutil
+from dash.exceptions import PreventUpdate
 
 def remove_ccramic_caches(directory):
     """
@@ -12,3 +13,12 @@ def remove_ccramic_caches(directory):
         for dir in subdirs:
             if os.access(os.path.dirname(dir), os.R_OK) and os.access(dir, os.R_OK):
                 shutil.rmtree(os.path.dirname(dir))
+
+
+def non_truthy_to_prevent_update(input_obj):
+    """
+    Convert a non-truthy object to a raise PreventUpdate from dash
+    """
+    if not input_obj:
+        raise PreventUpdate
+    return input_obj

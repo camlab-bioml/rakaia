@@ -15,17 +15,18 @@ from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
     identify_column_matching_roi_to_quantification,
-    generate_annotations_output_pdf,
     validate_mask_shape_matches_image)
 from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
     generate_umap_plot,
     )
+from ccramic.io.pdf import AnnotationPDFWriter
+from ccramic.io.annotation_outputs import AnnotationRegionWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
     callback_remove_canvas_annotation_shapes)
-from ccramic.io.annotation_outputs import export_annotations_as_masks, export_point_annotations_as_csv
+from ccramic.io.annotation_outputs import AnnotationMaskWriter, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
 from ccramic.utils.pixel_level_utils import split_string_at_pattern, random_hex_colour_generator
 from ccramic.io.readers import DashUploaderFileReader
@@ -35,13 +36,17 @@ from dash import dcc
 import matplotlib
 from werkzeug.exceptions import BadRequest
 import dash_uploader as du
-from dash_extensions.enrich import Output, Input, State, Serverside
+from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 from dash import html
+from ccramic.io.session import SessionServerside
+import uuid
+from ccramic.utils.session import non_truthy_to_prevent_update
 
-def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
+
+def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with cell level analysis (object detection, quantification, dimensional reduction)
     """
@@ -63,7 +68,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     def populate_quantification_table_from_upload(session_dict, error_config):
         if session_dict is not None:
             quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config)
-            return Serverside(quant_dict), cols, alert
+            return SessionServerside(quant_dict, key="quantification_dict",
+                    use_unique_key=app_config['serverside_overwrite']), cols, alert
         else:
             raise PreventUpdate
 
@@ -77,7 +83,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             frame = pd.read_csv(files[0])
             if len(frame.columns) == 2:
                 frame.columns = ['UMAP1', 'UMAP2']
-                return Serverside(frame.to_dict(orient="records"))
+                return SessionServerside(frame.to_dict(orient="records", ), key="umap_coordinates",
+                                         use_unique_key=app_config['serverside_overwrite'])
             else:
                 raise PreventUpdate
         else:
@@ -100,10 +107,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('quant-heatmap-channel-list', 'value'),
                        State('quant-heatmap-channel-list', 'options'),
                        Input('normalize-heatmap', 'value'),
+                       Input('subset-heatmap', 'value'),
                        prevent_initial_call=True)
-    def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings,
-                                            annot_cols, restyle_data, umap_col_selection, prev_categories,
-                                            channels_to_display, heatmap_channel_options, normalize_heatmap):
+    def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings, annot_cols, restyle_data,
+                                            umap_col_selection, prev_categories, channels_to_display,
+                                            heatmap_channel_options, normalize_heatmap, subset_heatmap):
         # TODO: incorporate subsetting based on legend selection
         # uses the restyledata for the current legend selection to figure out which selections have been made
         # Example 1: user selected only the third legend item to view
@@ -121,8 +129,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             if ctx.triggered_id not in ["umap-projection-options"] and umap_layout is not None:
                 try:
                     subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict,
-                                                                          umap_col_selection,
-                                                                          prev_categories)
+                                                                          umap_col_selection, prev_categories)
                 except TypeError:
                     subtypes, keep = None, None
             else:
@@ -131,7 +138,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             try:
                 fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
                         umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
-                        subtypes, channels_to_display, normalize=normalize_heatmap)
+                        subtypes, channels_to_display, normalize=normalize_heatmap, subset_val=subset_heatmap)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             if frame is not None:
@@ -160,7 +167,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 cols_selected = list(frame.columns)
             else:
                 cols_selected = list(frame.columns) if not heatmap_channel_options else dash.no_update
-            return fig, keep, indices_query, freq_counts_cat, Serverside(cell_id_dict), cols_return, cols_selected
+            return fig, keep, indices_query, freq_counts_cat, SessionServerside(cell_id_dict,
+                key="cell_id_list", use_unique_key=app_config['serverside_overwrite']), cols_return, cols_selected
         else:
             raise PreventUpdate
 
@@ -250,7 +258,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             try:
                 if n_clicks > 0:
                     return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
-                                                                  current_umap=current_umap)
+                            current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite'])
                 else:
                     raise PreventUpdate
             except ValueError:
@@ -260,7 +268,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
-                       State('quantification-dict', 'data'),
+                       Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
@@ -289,9 +297,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         be applied to the current cells in the UMAP frame
         """
         if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation > 0:
-            return Serverside(populate_quantification_frame_column_from_umap_subsetting(
+            return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
                             pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col,
-                annot_value).to_dict(orient='records'))
+                annot_value).to_dict(orient='records'), key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         else:
             raise PreventUpdate
 
@@ -306,12 +314,17 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        Input('mask-uploads', 'data'),
                        prevent_initial_call=True)
     def input_mask_name_on_upload(mask_uploads):
+        """
+        Allow the user to change the mask upload name if only a single mask is uploaded
+        If multiple are uploaded, use the file basename by default
+        """
         if mask_uploads is not None and len(mask_uploads) > 0 and len(mask_uploads) == 1:
             return list(mask_uploads.keys())[0]
         else:
             raise PreventUpdate
 
     @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
+                       Output('mask-options', 'value', allow_duplicate=True),
                        Input('mask-dict', 'data'),
                        State('data-collection', 'value'),
                        Input('uploaded_dict', 'data'),
@@ -349,16 +362,15 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
                        State('mask-dict', 'data'),
-                       State('derive-cell-boundary', 'value'),
                        prevent_initial_call=True)
-    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, derive_cell_boundary):
+    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict):
         # cases where the callback should occur: if the mask dict is longer than 1 and triggered by the dictionary
         # or, if there is a single mask and the trigger is setting the mask name
         multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
         if multi_upload or single_upload:
             dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
-                                                             cur_mask_dict, derive_cell_boundary)
+                            cur_mask_dict, unique_key_serverside=app_config['serverside_overwrite'])
             # if any of the names are longer than 40 characters, increase the height to make them visible
             height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
             return dict, options, height_update
@@ -399,7 +411,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
                                 quantification_frame, data_selection, mask_config, mask_toggle,
                                 mask_selection, sample_name=sample_name, id_column=id_column)
-        return Serverside(quant_frame), annotations
+        return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=app_config['serverside_overwrite']), annotations
 
     @dash_app.callback(
         Output("download-edited-annotations", "data"),
@@ -421,17 +433,21 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         State('data-collection', 'value'),
         State('mask-dict', 'data'),
         State('alias-dict', 'data'),
-        State('blending_colours', 'data'))
+        State('blending_colours', 'data'),
+        State('bool-apply-global-filter', 'value'),
+        State('global-filter-type', 'value'),
+        State("global-kernel-val-filter", 'value'),
+        State("global-sigma-val-filter", 'value'))
     # @cache.memoize())
-    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers,
-                                 data_selection, mask_config, aliases, blend_dict):
+    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers, data_selection, mask_config, aliases,
+                blend_dict, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
-            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads')
+            dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
-            return dcc.send_file(generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection,
-                mask_config, aliases, blend_dict=blend_dict,
-                dest_dir=dest_path, output_file="annotations.pdf"), type="application/pdf")
+            return dcc.send_file(non_truthy_to_prevent_update(AnnotationPDFWriter(annotations_dict, canvas_layers,
+                data_selection, mask_config, aliases, dest_path, "annotations.pdf", blend_dict, global_apply_filter,
+                global_filter_type, global_filter_val, global_filter_sigma).generate_annotation_pdf()), type="application/pdf")
         else:
             raise PreventUpdate
 
@@ -451,7 +467,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
-            dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
+            dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads', 'annotation_masks')
             if not os.path.exists(dest_path):
                 os.makedirs(dest_path)
             # check that the mask is compatible with the current image
@@ -460,9 +476,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
                 mask_used = mask_dict[mask_selection]['raw']
             else:
                 mask_used = None
-            return dcc.send_file(export_annotations_as_masks(annotations_dict, dest_path, data_selection,
-                                                             (first_image.shape[0], first_image.shape[1]),
-                                                             mask_used))
+            return dcc.send_file(AnnotationMaskWriter(annotations_dict, dest_path, data_selection,
+                                (first_image.shape[0], first_image.shape[1]), mask_used).write_annotation_masks())
         else:
             raise PreventUpdate
 
@@ -496,7 +511,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         if n_clicks > 0 and None not in (cur_annotation_dict, data_selection):
             try:
                 cur_annotation_dict[data_selection] = {}
-                return Serverside(cur_annotation_dict)
+                return SessionServerside(cur_annotation_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
             except KeyError:
                 raise PreventUpdate
         else:
@@ -547,9 +562,25 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
     def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
                                           mask_dict, apply_mask, mask_selection, image_dict):
         exp, slide, acq = split_string_at_pattern(data_selection)
-        return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection,
-                                          mask_dict, apply_mask, mask_selection, image_dict,
-                                               authentic_id, tmpdirname)
+        return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection, mask_dict, apply_mask,
+                                               mask_selection, image_dict, authentic_id, tmpdirname)
+
+    @dash_app.callback(
+        Output("download-region-csv", "data"),
+        Input("btn-download-region-csv", "n_clicks"),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        State('mask-dict', 'data'),
+        prevent_initial_call=True)
+    # @cache.memoize())
+    def download_region_annotations_as_csv(n_clicks, annotations_dict, data_selection, mask_dict):
+        if n_clicks and None not in (annotations_dict, data_selection):
+            download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
+            return dcc.send_file(non_truthy_to_prevent_update(AnnotationRegionWriter(
+                annotations_dict, data_selection, mask_dict).write_csv(dest_dir=download_dir)))
+        else:
+            raise PreventUpdate
+
 
     @dash_app.callback(
         Output("download-umap-projection", "data"),
@@ -600,7 +631,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
         if files:
             frame = pd.read_csv(files[0])
             if validate_imported_csv_annotations(frame):
-                return Serverside(frame.to_dict(orient="records"))
+                return SessionServerside(frame.to_dict(orient="records"), key="point_annotations",
+                                         use_unique_key=app_config['serverside_overwrite'])
             else:
                 raise PreventUpdate
         else:
@@ -616,7 +648,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id):
             frame = pd.read_csv(files[0])
             # TODO: for now, use set column names, but epand in the future
             if len(frame.columns) == 2 and all([elem in list(frame.columns) for elem in ['cell_id', 'cluster']]):
-                return Serverside(frame.to_dict(orient="records"))
+                return SessionServerside(frame.to_dict(orient="records"), key="cluster_assignments",
+                        use_unique_key=app_config['serverside_overwrite'])
             else:
                 raise PreventUpdate
         else:

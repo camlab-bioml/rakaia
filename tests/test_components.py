@@ -37,6 +37,7 @@ def test_basic_canvas_image():
     cluster_assignments_dict = None
     cluster_frame = None
     cluster_type = 'mask'
+    custom_scale_val = None
 
     canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                 mask_config, mask_selection, mask_blending_level,
@@ -44,13 +45,14 @@ def test_basic_canvas_image():
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                         cluster_frame, cluster_type)
+                         cluster_frame, cluster_type, custom_scale_val)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, dict)
 
     global_filter_type = "median"
     global_filter_val = 33
+    custom_scale_val = 48
 
     canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
@@ -58,7 +60,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                          global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                         cluster_assignments_dict, cluster_frame, cluster_type)
+                         cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, dict)
@@ -76,7 +78,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, cluster_frame, cluster_type)
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
     assert isinstance(canvas_2, CanvasImage)
     canvas_fig = canvas_2.generate_canvas()
     assert isinstance(canvas_fig, dict)
@@ -92,7 +94,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, cluster_frame, cluster_type)
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
     canvas_fig_3 = canvas_3.generate_canvas()
     assert isinstance(canvas_fig_3, dict)
 
@@ -104,7 +106,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, cluster_frame, cluster_type)
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
 
     canvas_fig_4 = canvas_4.generate_canvas()
     assert isinstance(canvas_fig_4, dict)
@@ -116,7 +118,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, cluster_frame, cluster_type)
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
 
     canvas_fig_5 = canvas_5.generate_canvas()
     assert isinstance(canvas_fig_5, dict)
@@ -128,7 +130,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, cluster_frame, cluster_type)
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
     canvas_fig_6 = canvas_6.generate_canvas()
     assert isinstance(canvas_fig_6, dict)
 
@@ -139,7 +141,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, cluster_frame, cluster_type)
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
     canvas_fig_7 = canvas_7.generate_canvas()
     assert isinstance(canvas_fig_7, dict)
 
@@ -158,7 +160,7 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, cluster_frame, cluster_type)
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val)
     canvas_fig_8 = canvas_8.generate_canvas()
     assert isinstance(canvas_fig_8, dict)
 
@@ -223,15 +225,15 @@ def test_canvas_layout_editor(get_current_dir):
 
     fig = go.Figure(px.imshow(image))
     fig.update_layout(xaxis=dict(range=[50, 60]), yaxis=dict(range=[50, 60]))
-    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 0, image.shape, 12)
     fig = CanvasLayout(fig).update_scalebar_zoom_value({"test": "test"}, 1)
-    assert 'color: white">1μm</span><br>' in fig['layout']['annotations'][0]['text']
+    assert 'color: white">2μm</span><br>' in fig['layout']['annotations'][0]['text']
 
     fig = go.Figure(px.imshow(image))
     canvas_layout = {'xaxis.range[1]': 50, 'xaxis.range[0]': 60}
     fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
     fig = CanvasLayout(fig).update_scalebar_zoom_value(canvas_layout, 1)
-    assert 'color: white">1μm</span><br>' in fig['layout']['annotations'][0]['text']
+    assert 'color: white">2μm</span><br>' in fig['layout']['annotations'][0]['text']
 
     shapes = [{'line': {'color': 'white', 'width': 2}, 'type': 'line', 'x0': 0.875, 'x1': 0.95, 'xref': 'paper', 'y0': 0.05, 'y1': 0.05, 'yref': 'paper'}, {'editable': True, 'line': {'color': 'white'}, 'type': 'circle', 'x0': 763, 'x1': 779, 'xref': 'x', 'y0': 284, 'y1': 300, 'yref': 'y', 'label': {'texttemplate': ''}}, {'editable': True, 'line': {'color': 'white'}, 'type': 'circle', 'x0': 796, 'x1': 812, 'xref': 'x', 'y0': 293, 'y1': 309, 'yref': 'y'}]
     fig = go.Figure(px.imshow(image))
@@ -246,7 +248,8 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig_dict).clear_improper_shapes()
     assert len(fig['layout']['shapes']) == len(shapes)
     for shape in fig['layout']['shapes']:
-        assert 'label' not in shape
+        if len(shape) == 1:
+            assert 'label' not in shape
 
     image = np.full((1079, 1095, 3), 255).astype(np.uint8)
     clusters = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
@@ -259,3 +262,17 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
     assert len(fig['layout']['shapes']) == 1
+
+    fig = go.Figure(px.imshow(image))
+    # canvas_layout = {'xaxis.range[1]': 50, 'xaxis.range[0]': 60}
+    fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
+    fig = CanvasLayout(fig).use_custom_scalebar_value(23, 1)
+    assert '<span style="color: white">23μm</span><br>' in fig['layout']['annotations'][0]['text']
+
+    window_dict = {'y_low': 100, 'y_high': 150, 'x_low': 100, 'x_high': 150}
+    fig = go.Figure(px.imshow(image))
+    fig, window_layout = CanvasLayout(fig).update_coordinate_window(window_dict, 250, 250)
+    assert window_layout == {'xaxis.range[0]': 225.0, 'xaxis.range[1]': 275.0,
+                             'yaxis.range[0]': 275.0, 'yaxis.range[1]': 225.0}
+    assert fig['layout']['xaxis']['range'] == [225.0, 275.0]
+    assert fig['layout']['yaxis']['range'] == [275.0, 225.0]

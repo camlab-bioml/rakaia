@@ -89,7 +89,6 @@ def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low,
     except IndexError:
         return None, None, None
 
-
 def path_to_indices(path):
     """From SVG path to numpy array of coordinates, each row being a (row, col) point
     """
@@ -103,6 +102,18 @@ def path_to_mask(path, shape):
     cols, rows = path_to_indices(path).T
     rr, cc = draw.polygon(rows, cols)
     mask = np.zeros(shape, dtype=bool)
+    # trim the indices to only those that are inside of the border of the image
+    # new_cols = np.array([])
+    # new_rows = np.array([])
+    col_inside = cc < shape[1]
+    row_inside = rr < shape[0]
+    both_inside = np.logical_and(col_inside, row_inside)
+    rr = rr[both_inside]
+    cc = cc[both_inside]
+    # for row, col in zip(rr, cc):
+    #     if row < shape[0] and col < shape[1]:
+    #         new_cols = np.append(new_cols, [int(col)])
+    #         new_rows = np.append(new_rows, [int(row)])
     mask[rr, cc] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask
@@ -157,6 +168,8 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Uses linear scaling instead of 0 to max upper bound scaling: pixels close to the boundary of the lower bound
     are scaled relative to their intensity to the lower bound instead of the full scale factor
     """
+    # if issparse(array):
+    #     array = array.toarray(order='F')
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
     # array = np.array(Image.fromarray(array).convert('L'))
     # original_max = np.max(array) if np.max(array) > 255 else 255
@@ -196,20 +209,28 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     # try:
     # IMP: do not use the conversion to L as it will automatically set the max to 255
     # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
-    hist_data = np.hstack(array).astype(np.uint16)
-    max_hist = int(np.max(array)) if int(np.max(array)) > 1 else 1
-    hist = np.random.choice(hist_data, subset_number).astype(np.uint16) if \
+    # set the array cast type based on the max
+    cast_type = np.uint16 if np.max(array) > 1 else np.float32
+    hist_data = np.hstack(array).astype(cast_type)
+    max_hist = float(np.max(array)) if int(np.max(array)) > 1 else 1
+    hist = np.random.choice(hist_data, subset_number).astype(cast_type) if \
         hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
     # ensure that the min of the hist max is 1
     try:
         if keep_max:
-            hist = np.concatenate([np.array(hist).astype(np.uint16),
-                                   np.array([max_hist]).astype(np.uint16)])
+            hist = np.concatenate([np.array(hist).astype(cast_type),
+                                   np.array([max_hist]).astype(cast_type)])
     except ValueError:
         pass
     return go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist]), \
-        int(np.max(array))
+        float(np.max(array))
+
+def upper_bound_for_range_slider(array):
+    """
+    Return the pixel max of a channel array for the range slider, or return 1 if the max value is less than 1
+    """
+    return float(np.max(array)) if float(np.max(array)) > 1.0 else 1.0
 
 
 def apply_preset_to_array(array, preset):
@@ -261,19 +282,19 @@ def validate_incoming_metadata_table(metadata, upload_dict):
         - be on the same length as every ROI in the dataset
         - have a column named "Column Label" that can be copied for editing
     """
-    try:
-        assert isinstance(metadata, pd.DataFrame)
-        assert "Channel Label" in metadata.columns
-        assert "Channel Name" in metadata.columns
-        for exp in list(upload_dict.keys()):
-            if 'metadata' not in exp:
-                for slide in upload_dict[exp].keys():
-                    for acq in upload_dict[exp][slide].keys():
-                        # assert that for each ROI, the length is the same as the number of rows in the metadata
-                        assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
+    if isinstance(metadata, pd.DataFrame) and "Channel Label" in metadata.columns and upload_dict is not None and \
+        all([len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if \
+             roi not in ['metadata', 'metadata_columns']]):
         return metadata
-    except (AssertionError, AttributeError):
-        return None
+    return None
+    # if isinstance(metadata, pd.DataFrame) and
+    #     assert "Channel Label" in metadata.columns
+    #     assert "Channel Name" in metadata.columns
+    #     for roi in list(upload_dict.keys()):
+    #         if 'metadata' not in roi:
+    #             assert len(upload_dict[roi].keys()) == len(metadata.index)
+    #     return metadata
+    # return None
 
 
 def create_new_coord_bounds(window_dict, x_request, y_request):
@@ -429,3 +450,29 @@ def get_first_image_from_roi_dictionary(roi_dictionary):
     first_image_name = list(roi_dictionary.keys())[0]
     image_for_validation = roi_dictionary[first_image_name]
     return image_for_validation
+
+
+def apply_filter_to_array(image, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
+    """
+    Apply a filter to an array from a dictionary of global filter values
+    Note: incorrect values applied to the array will not return an error, but will return the original array,
+    as this function is meant to be used in the application
+    """
+    if global_filter_type not in ['gaussian', 'median']:
+        raise TypeError("The global filter type should be either gaussian or median.")
+    global_filter_applied = (isinstance(global_apply_filter, bool) and global_apply_filter) or (
+        isinstance(global_apply_filter, list) and len(global_apply_filter) > 0)
+    if global_filter_applied and None not in (global_filter_type, global_filter_val) and \
+            int(global_filter_val) % 2 != 0:
+        if global_filter_type == "median" and int(global_filter_val) >= 1:
+            try:
+                image = cv2.medianBlur(image, int(global_filter_val))
+            except (ValueError, cv2.error):
+                pass
+        elif global_filter_type == "gaussian":
+            # array = gaussian_filter(array, int(filter_value))
+            if int(global_filter_val) >= 1:
+                image = cv2.GaussianBlur(image, (int(global_filter_val),
+                                                 int(global_filter_val)),
+                                                 float(global_filter_sigma))
+    return image

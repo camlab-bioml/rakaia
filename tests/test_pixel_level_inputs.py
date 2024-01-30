@@ -1,7 +1,6 @@
 import dash
 import numpy as np
 import plotly.graph_objs as go
-import pytest
 from dash_extensions.enrich import html
 from ccramic.inputs.pixel_level_inputs import (
     render_default_annotation_canvas,
@@ -11,7 +10,8 @@ from ccramic.inputs.pixel_level_inputs import (
     add_local_file_dialog,
     invert_annotations_figure,
     set_range_slider_tick_markers,
-    generate_canvas_legend_text)
+    generate_canvas_legend_text,
+    set_x_axis_placement_of_scalebar)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -19,7 +19,6 @@ import os
 from ccramic.utils.pixel_level_utils import recolour_greyscale
 import plotly.express as px
 import dash_bootstrap_components as dbc
-from dash.exceptions import PreventUpdate
 
 def test_return_canvas_input():
     default_graph = render_default_annotation_canvas()
@@ -44,7 +43,7 @@ def test_add_scalebar_to_canvas(get_current_dir):
     assert len(image['layout']['annotations']) == 0
     with_scaleval = add_scale_value_to_figure(image, recoloured.shape)
     assert len(with_scaleval['layout']['annotations']) != 0
-    assert with_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert with_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">60μm</span><br>'
 
     custom_scaleval = add_scale_value_to_figure(image, recoloured.shape, scale_value=51)
     assert custom_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">51μm</span><br>'
@@ -68,7 +67,7 @@ def test_basic_additive_image():
     assert isinstance(image, go.Figure)
     assert image['data'] is not None
     assert image['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
-    assert image['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert image['layout']['annotations'][0]['text'] == '<span style="color: white">60μm</span><br>'
     assert image['layout']['uirevision']
 
     bad_col = get_additive_image_with_masking(["fake_channel"], data_selection="experiment0+++slide0+++acq0",
@@ -88,7 +87,7 @@ def test_basic_additive_image():
     assert isinstance(image_mask, go.Figure)
     assert image_mask['data'] is not None
     assert image_mask['data'][0]['hovertemplate'] == 'x: %{x}<br>y: %{y}<br><extra></extra>'
-    assert image_mask['layout']['annotations'][0]['text'] == '<span style="color: white">45μm</span><br>'
+    assert image_mask['layout']['annotations'][0]['text'] == '<span style="color: white">60μm</span><br>'
     assert image_mask['layout']['uirevision']
 
 
@@ -112,11 +111,11 @@ def test_invert_annotations_figure():
                                             mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
                                             add_mask_boundary=False, legend_text='')
 
-    assert image['layout']['annotations'][0]['x'] == 0.0875
+    assert image['layout']['annotations'][0]['x'] == 0.1
     assert image['layout']['shapes'][0]['x0'] == 0.05
 
     image = invert_annotations_figure(image)
-    assert image['layout']['annotations'][0]['x'] == (1 - 0.0875)
+    assert image['layout']['annotations'][0]['x'] == (1 - 0.1)
     assert image['layout']['shapes'][0]['x0'] == (1 - 0.05)
 
     image_2 = go.Figure()
@@ -154,3 +153,15 @@ def test_generate_legend_text():
     assert "<br>" in legend_text
     assert "dna" in legend_text
     assert not "DNA" in legend_text
+
+
+def test_register_x_axis_placement_scalebar():
+    image = np.zeros((1500, 1500))
+    placement = set_x_axis_placement_of_scalebar(image.shape[1], False)
+    assert placement == 0.05
+    invert = set_x_axis_placement_of_scalebar(image.shape[1], True)
+    assert invert == 0.95
+
+    large = np.zeros((5260, 5260))
+    placement = set_x_axis_placement_of_scalebar(large.shape[1], False)
+    assert placement == 0.000025 * large.shape[1]

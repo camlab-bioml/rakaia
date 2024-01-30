@@ -1,7 +1,7 @@
 import dash
 import pandas as pd
 
-from ccramic.parsers.roi_parsers import generate_multi_roi_images_from_query
+from ccramic.parsers.roi_parsers import RegionThumbnail
 from ccramic.io.gallery_outputs import generate_roi_query_gallery_children
 from ccramic.utils.quantification import (
     quantify_multiple_channels_per_roi,
@@ -11,9 +11,10 @@ from dash import ALL
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
-from dash_extensions.enrich import Serverside
+from ccramic.utils.alert import AlertMessage
+from ccramic.io.session import SessionServerside
 
-def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
+def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with ROI level and cross dataset queries
     """
@@ -37,11 +38,16 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
                        State('mask-dict', 'data'),
                        State('data-collection', 'options'),
                        State('query-cell-id-lists', 'data'),
+                       State('bool-apply-global-filter', 'value'),
+                       State('global-filter-type', 'value'),
+                       State("global-kernel-val-filter", 'value'),
+                       State("global-sigma-val-filter", 'value'),
                        prevent_initial_call=True)
     def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
                                     existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
-                                    dataset_options, query_cell_id_lists):
+                                    dataset_options, query_cell_id_lists, global_apply_filter,
+                                    global_filter_type, global_filter_val, global_filter_sigma,):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -64,9 +70,9 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
             elif ctx.triggered_id == "execute-dataset-query" and execute_query > 0:
                 rois_exclude = [data_selection]
                 row_children = []
-            images = generate_multi_roi_images_from_query(session_config, blend_colour_dict,
-                    currently_selected, int(num_queries), rois_exclude, rois_decided, mask_dict, dataset_options,
-                                                          query_cell_id_lists)
+            images = RegionThumbnail(session_config, blend_colour_dict, currently_selected,
+                    int(num_queries), rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists,
+                    global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma).get_image_dict()
             new_row_children, roi_list = generate_roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load":
@@ -132,11 +138,11 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id):
                                             data_selection, channels_to_quantify, aliases, dataset_options)
                 quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant,
                                                                      data_selection)
-                return Serverside(quant_frame.to_dict(orient="records")), dash.no_update, {'display': 'None'}, None
+                return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",
+                        use_unique_key=app_config['serverside_overwrite']), dash.no_update, {'display': 'None'}, None
             else:
-                error_config["error"] = "The dimensions of the mask do not agree with the current ROI."
+                error_config["error"] = AlertMessage().warnings["invalid_dimensions"]
                 return dash.no_update, error_config, dash.no_update, dash.no_update
         else:
-            error_config["error"] = "Quantification requires an ROI with a compatible mask that has been applied to the" \
-                                    " canvas. Please review the required inputs."
+            error_config["error"] = AlertMessage().warnings["quantification_missing_mask"]
             return dash.no_update, error_config, dash.no_update, dash.no_update

@@ -2,16 +2,10 @@ import numpy
 import pandas as pd
 from ccramic.utils.pixel_level_utils import (
     path_to_mask,
-    get_bounding_box_for_svgpath,
     split_string_at_pattern,
     recolour_greyscale)
 from dash.exceptions import PreventUpdate
 from PIL import Image
-import matplotlib.pyplot as plt
-from matplotlib.backends.backend_pdf import PdfPages
-import cv2
-import os
-import matplotlib.patches as mpatches
 import numpy as np
 from skimage.segmentation import find_boundaries
 
@@ -156,6 +150,10 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
 
 def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
                                            mask_toggle):
+    """
+    Send an alert if the mask selected does not match the dimensions of the current canvas ROI
+    If a mismatch, clear the selected mask name to avoid confusion
+    """
     if None not in (mask_dict, data_selection, upload_dict, mask_selection) and mask_toggle:
         try:
             first_image = list(upload_dict[data_selection].keys())[0]
@@ -166,7 +164,7 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
                     error_config = {"error": None}
                 error_config["error"] = "Warning: the current mask does not have " \
                                     "the same dimensions as the current ROI."
-                return error_config
+                return error_config, None
             else:
                 raise PreventUpdate
         except KeyError:
@@ -306,6 +304,8 @@ def process_mask_array_for_hovertemplate(mask_array):
     mask_array[mask_array == '0'] = 'None'
     return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))
 
+
+
 def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85):
     """
     Derive a list of cell IDs from a mask that are contained within an svg path based on a threshold
@@ -325,102 +325,6 @@ def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=
                 cells_included[cell] = percent
         channel_index += 1
     return cells_included
-
-def generate_annotations_output_pdf(annotations_dict, canvas_layers, data_selection, mask_config,
-                                    aliases, dest_dir="/tmp/", output_file="annotations.pdf", blend_dict=None):
-    """
-    Generate a PDF output report with region images linked to annotations.
-    The annotations are held in a dictionary with the title, description, shapes/coordinates, and channels used
-    Each annotation must be transformed into a region that is rendered as an image blend with the channels used
-    """
-    # subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
-    #                       range(int(x_range_low), int(x_range_high), 1))]
-
-    # ensure that the annotations are taken from the current ROI
-    file_output = os.path.join(dest_dir, output_file)
-    if data_selection in annotations_dict and len(annotations_dict) > 0:
-        annotations_dict = {key: value for key, value in annotations_dict[data_selection].items() if \
-                        value['type'] not in ['point']}
-        if len(annotations_dict) > 0:
-            with PdfPages(file_output) as pdf:
-                for key, value in annotations_dict.items():
-                    if value['type'] in ['zoom', 'rect', 'path']:
-                        # the key is the tuple of the coordinates or the svgpath
-                        if value['type'] == "zoom":
-                            x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
-                        elif value['type'] == "rect":
-                            x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
-                        elif value['type'] == "path":
-                            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
-                        try:
-                            image = sum([np.asarray(canvas_layers[data_selection][elem]).astype(np.float32) for \
-                             elem in value['channels'] if \
-                             elem in canvas_layers[data_selection].keys()]).astype(np.float32)
-                            image = np.clip(image, 0, 255)
-                        except KeyError:
-                            image = None
-                        if value['use_mask'] and None not in (mask_config, value['mask_selection']) and \
-                                len(mask_config) > 0:
-                            if image.shape[0] == mask_config[value['mask_selection']]["array"].shape[0] and \
-                                image.shape[1] == mask_config[value['mask_selection']]["array"].shape[1]:
-                                # set the mask blending level based on the slider, by default use an equal blend
-                                mask_level = float(value['mask_blending_level'] / 100) if \
-                                value['mask_blending_level'] is not None else 1
-                                image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                                mask_config[value['mask_selection']]["array"].astype(np.uint8),
-                                                mask_level, 0)
-                            if value['add_mask_boundary'] and mask_config[value['mask_selection']]["boundary"] is not None:
-                                    # add the border of the mask after converting back to greyscale to derive the conversion
-                                reconverted = np.array(Image.fromarray(mask_config[value['mask_selection']][
-                                                                                  "boundary"]).convert('RGB'))
-                                image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
-                        region = np.array(image[np.ix_(range(int(y_min), int(y_max), 1),
-                                               range(int(x_min), int(x_max), 1))]).astype(np.uint8)
-                        aspect_ratio = image.shape[1] / image.shape[0]
-                        # set height based on the pixel number
-                        height = 0.02 * image.shape[1] if 0.02 * image.shape[1] < 30 else 30
-                        width = height * aspect_ratio
-                        # first value is the width, second is the height
-                        fig = plt.figure(figsize=(width, height))
-                        fig.tight_layout()
-                        # ax = fig.add_subplot(111)
-                        # plt.axes((.1, .4, .8, .5))
-                        ax = fig.add_axes((0, .4, 1, 0.5))
-                        ax.imshow(region, interpolation='nearest')
-                        ax.set_title(value['title'], fontsize=(width + 10))
-                        ax.set_xticks([])
-                        ax.set_yticks([])
-                        x_dims = float(x_max) - float(x_min)
-                        y_dims = float(y_max) - float(y_min)
-                        patches = []
-                        for channel in value['channels']:
-                            label = aliases[channel] if channel in aliases.keys() else channel
-                            if blend_dict is not None:
-                                try:
-                                    col_use = blend_dict[channel]['color']
-                                except KeyError:
-                                    col_use = 'white'
-                            else:
-                                col_use = 'white'
-                            patches.append(mpatches.Patch(color=col_use, label=label))
-                        body = str(value['body']).replace(r'\n', '\n')
-                        description = "Description:\n" + body + "\n\n" + "" \
-                                "Region dimensions: " + str(int(x_dims)) + "x" + str(int(y_dims))
-                        text_offset = .3 if height < 25 else .2
-                        fig.text(.15, text_offset, description, fontsize=width)
-                        fig.legend(handles=patches, fontsize=width, title='Channel List', title_fontsize=(width + 5))
-                        # ax.set_xlabel(description, fontsize=25)
-                        # y_offset = 0.95
-                        # plt.figtext(0.01, 1, "Channels", size=16)
-                        # for channel in channel_list:
-                        #     plt.figtext(0.01, y_offset, channel, size=14)
-                        #     y_offset -= 0.05
-                pdf.savefig()
-            return file_output
-        else:
-            raise PreventUpdate
-    else:
-        raise PreventUpdate
 
 def subset_measurements_by_point(measurements, x, y):
     """
@@ -491,16 +395,22 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     Returns a mask in RGB format
     """
     cluster_frame = pd.DataFrame(cluster_frame)
+    cluster_frame = cluster_frame.astype(str)
     empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
+    mask_array = mask_array.astype(np.uint32)
     for cell_type in cluster_frame[cluster_col].unique().tolist():
-        cell_list = cluster_frame[(cluster_frame[cluster_col] == cell_type)][cell_id_col].tolist()
+        cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
+        # make sure that the cells are integers so that they match the array values of the mask
+        cell_list = [int(i) for i in cell_list]
         annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
+        annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
         annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
         empty = empty + annot_mask
     # Find where the cells are annotated, and add back in the ones that are not
     if retain_cells:
         already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
         mask_array[already_cells] = 0
+        # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
         # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
         return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
     else:

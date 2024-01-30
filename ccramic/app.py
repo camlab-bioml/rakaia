@@ -5,6 +5,7 @@ from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSys
 from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
 from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
 from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
+from ccramic.callbacks.db_callbacks import init_db_callbacks
 import shutil
 import os
 import dash_bootstrap_components as dbc
@@ -36,8 +37,10 @@ def init_dashboard(server, authentic_id, config=None):
                          server=server,
                          routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True,
                          prevent_initial_callbacks=True)
+        dash_app._favicon = 'ccramic.ico'
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
+        server.config['FLASK_DEBUG'] = config['debug']
 
         du.configure_upload(dash_app, cache_dest)
 
@@ -73,10 +76,11 @@ def init_dashboard(server, authentic_id, config=None):
 
     dash_app.layout = register_app_layout(config, cache_dest)
 
-    dash_app.enable_dev_tools(debug=True)
+    dash_app.enable_dev_tools(debug=config['debug'])
 
     init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, config)
-    init_cell_level_callbacks(dash_app, tmpdirname, authentic_id)
-    init_roi_level_callbacks(dash_app, tmpdirname, authentic_id)
+    init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, config)
+    init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, config)
+    init_db_callbacks(dash_app, tmpdirname, authentic_id, config)
 
     return dash_app.server

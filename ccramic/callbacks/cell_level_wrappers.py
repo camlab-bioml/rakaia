@@ -10,7 +10,9 @@ from ccramic.utils.cell_level_utils import (
 from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 import ast
+from ccramic.components.canvas import CanvasLayout
 from dash.exceptions import PreventUpdate
+from ccramic.utils.alert import AlertMessage
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                                       mask_config, mask_toggle, mask_selection, sample_name=None,
@@ -76,15 +78,18 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
     Remove any annotation shape on the canvas (i.e. any shape that is a rectangle or closed form svgpath)
     """
     if n_clicks > 0 and None not in (cur_canvas, canvas_layout) and 'shapes' not in canvas_layout:
-        cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
+        cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
         if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
-            try:
-                cur_canvas['layout']['shapes'] = [elem for elem in cur_canvas['layout']['shapes'] if \
-                                                  elem is not None and ('type' in elem and \
-                                                  elem['type'] not in ['rect', 'path', 'circle'])]
-            except KeyError:
-                pass
-            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
+            new_shapes = []
+            for shape in cur_canvas['layout']['shapes']:
+                try:
+                    if shape is not None and ('type' in shape and shape['type'] not in ['rect', 'path', 'circle']):
+                        new_shapes.append(shape)
+                except KeyError:
+                    pass
+            cur_canvas['layout']['shapes'] = new_shapes
+            # cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
+            cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             return cur_canvas, dash.no_update
         else:
             raise PreventUpdate
@@ -93,9 +98,8 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
                 cur_canvas['layout']['shapes']) > 0):
         if error_config is None:
             error_config = {"error": None}
-        error_config["error"] = "There are annotation shapes in the current layout. \n" \
-                                "Switch to zoom or pan before removing the annotation shapes."
-        cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
+        error_config["error"] = AlertMessage().warnings["invalid_annotation_shapes"]
+        cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
         return cur_canvas, error_config
     else:
         raise PreventUpdate

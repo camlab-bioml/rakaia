@@ -26,13 +26,13 @@ from ccramic.utils.pixel_level_utils import (
     random_hex_colour_generator,
     get_additive_image,
     get_first_image_from_roi_dictionary,
-    set_array_storage_type_from_config)
+    set_array_storage_type_from_config,
+    apply_filter_to_array)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 from PIL import Image
 import numpy as np
-
 
 def test_identify_rgb_codes():
     # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string
@@ -256,7 +256,7 @@ def test_generate_histogram(get_current_dir):
     values = histogram["data"][0]['x']
     assert int(max(values)) == int(array_max)
     assert len(values) == 360001
-    assert array_max == int(np.max(greyscale))
+    assert array_max == np.max(greyscale)
 
     larger_array = np.full((2000, 2000), 10)
     larger_array[10, 10] = 56487
@@ -342,8 +342,21 @@ def test_default_min_percentile_scaling():
 
 def test_validation_of_channel_metadata(get_current_dir):
     metadata = pd.read_csv(os.path.join(get_current_dir, "channel_metadata.csv"))
-    empty_upload_dict = {"exp0": {"slide0": {"acq0": None}}}
-    assert validate_incoming_metadata_table(metadata, empty_upload_dict) is None
+    upload_dict = {"roi_1": {}, 'metadata': None, 'metadata_columns': None}
+    for channel in metadata['Channel Name'].to_list():
+        upload_dict["roi_1"][channel] = None
+    metadata_import = pd.DataFrame(validate_incoming_metadata_table(metadata, upload_dict))
+    assert len(metadata_import) == len(metadata) == 36
+    empty_dict = {"roi_1": {}, 'metadata': None, 'metadata_columns': None}
+    assert validate_incoming_metadata_table(metadata, empty_dict) is None
+
+    # require the properly named column to exist
+    empty_frame = pd.DataFrame({'Random': metadata['Channel Label'].to_list()})
+    assert validate_incoming_metadata_table(empty_frame, upload_dict) is None
+
+    # empty frame doesn't work
+    empty_frame = pd.DataFrame({"Channel Label": []})
+    assert validate_incoming_metadata_table(empty_frame, upload_dict) is None
 
 def test_acquire_acq_images_for_gallery():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
@@ -361,6 +374,10 @@ def test_make_hovertext_from_channel_list():
     assert per_channel_intensity_hovertext(channel_list) == "x: %{x}, y: %{y} <br>channel_1: %{customdata[0]} " \
                                                             "<br>channel_2: " \
                                                             "%{customdata[1]} <br><extra></extra>"
+
+    # assert that the default hover text is used if a malformed channel input is passed
+    assert per_channel_intensity_hovertext("not_a_list") == "x: %{x}, y: %{y} <br><extra></extra>"
+
 
 def test_coord_navigation():
     window_dict = {"x_high": 200, "x_low": 100, "y_high": 200, "y_low": 100}
@@ -445,6 +462,21 @@ def test_basic_svgpath_pixel_mask():
     assert min_3 == -1.0
     assert get_bounding_box_for_svgpath(svgpath) == (200, 236, 131, 162)
 
+def test_path_to_mask_over_boundary():
+    # test that a path that goes over the border stops at the border
+    border_annotation = "M598.1280487804879,225.87195121951223L507.57926829268297,235.01829268292684" \
+                        "L476.48170731707324,245.07926829268294L458.1890243902439,299.0426829268293L" \
+                        "445.3841463414634,360.3231707317073L447.2134146341464,387.7621951219512L" \
+                        "458.1890243902439,410.6280487804878L479.22560975609764,423.4329268292683L" \
+                        "537.7621951219513,449.95731707317077L557.8841463414635,449.0426829268293L" \
+                        "599.5000000000001,437.1524390243903L599.0426829268293,206.66463414634148Z"
+
+    mask = np.full((600, 600), 255).astype(np.uint8)
+    bool_mask = path_to_mask(border_annotation, mask.shape)
+    assert bool_mask[300, 500]
+    assert bool_mask[300, 599]
+    assert not bool_mask[366, 444]
+
 def test_random_colour_selector():
     DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
 
@@ -491,3 +523,38 @@ def test_retrieval_first_roi_dict_image():
     first_array = get_first_image_from_roi_dictionary(layer_dict)
     assert first_array.shape == (200, 200, 3)
     assert np.mean(first_array) == 1000
+
+def test_apply_filter_to_array(get_current_dir):
+    greyscale = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
+    median_filter_3 = apply_filter_to_array(greyscale, ['apply filter'], "median", 3, 1)
+    assert not np.array_equal(greyscale, median_filter_3)
+
+    median_filter_1 = apply_filter_to_array(greyscale, True, "median", 1, 1)
+    assert np.array_equal(greyscale, median_filter_1)
+
+    gaussian_filter_5 = apply_filter_to_array(greyscale, True, "gaussian", 5, 1)
+    assert not np.array_equal(greyscale, gaussian_filter_5)
+
+    gaussian_filter_1 = apply_filter_to_array(greyscale, True, "gaussian", 1, 1)
+    assert np.array_equal(greyscale, gaussian_filter_1)
+
+    median_negative = apply_filter_to_array(greyscale, True, "median", -1, 0)
+    assert np.array_equal(greyscale, median_negative)
+
+    gaussian_negative = apply_filter_to_array(greyscale, True, "gaussian", -1, 0)
+    assert np.array_equal(greyscale, gaussian_negative)
+
+    even_value = apply_filter_to_array(greyscale, True, "median", 4, 0)
+    assert np.array_equal(greyscale, even_value)
+
+    with pytest.raises(TypeError):
+        apply_filter_to_array(greyscale, True, "fake_filter", 4, 0)
+
+    median_high = apply_filter_to_array(greyscale, True, "median", 99, 0)
+    assert np.array_equal(greyscale, median_high)
+
+    no_filter = apply_filter_to_array(greyscale, [], "median", 1, 1)
+    assert np.array_equal(greyscale, no_filter)
+
+    no_filter = apply_filter_to_array(greyscale, False, "median", 1, 1)
+    assert np.array_equal(greyscale, no_filter)

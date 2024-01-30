@@ -2,7 +2,7 @@ SHELL=bash
 python=python
 pip=pip
 tests=./tests
-version:=$(shell $(python) ccramic/app/wsgi.py -v)
+version:=$(shell $(python) ccramic/wsgi.py -v)
 
 prepare:
 	$(pip) install -r requirements.txt
