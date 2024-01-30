@@ -304,9 +304,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('sort-channels-alpha', 'value'),
                        State('enable-canvas-scroll-zoom', 'value'),
                        State('cur_roi_dimensions', 'data'),
+                       Input('data-selection-refresh', 'n_clicks'),
                        prevent_initial_call=True)
     def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config,
-                                sort_channels, enable_zoom, cur_dimensions):
+                                sort_channels, enable_zoom, cur_dimensions, dataset_refresh):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
@@ -344,7 +345,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         canvas_return = dash.no_update
                         dim_return = None
-                except (IndexError, AssertionError):
+                except (IndexError, AssertionError) as e:
+                    print(e)
                     raise PreventUpdate
                 try:
                     # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset

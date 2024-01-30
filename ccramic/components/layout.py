@@ -143,6 +143,13 @@ def register_app_layout(config, cache_dest):
                                         dcc.Dropdown(id='data-collection', multi=False, options=[],
                                                      style={'width': '100%'}),
                                         html.Br(),
+                                        dbc.Button("Refresh selection", id="data-selection-refresh", className="me-1",
+                                        size="sm", color='dark', outline=True, style={"float": "left",
+                                                "margin-right": "12.5px", "height": "50%"}),
+                                        dbc.Tooltip("Refresh the current dataset selection. "
+                                        "Can be used if the ROI loading has become corrupted", target="data-selection-refresh"),
+                                        html.Br(),
+                                        html.Br(),
                                         html.H5("Import mask"),
                                         dbc.Modal(children=dbc.ModalBody(
                                             [html.H6("Set the label for the imported mask"),
