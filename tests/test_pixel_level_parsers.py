@@ -38,7 +38,7 @@ def test_basic_parser_from_mcd(get_current_dir):
     assert 'query+++slide0+++Xylene' in uploaded_dict.keys()
     assert 'metadata' in uploaded_dict.keys()
     assert len(uploaded_dict['query+++slide0+++Xylene']) == 11
-    # the values will all be none for the mcd because of lazy loadinfg
+    # the values will all be none for the mcd because of lazy loading
     assert all([value is None for value in uploaded_dict['query+++slide0+++Xylene'].values()])
     dataset_info = parser.dataset_information_frame
     assert len(dataset_info['ROI']) == 6

@@ -1,7 +1,7 @@
 import math
 from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path
 from pydantic import BaseModel
-
+from typing import Union
 class ChannelRegion:
     """
     This abstract class defines a region for a particular channel
@@ -95,3 +95,16 @@ class FreeFormRegion(ChannelRegion):
                 self.channel_array, self.path)
         else:
             self.mean_exp, self.max_exp, self.min_exp = 0, 0, 0
+
+class RegionAnnotation(BaseModel):
+    title: str = None
+    body: str = None
+    cell_type: str = None
+    imported: bool = False
+    annotation_column: str = 'ccramic_cell_annotation'
+    type: str = None
+    channels: list = []
+    use_mask: bool = False
+    mask_selection: str = None
+    mask_blending_level: float = 35.0
+    add_mask_boundary: Union[bool, list, str] = True

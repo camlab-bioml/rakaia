@@ -37,7 +37,7 @@ import numpy as np
 
 def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
-    print(exp, slide, acq)
+    assert acq == "acq1"
 
 
 def test_identify_rgb_codes():

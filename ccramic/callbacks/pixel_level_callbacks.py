@@ -73,6 +73,7 @@ from ccramic.utils.db import (
     extract_alias_labels_from_db_document)
 from ccramic.utils.alert import AlertMessage
 import uuid
+from ccramic.utils.region import RegionAnnotation
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -2233,13 +2234,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}
                         annotation_list[tuple(sorted(key.items()))] = "rect"
             for key, value in annotation_list.items():
-                annotations_dict[data_selection][key] = {'title': annotation_title, 'body': annotation_body,
-                                                        'cell_type': annotation_cell_type, 'imported': False,
-                                                         'annotation_column': annot_col, 'type': value,
-                                                         'channels': cur_layers, 'use_mask': mask_toggle,
-                                                        'mask_selection': mask_selection,
-                                                         'mask_blending_level': mask_blending_level,
-                                                             'add_mask_boundary': add_mask_boundary}
+                annotations_dict[data_selection][key] = RegionAnnotation(title = annotation_title, body = annotation_body,
+                cell_type = annotation_cell_type, imported = False, annotation_column = annot_col, type = value,
+                channels = cur_layers, use_mask = mask_toggle, mask_selection = mask_selection,
+                mask_blending_level = mask_blending_level, add_mask_boundary = add_mask_boundary).dict()
             return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         else:
             raise PreventUpdate
@@ -2385,14 +2383,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 x = clickdata['points'][0]['x']
                 y = clickdata['points'][0]['y']
 
-                annotations_dict[data_selection][str(clickdata)] = {'title': None, 'body': None,
-                                                 'cell_type': annotation_cell_type, 'imported': False,
-                                                 'annotation_column': annot_col,
-                                                 'type': "point", 'channels': None,
-                                                 'use_mask': None,
-                                                 'mask_selection': None,
-                                                 'mask_blending_level': None,
-                                                 'add_mask_boundary': None}
+                annotations_dict[data_selection][str(clickdata)] = RegionAnnotation(cell_type=annotation_cell_type,
+                                                    annotation_column=annot_col, type='point').dict()
+
+                # annotations_dict[data_selection][str(clickdata)] = {'title': None, 'body': None,
+                #                                  'cell_type': annotation_cell_type, 'imported': False,
+                #                                  'annotation_column': annot_col,
+                #                                  'type': "point", 'channels': None,
+                #                                  'use_mask': None,
+                #                                  'mask_selection': None,
+                #                                  'mask_blending_level': None,
+                #                                  'add_mask_boundary': None}
 
                 if ' add circle on click' in add_circle:
                     circle_size = int(circle_size)

@@ -27,6 +27,7 @@ class FileParser:
         self.dataset_information_frame = {"ROI": [], "Dimensions": [], "Panel": []}
         self.lazy_load = lazy_load
         self.delimiter = delimiter
+        self.panel_length = None
         if len(self.filepaths) > 0:
             self.image_dict['metadata'] = {}
             self.metadata_channels = []
@@ -98,9 +99,10 @@ class FileParser:
             # the files have different channels/panels
             # pass if this is the cases
             if len(self.image_dict['metadata']) > 0:
-                if not all(len(value) == len(tif.pages) for value in list(self.image_dict['metadata'].values())):
-                    raise PanelMismatchError("The tiff file(s) appear to have different panels"
-                                             ". This is currently not supported by ccramic.")
+                if not (all(len(value) == len(tif.pages) for value in list(self.image_dict['metadata'].values()))) or \
+                        (self.panel_length is not None and self.panel_length != len(tif.pages)):
+                    raise PanelMismatchError("One or more ROIs imported from tiff appear to have"
+                            " different panel lengths. This is currently not supported by ccramic.")
             # file_name, file_extension = os.path.splitext(tiff_path)
             # set different image labels based on the basename of the file (ome.tiff vs .tiff)
             # if "ome" in upload:
@@ -142,6 +144,7 @@ class FileParser:
                                            'ccramic Label': self.metadata_labels}
                 self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                    'ccramic Label']
+        self.panel_length = len(tif.pages) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
     def parse_mcd(self, mcd_filepath):
@@ -172,9 +175,10 @@ class FileParser:
                         # assert all(label in acq.channel_labels for label in channel_labels)
                         # assert all(name in acq.channel_names for name in channel_names)
                         # assert len(acq.channel_labels) == len(channel_labels)
-                        if len(acq.channel_labels) != len(channel_labels):
-                            raise PanelMismatchError("The mcd file appears that have ROIs with different"
-                                                     "panels. This is currently not supported by ccramic.")
+                        if len(acq.channel_labels) != len(channel_labels) or \
+                           (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
+                            raise PanelMismatchError("One or more ROIs imported from .mcd appear to have"
+                            " different panel lengths. This is currently not supported by ccramic.")
                     # img = mcd_file.read_acquisition(acq)
                     channel_index = 0
                     for channel in acq.channel_names:
@@ -193,6 +197,7 @@ class FileParser:
                                 f"{len(acq.channel_names)} markers")
 
                         channel_index += 1
+                    self.panel_length = len(acq.channel_labels) if self.panel_length is None else self.panel_length
                     acq_index += 1
                 slide_index += 1
         self.experiment_index += 1
@@ -224,9 +229,10 @@ class FileParser:
             # TODO: add custom exception rule here for mismatched panels
             if len(self.metadata_channels) > 0:
                 if not len(self.metadata_channels) == len(txt_channel_names) or \
-                        not len(self.metadata_labels) == len(txt_channel_labels):
-                    raise PanelMismatchError("The txt file(s) appear to have different panels"
-                                             ". This is currently not supported by ccramic.")
+                        not len(self.metadata_labels) == len(txt_channel_labels) or \
+                        (self.panel_length is not None and self.panel_length != len(txt_channel_names)):
+                    raise PanelMismatchError("One or more ROIs imported from .txt appear to have"
+                            " different panel lengths. This is currently not supported by ccramic.")
                 # assert len(metadata_channels) == len(txt_channel_names)
             #     # assert all([elem in txt_channel_names for elem in metadata_channels])
             # if len(metadata_labels) > 0:
@@ -268,6 +274,7 @@ class FileParser:
                                            'ccramic Label': self.metadata_labels}
                 self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                    'ccramic Label']
+            self.panel_length = len(txt_channel_names) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
 def create_new_blending_dict(uploaded):
