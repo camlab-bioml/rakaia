@@ -13,6 +13,7 @@ import ast
 from ccramic.components.canvas import CanvasLayout
 from dash.exceptions import PreventUpdate
 from ccramic.utils.alert import AlertMessage
+from ccramic.utils.shapes import is_bad_shape
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                                       mask_config, mask_toggle, mask_selection, sample_name=None,
@@ -83,13 +84,14 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
             new_shapes = []
             for shape in cur_canvas['layout']['shapes']:
                 try:
-                    if shape is not None and ('type' in shape and shape['type'] not in ['rect', 'path', 'circle']):
+                    if shape is not None and ('type' in shape and shape['type'] not in
+                        ['rect', 'path', 'circle'] and not is_bad_shape(shape)):
                         new_shapes.append(shape)
                 except KeyError:
                     pass
             cur_canvas['layout']['shapes'] = new_shapes
             # cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
-            cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
+            # cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             return cur_canvas, dash.no_update
         else:
             raise PreventUpdate
@@ -99,7 +101,7 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
         if error_config is None:
             error_config = {"error": None}
         error_config["error"] = AlertMessage().warnings["invalid_annotation_shapes"]
-        cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
+        # cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
         return cur_canvas, error_config
     else:
         raise PreventUpdate

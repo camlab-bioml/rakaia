@@ -351,7 +351,7 @@ class CanvasLayout:
                         pixel_ratio, image_shape, legend_size, proportion=0.1):
         cur_shapes = [shape for shape in self.cur_shapes if \
                       shape not in [None, "None"] and 'type' in shape and shape['type'] \
-                      in ['rect', 'path', 'circle']]
+                      in ['rect', 'path', 'circle'] and not is_bad_shape(shape)]
         cur_annotations = [annot for annot in self.cur_annotations if \
                            annot is not None and 'y' in annot and annot['y'] != 0.06]
         self.figure['layout']['annotations'] = cur_annotations
@@ -479,6 +479,8 @@ class CanvasLayout:
 
         new_shapes = []
         for shape in self.cur_shapes:
+            if 'label' in shape and 'texttemplate' not in shape['label']:
+                shape['label']['texttemplate'] = ''
             try:
                 if not is_bad_shape(shape):
                     new_shapes.append(shape)

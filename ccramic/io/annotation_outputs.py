@@ -49,8 +49,10 @@ class AnnotationRegionWriter:
                         self.region_object_frame['cell_id'].append(int(obj))
                         self.region_object_frame['annotation_col'].append(str(value['annotation_column']))
                         self.region_object_frame['annotation'].append(str(value['cell_type']))
-        pd.DataFrame(self.region_object_frame).to_csv(self.filepath, index=False)
-        return self.filepath
+        if not pd.DataFrame(self.region_object_frame).empty:
+            pd.DataFrame(self.region_object_frame).to_csv(self.filepath, index=False)
+            return self.filepath
+        return None
 
 class AnnotationMaskWriter:
     """

@@ -983,6 +983,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('cluster-annotation-type', 'value'),
                        Input('btn-download-canvas-tiff', 'n_clicks'),
                        State('custom-scale-val', 'value'),
+                       State('cluster-annotations-legend', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -995,7 +996,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 pixel_ratio, invert_annot, overlay_grid, legend_orientation,
                                                 global_apply_filter, global_filter_type, global_filter_val,
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                                                cluster_frame, cluster_type, download_canvas_tiff, custom_scale_val):
+                                                cluster_frame, cluster_type, download_canvas_tiff, custom_scale_val,
+                                                cluster_assignments_in_legend):
 
         """
         Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
@@ -1020,7 +1022,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # except (KeyError, TypeError):
             #     pass
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
-            legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation)
+            legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+                        cluster_assignments_in_legend, cluster_assignments_dict, data_selection)
             try:
                 canvas = CanvasImage(canvas_layers, data_selection, currently_selected,
                  mask_config, mask_selection, mask_blending_level,
@@ -1196,12 +1199,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('invert-annotations', 'value'),
                        Input('legend_orientation', 'value'),
                        State('custom-scale-val', 'value'),
+                       Input('cluster-annotations-legend', 'value'),
+                       State('cluster-colour-assignments-dict', 'data'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
                                                    cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
                                                    channel_order, legend_size, pixel_ratio, invert_annot,
-                                                   legend_orientation, custom_scale_val):
+                                                   legend_orientation, custom_scale_val, cluster_assignments_in_legend,
+                                                   cluster_assignments_dict):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend) or
         updates the scalebar length with a custom value
@@ -1221,9 +1227,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             #     cur_shapes = cur_canvas['layout']['shapes'].copy()
             # else:
             #     cur_shapes = []
-            if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation"]:
-                legend_text = generate_canvas_legend_text(blend_colour_dict,
-                            channel_order, aliases, legend_orientation)  if toggle_legend else ''
+            if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend"]:
+                legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+                cluster_assignments_in_legend, cluster_assignments_dict, data_selection) if toggle_legend else ''
                 canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
                 return CanvasLayout(canvas).clear_improper_shapes()
             elif ctx.triggered_id in ["toggle-canvas-scalebar"]:

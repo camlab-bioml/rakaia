@@ -7,6 +7,7 @@ from ccramic.utils.pixel_level_utils import (
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 from ccramic.utils.alert import PanelMismatchError
+import pandas as pd
 
 class FileParser:
     """
@@ -64,11 +65,14 @@ class FileParser:
         self.blend_config = {}
         for roi in list(data_h5.keys()):
             self.image_dict[roi] = {}
-            if 'metadata' not in roi:
+            if roi not in ['metadata', 'metadata_columns']:
                 channel_index = 1
                 for channel in data_h5[roi]:
                     try:
-                        self.image_dict[roi][channel] = data_h5[roi][channel]['image'][()]
+                        # IMP: do not use lazy loading with h5 files as the filename is likely
+                        # to be different from the internal experiment name due to renaming on export
+                        self.image_dict[roi][channel] = data_h5[roi][channel]['image'][()].astype(
+                        set_array_storage_type_from_config(self.array_store_type))
                         if channel_index == 1:
                             self.dataset_information_frame["ROI"].append(str(roi))
                             self.dataset_information_frame["Dimensions"].append(
@@ -79,6 +83,9 @@ class FileParser:
                         pass
                     if channel not in self.unique_image_names:
                         self.unique_image_names.append(channel)
+                    if channel not in self.metadata_channels:
+                        self.metadata_channels.append(channel)
+                        self.metadata_labels.append(channel)
                     self.blend_config[channel] = {}
                     channel_index += 1
                     for blend_key, blend_val in data_h5[roi][channel].items():
@@ -91,6 +98,14 @@ class FileParser:
                             else:
                                 data_add = None
                             self.blend_config[channel][blend_key] = data_add
+        meta_back = pd.DataFrame(data_h5['metadata'])
+        for col in meta_back.columns:
+            meta_back[col] = meta_back[col].str.decode("utf-8")
+        try:
+            meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
+        except KeyError:
+            pass
+        self.image_dict['metadata'] = meta_back
 
     def parse_tiff(self, tiff_file, internal_name=None):
         with TiffFile(tiff_file) as tif:

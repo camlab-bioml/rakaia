@@ -104,7 +104,7 @@ class RegionAnnotation(BaseModel):
     annotation_column: str = 'ccramic_cell_annotation'
     type: str = None
     channels: list = []
-    use_mask: bool = False
+    use_mask: Union[bool, list, str] = None
     mask_selection: str = None
     mask_blending_level: float = 35.0
     add_mask_boundary: Union[bool, list, str] = True
