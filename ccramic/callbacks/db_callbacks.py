@@ -28,8 +28,7 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pair = connection.username_password_pair() if connected else dash.no_update
             # connection.close()
             return pair, ping, True, "success" if connected else "danger"
-        else:
-            raise PreventUpdate
+        raise PreventUpdate
 
     @dash_app.callback(Output('db-saved-configs', 'data'),
                        Output('db-config-options', 'options'),
@@ -50,10 +49,8 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return SessionServerside(configs, key="dg-config-list"), \
                     list_configs, pd.DataFrame(config_preview).to_dict(orient='records'), \
                     [{'id': p, 'name': p, 'editable': False, "presentation": "markdown"} for p in config_preview.keys()]
-            else:
-                raise PreventUpdate
-        else:
             raise PreventUpdate
+        raise PreventUpdate
 
     @dash_app.callback(
         Output("db-config-preview", "is_open"),
@@ -109,5 +106,4 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             connection.remove_blend_document_by_name(db_config_name)
             # connection.close()
             return f"{db_config_name} removed successfully", True
-        else:
-            raise PreventUpdate
+        raise PreventUpdate

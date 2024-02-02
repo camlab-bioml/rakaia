@@ -253,7 +253,7 @@ def apply_preset_to_blend_dict(blend_dict, preset_dict):
     """
     Populate the blend dict from a preset dict
     """
-    assert all([key in blend_dict.keys() for key in preset_dict.keys()])
+    if not all([key in blend_dict.keys() for key in preset_dict.keys()]): raise AssertionError
     for key, value in preset_dict.items():
         # do not change the color from a preset
         if key != "color":
@@ -287,14 +287,6 @@ def validate_incoming_metadata_table(metadata, upload_dict):
              roi not in ['metadata', 'metadata_columns']]):
         return metadata
     return None
-    # if isinstance(metadata, pd.DataFrame) and
-    #     assert "Channel Label" in metadata.columns
-    #     assert "Channel Name" in metadata.columns
-    #     for roi in list(upload_dict.keys()):
-    #         if 'metadata' not in roi:
-    #             assert len(upload_dict[roi].keys()) == len(metadata.index)
-    #     return metadata
-    # return None
 
 
 def create_new_coord_bounds(window_dict, x_request, y_request):
@@ -303,7 +295,7 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
     and the requested coordinate is approximately the middle of the new window
     """
     try:
-        assert all([value is not None for value in window_dict.values()])
+        if not all([value is not None for value in window_dict.values()]): raise AssertionError
         # first cast the bounds as int, then cast as floats and add significant digits
         # 634.5215773809524
         x_request = float(x_request) + 0.000000000000
@@ -319,7 +311,7 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
         new_y_low = float(float(y_request - midway_y) + 0.000000000000)
         new_y_high = float(float(y_request + midway_y) + 0.000000000000)
         return new_x_low, new_x_high, new_y_low, new_y_high
-    except (AssertionError, KeyError):
+    except KeyError:
         return None
 
 def per_channel_intensity_hovertext(channel_list):
@@ -330,14 +322,11 @@ def per_channel_intensity_hovertext(channel_list):
     """
     data_index = 0
     hover_template = "x: %{x}, y: %{y} <br>"
-    try:
-        assert isinstance(channel_list, list)
-        for elem in channel_list:
-            assert channel_list.index(elem) == data_index
-            hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
-            data_index += 1
-    except AssertionError:
-        pass
+    if not isinstance(channel_list, list): return hover_template + "<extra></extra>"
+    for elem in channel_list:
+        if not channel_list.index(elem) == data_index: return hover_template + "<extra></extra>"
+        hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
+        data_index += 1
     hover_template = hover_template + "<extra></extra>"
     return hover_template
 

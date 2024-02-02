@@ -37,28 +37,23 @@ def set_mandatory_columns(only_sample=True):
 #         return mask[i][j]
 
 def get_min_max_values_from_zoom_box(coord_dict):
-    try:
-        assert all([elem in coord_dict.keys() for elem in \
-                    ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']])
-        x_min = min(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
-        x_max = max(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
-        y_min = min(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
-        y_max = max(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
-        return x_min, x_max, y_min, y_max
-    except AssertionError:
-        return None
+    if not all([elem in coord_dict.keys() for elem in \
+                    ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']]): return None
+    x_min = min(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
+    x_max = max(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
+    y_min = min(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
+    y_max = max(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
+    return x_min, x_max, y_min, y_max
 
 def get_min_max_values_from_rect_box(coord_dict):
-    try:
-        assert all([elem in coord_dict.keys() for elem in \
-                    ['x0', 'x1', 'y0', 'y1']])
-        x_min = min(coord_dict['x0'], coord_dict['x1'])
-        x_max = max(coord_dict['x0'], coord_dict['x1'])
-        y_min = min(coord_dict['y0'], coord_dict['y1'])
-        y_max = max(coord_dict['y0'], coord_dict['y1'])
-        return x_min, x_max, y_min, y_max
-    except AssertionError:
-        return None
+    if not all([elem in coord_dict.keys() for elem in \
+                    ['x0', 'x1', 'y0', 'y1']]): return None
+    x_min = min(coord_dict['x0'], coord_dict['x1'])
+    x_max = max(coord_dict['x0'], coord_dict['x1'])
+    y_min = min(coord_dict['y0'], coord_dict['y1'])
+    y_max = max(coord_dict['y0'], coord_dict['y1'])
+    return x_min, x_max, y_min, y_max
+
 
 # def convert_mask_to_cell_boundary(mask, outline_color=255, greyscale=True):
 #     """
@@ -94,25 +89,22 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
     Subset measurements frame based on a range of UMAP coordinates in the x and y axes
     Expects that the length of both frames are equal
     """
-    try:
-        assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
-                                                          'yaxis.range[0]', 'yaxis.range[1]']])
-        if len(measurements) != len(umap_frame):
-            umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
-        #     umap_frame.reset_index()
-        #     measurements.reset_index()
-        query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
-                         f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
-                         f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
-                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
-        # if len(measurements) != len(umap_frame):
-        #     query.reset_index()
-        # use the normalized values if they exist
-        measurements_to_use = normalized_values if normalized_values is not None else measurements
-        subset = measurements_to_use.loc[query.index.tolist()]
-        return subset
-    except AssertionError:
-        return None
+    if not all([elem in coordinates_dict for elem in ['xaxis.range[0]', 'xaxis.range[1]',
+                                                      'yaxis.range[0]', 'yaxis.range[1]']]): return None
+    if len(measurements) != len(umap_frame):
+        umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
+    #     umap_frame.reset_index()
+    #     measurements.reset_index()
+    query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
+                             f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
+                             f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
+                             f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
+    # if len(measurements) != len(umap_frame):
+    #     query.reset_index()
+    # use the normalized values if they exist
+    measurements_to_use = normalized_values if normalized_values is not None else measurements
+    subset = measurements_to_use.loc[query.index.tolist()]
+    return subset
 
 
 def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
@@ -125,8 +117,8 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
     """
     try:
         umap_frame.columns = ['UMAP1', 'UMAP2']
-        assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
-                                                          'yaxis.range[0]', 'yaxis.range[1]']])
+        if not all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']]): raise AssertionError
         if len(measurements) != len(umap_frame):
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
         #     umap_frame.reset_index()
@@ -144,7 +136,7 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
         measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
                                                    annotation_value, measurements[annotation_column])
 
-    except (KeyError, AssertionError):
+    except KeyError:
         pass
     return measurements
 
@@ -222,7 +214,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
                                                 float(y_max)),
                                                         cell_type,
                                                     measurements[annotation_column])
-    except (KeyError, AssertionError):
+    except KeyError:
         pass
 
     return measurements
@@ -399,20 +391,23 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     cluster_frame = cluster_frame.astype(str)
     empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
     mask_array = mask_array.astype(np.uint32)
-    for cell_type in cluster_frame[cluster_col].unique().tolist():
-        cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
-        # make sure that the cells are integers so that they match the array values of the mask
-        cell_list = [int(i) for i in cell_list]
-        annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
-        annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
-        annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
-        empty = empty + annot_mask
-    # Find where the cells are annotated, and add back in the ones that are not
-    if retain_cells:
-        already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
-        mask_array[already_cells] = 0
-        # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
-        # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
-        return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
-    else:
-        return empty.astype(np.uint8)
+    try:
+        for cell_type in cluster_frame[cluster_col].unique().tolist():
+            cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
+            # make sure that the cells are integers so that they match the array values of the mask
+            cell_list = [int(i) for i in cell_list]
+            annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
+            annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
+            annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
+            empty = empty + annot_mask
+        # Find where the cells are annotated, and add back in the ones that are not
+        if retain_cells:
+            already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
+            mask_array[already_cells] = 0
+            # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
+            # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
+            return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
+        else:
+            return empty.astype(np.uint8)
+    except KeyError:
+        return None

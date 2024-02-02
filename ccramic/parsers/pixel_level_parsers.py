@@ -54,7 +54,7 @@ class FileParser:
                 elif upload.endswith('.txt'):
                     try:
                         self.parse_txt(upload, internal_name=internal_name)
-                    except (OSError, AssertionError):
+                    except OSError:
                         pass
                 else:
                     raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
@@ -185,11 +185,8 @@ class FileParser:
                                                            'ccramic Label']
                     else:
                         # TODO: establish within an MCD if the channel names should be exactly the same
-                        # or if the length is sufficient
-                        # i.e. how to handle minor spelling mistakes
-                        # assert all(label in acq.channel_labels for label in channel_labels)
-                        # assert all(name in acq.channel_names for name in channel_names)
-                        # assert len(acq.channel_labels) == len(channel_labels)
+                        # for now, just checking the that the length matches is sufficient in case
+                        # there are slight spelling errors between mcds with the same panel
                         if len(acq.channel_labels) != len(channel_labels) or \
                            (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
                             raise PanelMismatchError("One or more ROIs imported from .mcd appear to have"
@@ -240,7 +237,7 @@ class FileParser:
             image_index = 1
             txt_channel_names = acq_text_read.channel_names
             txt_channel_labels = acq_text_read.channel_labels
-            # assert that the channel names and labels are the same if an upload has already passed
+            # check that the channel names and labels are the same if an upload has already passed
             # TODO: add custom exception rule here for mismatched panels
             if len(self.metadata_channels) > 0:
                 if not len(self.metadata_channels) == len(txt_channel_names) or \
@@ -248,11 +245,6 @@ class FileParser:
                         (self.panel_length is not None and self.panel_length != len(txt_channel_names)):
                     raise PanelMismatchError("One or more ROIs imported from .txt appear to have"
                             " different panel lengths. This is currently not supported by ccramic.")
-                # assert len(metadata_channels) == len(txt_channel_names)
-            #     # assert all([elem in txt_channel_names for elem in metadata_channels])
-            # if len(metadata_labels) > 0:
-            #     assert len(metadata_labels) == len(txt_channel_labels)
-            #     assert all([elem in txt_channel_labels for elem in metadata_labels])
             basename = str(Path(txt_filepath).stem)
             roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
                   f"{self.delimiter}{str(self.acq_index)}" if internal_name is None else internal_name
@@ -305,7 +297,6 @@ def create_new_blending_dict(uploaded):
             if len(uploaded[roi].keys()) != panel_length:
                 raise PanelMismatchError("The imported file(s) appear to have different panels"
                                          ". This is currently not supported by ccramic.")
-            # assert that all of the rois have the same length to use the same panel for all
     first_roi = [elem for elem in list(uploaded.keys()) if 'metadata' not in elem][0]
     for channel in uploaded[first_roi].keys():
         current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,

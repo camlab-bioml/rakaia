@@ -92,7 +92,10 @@ class CanvasImage:
                 if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame) and \
                         self.data_selection in self.cluster_assignments_dict.keys() and self.cluster_type == 'mask':
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
-                                self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
+                                self.cluster_frame[self.data_selection],
+                                self.cluster_assignments_dict[self.data_selection])
+                    annot_mask = annot_mask if annot_mask is not None else \
+                        np.where(self.mask_config[self.mask_selection]["array"].astype(np.uint8) > 0, 255, 0)
                     image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask, mask_level, 0)
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
@@ -309,12 +312,11 @@ class CanvasLayout:
                       self.figure['layout']['xaxis']['range'][0])
             x_range_high = math.ceil(int(high))
             x_range_low = math.floor(int(low))
-            assert x_range_high >= x_range_low
+            if not x_range_high >= x_range_low: raise AssertionError
             custom_scale_val = int(float(math.ceil(int(proportion *
                                 (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
         except (KeyError, TypeError):
             custom_scale_val = None
-
 
         fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
                                         font_size=legend_size, x_axis_left=x_axis_placement,
@@ -431,9 +433,8 @@ class CanvasLayout:
                               self.figure['layout']['xaxis']['range'][0])
                     x_range_high = math.ceil(int(high))
                     x_range_low = math.floor(int(low))
-                assert x_range_high >= x_range_low
-                # assert that all values must be above 0 for the scale value to render during panning
-                # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
+                if not x_range_high >= x_range_low: raise AssertionError
+                # Enforce that all values must be above 0 for the scale value to render during panning
                 scale_val = int(float(math.ceil(int(proportion * (x_range_high - x_range_low))) + 1) * float(
                     pixel_ratio))
                 scale_val = scale_val if scale_val > 0 else 1
@@ -461,7 +462,7 @@ class CanvasLayout:
                               self.figure['layout']['xaxis']['range'][0])
                     x_range_high = math.ceil(int(high))
                     x_range_low = math.floor(int(low))
-                    assert x_range_high >= x_range_low
+                    if not x_range_high >= x_range_low: raise AssertionError
                     custom_scale_val = int(float(math.ceil(int(proportion *
                                         (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
                 else:

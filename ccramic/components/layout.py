@@ -972,6 +972,7 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id="mask-uploads"),
         dcc.Store(id="figure-cache"),
         dcc.Store(id="uploads"),
+        dcc.Store(id="uploads_cluster"),
         dcc.Store(id="current_canvas_image"),
         dcc.Store(id="umap-projection"),
         dcc.Store(id="annotations-dict"),

@@ -163,10 +163,10 @@ def test_generate_channel_statistics_dataframe_errors():
     stats = pd.DataFrame(
         RegionSummary(graph_layout_bad, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
-    assert len(stats) == 4
-    assert list(stats['Max'] == [0, 0, 100, 300])
-    assert list(stats['Min'] == [0, 0, 100, 300])
-    assert list(stats['Mean'] == [0, 0, 100, 300])
+    assert len(stats) == 2
+    assert list(stats['Max'] == [100, 300])
+    assert list(stats['Min'] == [100, 300])
+    assert list(stats['Mean'] == [100, 300])
 
 
     # test when the arrays are None
