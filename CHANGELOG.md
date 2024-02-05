@@ -14,7 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom string delimiter input to change the string representation of ROIs within the session
 - Data refresh button for refreshing ROI selection in case of a `PreventUpdate` exception in the canvas
 callback
-- Add poetry files for development option
+- Add poetry files for development option (in envs)
 
 ### Changed
 
