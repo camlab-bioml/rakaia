@@ -129,8 +129,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         obtained as the UMAP projections will no longer align with the quantification frame and must be re-run
         If the quantification is successful, close the modal
         """
-        if error_config is None:
-            error_config = {"error": None}
+        error_config = {"error": None} if error_config is None else error_config
         if execute > 0 and None not in (image_dict, data_selection, mask_selection, channels_to_quantify) and \
                 apply_mask:
             first_image = list(image_dict[data_selection].keys())[0]

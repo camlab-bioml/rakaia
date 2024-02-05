@@ -12,7 +12,6 @@ from ccramic.inputs.pixel_level_inputs import (
     generate_canvas_legend_text,
     set_x_axis_placement_of_scalebar)
 from ccramic.parsers.pixel_level_parsers import (
-    # populate_upload_dict,
     FileParser,
     populate_image_dict_from_lazy_load,
     create_new_blending_dict)
@@ -117,9 +116,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, import_type):
         if path and clicks > 0:
             session_config = cur_session if cur_session is not None and \
-                                            len(cur_session['uploads']) > 0 else {'uploads': []}
-            if error_config is None:
-                error_config = {"error": None}
+                            len(cur_session['uploads']) > 0 else {'uploads': []}
+            error_config = {"error": None} if error_config is None else error_config
             # session_config = {'uploads': []}
             if import_type == "filepath":
                 if os.path.isfile(path):
@@ -206,8 +204,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             unique_suffixes = []
-            if error_config is None:
-                error_config = {"error": None}
+            error_config = {"error": None} if error_config is None else error_config
             message = "Read in the following files:\n"
             files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
             for upload in files:
@@ -450,8 +447,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Requires that the channel modification menu be empty to make sure that parameters are updated properly
         """
         metadata_return = dash.no_update
-        if error_config is None:
-            error_config = {"error": None}
+        error_config = {"error": None} if error_config is None else error_config
         if ctx.triggered_id == "db-config-options" and db_config_selection is not None:
             # TODO: decide if the alias key needs to be removed from the blend dict imported from mongoDB
             new_blend_dict = match_db_config_to_request_str(db_config_list, db_config_selection)
@@ -466,7 +462,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         len(new_blend_dict['channels']) for roi in uploaded_w_data.keys() if delimiter in roi])
             if panels_equal or match_all:
                 current_blend_dict = new_blend_dict['channels'].copy()
-                if all_layers is None:
+                if all_layers is None or data_selection not in all_layers.keys():
                     all_layers = {data_selection: {}}
                 for elem in add_to_layer:
                     # make sure any bounds that are stored as None are overwritten with the default scaling
@@ -826,12 +822,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
-        retain memory. Should be cleared on a new ROI selection
+        retain memory. Should be cleared on a new ROI selection if caching is not retained
+        If caching is enabled, then the blended arrays that form the image will be retained for quicker
+        toggling
         """
-        if data_selection is not None:
-            return None
+        if data_selection: return None
         raise PreventUpdate
-
 
     @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
                        Input('preset-options', 'value'),
@@ -989,6 +985,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and currently_selected and len(canvas_children) > 0 and \
                 len(channel_order) > 0 and not global_not_enabled and not channel_order_same:
+                # data_selection in canvas_layers:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             # try:
             #     cur_graph['layout']['shapes'] = [shape for shape in cur_graph_layout['layout']['shapes'] if \
@@ -1270,8 +1267,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def populate_datatable_columns(metadata_config, uploaded, error_config, cur_metadata):
         if metadata_config is not None and len(metadata_config['uploads']) > 0:
-            if error_config is None:
-                error_config = {"error": None}
+            error_config = {"error": None} if error_config is None else error_config
             metadata_read = pd.read_csv(metadata_config['uploads'][0])
             metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
             if metadata_validated is not None and 'ccramic Label' not in metadata_validated.keys():
@@ -2098,8 +2094,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if any([elem in bad_entries for elem in gene_aliases.keys()]) or \
             any([elem['Channel Name'] in bad_entries or elem['Channel Label'] in bad_entries for \
                  elem in metadata_editable]):
-            if error_config is None:
-                error_config = {"error": None}
+            error_config = {"error": None} if error_config is None else error_config
             error_config["error"] = ALERT.warnings["metadata_format_error"]
             return error_config
         raise PreventUpdate

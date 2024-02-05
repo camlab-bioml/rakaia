@@ -44,6 +44,7 @@ from dash import html
 from ccramic.io.session import SessionServerside
 import uuid
 from ccramic.utils.session import non_truthy_to_prevent_update
+from ccramic.utils.cluster import assign_colours_to_cluster_annotations, cluster_label_children
 
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -659,15 +660,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def generate_cluster_colour_assignment(cluster_frame, data_selection, cur_cluster_dict):
         if None not in (cluster_frame, data_selection):
-            unique_clusters = pd.DataFrame(cluster_frame[data_selection])['cluster'].unique().tolist()
-            unique_colours = random_hex_colour_generator(len(unique_clusters))
-            cluster_assignments = {data_selection: {}} if not cur_cluster_dict else cur_cluster_dict
-            if data_selection not in cluster_assignments:
-                # TODO: figure out toggling between ROIS with the same or different cluster annotations
-                cluster_assignments[data_selection] = {}
-            for clust, colour in zip(unique_clusters, unique_colours):
-                cluster_assignments[data_selection][clust] = colour
-            return cluster_assignments, list(unique_clusters)
+            return assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
         raise PreventUpdate
 
     @dash_app.callback(Input('data-collection', 'value'),
@@ -687,13 +680,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         render the html H6 html span legend for the cluster annotation colours
         """
         if None not in (cluster_assignments_dict, data_selection):
-            if data_selection in cluster_assignments_dict:
-                children = [html.Span("Cluster assignments\n", style={"color": "black"}), html.Br()]
-                for key, value in cluster_assignments_dict[data_selection].items():
-                    children.append(html.Span(f"{str(key)}\n", style={"color": str(value)}))
-                    children.append(html.Br())
-                return children
-            return []
+            return cluster_label_children(data_selection, cluster_assignments_dict)
         raise PreventUpdate
 
     @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),

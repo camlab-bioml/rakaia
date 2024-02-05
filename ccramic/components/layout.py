@@ -72,6 +72,9 @@ def register_app_layout(config, cache_dest):
                     daq.ToggleSwitch(label='Natural sort input files', id='natsort-uploads',
                                      labelPosition='bottom', color="blue", value=True,
                                      persistence=config['persistence'], persistence_type='local'),
+                    # daq.ToggleSwitch(label='Cache blends between ROIS', id='roi-blend-cache',
+                    #                  labelPosition='bottom', color="blue", value=False,
+                    #                  persistence=config['persistence'], persistence_type='local'),
                     html.H6("Legend orientation"),
                     dcc.RadioItems(['vertical', 'horizontal'], 'vertical', inline=True, id="legend_orientation",
                                    persistence=config['persistence'], persistence_type='local'),
@@ -467,7 +470,7 @@ def register_app_layout(config, cache_dest):
                                                    "float": "center", "justify-content": "center"}),
                                  html.Br(),
                                  dbc.Offcanvas(id="blend-config-offcanvas", title="Advanced settings: canvas & region",
-                                               placement="end", style={"width": "30%"}, backdrop=False, scrollable=True,
+                                               placement="end", style={"width": "32%"}, backdrop=False, scrollable=True,
                                                is_open=False, children=[
                                 dbc.Tabs(id='config-tabs',
                                 children=[dbc.Tab(label="Configuration", tab_id='blend-config-tab',
@@ -704,7 +707,7 @@ def register_app_layout(config, cache_dest):
                                 "margin-top": "15px"}),
                                 html.Br(),
                                 ], style={"padding": "5px"}),
-                                dbc.Tab(label="Quantification/Clustering", children=[
+                                dbc.Tab(label="Measure/Cluster", children=[
                                 html.Br(),
                                 dbc.Button("Quantify current ROI", id="quantify-cur-roi-button"),
                                 html.Br(),

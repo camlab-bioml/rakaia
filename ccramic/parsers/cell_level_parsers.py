@@ -51,12 +51,10 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
                 embedding = umap_obj.fit_transform(scaled)
                 return SessionServerside(embedding, key="umap-embedding",
                                          use_unique_key=unique_key_serverside), cols
-            else:
-                raise PreventUpdate
+            raise PreventUpdate
         else:
             return dash.no_update, cols
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 
 def validate_incoming_measurements_csv(measurements_csv, required_columns=set_mandatory_columns()):
@@ -106,8 +104,7 @@ def get_quantification_filepaths_from_drag_and_drop(status):
         for file in filenames:
             session_config['uploads'].append(file)
         return session_config
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 
 def parse_and_validate_measurements_csv(session_dict, error_config=None,
@@ -137,8 +134,7 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None,
             error_config["error"] = warning
             warning_return = error_config
         return measurements_return, cols_return, warning_return
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 
 def parse_masks_from_filenames(status):
@@ -154,8 +150,7 @@ def parse_masks_from_filenames(status):
         masks[default_mask_name] = mask_file
     if len(masks) > 0:
         return masks
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                      set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):
@@ -186,8 +181,7 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                                    "raw": page.asarray()}
         return SessionServerside(cur_mask_dict, key="mask-dict",
                                  use_unique_key=unique_key_serverside), list(cur_mask_dict.keys())
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 
 def validate_quantification_from_anndata(anndata_obj, required_columns=set_mandatory_columns()):
@@ -257,8 +251,7 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
                     if selection in indices_keep:
                         subtypes_keep.append(tot_subtypes[selection])
                 return subtypes_keep, indices_keep
-    else:
-        return None, None
+    return None, None
 
 
 def parse_roi_query_indices_from_quantification_subset(quantification_dict, subset_frame, umap_col_selection=None):

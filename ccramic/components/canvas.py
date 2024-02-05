@@ -280,10 +280,14 @@ class CanvasLayout:
         if 'layout' in self.figure and 'shapes' in self.figure['layout'] and \
                 len(self.figure['layout']['shapes']) > 0 and not \
                 isinstance(self.figure['layout']['shapes'], tuple):
-            self.cur_shapes = [shape for shape in self.figure['layout']['shapes'] if shape and not is_bad_shape(shape)]
+            self.cur_shapes = [shape for shape in self.figure['layout']['shapes'] if shape and \
+                               'type' in shape and not is_bad_shape(shape)]
         else:
             self.cur_shapes = []
 
+        for shape in self.cur_shapes:
+            if 'label' in shape and 'texttemplate' in shape['label']:
+                shape['label'].pop('texttemplate')
     def get_fig(self):
         return self.figure
 

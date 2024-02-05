@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-31
+## [0.13.0] - 2024-02-05
 
 ### Added
 
 - Custom string delimiter input to change the string representation of ROIs within the session
+- Data refresh button for refreshing ROI selection in case of a `PreventUpdate` exception in the canvas
+callback
+- Add poetry files for development option
 
 ### Changed
 
@@ -19,7 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Added additional checks for panel length mismatches when giles are not imported at the same time
+- Added additional checks for panel length mismatches when files are not imported at the same time
+- Add ability to retain cluster assignments for individual ROIs when toggling
+- Cluster annotations can now be added to the canvas legend via toggle: can replace the channel labels
+when clusters are applied
 
 ## [0.12.0] - 2024-01-26
 
