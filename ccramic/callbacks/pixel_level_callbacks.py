@@ -201,6 +201,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Create session variables from the list of imported file paths
         Note that a message will be supplied if more than one type of file is passed
+        The image dictionary template is used to populate the actual images using lazy load
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             unique_suffixes = []
@@ -298,10 +299,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def create_dropdown_options(image_dict, data_selection, names, currently_selected_channels, session_config,
                                 sort_channels, enable_zoom, cur_dimensions, dataset_refresh, delimiter):
+        # TODO: figure out if the canvas freezing occurs here when exceptions are thrown for canvas refreshing
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
-        if the dimensions are above 3000 for either axis
+        if the dimensions are above a specific pixel height and width for either axis
         """
         # set the default canvas to return without a load screen
         if image_dict and data_selection and names:
@@ -312,19 +314,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             else:
                 channels_return = names
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
-                # canvas_return = [render_default_annotation_canvas(fullscreen_mode=enable_zoom)]
-                # load the specific ROI requested into the dictionary
-                # imp: use the channel label for the dropdown view and the name in the background to retrieve
                 try:
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
                     session_config=session_config, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
-                    if all([image_dict[data_selection][elem] is not None for \
+                    if data_selection in image_dict.keys() and \
+                            all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
                         # get the first image in the ROI and check the dimensions
                         first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
-                        # if the new dimensions match, do not update the canvas child
+                        # if the new dimensions match, do not update the canvas child to preserve the ui revision state
                         if cur_dimensions is not None and (first_image.shape[0] == cur_dimensions[0]) and \
                                 (first_image.shape[1] == cur_dimensions[1]):
                            canvas_return = dash.no_update
@@ -332,12 +332,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,
                                             enable_zoom=enable_zoom, wrap=app_config['use_loading'])]
                     else:
-                        # canvas_return = dash.no_update
-                        # dim_return = None
-                        raise PreventUpdate
-                except (IndexError, AssertionError) as e:
+                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
+                                                                                        wrap=app_config['use_loading'])]
+                # If there is an error on the dataset update, by default return a new fresh canvas
+                except (IndexError, AssertionError, KeyError) as e:
                     print(e)
-                    raise PreventUpdate
+                    print("updating dropdown")
+                    print(data_selection)
+                    print(image_dict.keys())
+                    canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None,
+                                    enable_zoom=enable_zoom, wrap=app_config['use_loading'])]
                 try:
                     # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
                     if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
@@ -370,8 +374,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         If channels are already selected, keep them and just update the labels
         """
         channel_list_options = [{'label': value, 'value': key} for key, value in aliases.items()]
-        channel_list_selected = list(aliases.keys()) if cur_selection is None or len(cur_selection) == 0 else \
-            cur_selection
+        channel_list_selected = list(aliases.keys()) if not cur_selection else cur_selection
         return channel_list_options, channel_list_selected
 
     @dash_app.callback(Output('images_in_blend', 'options'),
@@ -389,10 +392,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if chosen_for_blend is not None and len(chosen_for_blend) > 0:
             try:
                 if not all([elem in names.keys() for elem in chosen_for_blend]): raise AssertionError
+                channel_auto_fill = dash.no_update
                 if chosen_for_blend[-1] != cur_channel_mod:
                     channel_auto_fill = chosen_for_blend[-1]
-                else:
-                    channel_auto_fill = dash.no_update
                 return [{'label': names[i], 'value': i} for i in chosen_for_blend], channel_auto_fill
             except (AssertionError, IndexError):
                 raise PreventUpdate
@@ -410,8 +412,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if session_config is not None:
             if current_blend_dict is None and uploaded is not None and current_selection is None:
-                current_blend_dict = create_new_blending_dict(uploaded)
-                return current_blend_dict
+                return create_new_blending_dict(uploaded)
             raise PreventUpdate
         raise PreventUpdate
 
@@ -487,7 +488,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return SessionServerside(all_layers, key="layer_dict", use_unique_key=app_config['serverside_overwrite']), \
                     current_blend_dict, error_config, channel_list_return, global_apply_filter, global_filter_type, \
                     global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update
-            # IMP: if the update does not occur, clear the database selection and autofilled config name
+            # IMP: if the update does not occur, clear the database selection and auto filled config name
             else:
                 error_config["error"] = ALERT.warnings["json_update_error"]
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
@@ -918,6 +919,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('annotation_canvas', 'figure'),
                        # Output('annotation_canvas', 'relayoutData'),
                        Output('download-canvas-image-tiff', 'data'),
+                       Output('data-collection', 'value', allow_duplicate=True),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -970,13 +972,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 cluster_assignments_in_legend):
 
         """
-        Update the canvas from a layer dictionary update (The cache dictionary containing the modified image layers
-        that will be added together to form the canvas
-        or
-        if a mask is applied to the canvas
-        or
-        if the hovertemplate is updated (it is faster to recreate the figure rather than trying to remove the
-        hovertemplate)
+        Update the canvas from either an underlying change to the source image, or a change to the hover template
+        Examples of triggers include:
+        - changes to the additive blend (channel modifications & global filters)
+        - toggling of a mask and its related features (blending, clustering)
+        - if the hover template is updated (it is faster to recreate the figure rather than trying to remove the
+        hover template)
         """
         # do not update if the trigger is a global filter and the filter is not applied
         global_not_enabled = ctx.triggered_id in ["global-filter-type", "global-kernel-val-filter",
@@ -1018,10 +1019,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig = dash.no_update
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                                                 dest_dir=dest_path))
-                return fig, canvas_tiff
+                return fig, canvas_tiff, dash.no_update
             except (ValueError, AttributeError, KeyError, IndexError) as e:
+                # if there is an error on the canvas redraw, try to refresh the current data selection
                 print(e)
-                raise PreventUpdate
+                print("updating canvas")
+                print(data_selection)
+                print(canvas_layers.keys())
+                return dash.no_update, dash.no_update, data_selection
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
         #     fig = cur_graph if cur_graph is not None else go.Figure()
@@ -1289,7 +1294,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('uploaded_dict_template', 'data'),
         Input('image-metadata', 'data'))
     # @cache.memoize())
-    def populate_datatable_columns(uploaded, column_dict):
+    def populate_metadata_table(uploaded, column_dict):
         if uploaded is not None and uploaded['metadata'] is not None:
             try:
                 return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for

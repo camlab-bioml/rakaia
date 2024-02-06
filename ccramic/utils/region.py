@@ -33,6 +33,11 @@ class ChannelRegion:
         return self.max_exp
 
 class RectangularKeys(BaseModel):
+    """
+    Defines the possible keys for different rectangular regions on the canvas
+    Options vary depending on if zoom is used, or a rectangular shape is drawn fresh
+    or edited
+    """
     keys: dict = {"zoom": ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]'),
                   "rect": ('x0', 'x1', 'y0', 'y1'),
                   "rect_redrawn": ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')}

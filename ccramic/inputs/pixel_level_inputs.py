@@ -227,15 +227,20 @@ def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legen
     legend_text = ''
     gap = "" if legend_orientation == "vertical" else " "
     line_break = "<br>" if legend_orientation == "vertical" else ""
+    # use only unique aliases in the legend to allow merging of identical channels
+    aliases_used = []
     if not use_cluster_annotations:
         for image in channel_order:
         # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
             label = aliases[image] if aliases is not None and image in aliases.keys() else image
-            legend_text = legend_text + f'<span style="color:' \
+            if label not in aliases_used:
+                legend_text = legend_text + f'<span style="color:' \
                                     f'{blend_colour_dict[image]["color"]}"' \
                                     f'>{label}{gap}</span>{line_break}'
+                aliases_used.append(label)
     elif use_cluster_annotations and cluster_colour_dict:
         try:
+            # these will automatically be unique
             for clust in list(cluster_colour_dict[data_selection].keys()):
                 legend_text = legend_text + f'<span style="color:' \
                                         f'{cluster_colour_dict[data_selection][clust]}"' \

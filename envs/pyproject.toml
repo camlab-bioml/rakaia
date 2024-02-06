@@ -134,6 +134,7 @@ wsproto = "1.2.0"
 xmltodict = "0.13.0"
 xtiff = "0.7.9"
 zipp = "3.15.0"
+pytest-cov = "4.0.0"
 
 
 [build-system]

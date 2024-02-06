@@ -168,12 +168,6 @@ def register_app_layout(config, cache_dest):
                                              html.Div([dcc.Input(id="input-mask-name", type="text", value=None,
                                                                  style={"width": "65%", "margin-right": "10px",
                                                                         "height": "50%"}),
-                                                       # daq.ToggleSwitch(label='Derive cell boundary',
-                                                       #                  id='derive-cell-boundary',
-                                                       #                  labelPosition='bottom', color="blue",
-                                                       #                  value=False,
-                                                       #                  style={"margin-right": "-30px",
-                                                       #                         "margin-left": "10px"})
                                                        ],
                                                       style={"display": "flex"}),
                                              dbc.Button("Set mask import", id="set-mask-name", className="me-1")]),
@@ -504,9 +498,9 @@ def register_app_layout(config, cache_dest):
                                     persistence=config['persistence'], persistence_type='local')], style={"display": "flex"}),
                                     html.Br(),
                                     html.H6("Adjust legend/scale size"),
-                                    dcc.Slider(10, 24, 1, value=16,
+                                    dcc.Slider(4, 30, 1, value=16,
                                               id='legend-size-slider',
-                                              marks={10: 'small', 16: 'default', 24: 'large'},
+                                              marks={4: 'small', 16: 'default', 30: 'large'},
                                               persistence=config['persistence'], persistence_type='local'),
                                     html.Br(),
                                     html.H6("Apply global filter"),
@@ -523,7 +517,6 @@ def register_app_layout(config, cache_dest):
                                                         disabled=True, min=0, max=9, step=0.1)],
                                     style={"display": "flex", "margin": "20px"}),
                                     html.Br(),
-                                    # TODO: add tab for mask gating by channel quantification
                                     dbc.Tabs(id='mask-gate-config',
                                     children=[dbc.Tab(id='mask-config', label='Mask',
                                     children=[html.Br(),
@@ -547,6 +540,7 @@ def register_app_layout(config, cache_dest):
                                         style={"margin-left": "35px","margin-top": "10px"})],
                                         style={"display": "flex"})])
                                                                ]),
+                                    # TODO: Enable tab for mask gating by channel quantification
                                     # dbc.Tab(id='gating-config', label='Gating',
                                     #     children=[
                                     # html.Br(),

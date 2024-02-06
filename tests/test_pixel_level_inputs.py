@@ -136,14 +136,15 @@ def test_tick_marker_spacing_range_slider():
 def test_generate_legend_text_channels():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
                                                    "Nuclear": np.array([1, 1, 1, 1]),
-                                                   "Cytoplasm": np.array([2, 2, 2, 2])},
+                                                   "Cytoplasm": np.array([2, 2, 2, 2]),
+                                                   "Other_Nuclear": np.array([3, 3, 3, 3])},
                    "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
                                                    "Nuclear": np.array([4, 4, 4, 4]),
-                                                   "Cytoplasm": np.array([5, 5, 5, 5])}
-                   }
+                                                   "Cytoplasm": np.array([5, 5, 5, 5]),
+                                                   "Other_Nuclear": np.array([6, 6, 6, 6])}}
     blend_dict = create_new_blending_dict(upload_dict)
     channel_order = list(blend_dict.keys())
-    aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto"}
+    aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto", "Other_Nuclear": "nuclear"}
     orientation = "horizontal"
     legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, orientation)
     assert "<br>" not in legend_text
@@ -153,6 +154,11 @@ def test_generate_legend_text_channels():
     assert "<br>" in legend_text
     assert "dna" in legend_text
     assert not "DNA" in legend_text
+
+    # assert each alias shows up only once in the legend
+    assert legend_text == '<span style="color:#FFFFFF">dna</span><br><span style="color:#FFFFFF">' \
+                          'nuclear</span><br><span style="color:#FFFFFF">cyto</span><br>'
+
 
 def test_generate_legend_text_clustering():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),

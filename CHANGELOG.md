@@ -19,6 +19,8 @@ callback
 ### Changed
 
 - Annotation dictionary entries internally represented by `pydantic` base model
+- Use only unique aliases in canvas legend: allows for channels representing the same measurement
+to be combined with the same colour and represented only once for simplicity
 
 ### Fixed
 
