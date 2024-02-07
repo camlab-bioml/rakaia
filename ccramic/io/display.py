@@ -5,6 +5,7 @@ import os
 from tifffile import imwrite
 import numpy as np
 import plotly.graph_objs as go
+from typing import Union
 
 class RegionSummary:
     """
@@ -167,3 +168,29 @@ def output_current_canvas_as_html(cur_graph, canvas_style, dest_dir=None):
     fig.write_html(str(os.path.join(dest_dir, 'canvas.html')), default_width=canvas_style['width'],
                    default_height=canvas_style['height'])
     return str(os.path.join(dest_dir, 'canvas.html'))
+
+
+class FullScreenCanvas:
+    """
+    Represents a `go.Figure` instance of a blended canvas with the annotations and shapes
+    removed
+    """
+    def __init__(self, canvas: Union[dict, go.Figure], canvas_layout: dict):
+        self.canvas = canvas
+        self.canvas_layout = canvas_layout
+        if 'layout' in self.canvas_layout.keys() and 'annotations' in self.canvas_layout['layout'].keys() and \
+                len(self.canvas_layout['layout']['annotations']) > 0:
+            self.canvas_layout['layout']['annotations'] = []
+        if 'shapes' in canvas_layout.keys():
+            self.canvas_layout['shapes'] = {}
+        if 'layout' in self.canvas.keys() and 'annotations' in self.canvas['layout'].keys() and \
+                len(self.canvas['layout']['annotations']) > 0:
+            self.canvas['layout']['annotations'] = []
+        if 'layout' in self.canvas.keys() and 'shapes' in self.canvas['layout'].keys():
+            self.canvas['layout']['shapes'] = []
+
+    def get_canvas(self):
+        return self.canvas
+
+    def get_canvas_layout(self):
+        return self.canvas_layout

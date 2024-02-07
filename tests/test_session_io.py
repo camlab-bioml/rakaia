@@ -40,13 +40,20 @@ def test_write_config_json():
         global_filter_type = "gaussian"
         global_filter_val = 3
         global_filter_sigma = 1
+
+        aliases = {}
+        for key in blend_dict.keys():
+            aliases[key] = key
+
+        clusters = {"roi_1": {"cell_type_1": "#FFFFFF", "cell_type_2": "#FFFFFF"}}
+
         json_path = write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
-                                               global_filter_type, global_filter_val, global_filter_sigma)
+                                               global_filter_type, global_filter_val, global_filter_sigma,
+                                               "roi_1", clusters, aliases)
         assert os.path.exists(json_path)
         if os.access(json_path, os.W_OK):
             os.remove(json_path)
         assert not os.path.exists(json_path)
-
 
 def test_write_session_data_to_h5py():
 

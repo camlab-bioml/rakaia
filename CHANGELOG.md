@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-02-05
+## [0.13.0] - 2024-02-07
 
 ### Added
 
@@ -21,6 +21,8 @@ callback
 - Annotation dictionary entries internally represented by `pydantic` base model
 - Use only unique aliases in canvas legend: allows for channels representing the same measurement
 to be combined with the same colour and represented only once for simplicity
+- JSON and mongoDB documents now contain cluster colour annotations if they exist on export
+- JSON export includes aliases
 
 ### Fixed
 

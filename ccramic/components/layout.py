@@ -447,9 +447,9 @@ def register_app_layout(config, cache_dest):
                                  dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
                                               style={"width": "85%", "display": "inline-block"}),
                                  dcc.Input(id="kernel-val-filter", type="number", value=3, style={"width": "50%"},
-                                           min=0, max=9, step=1),
+                                           min=0, max=9, step=1, debounce=True),
                                  dcc.Input(id="sigma-val-filter", type="number", value=1, style={"width": "50%"},
-                                           disabled=True, min=0, max=9, step=0.1)],
+                                           disabled=True, min=0, max=9, step=0.1, debounce=True)],
                                 style={"display": "inline-block", "margin": "20px"}),
                                  html.Br(),
                                  dbc.Button(

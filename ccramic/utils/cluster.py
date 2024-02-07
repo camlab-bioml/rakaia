@@ -17,8 +17,8 @@ def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_clu
         if (roi_selection not in cluster_assignments) or (roi_selection in cluster_assignments and
             len(unique_clusters) != len(cluster_assignments[roi_selection])):
             cluster_assignments[roi_selection] = {}
-        for clust, colour in zip(unique_clusters, unique_colours):
-            cluster_assignments[roi_selection][clust] = colour
+            for clust, colour in zip(unique_clusters, unique_colours):
+                cluster_assignments[roi_selection][clust] = colour
         return cluster_assignments, list(unique_clusters)
     except (KeyError, TypeError):
         return None, None

@@ -652,10 +652,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             raise PreventUpdate
         raise PreventUpdate
 
-    @dash_app.callback(Input('imported-cluster-frame', 'data'),
-                State('data-collection', 'value'),
+    @dash_app.callback(
                 Output('cluster-colour-assignments-dict', 'data'),
                 Output('cluster-label-list', 'options'),
+                Input('imported-cluster-frame', 'data'),
+                State('data-collection', 'value'),
                 State('cluster-colour-assignments-dict', 'data'))
     # @cache.memoize())
     def generate_cluster_colour_assignment(cluster_frame, data_selection, cur_cluster_dict):
