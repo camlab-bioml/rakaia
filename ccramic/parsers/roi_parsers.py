@@ -79,12 +79,13 @@ class RegionThumbnail:
                         self.query_selection = [i for i in self.query_selection['indices'] if \
                                            len(slide_inside.acquisitions) > i >= 0]
                     elif 'names' in self.query_selection:
-                        acq_names = [acq.description for acq in slide_inside.acquisitions]
+                        acq_names = [f"{str(acq.description)}_{str(acq.id)}" for acq in slide_inside.acquisitions]
                         self.num_queries = len(self.query_selection['names'])
                         self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
                 for query in self.query_selection:
                     acq = slide_inside.acquisitions[query]
-                    if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}{acq.description}" not in self.rois_exclude:
+                    if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
+                       f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude:
                         channel_names = acq.channel_names
                         channel_index = 0
                         img = mcd_file.read_acquisition(acq)
@@ -100,7 +101,8 @@ class RegionThumbnail:
                                                                              'color'])).astype(np.float32)
                                 acq_image.append(recoloured)
                             channel_index += 1
-                        label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}{acq.description}"
+                        label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
+                       f"{str(acq.description)}_{str(acq.id)}"
                         self.process_additive_image(acq_image, label)
                     else:
                         self.num_queries += 1

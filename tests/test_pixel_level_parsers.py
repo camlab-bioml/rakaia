@@ -36,11 +36,11 @@ def test_basic_parser_fake_mcd(get_current_dir):
 def test_basic_parser_from_mcd(get_current_dir):
     parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
     uploaded_dict = parser.image_dict
-    assert 'query+++slide0+++Xylene' in uploaded_dict.keys()
+    assert 'query+++slide0+++Xylene_5' in uploaded_dict.keys()
     assert 'metadata' in uploaded_dict.keys()
-    assert len(uploaded_dict['query+++slide0+++Xylene']) == 11
+    assert len(uploaded_dict['query+++slide0+++Xylene_5']) == 11
     # the values will all be none for the mcd because of lazy loading
-    assert all([value is None for value in uploaded_dict['query+++slide0+++Xylene'].values()])
+    assert all([value is None for value in uploaded_dict['query+++slide0+++Xylene_5'].values()])
     dataset_info = parser.dataset_information_frame
     assert len(dataset_info['ROI']) == 6
     assert '11 markers' in dataset_info['Panel']
@@ -61,11 +61,11 @@ def test_basic_parser_exceptions(get_current_dir):
 def test_basic_parser_blend_dict_from_lazy_loading(get_current_dir):
     parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
     uploaded_dict = parser.image_dict
-    assert 'query+++slide0+++Xylene' in uploaded_dict.keys()
-    assert all([elem is None for elem in uploaded_dict['query+++slide0+++Xylene'].values()])
+    assert 'query+++slide0+++Xylene_5' in uploaded_dict.keys()
+    assert all([elem is None for elem in uploaded_dict['query+++slide0+++Xylene_5'].values()])
     session_config = {"uploads": [os.path.join(get_current_dir, "query.mcd")]}
-    new_upload_dict = populate_image_dict_from_lazy_load(uploaded_dict, 'query+++slide0+++Xylene', session_config)
-    assert all([elem is not None for elem in new_upload_dict['query+++slide0+++Xylene'].values()])
+    new_upload_dict = populate_image_dict_from_lazy_load(uploaded_dict, 'query+++slide0+++Xylene_5', session_config)
+    assert all([elem is not None for elem in new_upload_dict['query+++slide0+++Xylene_5'].values()])
 
 def test_basic_parser_lazy_loading_2(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "query_from_text.txt")])

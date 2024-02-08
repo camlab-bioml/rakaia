@@ -172,7 +172,7 @@ class FileParser:
                 for acq in slide.acquisitions:
                     basename = str(Path(mcd_filepath).stem)
                     roi = f"{str(basename)}{self.delimiter}slide{str(slide_index)}" \
-                          f"{self.delimiter}{str(acq.description)}"
+                          f"{self.delimiter}{str(acq.description)}_{str(acq.id)}"
                     self.image_dict[roi] = {}
                     if channel_labels is None:
                         channel_labels = acq.channel_labels
@@ -191,7 +191,6 @@ class FileParser:
                            (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
                             raise PanelMismatchError("One or more ROIs imported from .mcd appear to have"
                             " different panel lengths. This is currently not supported by ccramic.")
-                    # img = mcd_file.read_acquisition(acq)
                     channel_index = 0
                     for channel in acq.channel_names:
                         self.image_dict[roi][channel] = None if self.lazy_load else channel.astype(
@@ -223,10 +222,11 @@ class FileParser:
             self.image_dict = {internal_name: {}}
             for slide_inside in mcd_file.slides:
                 for acq in slide_inside.acquisitions:
-                    if acq.description == roi_name:
+                    pattern = f"{str(acq.description)}_{str(acq.id)}"
+                    if pattern == roi_name:
                         channel_names = acq.channel_names
                         channel_index = 0
-                        img = mcd_file.read_acquisition(acq)
+                        img = mcd_file.read_acquisition(acq, strict=False)
                         for channel in img:
                             self.image_dict[internal_name][channel_names[channel_index]] = channel.astype(
                                 set_array_storage_type_from_config(self.array_store_type))
@@ -251,7 +251,7 @@ class FileParser:
             self.image_dict[roi] = {}
             # TODO: only read the acquisition if lazy loading is off
             if not self.lazy_load:
-                acq = acq_text_read.read_acquisition()
+                acq = acq_text_read.read_acquisition(strict=False)
             else:
                 acq = range(len(txt_channel_names))
             for image in acq:

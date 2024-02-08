@@ -23,6 +23,8 @@ callback
 to be combined with the same colour and represented only once for simplicity
 - JSON and mongoDB documents now contain cluster colour annotations if they exist on export
 - JSON export includes aliases
+- MCD import now includes the acquisition ID in the ROI name in addition to the acquisition description
+to ensure unique ROI naming
 
 ### Fixed
 
@@ -30,6 +32,7 @@ to be combined with the same colour and represented only once for simplicity
 - Add ability to retain cluster assignments for individual ROIs when toggling
 - Cluster annotations can now be added to the canvas legend via toggle: can replace the channel labels
 when clusters are applied
+- `readimc` updated to `0.7.0` to include reading imc files with `strict=False` for leniency on corrupted data
 
 ## [0.12.0] - 2024-01-26
 
