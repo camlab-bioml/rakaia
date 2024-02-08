@@ -28,7 +28,9 @@ from ccramic.utils.pixel_level_utils import (
     get_first_image_from_roi_dictionary,
     set_array_storage_type_from_config,
     apply_filter_to_array,
-    split_string_at_pattern)
+    split_string_at_pattern,
+    no_filter_chosen,
+    channel_filter_matches)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -564,3 +566,23 @@ def test_apply_filter_to_array(get_current_dir):
 
     no_filter = apply_filter_to_array(greyscale, False, "median", 1, 1)
     assert np.array_equal(greyscale, no_filter)
+
+
+def test_filter_bool_eval():
+    blend_dict = {"channel_1": {"color": "#FFFFFF", "x_lower_bound": None,
+                "x_upper_bound": None, "filter_type": None, "filter_val": None, "filter_sigma": None}}
+    assert no_filter_chosen(blend_dict, "channel_1", [])
+    blend_dict = {"channel_1": {"color": "#FFFFFF", "x_lower_bound": None,
+                "x_upper_bound": None, "filter_type": "median", "filter_val": None, "filter_sigma": None}}
+    assert not no_filter_chosen(blend_dict, "channel_1", [])
+
+    blend_dict = {"channel_1": {"color": "#FFFFFF", "x_lower_bound": None,
+                                "x_upper_bound": None, "filter_type": "gaussian", "filter_val": 5,
+                                "filter_sigma": 0.5}}
+    # assert no match if the filter is not currently applied
+    assert channel_filter_matches(blend_dict, "channel_1", [' apply filter'], "gaussian", 5, 0.5)
+    assert not channel_filter_matches(blend_dict, "channel_1", [], "gaussian", 5, 0.5)
+
+
+
+

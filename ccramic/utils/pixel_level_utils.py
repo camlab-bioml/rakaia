@@ -12,6 +12,7 @@ import cv2
 import re
 import random
 import numexpr as ne
+from typing import Union
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -446,3 +447,24 @@ def apply_filter_to_array(image, global_apply_filter, global_filter_type, global
                                                  int(global_filter_val)),
                                                  float(global_filter_sigma))
     return image
+
+
+def no_filter_chosen(current_blend_dict: dict, channel: str, filter_chosen: Union[list, str]):
+    """
+    Evaluates whether the currently selected channel has no filter applied, and the session
+    filter is set to None
+    """
+    return  current_blend_dict[channel]['filter_type'] is None and \
+            current_blend_dict[channel]['filter_val'] is None and \
+            current_blend_dict[channel]['filter_sigma'] is None and \
+            len(filter_chosen) == 0
+def channel_filter_matches(current_blend_dict: dict, channel: str, filter_chosen: Union[list, str],
+                           filter_name: str="median", filter_value: int = 3, filter_sigma: Union[int, float] = 1.0):
+    """
+    Evaluates whether the current channel's filters match the filter parameters currently
+    set in the session
+    """
+    return  current_blend_dict[channel]['filter_type'] == filter_name and \
+            current_blend_dict[channel]['filter_val'] == filter_value and \
+            current_blend_dict[channel]['filter_sigma'] == filter_sigma and \
+            len(filter_chosen) > 0

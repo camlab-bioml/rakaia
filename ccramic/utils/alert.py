@@ -1,4 +1,21 @@
+import pathlib
 from pydantic import BaseModel
+
+class DataImportTour(BaseModel):
+    """
+    Contains the steps used for the dash tour component for data import assistance
+    """
+    steps: list = [{'selector': '[id="upload-image"]',
+                    'content': "Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
+                               " be used only for datasets < 2GB"},
+                {'selector': '[id="read-filepath"]',
+                'content': "For large datasets (> 2GB) or multiple files, copy and paste either a filepath or directory and "
+                               "read files in directly and select Import local"},
+                {'selector': '[id="show-dataset-info"]',
+                'content': 'View a list of imported datasets and regions of interest (ROIs)'},
+                {'selector': '[id="data-collection"]',
+                'content': 'Select an ROI from the dropdown menu to populate the image gallery'
+                               ' and begin image analysis!'}]
 
 class AlertMessage(BaseModel):
     """
@@ -39,3 +56,17 @@ class AlertMessage(BaseModel):
 
 class PanelMismatchError(Exception):
     pass
+
+
+def file_import_message(imported_files: list):
+    """
+    Generate the import alert for files read into the session
+    """
+    unique_suffixes = []
+    message = "Read in the following files:\n"
+    for upload in imported_files:
+        suffix = pathlib.Path(upload).suffix
+        message = message + f"{upload}\n"
+        if suffix not in unique_suffixes:
+            unique_suffixes.append(suffix)
+    return message, unique_suffixes

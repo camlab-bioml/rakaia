@@ -25,6 +25,7 @@ dash-html-components==2.0.0
 dash-mantine-components==0.12.1
 dash-table==5.0.0
 dash-testing-stub==0.0.2
+dash-tour-component==0.0.2
 dash-uploader==0.7.0a1
 dill==0.3.6
 diskcache==5.6.1

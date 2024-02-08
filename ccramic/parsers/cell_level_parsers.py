@@ -52,8 +52,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
                 return SessionServerside(embedding, key="umap-embedding",
                                          use_unique_key=unique_key_serverside), cols
             raise PreventUpdate
-        else:
-            return dash.no_update, cols
+        return dash.no_update, cols
     raise PreventUpdate
 
 
@@ -145,11 +144,12 @@ def parse_masks_from_filenames(status):
     #     default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
     #     return {default_mask_name: filenames[0]}
     masks = {}
-    for mask_file in filenames:
-        default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
-        masks[default_mask_name] = mask_file
-    if len(masks) > 0:
-        return masks
+    if status.progress == 1.0:
+        for mask_file in filenames:
+            default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
+            masks[default_mask_name] = mask_file
+        if len(masks) > 0:
+            return masks
     raise PreventUpdate
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
@@ -370,8 +370,7 @@ def validate_coordinate_set_for_image(x=None, y=None, image=None):
     """
     if None not in (x, y) and image is not None:
         return int(x) <= image.shape[1] and int(y) <= image.shape[0]
-    else:
-        return False
+    return False
 
 def parse_quantification_sheet_from_h5ad(h5ad_file):
     """

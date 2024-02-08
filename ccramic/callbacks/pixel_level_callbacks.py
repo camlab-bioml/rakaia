@@ -10,7 +10,8 @@ from ccramic.inputs.pixel_level_inputs import (
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
-    set_x_axis_placement_of_scalebar)
+    set_x_axis_placement_of_scalebar,
+    )
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
     populate_image_dict_from_lazy_load,
@@ -31,7 +32,9 @@ from ccramic.utils.pixel_level_utils import (
     validate_incoming_metadata_table,
     make_metadata_column_editable,
     get_first_image_from_roi_dictionary,
-    upper_bound_for_range_slider)
+    upper_bound_for_range_slider,
+    no_filter_chosen,
+    channel_filter_matches)
 # from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
@@ -71,7 +74,7 @@ from ccramic.io.readers import DashUploaderFileReader
 from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
-from ccramic.utils.alert import AlertMessage
+from ccramic.utils.alert import AlertMessage, file_import_message
 import uuid
 from ccramic.utils.region import RegionAnnotation
 
@@ -92,8 +95,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         files = uploader.return_filenames()
         if files is not None:
             return files
-        else:
-            raise PreventUpdate
+        raise PreventUpdate
 
     @du.callback(Output('param_blend_config', 'data', allow_duplicate=True),
                  id='upload-param-json')
@@ -203,15 +205,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         The image dictionary template is used to populate the actual images using lazy load
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-            unique_suffixes = []
             error_config = {"error": None} if error_config is None else error_config
-            message = "Read in the following files:\n"
             files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
-            for upload in files:
-                suffix = pathlib.Path(upload).suffix
-                message = message + f"{upload}\n"
-                if suffix not in unique_suffixes:
-                    unique_suffixes.append(suffix)
+            message, unique_suffixes = file_import_message(files)
             if len(unique_suffixes) > 1:
                 error_config["error"] = ALERT.warnings["multiple_filetypes"] + message
             else:
@@ -229,6 +225,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('data-collection', 'value'),
                        Output('image_layers', 'value'),
                        Output('data-collection', 'optionHeight'),
+                       # Output('data-collection', 'className'),
                        Input('uploaded_dict_template', 'data'),
                        State('data-collection', 'value'),
                        State('image_layers', 'value'),
@@ -246,6 +243,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     channels_return = cur_layers_selected
             height_update = adjust_option_height_from_list_length(datasets)
             return datasets, selection_return, channels_return, height_update
+            # TODO: decide if want to use an animation to draw attention to the data selection input
+                # "animate__animated animate__jello animate__slower"
         raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'options', allow_duplicate=True),
@@ -448,7 +447,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             new_blend_dict = match_db_config_to_request_str(db_config_list, db_config_selection)
         # TODO: include the alias labels in the JSON as well
         metadata_return = extract_alias_labels_from_db_document(new_blend_dict, cur_metadata)
-        metadata_return = metadata_return if metadata_return else dash.no_update
+        metadata_return = metadata_return if len(metadata_return) > 0 else dash.no_update
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
@@ -491,7 +490,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 error_config["error"] = ALERT.warnings["json_update_error"]
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update
-        elif data_selection is None and new_blend_dict is not None:
+        elif data_selection is None:
             error_config["error"] = ALERT.warnings["json_requires_roi"]
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update
@@ -669,9 +668,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # do not update if the range values in the slider match the current blend params:
             try:
                 slider_values = [float(elem) for elem in slider_values]
-                lower_bound = min(slider_values)
-                upper_bound = max(slider_values)
-
+                lower_bound, upper_bound = min(slider_values), max(slider_values)
 
                 if float(current_blend_dict[layer]['x_lower_bound']) == float(lower_bound) and \
                         float(current_blend_dict[layer]['x_upper_bound']) == float(upper_bound):
@@ -759,17 +756,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 array = None
 
             # condition where the current inputs are set to not have a filter, and the current blend dict matches
-            no_filter_in_both = current_blend_dict[layer]['filter_type'] is None and \
-                                current_blend_dict[layer]['filter_val'] is None and \
-                                current_blend_dict[layer]['filter_sigma'] is None and \
-                                len(filter_chosen) == 0
+            no_filter_in_both = no_filter_chosen(current_blend_dict, layer, filter_chosen)
 
             # condition where toggling between two channels, and the first one has no filter and the second
             # has a filter. prevent the callback with no actual change
-            same_filter_params = current_blend_dict[layer]['filter_type'] == filter_name and \
-                                 current_blend_dict[layer]['filter_val'] == filter_value and \
-                                 current_blend_dict[layer]['filter_sigma'] == filter_sigma and \
-                                 len(filter_chosen) > 0
+            same_filter_params = channel_filter_matches(current_blend_dict, layer, filter_chosen,
+                                                        filter_name, filter_value, filter_sigma)
 
             # do not update if the gaussian filter is applied with an even number
             gaussian_even = filter_name == "gaussian" and (int(filter_value) % 2 == 0)
@@ -1172,20 +1164,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         updates the scalebar length with a custom value
         """
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
-            # scalebar is y = 0.06
-            # legend is y = 0.05
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
             x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
             cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
-            # if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
-            #     cur_annotations = cur_canvas['layout']['annotations'].copy()
-            # else:
-            #     cur_annotations = []
-            # if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
-            #     cur_shapes = cur_canvas['layout']['shapes'].copy()
-            # else:
-            #     cur_shapes = []
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend"]:
                 legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
                 cluster_assignments_in_legend, cluster_assignments_dict, data_selection) if toggle_legend else ''
@@ -1388,15 +1370,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('annotation_canvas', 'style'),
         Input('annotation-canvas-size', 'value'),
         State('annotation_canvas', 'figure'),
-        State('annotation_canvas', 'relayoutData'),
+        # State('annotation_canvas', 'relayoutData'),
         State('data-collection', 'value'),
         State('uploaded_dict', 'data'),
         Input('image_layers', 'value'),
         State('annotation_canvas', 'style'),
         prevent_initial_call=True)
-    def update_canvas_size(value, current_canvas, cur_graph_layout, data_selection,
+    def update_canvas_size(value, current_canvas, data_selection,
                            image_dict, add_layer, cur_sizing):
-        # zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
         if None not in (add_layer, value, data_selection, image_dict):
             try:
                 first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
@@ -2440,3 +2421,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #         return '/ccramic/'
     #     else:
     #         return '/ccramic/'
+
+    @dash_app.callback(Output('tour_component', 'isOpen'),
+                       Input('dash-import-tour', 'n_clicks'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def open_tour_guide(activate_tour):
+        """
+        Toggle the ability to use scroll zoom on the annotation canvas using the input from the
+        session configuration modal. Default value is not enabled
+        """
+        if activate_tour: return True
+        return False

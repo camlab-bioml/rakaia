@@ -13,6 +13,8 @@ from plotly.graph_objs.layout import YAxis, XAxis
 from ccramic.entrypoint import __version__
 from dash import dcc, html
 import dash_bootstrap_components as dbc
+import dash_tour_component
+from ccramic.utils.alert import DataImportTour
 
 def register_app_layout(config, cache_dest):
 
@@ -20,6 +22,8 @@ def register_app_layout(config, cache_dest):
     DEFAULT_SWATCHES = generate_default_swatches(config)
 
     return html.Div([
+        dash_tour_component.DashTour(
+            steps= DataImportTour().steps, isOpen=False, id="tour_component"),
         # this is the generic error modal that will pop up on specific errors return by the alert dict
         dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})],),
                   id="alert-modal", size='xl'),
@@ -104,7 +108,15 @@ def register_app_layout(config, cache_dest):
                                 children=[dbc.Tab(id='file-data-config', label='File import',
                                 children=[
                                 html.Br(),
-                                html.H5("Import images", style={'width': '65%'}),
+                                html.Div([html.H5("Import images", style={'width': '35%'}),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-question",
+                                style={"display": "inline-block", "margin-right": "7.5px",
+                                "margin-top": "-5px"})],
+                                style={"display": "flex"}), id="dash-import-tour",
+                                className="mb-3", color=None, n_clicks=0, style={"width": "20%",
+                                    "margin-top": "-3px"})], style={"display": "flex"}),
+                                dbc.Tooltip("Click here to get a tour of the components required for dataset import.",
+                                    target="dash-import-tour"),
                                 du.Upload(id='upload-image', max_file_size=30000,
                                               text='Import imaging data from MCD or tiff files using drag and drop',
                                               chunk_size=100,
