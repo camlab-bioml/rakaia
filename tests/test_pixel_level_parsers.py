@@ -1,3 +1,4 @@
+import pandas as pd
 import pytest
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
@@ -38,7 +39,7 @@ def test_basic_parser_from_mcd(get_current_dir):
     assert 'query+++slide0+++Xylene' in uploaded_dict.keys()
     assert 'metadata' in uploaded_dict.keys()
     assert len(uploaded_dict['query+++slide0+++Xylene']) == 11
-    # the values will all be none for the mcd because of lazy loadinfg
+    # the values will all be none for the mcd because of lazy loading
     assert all([value is None for value in uploaded_dict['query+++slide0+++Xylene'].values()])
     dataset_info = parser.dataset_information_frame
     assert len(dataset_info['ROI']) == 6
@@ -88,8 +89,9 @@ def test_basic_parser_from_h5py(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "data.h5")])
     uploaded_dict = uploaded.image_dict
     assert 'metadata' in uploaded_dict.keys()
+    assert isinstance(uploaded_dict['metadata'], pd.DataFrame)
     assert 'cycA1A2_Ir_TBS_3_8+++slide0+++0' in uploaded_dict.keys()
-    assert len(uploaded_dict['cycA1A2_Ir_TBS_3_8+++slide0+++0'].keys()) == 4
+    assert len(uploaded_dict['cycA1A2_Ir_TBS_3_8+++slide0+++0'].keys()) == 4 == len(uploaded_dict['metadata'])
 
 def test_identify_sparse_matrices():
     array = np.full((700, 700), 3)

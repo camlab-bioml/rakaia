@@ -1,5 +1,4 @@
 import numpy as np
-
 from ccramic.io.session import create_download_dir
 from ccramic.utils.cell_level_utils import (
     get_min_max_values_from_zoom_box,
@@ -24,10 +23,10 @@ class AnnotationRegionWriter:
     This export can effectively replace the export of a quantification sheet with matched annotations in the event
     that quantification results are not available
     """
-    def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict):
+    def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict, delimiter: str="+++"):
         self.annotation_dict = annotation_dict
         self.roi_selection = data_selection
-        exp, slide, acq = split_string_at_pattern(data_selection)
+        exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
         self.acquisition_name = acq
         self.mask_dict = mask_dict
         self.region_object_frame = {"ROI": [], "mask_name": [], "cell_id": [], "annotation_col": [], "annotation": []}
@@ -50,79 +49,114 @@ class AnnotationRegionWriter:
                         self.region_object_frame['cell_id'].append(int(obj))
                         self.region_object_frame['annotation_col'].append(str(value['annotation_column']))
                         self.region_object_frame['annotation'].append(str(value['cell_type']))
-        pd.DataFrame(self.region_object_frame).to_csv(self.filepath, index=False)
-        return self.filepath
+        if not pd.DataFrame(self.region_object_frame).empty:
+            pd.DataFrame(self.region_object_frame).to_csv(self.filepath, index=False)
+            return self.filepath
+        return None
 
-
-def export_annotations_as_masks(annotation_dict, output_dir, data_selection, mask_shape, canvas_mask=None):
+class AnnotationMaskWriter:
     """
-    Export the annotations contained within a dictionary as mask tiffs
-    Create a mask tiff for each of the cell type classes, aka classification columns
-    Additionally, export a JSON linking the mask IDs to the cell types
-    use the tmpdir to write files and create a zip
-    Return the zip path for dash
+    Writes a series of region annotations to mask as tiff arrays
     """
-    cell_class_arrays = {}
-    cell_class_ids = {}
-    for key, value in annotation_dict[data_selection].items():
-        if value['annotation_column'] not in cell_class_arrays:
-            cell_class_arrays[value['annotation_column']] = np.zeros(mask_shape)
-        # keep track of how many cell types are in each class
-        if value['annotation_column'] not in cell_class_ids:
-            cell_class_ids[value['annotation_column']] = {"counts": 0, 'annotations': {}}
-        # if the cell type isn't there, add to the count and use the count as the mask ID
-        if value['cell_type'] not in cell_class_ids[value['annotation_column']]['annotations']:
-            cell_class_ids[value['annotation_column']]['counts'] += 1
-            cell_class_ids[value['annotation_column']]['annotations'][value['cell_type']] = \
-                cell_class_ids[value['annotation_column']]['counts']
-        if value['type'] in ['point', 'points', 'path', 'zoom', 'rect']:
-            if value['type'] not in ['point', 'points', 'path']:
-                if value['type'] == "zoom":
-                    x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
-                elif value['type'] == "rect":
-                    x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
+    def __init__(self, annotation_dict: dict, output_dir: str=None, data_selection: str=None,
+                 mask_shape: tuple=None, canvas_mask: np.ndarray=None):
+        self.annotation_dict = annotation_dict
+        self.dest_dir = os.path.join(output_dir, "annotation_masks") if output_dir is not None else None
+        self.data_selection = data_selection
+        self.mask_shape = mask_shape
+        self.mask = canvas_mask
+        self.cell_class_arrays = {}
+        self.cell_class_ids = {}
 
-                # replace the array elements in the box with the count value
-                cell_class_arrays[value['annotation_column']][int(y_min):int(y_max), int(x_min):int(x_max)] = \
-                    cell_class_ids[value['annotation_column']]['counts']
-                cell_class_arrays[value['annotation_column']] = cell_class_arrays[value['annotation_column']].reshape(mask_shape)
-            # if using an svgpath, get the mask for the interior pixels
-            elif value['type'] == 'point':
-                try:
-                    x = eval(key)['points'][0]['x']
-                    y = eval(key)['points'][0]['y']
-                    if canvas_mask is not None:
-                        cell_id = canvas_mask[y, x]
+    def create_dir(self):
+        """
+        Create the directory to write the mask zip file
+        """
+        if os.path.exists(self.dest_dir) and os.access(os.path.dirname(self.dest_dir), os.R_OK):
+            shutil.rmtree(os.path.dirname(self.dest_dir))
+        if not os.path.exists(self.dest_dir):
+            os.makedirs(self.dest_dir)
 
-                        new_mask = np.where(canvas_mask == cell_id,
-                                        cell_class_ids[value['annotation_column']]['counts'],
-                                        cell_class_arrays[value['annotation_column']])
-                        cell_class_arrays[value['annotation_column']] = new_mask
-                    else:
-                        cell_class_arrays[value['annotation_column']][y, x] = cell_class_ids[
-                            value['annotation_column']]['counts']
-                except (KeyError, ValueError):
-                    pass
-            elif value['type'] == 'path':
-                mask = path_to_mask(key, mask_shape)
-                cell_class_arrays[value['annotation_column']][mask] = \
-                cell_class_ids[value['annotation_column']]['counts']
+    def add_new_category_mask(self, value):
+        if value['annotation_column'] not in self.cell_class_arrays:
+            self.cell_class_arrays[value['annotation_column']] = np.zeros(self.mask_shape)
 
-    # create the tmpdir where the tiffs and CSV will be written
-    dest_path = os.path.join(output_dir, "annotation_masks")
-    if os.path.exists(dest_path) and os.access(os.path.dirname(dest_path), os.R_OK):
-        shutil.rmtree(os.path.dirname(dest_path))
-    if not os.path.exists(dest_path):
-        os.makedirs(dest_path)
-    for name, array in cell_class_arrays.items():
-        tifffile.imwrite(os.path.join(dest_path, f"{name}.tiff"), array.astype(np.float32))
-    for name, labels in cell_class_ids.items():
-        with open(os.path.join(dest_path, f"{name}.json"), "w") as outfile:
-            json.dump(labels, outfile)
-    # TODO: convert the hash tables linking IDs to the cell type and save to dir
-    shutil.make_archive(dest_path, 'zip', dest_path)
-    return str(dest_path + ".zip")
+    def add_new_cell_type_category(self, value):
+        if value['annotation_column'] not in self.cell_class_ids:
+            self.cell_class_ids[value['annotation_column']] = {"counts": 0, 'annotations': {}}
 
+    def add_new_count_type_id_match(self, value):
+        if value['cell_type'] not in self.cell_class_ids[value['annotation_column']]['annotations']:
+            self.cell_class_ids[value['annotation_column']]['counts'] += 1
+            self.cell_class_ids[value['annotation_column']]['annotations'][value['cell_type']] = \
+                self.cell_class_ids[value['annotation_column']]['counts']
+    def write_annotation_masks(self):
+        """
+        Write the annotations to masks in a zip file and return the path of the zip
+        """
+        self.create_dir()
+        for key, value in self.annotation_dict[self.data_selection].items():
+            self.add_new_category_mask(value)
+            # keep track of how many cell types are in each class
+            self.add_new_cell_type_category(value)
+            # if the cell type isn't there, add to the count and use the count as the mask ID
+            self.add_new_count_type_id_match(value)
+            self.cell_class_ids[value['annotation_column']]['mask_used'] = value['mask_selection']
+            if value['type'] in ['point', 'points', 'path', 'zoom', 'rect']:
+                if value['type'] not in ['point', 'points', 'path']:
+                    if value['type'] == "zoom":
+                        x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
+                    elif value['type'] == "rect":
+                        x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
+
+                    # replace the array elements in the box with the count value
+                    self.cell_class_arrays[value['annotation_column']][int(y_min):int(y_max), int(x_min):int(x_max)] = \
+                        self.cell_class_ids[value['annotation_column']]['counts']
+                    self.cell_class_arrays[value['annotation_column']] = self.cell_class_arrays[
+                        value['annotation_column']].reshape(self.mask_shape)
+                # if using an svgpath, get the mask for the interior pixels
+                elif value['type'] == 'point':
+                    try:
+                        x = eval(key)['points'][0]['x']
+                        y = eval(key)['points'][0]['y']
+                        if self.mask is not None:
+                            cell_id = self.mask[y, x]
+
+                            new_mask = np.where(self.mask == cell_id,
+                                                self.cell_class_ids[value['annotation_column']]['counts'],
+                                                self.cell_class_arrays[value['annotation_column']])
+                            self.cell_class_arrays[value['annotation_column']] = new_mask
+                        else:
+                            self.cell_class_arrays[value['annotation_column']][y, x] = self.cell_class_ids[
+                                value['annotation_column']]['counts']
+                    except (KeyError, ValueError):
+                        pass
+                elif value['type'] == 'path':
+                    mask = path_to_mask(key, self.mask_shape)
+                    self.cell_class_arrays[value['annotation_column']][mask] = \
+                        self.cell_class_ids[value['annotation_column']]['counts']
+
+        for name in self.cell_class_arrays.keys():
+            original_name = f"{self.cell_class_ids[name]['mask_used']}_" if \
+                self.cell_class_ids[name]['mask_used'] else ""
+            mask_name = f"{original_name}{name}"
+            tifffile.imwrite(os.path.join(self.dest_dir, f"{mask_name}.tiff"),
+                             self.cell_class_arrays[name].astype(np.float32))
+            with open(os.path.join(self.dest_dir, f"{mask_name}.json"), "w") as outfile:
+                json.dump(self.cell_class_ids[name], outfile)
+        # for name, array in cell_class_arrays.items():
+        #     # set the name of the mask to include the original mask name if provided, otherwise none
+        #     original_name = f"{cell_class_ids[name]['name']}_" if cell_class_ids[name]['name'] else ""
+        #     mask_name = f"{original_name}{name}"
+        #     tifffile.imwrite(os.path.join(dest_path, f"{mask_name}.tiff"), array.astype(np.float32))
+        # for name, labels in cell_class_ids.items():
+        #     original_name = f"{cell_class_ids[name]['name']}_" if cell_class_ids[name]['name'] else ""
+        #     mask_name = f"{original_name}{name}"
+        #     with open(os.path.join(dest_path, f"{mask_name}.json"), "w") as outfile:
+        #         json.dump(labels, outfile)
+        # TODO: convert the hash tables linking IDs to the cell type and save to dir
+        shutil.make_archive(self.dest_dir, 'zip', self.dest_dir)
+        return str(self.dest_dir + ".zip")
 
 def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_selection,
                                     mask_dict, apply_mask, mask_selection, image_dict,

@@ -102,6 +102,18 @@ def path_to_mask(path, shape):
     cols, rows = path_to_indices(path).T
     rr, cc = draw.polygon(rows, cols)
     mask = np.zeros(shape, dtype=bool)
+    # trim the indices to only those that are inside of the border of the image
+    # new_cols = np.array([])
+    # new_rows = np.array([])
+    col_inside = cc < shape[1]
+    row_inside = rr < shape[0]
+    both_inside = np.logical_and(col_inside, row_inside)
+    rr = rr[both_inside]
+    cc = cc[both_inside]
+    # for row, col in zip(rr, cc):
+    #     if row < shape[0] and col < shape[1]:
+    #         new_cols = np.append(new_cols, [int(col)])
+    #         new_rows = np.append(new_rows, [int(row)])
     mask[rr, cc] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask
@@ -241,7 +253,7 @@ def apply_preset_to_blend_dict(blend_dict, preset_dict):
     """
     Populate the blend dict from a preset dict
     """
-    assert all([key in blend_dict.keys() for key in preset_dict.keys()])
+    if not all([key in blend_dict.keys() for key in preset_dict.keys()]): raise AssertionError
     for key, value in preset_dict.items():
         # do not change the color from a preset
         if key != "color":
@@ -270,19 +282,11 @@ def validate_incoming_metadata_table(metadata, upload_dict):
         - be on the same length as every ROI in the dataset
         - have a column named "Column Label" that can be copied for editing
     """
-    try:
-        assert isinstance(metadata, pd.DataFrame)
-        assert "Channel Label" in metadata.columns
-        assert "Channel Name" in metadata.columns
-        for exp in list(upload_dict.keys()):
-            if 'metadata' not in exp:
-                for slide in upload_dict[exp].keys():
-                    for acq in upload_dict[exp][slide].keys():
-                        # assert that for each ROI, the length is the same as the number of rows in the metadata
-                        assert len(upload_dict[exp][slide][acq].keys()) == len(metadata.index)
+    if isinstance(metadata, pd.DataFrame) and "Channel Label" in metadata.columns and upload_dict is not None and \
+        all([len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if \
+             roi not in ['metadata', 'metadata_columns']]):
         return metadata
-    except (AssertionError, AttributeError):
-        return None
+    return None
 
 
 def create_new_coord_bounds(window_dict, x_request, y_request):
@@ -291,7 +295,7 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
     and the requested coordinate is approximately the middle of the new window
     """
     try:
-        assert all([value is not None for value in window_dict.values()])
+        if not all([value is not None for value in window_dict.values()]): raise AssertionError
         # first cast the bounds as int, then cast as floats and add significant digits
         # 634.5215773809524
         x_request = float(x_request) + 0.000000000000
@@ -307,27 +311,8 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
         new_y_low = float(float(y_request - midway_y) + 0.000000000000)
         new_y_high = float(float(y_request + midway_y) + 0.000000000000)
         return new_x_low, new_x_high, new_y_low, new_y_high
-    except (AssertionError, KeyError):
+    except KeyError:
         return None
-
-# def copy_values_within_nested_dict(dict, current_data_selection, new_data_selection):
-#     """
-#     Copy the blend dictionary parameters (colour, filtering, scaling) from one acquisition/ROI in a nested
-#     dictionary to another
-#     """
-#     cur_exp, cur_slide, cur_acq = split_string_at_pattern(current_data_selection)
-#     new_exp, new_slide, new_acq = split_string_at_pattern(new_data_selection)
-#
-#     if new_exp not in list(dict.keys()):
-#         dict[new_exp] = {}
-#     if new_slide not in list(dict[new_exp].keys()):
-#         dict[new_exp][new_slide] = {}
-#     if new_acq not in list(dict[new_exp][new_slide].keys()):
-#         dict[new_exp][new_slide][new_acq] = {}
-#
-#     for key, value in dict[cur_exp][cur_slide][cur_acq].items():
-#         dict[new_exp][new_slide][new_acq][key] = value
-#     return dict
 
 def per_channel_intensity_hovertext(channel_list):
     """
@@ -337,14 +322,11 @@ def per_channel_intensity_hovertext(channel_list):
     """
     data_index = 0
     hover_template = "x: %{x}, y: %{y} <br>"
-    try:
-        assert isinstance(channel_list, list)
-        for elem in channel_list:
-            assert channel_list.index(elem) == data_index
-            hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
-            data_index += 1
-    except AssertionError:
-        pass
+    if not isinstance(channel_list, list): return hover_template + "<extra></extra>"
+    for elem in channel_list:
+        if not channel_list.index(elem) == data_index: return hover_template + "<extra></extra>"
+        hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
+        data_index += 1
     hover_template = hover_template + "<extra></extra>"
     return hover_template
 

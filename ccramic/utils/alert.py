@@ -21,11 +21,11 @@ class AlertMessage(BaseModel):
                       "json_update_error": "Error: the blend parameters uploaded from JSON do not " \
                                         "match the current panel length. The update did not occur.",
                       "json_requires_roi": "Please select an ROI before importing blend parameters from JSON.",
-                      "custom_metadata_error": "Could not import custom metadata. Ensure that: \n \n- The dataset " \
-                                        "containing the images is " \
-                                        "uploaded first" \
-                                        "\n - the columns `Channel Name` and " \
-                                        "`Channel Label` are present \n - the number of rows matches the number of " \
+                      "custom_metadata_error": "Could not import custom metadata. Ensure that: \n \n- the dataset " \
+                                        "containing the images is uploaded first" \
+                                        "\n - a column titled `Channel Label` contains the desired labels to use for"
+                                               "session naming"
+                                               "\n - the number of rows matches the number of " \
                                         "channels in the current dataset. \n",
                       "metadata_format_error": "Warning: the edited metadata appears to be incorrectly formatted. " \
                                     "Ensure that the number of " \

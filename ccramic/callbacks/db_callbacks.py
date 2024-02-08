@@ -28,8 +28,7 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pair = connection.username_password_pair() if connected else dash.no_update
             # connection.close()
             return pair, ping, True, "success" if connected else "danger"
-        else:
-            raise PreventUpdate
+        raise PreventUpdate
 
     @dash_app.callback(Output('db-saved-configs', 'data'),
                        Output('db-config-options', 'options'),
@@ -50,10 +49,8 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return SessionServerside(configs, key="dg-config-list"), \
                     list_configs, pd.DataFrame(config_preview).to_dict(orient='records'), \
                     [{'id': p, 'name': p, 'editable': False, "presentation": "markdown"} for p in config_preview.keys()]
-            else:
-                raise PreventUpdate
-        else:
             raise PreventUpdate
+        raise PreventUpdate
 
     @dash_app.callback(
         Output("db-config-preview", "is_open"),
@@ -88,9 +85,12 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('global-filter-type', 'value'),
                        State("global-kernel-val-filter", 'value'),
                        State("global-sigma-val-filter", 'value'),
+                       State('cluster-colour-assignments-dict', 'data'),
+                       State('data-collection', 'value'),
                        State('alias-dict', 'data'))
     def insert_or_remove_configuration(save_to_db, remove_from_db, credentials, db_config_name, blend_dict, channel_selection,
-                            global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, aliases):
+                            global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
+                                       cluster_assignments, data_selection, aliases):
         """
         Save the current session configuration (blend dictionary and parameters) as a mongoDB document to the db
         or
@@ -100,8 +100,8 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 None not in (credentials, db_config_name, blend_dict):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
             connection.create_connection()
-            connection.insert_blend_config(db_config_name, blend_dict, channel_selection,
-                        global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, aliases)
+            connection.insert_blend_config(db_config_name, blend_dict, channel_selection, global_apply_filter,
+            global_filter_type, global_filter_val, global_filter_sigma, data_selection, cluster_assignments, aliases)
             return f"{db_config_name} submitted successfully", True
         elif ctx.triggered_id == "db-remove-select-config" and remove_from_db > 0 and None not in (db_config_name, credentials):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
@@ -109,5 +109,4 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             connection.remove_blend_document_by_name(db_config_name)
             # connection.close()
             return f"{db_config_name} removed successfully", True
-        else:
-            raise PreventUpdate
+        raise PreventUpdate

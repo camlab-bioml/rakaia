@@ -3,7 +3,8 @@ import os.path
 from ccramic.io.display import (
     RegionSummary,
     output_current_canvas_as_tiff,
-    output_current_canvas_as_html)
+    output_current_canvas_as_html,
+    FullScreenCanvas)
 import numpy as np
 import pandas as pd
 import tempfile
@@ -163,10 +164,10 @@ def test_generate_channel_statistics_dataframe_errors():
     stats = pd.DataFrame(
         RegionSummary(graph_layout_bad, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
-    assert len(stats) == 4
-    assert list(stats['Max'] == [0, 0, 100, 300])
-    assert list(stats['Min'] == [0, 0, 100, 300])
-    assert list(stats['Mean'] == [0, 0, 100, 300])
+    assert len(stats) == 2
+    assert list(stats['Max'] == [100, 300])
+    assert list(stats['Min'] == [100, 300])
+    assert list(stats['Mean'] == [100, 300])
 
 
     # test when the arrays are None
@@ -259,3 +260,19 @@ def test_output_canvas_html_to_file():
         if os.access(canvas_link, os.W_OK):
             os.remove(canvas_link)
         assert not os.path.exists(canvas_link)
+
+def test_fullscreen_canvas():
+    all_white = np.full((600, 600, 3), 255).astype(np.uint8)
+    canvas = go.Figure(px.imshow(all_white))
+    canvas.add_shape(type="rect")
+    canvas.add_annotation(x=4, y=4,
+            text="This is a label",
+            showarrow=False,
+            yshift=10)
+    assert len(canvas['layout']['shapes']) == len(canvas['layout']['annotations']) == 1
+    fullscreen = FullScreenCanvas(canvas.to_dict(), {"autosize": True})
+    fullscreen_canvas = fullscreen.get_canvas()
+    assert len(fullscreen_canvas['layout']['shapes']) == len(fullscreen_canvas['layout']['annotations']) == 0
+
+
+

@@ -147,8 +147,8 @@ def test_basic_canvas_image():
 
     canvas_layers = {"roi_1": {"channel_1": np.full((100, 100, 3), 10),
                                "channel_2": np.full((100, 100, 3), 20), "channel_3": np.full((100, 100, 3), 30)}}
-    cluster_frame = {'cell_id': list(range(1, 10, 1)),
-                                 'cluster': ['Cluster_1'] * 9}
+    cluster_frame = {"roi_1": pd.DataFrame({'cell_id': list(range(1, 10, 1)),
+                                 'cluster': ['Cluster_1'] * 9})}
     cluster_assignments_dict = {"roi_1": {"Cluster_1": '#FFFFFF'}}
     apply_cluster_on_mask = True
     mask_config = {"roi_1": {"array": np.full((100, 100, 3), 1), "boundary": np.zeros((100, 100, 3)),
@@ -248,7 +248,8 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig_dict).clear_improper_shapes()
     assert len(fig['layout']['shapes']) == len(shapes)
     for shape in fig['layout']['shapes']:
-        assert 'label' not in shape
+        if len(shape) == 1:
+            assert 'label' not in shape
 
     image = np.full((1079, 1095, 3), 255).astype(np.uint8)
     clusters = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))

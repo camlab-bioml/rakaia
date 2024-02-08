@@ -7,6 +7,7 @@ from ccramic.utils.pixel_level_utils import (
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 from ccramic.utils.alert import PanelMismatchError
+import pandas as pd
 
 class FileParser:
     """
@@ -17,7 +18,7 @@ class FileParser:
     in `array_store_type`
     """
     def __init__(self, filepaths: list, array_store_type="float", lazy_load=True,
-                 single_roi_parse=True, roi_name=None, internal_name=None):
+                 single_roi_parse=True, roi_name=None, internal_name=None, delimiter="+++"):
         if array_store_type not in ["float", "int"]:
             raise TypeError("The array stored type must be one of float or int")
         self.filepaths = [str(x) for x in filepaths]
@@ -26,6 +27,8 @@ class FileParser:
         self.unique_image_names = []
         self.dataset_information_frame = {"ROI": [], "Dimensions": [], "Panel": []}
         self.lazy_load = lazy_load
+        self.delimiter = delimiter
+        self.panel_length = None
         if len(self.filepaths) > 0:
             self.image_dict['metadata'] = {}
             self.metadata_channels = []
@@ -51,7 +54,7 @@ class FileParser:
                 elif upload.endswith('.txt'):
                     try:
                         self.parse_txt(upload, internal_name=internal_name)
-                    except (OSError, AssertionError):
+                    except OSError:
                         pass
                 else:
                     raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
@@ -62,11 +65,14 @@ class FileParser:
         self.blend_config = {}
         for roi in list(data_h5.keys()):
             self.image_dict[roi] = {}
-            if 'metadata' not in roi:
+            if roi not in ['metadata', 'metadata_columns']:
                 channel_index = 1
                 for channel in data_h5[roi]:
                     try:
-                        self.image_dict[roi][channel] = data_h5[roi][channel]['image'][()]
+                        # IMP: do not use lazy loading with h5 files as the filename is likely
+                        # to be different from the internal experiment name due to renaming on export
+                        self.image_dict[roi][channel] = data_h5[roi][channel]['image'][()].astype(
+                        set_array_storage_type_from_config(self.array_store_type))
                         if channel_index == 1:
                             self.dataset_information_frame["ROI"].append(str(roi))
                             self.dataset_information_frame["Dimensions"].append(
@@ -77,6 +83,9 @@ class FileParser:
                         pass
                     if channel not in self.unique_image_names:
                         self.unique_image_names.append(channel)
+                    if channel not in self.metadata_channels:
+                        self.metadata_channels.append(channel)
+                        self.metadata_labels.append(channel)
                     self.blend_config[channel] = {}
                     channel_index += 1
                     for blend_key, blend_val in data_h5[roi][channel].items():
@@ -89,6 +98,14 @@ class FileParser:
                             else:
                                 data_add = None
                             self.blend_config[channel][blend_key] = data_add
+        meta_back = pd.DataFrame(data_h5['metadata'])
+        for col in meta_back.columns:
+            meta_back[col] = meta_back[col].str.decode("utf-8")
+        try:
+            meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
+        except KeyError:
+            pass
+        self.image_dict['metadata'] = meta_back
 
     def parse_tiff(self, tiff_file, internal_name=None):
         with TiffFile(tiff_file) as tif:
@@ -97,9 +114,10 @@ class FileParser:
             # the files have different channels/panels
             # pass if this is the cases
             if len(self.image_dict['metadata']) > 0:
-                if not all(len(value) == len(tif.pages) for value in list(self.image_dict['metadata'].values())):
-                    raise PanelMismatchError("The tiff file(s) appear to have different panels"
-                                             ". This is currently not supported by ccramic.")
+                if not (all(len(value) == len(tif.pages) for value in list(self.image_dict['metadata'].values()))) or \
+                        (self.panel_length is not None and self.panel_length != len(tif.pages)):
+                    raise PanelMismatchError("One or more ROIs imported from tiff appear to have"
+                            " different panel lengths. This is currently not supported by ccramic.")
             # file_name, file_extension = os.path.splitext(tiff_path)
             # set different image labels based on the basename of the file (ome.tiff vs .tiff)
             # if "ome" in upload:
@@ -108,7 +126,7 @@ class FileParser:
             #     basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
             multi_channel_index = 1
             basename = str(Path(tiff_path).stem)
-            roi = f"{basename}+++slide{str(self.slide_index)}+++acq{str(self.acq_index)}" if \
+            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq{str(self.acq_index)}" if \
                 internal_name is None else internal_name
             # treat each tiff as a its own ROI and increment the acq index for each one
             self.image_dict[roi] = {}
@@ -141,6 +159,7 @@ class FileParser:
                                            'ccramic Label': self.metadata_labels}
                 self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                    'ccramic Label']
+        self.panel_length = len(tif.pages) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
     def parse_mcd(self, mcd_filepath):
@@ -152,8 +171,8 @@ class FileParser:
             for slide in mcd_file.slides:
                 for acq in slide.acquisitions:
                     basename = str(Path(mcd_filepath).stem)
-                    roi = f"{str(basename)}+++slide{str(slide_index)}" \
-                          f"+++{str(acq.description)}"
+                    roi = f"{str(basename)}{self.delimiter}slide{str(slide_index)}" \
+                          f"{self.delimiter}{str(acq.description)}"
                     self.image_dict[roi] = {}
                     if channel_labels is None:
                         channel_labels = acq.channel_labels
@@ -166,14 +185,12 @@ class FileParser:
                                                            'ccramic Label']
                     else:
                         # TODO: establish within an MCD if the channel names should be exactly the same
-                        # or if the length is sufficient
-                        # i.e. how to handle minor spelling mistakes
-                        # assert all(label in acq.channel_labels for label in channel_labels)
-                        # assert all(name in acq.channel_names for name in channel_names)
-                        # assert len(acq.channel_labels) == len(channel_labels)
-                        if len(acq.channel_labels) != len(channel_labels):
-                            raise PanelMismatchError("The mcd file appears that have ROIs with different"
-                                                     "panels. This is currently not supported by ccramic.")
+                        # for now, just checking the that the length matches is sufficient in case
+                        # there are slight spelling errors between mcds with the same panel
+                        if len(acq.channel_labels) != len(channel_labels) or \
+                           (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
+                            raise PanelMismatchError("One or more ROIs imported from .mcd appear to have"
+                            " different panel lengths. This is currently not supported by ccramic.")
                     # img = mcd_file.read_acquisition(acq)
                     channel_index = 0
                     for channel in acq.channel_names:
@@ -192,6 +209,7 @@ class FileParser:
                                 f"{len(acq.channel_names)} markers")
 
                         channel_index += 1
+                    self.panel_length = len(acq.channel_labels) if self.panel_length is None else self.panel_length
                     acq_index += 1
                 slide_index += 1
         self.experiment_index += 1
@@ -219,21 +237,17 @@ class FileParser:
             image_index = 1
             txt_channel_names = acq_text_read.channel_names
             txt_channel_labels = acq_text_read.channel_labels
-            # assert that the channel names and labels are the same if an upload has already passed
+            # check that the channel names and labels are the same if an upload has already passed
             # TODO: add custom exception rule here for mismatched panels
             if len(self.metadata_channels) > 0:
                 if not len(self.metadata_channels) == len(txt_channel_names) or \
-                        not len(self.metadata_labels) == len(txt_channel_labels):
-                    raise PanelMismatchError("The txt file(s) appear to have different panels"
-                                             ". This is currently not supported by ccramic.")
-                # assert len(metadata_channels) == len(txt_channel_names)
-            #     # assert all([elem in txt_channel_names for elem in metadata_channels])
-            # if len(metadata_labels) > 0:
-            #     assert len(metadata_labels) == len(txt_channel_labels)
-            #     assert all([elem in txt_channel_labels for elem in metadata_labels])
+                        not len(self.metadata_labels) == len(txt_channel_labels) or \
+                        (self.panel_length is not None and self.panel_length != len(txt_channel_names)):
+                    raise PanelMismatchError("One or more ROIs imported from .txt appear to have"
+                            " different panel lengths. This is currently not supported by ccramic.")
             basename = str(Path(txt_filepath).stem)
-            roi = f"{str(basename)}+++slide{str(self.slide_index)}" \
-                  f"+++{str(self.acq_index)}" if internal_name is None else internal_name
+            roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
+                  f"{self.delimiter}{str(self.acq_index)}" if internal_name is None else internal_name
             self.image_dict[roi] = {}
             # TODO: only read the acquisition if lazy loading is off
             if not self.lazy_load:
@@ -267,6 +281,7 @@ class FileParser:
                                            'ccramic Label': self.metadata_labels}
                 self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                    'ccramic Label']
+            self.panel_length = len(txt_channel_names) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
 def create_new_blending_dict(uploaded):
@@ -279,9 +294,9 @@ def create_new_blending_dict(uploaded):
         if "metadata" not in roi:
             if panel_length is None:
                 panel_length = len(uploaded[roi].keys())
-            else:
-                assert len(uploaded[roi].keys()) == panel_length
-            # assert that all of the rois have the same length to use the same panel for all
+            if len(uploaded[roi].keys()) != panel_length:
+                raise PanelMismatchError("The imported file(s) appear to have different panels"
+                                         ". This is currently not supported by ccramic.")
     first_roi = [elem for elem in list(uploaded.keys()) if 'metadata' not in elem][0]
     for channel in uploaded[first_roi].keys():
         current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
@@ -290,28 +305,26 @@ def create_new_blending_dict(uploaded):
     return current_blend_dict
 
 
-def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_config, array_store_type="float"):
+def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_config, array_store_type="float",
+                                       delimiter="+++"):
     """
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
     #IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
     # is already contained in the dictionary
-    try:
-        split = split_string_at_pattern(dataset_selection)
-        basename, slide, acq_name = split[0], split[1], split[2]
-        # get the index of the file from the experiment number in the event that there are multiple uploads
-        file_path = None
-        for files_uploaded in session_config['uploads']:
-            if str(Path(files_uploaded).stem) == basename:
-                file_path = files_uploaded
-        if file_path is not None:
-            upload_dict_new = FileParser(filepaths=[file_path], array_store_type=array_store_type,
+    split = split_string_at_pattern(dataset_selection, pattern=delimiter)
+    basename, slide, acq_name = split[0], split[1], split[2]
+    # get the index of the file from the experiment number in the event that there are multiple uploads
+    file_path = None
+    for files_uploaded in session_config['uploads']:
+        if str(Path(files_uploaded).stem) == basename:
+            file_path = files_uploaded
+    if file_path is not None:
+        upload_dict_new = FileParser(filepaths=[file_path], array_store_type=array_store_type,
                                      lazy_load=False, single_roi_parse=True, internal_name=dataset_selection,
-                                     roi_name=acq_name).image_dict
-            return upload_dict_new
-        return upload_dict
-    except (KeyError, AssertionError, AttributeError):
-        return upload_dict
+                                     roi_name=acq_name, delimiter=delimiter).image_dict
+        return upload_dict_new
+    return upload_dict
 
 def sparse_array_to_dense(array):
     """

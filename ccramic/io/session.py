@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 from ccramic.utils.pixel_level_utils import path_to_mask
 from dash_extensions.enrich import Serverside
+from typing import Union
 
 class SessionServerside(Serverside):
     """
@@ -27,17 +28,54 @@ def create_download_dir(dest_dir):
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
+class JSONSessionDocument:
+    """
+    Represents a JSON saved configuration of session and ROI variables
+    Saved configurations include blend parameters for all channels, naming/aliases,
+    global filters, and cluster colour annotations, if imported
+    Used for local export to JSON or insertion into a mongoDB collection
+    """
+    def __init__(self, save_type="json", user: str=None, document_name: str=None,
+                 blend_dict: dict=None, selected_channel_list: list=None,
+                 global_apply_filter: Union[list, bool]=False, global_filter_type: str="median",
+                 global_filter_val: int = 3, global_filter_sigma: float=1.0,
+                 data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None):
+        if save_type not in ["json", "db"]:
+            raise TypeError("The `save_type` provided should be one of: `json`, for local exports,"
+                            "or `db`, for formatting a document for the mongoDB database")
+        self.format = save_type
+        self.document = {}
+        if self.format == "db":
+            self.document['user'] = user
+            self.document['name'] = document_name
+        if aliases is not None:
+            for key in blend_dict.keys():
+                if key in aliases.keys():
+                    blend_dict[key]['alias'] = aliases[key]
+        self.document['channels'] = blend_dict
+        cluster_assignments = cluster_assignments[data_selection] if None not in \
+                            (cluster_assignments, data_selection) and data_selection in \
+                            cluster_assignments.keys() else None
+        self.document['config'] = {"blend": selected_channel_list, "filter": {"global_apply_filter": global_apply_filter,
+                                "global_filter_type": global_filter_type, "global_filter_val": global_filter_val,
+                                "global_filter_sigma": global_filter_sigma}}
+        self.document['cluster'] = cluster_assignments
+    def get_document(self):
+        return self.document
+
+
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
-                               global_filter_type, global_filter_val, global_filter_sigma):
+                               global_filter_type, global_filter_val, global_filter_sigma,
+                               data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None):
     """
     Write the session blend configuration dictionary to a JSON file
     """
+    # write the aliases to the blend_dict if they exist
     param_json_path = str(os.path.join(dest_dir, 'param.json'))
     with open(param_json_path, "w") as outfile:
-        dict_write = {"channels": blend_dict, "config":
-            {"blend": blend_layer_list, "filter":
-                {"global_apply_filter": global_apply_filter, "global_filter_type": global_filter_type,
-                 "global_filter_val": global_filter_val, "global_filter_sigma": global_filter_sigma}}}
+        dict_write = JSONSessionDocument("json", None, None, blend_dict, blend_layer_list, global_apply_filter,
+                                         global_filter_type, global_filter_val, global_filter_sigma,
+                                         data_selection, cluster_assignments, aliases).get_document()
         json.dump(dict_write, outfile)
     return param_json_path
 

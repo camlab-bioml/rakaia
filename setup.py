@@ -13,7 +13,7 @@ setup(
     author_email="mwatson@lunenfeld.ca",
     packages=find_packages(),
     package_dir={"ccramic": "ccramic"},
-    package_data={'': ['*.json', "*.html", "*.css"]},
+    package_data={'': ['*.json', "*.html", "*.css", "*.ico"]},
     include_package_data=True,
     description="",
     long_description=open("README.md").read(),

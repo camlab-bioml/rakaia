@@ -4,6 +4,7 @@ import sys
 import webbrowser
 from threading import Timer
 import os
+# from waitress import serve
 
 def argparser():
     parser = argparse.ArgumentParser(add_help=False,
@@ -32,8 +33,8 @@ def argparser():
                         help="Set the port for ccramic on local runs. Default: 5000. Other options to consider are "
                              "8050, 8080",
                         dest="port", default=5000, type=int)
-    parser.add_argument('-d', "--debug", action="store_true",
-                        help="Run the application in debugging mode. Default: False",
+    parser.add_argument('-d', "--disable-debug", action="store_false",
+                        help="Disable debugging mode. By default, debugging is enabled",
                         dest="debug")
     parser.add_argument('-dt', "--disable-threading", action="store_false",
                         help="Disable threading. By default, threading is enabled.",
@@ -78,12 +79,16 @@ def main(sysargs = sys.argv[1:]):
                   'persistence': args.persistence,
                   'swatches': args.swatches,
                   'array_store_type': args.array_type,
-                  'serverside_overwrite': args.serverside_overwrite}
+                  'serverside_overwrite': args.serverside_overwrite,
+                  'debug': args.debug}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:
         Timer(1, open_browser).start()
     app.run(host='0.0.0.0', debug=args.debug, threaded=args.threading, port=args.port)
+    # TODO: establish criteria for deploying in production using waitress server
+    # https://stackoverflow.com/questions/14814201/can-i-serve-multiple-clients-using-just-flask-app-run-as-standalone
+    # serve(app, host='0.0.0.0', port=args.port)
 
 if __name__ == "__main__":
     main()

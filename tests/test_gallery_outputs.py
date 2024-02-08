@@ -8,9 +8,6 @@ def test_generate_channel_gallery_children():
     test that the function for returning the single channel images for one ROI returns the children
     comprised of columns and cards
     """
-    image_dict = {"roi_1": {"im_1": np.zeros((1000, 1000)), "im_2": np.zeros((1000, 1000)),
-                            "im_3": np.zeros((1000, 1000)),
-                  "im_4": np.zeros((1000, 1000)), "im_5": np.zeros((1000, 1000))}}
     gallery_dict = {"im_1": np.zeros((1000, 1000)), "im_2": np.zeros((1000, 1000)),
                     "im_3": np.zeros((1000, 1000)),
                   "im_4": np.zeros((1000, 1000)), "im_5": np.zeros((1000, 1000))}
@@ -28,7 +25,6 @@ def test_generate_channel_gallery_children():
                                   "x_upper_bound": None, "filter_type": None, "filter_val": None},
                          "im_5": {"color": "#0000FF", "x_lower_bound": None,
                                   "x_upper_bound": None, "filter_type": None, "filter_val": None}}
-    data_selection = "roi_1"
     aliases = {key: key for key in blend_colour_dict.keys()}
     row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
                                                           blend_colour_dict, None, None, aliases, 0,
@@ -51,7 +47,7 @@ def test_generate_channel_gallery_children():
                          "im_5": {"color": "#0000FF", "x_lower_bound": None,
                                   "filter_type": None, "filter_val": None}}
 
-    canvas_layout = {'xaxis.range[0]': 200, 'xaxis.range[1]': 100, 'yaxis.range[1]': 200, 'yaxis.range[0]': 100}
+    canvas_layout = {'xaxis.range[0]': 100, 'xaxis.range[1]': 200, 'yaxis.range[0]': 200, 'yaxis.range[1]': 100}
     row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
                                                           blend_colour_dict, None, None, aliases, 0,
                                                           toggle_gallery_zoom=True, toggle_scaling_gallery=True)

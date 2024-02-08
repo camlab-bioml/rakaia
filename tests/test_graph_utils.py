@@ -13,7 +13,7 @@ def test_graph_strip_improper_shapes():
                   fillcolor="LightSkyBlue",
                   )
     assert len(fig['layout']['shapes']) > 0
-    fig = strip_invalid_shapes_from_graph_layout(fig)
+    fig = strip_invalid_shapes_from_graph_layout(fig.to_dict())
     for shape in fig['layout']['shapes']:
         if 'label' in shape:
             assert 'texttemplate' not in shape['label']

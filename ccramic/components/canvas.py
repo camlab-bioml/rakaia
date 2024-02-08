@@ -79,13 +79,16 @@ class CanvasImage:
                 if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame) and \
                         self.data_selection in self.cluster_assignments_dict.keys() and self.cluster_type == 'mask':
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
-                                self.cluster_frame, self.cluster_assignments_dict[self.data_selection])
-                    image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                            annot_mask, mask_level, 0)
+                                self.cluster_frame[self.data_selection],
+                                self.cluster_assignments_dict[self.data_selection])
+                    annot_mask = annot_mask if annot_mask is not None else \
+                        np.where(self.mask_config[self.mask_selection]["array"].astype(np.uint8) > 0, 255, 0)
+                    image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask, mask_level, 0)
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
-                    image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                        self.mask_config[self.mask_selection]["array"].astype(np.uint8), mask_level, 0)
+                    mask = self.mask_config[self.mask_selection]["array"].astype(np.uint8)
+                    mask = np.where(mask > 0, 255, 0)
+                    image = cv2.addWeighted(image.astype(np.uint8), 1, mask.astype(np.uint8), mask_level, 0)
                 if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
                     # add the border of the mask after converting back to greyscale to derive the conversion
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
@@ -93,7 +96,8 @@ class CanvasImage:
 
         if ' overlay grid' in self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                    generate_greyscale_grid_array((image.shape[0], image.shape[1])), 1, 0)
+                                    generate_greyscale_grid_array((image.shape[0],
+                                    image.shape[1])).astype(np.uint8), 1, 0)
         # TODO: decide if grid lines should be included in the class image for export to tiff
         self.image = image
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
@@ -247,22 +251,30 @@ class CanvasLayout:
     a `go.Figure` object as input
     """
     def __init__(self, figure: Union[dict, go.Figure]):
+        if 'layout' in figure and 'shapes' in figure['layout'] and \
+                len(figure['layout']['shapes']) > 0 and not \
+                isinstance(figure['layout']['shapes'], tuple):
+            figure['layout']['shapes'] = [shape for shape in figure['layout']['shapes'] if \
+                                          shape and not is_bad_shape(shape)]
         self.figure = figure
-
         # TODO: add condition checking whether the annotations or shapes are held in tuples (do not allow)
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
                 len(self.figure['layout']['annotations']) > 0 and not \
                 isinstance(self.figure['layout']['annotations'], tuple):
-            self.cur_annotations = self.figure['layout']['annotations'].copy()
+            self.cur_annotations = [annot for annot in self.figure['layout']['annotations'] if annot is not None]
         else:
             self.cur_annotations = []
         if 'layout' in self.figure and 'shapes' in self.figure['layout'] and \
                 len(self.figure['layout']['shapes']) > 0 and not \
                 isinstance(self.figure['layout']['shapes'], tuple):
-            self.cur_shapes = self.figure['layout']['shapes'].copy()
+            self.cur_shapes = [shape for shape in self.figure['layout']['shapes'] if shape and \
+                               'type' in shape and not is_bad_shape(shape)]
         else:
             self.cur_shapes = []
 
+        for shape in self.cur_shapes:
+            if 'label' in shape and 'texttemplate' in shape['label']:
+                shape['label'].pop('texttemplate')
     def get_fig(self):
         return self.figure
 
@@ -273,6 +285,7 @@ class CanvasLayout:
         except ZeroDivisionError:
             pass
         fig = go.Figure(self.figure)
+        fig.update_layout(newshape=dict(line=dict(color="white")))
         # TODO: request for custom scalebar value to change the length of the bar, can implement here
         # default length is 0.1 (10% of the canvas), but want to make adjustable
         # set the x0 and x1 depending on if the bar is inverted or not
@@ -290,7 +303,7 @@ class CanvasLayout:
                       self.figure['layout']['xaxis']['range'][0])
             x_range_high = math.ceil(int(high))
             x_range_low = math.floor(int(low))
-            assert x_range_high >= x_range_low
+            if not x_range_high >= x_range_low: raise AssertionError
             custom_scale_val = int(float(math.ceil(int(proportion *
                                 (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
         except (KeyError, TypeError, AssertionError):
@@ -300,7 +313,6 @@ class CanvasLayout:
                                         font_size=legend_size, x_axis_left=x_axis_placement,
                                         invert=invert_annot, proportion=proportion)
 
-        fig.update_layout(newshape=dict(line=dict(color="white")))
         return fig.to_dict()
 
     def add_legend_text(self, legend_text, x_axis_placement, legend_size):
@@ -331,8 +343,8 @@ class CanvasLayout:
     def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot,
                         pixel_ratio, image_shape, legend_size, proportion=0.1):
         cur_shapes = [shape for shape in self.cur_shapes if \
-                      shape is not None and 'type' in shape and shape['type'] \
-                      in ['rect', 'path', 'circle']]
+                      shape not in [None, "None"] and 'type' in shape and shape['type'] \
+                      in ['rect', 'path', 'circle'] and not is_bad_shape(shape)]
         cur_annotations = [annot for annot in self.cur_annotations if \
                            annot is not None and 'y' in annot and annot['y'] != 0.06]
         self.figure['layout']['annotations'] = cur_annotations
@@ -412,9 +424,8 @@ class CanvasLayout:
                               self.figure['layout']['xaxis']['range'][0])
                     x_range_high = math.ceil(int(high))
                     x_range_low = math.floor(int(low))
-                assert x_range_high >= x_range_low
-                # assert that all values must be above 0 for the scale value to render during panning
-                # assert all([elem >=0 for elem in cur_graph_layout.values() if isinstance(elem, float)])
+                if not x_range_high >= x_range_low: raise AssertionError
+                # Enforce that all values must be above 0 for the scale value to render during panning
                 scale_val = int(float(math.ceil(int(proportion * (x_range_high - x_range_low))) + 1) * float(
                     pixel_ratio))
                 scale_val = scale_val if scale_val > 0 else 1
@@ -430,7 +441,7 @@ class CanvasLayout:
         return self.figure
 
     def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio, proportion=0.1):
-        self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
+        # self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
         pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         for annotations in self.figure['layout']['annotations']:
             # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
@@ -442,7 +453,7 @@ class CanvasLayout:
                               self.figure['layout']['xaxis']['range'][0])
                     x_range_high = math.ceil(int(high))
                     x_range_low = math.floor(int(low))
-                    assert x_range_high >= x_range_low
+                    if not x_range_high >= x_range_low: raise AssertionError
                     custom_scale_val = int(float(math.ceil(int(proportion *
                                         (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
                 else:
@@ -458,11 +469,16 @@ class CanvasLayout:
 
     def clear_improper_shapes(self):
 
+        new_shapes = []
         for shape in self.cur_shapes:
-            if is_bad_shape(shape):
-                del shape['label']
-
-        self.figure['layout']['shapes'] = self.cur_shapes
+            if 'label' in shape and 'texttemplate' not in shape['label']:
+                shape['label']['texttemplate'] = ''
+            try:
+                if not is_bad_shape(shape):
+                    new_shapes.append(shape)
+            except KeyError:
+                pass
+        self.figure['layout']['shapes'] = new_shapes
         return self.figure
 
     def add_cluster_annotations_as_circles(self, mask, cluster_frame, cluster_assignments,
@@ -475,13 +491,18 @@ class CanvasLayout:
         cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
         data_selection = string representation of the current ROI
         """
-        region_props = measure.regionprops(mask)
         shapes = self.cur_shapes
-        for mask_id, region in zip(np.unique(mask), region_props):
-            center = region.centroid
-            annotation = cluster_frame[cluster_frame['cell_id'] == mask_id]['cluster']
-            if len(annotation) > 0:
-                annotation = str(annotation.tolist()[0])
+        cluster_frame = pd.DataFrame(cluster_frame)
+        cluster_frame = cluster_frame.astype(str)
+        for mask_id in np.unique(mask):
+            # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
+            subset = np.where(mask == int(mask_id), int(mask_id), 0)
+            region_props = measure.regionprops(subset)
+            for region in region_props:
+                center = region.centroid
+            annotation = pd.Series(cluster_frame[cluster_frame['cell_id'] == str(mask_id)]['cluster']).to_list()
+            if annotation:
+                annotation = str(annotation[0])
                 # boundary[int(center[0]), int(center[1])] = mask_id
                 shapes.append(
                     {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',

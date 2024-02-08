@@ -3,5 +3,4 @@
 SCRIPT=$(realpath "$0")
 SCRIPTPATH=$(dirname "$SCRIPT")
 APP_ROOT="$(dirname "$SCRIPTPATH")"
-pip install -r $APP_ROOT/requirements.txt
-pip install $APP_ROOT
+cat $APP_ROOT/requirements.txt | xargs poetry add -C $APP_ROOT/envs/

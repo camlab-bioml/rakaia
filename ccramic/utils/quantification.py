@@ -39,12 +39,12 @@ def quantify_one_channel(image, mask):
         return None
 
 def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None,
-                                       dataset_options=None):
+                                       dataset_options=None, delimiter: str="+++"):
     """
     Quantify multiple channels for a single ROI and concatenate into a dataframe with cells
     as rows and channels + metadata as columns
     """
-    exp, slide, roi_name = split_string_at_pattern(data_selection)
+    exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
     channel_frame = pd.DataFrame()
     for channel in channels_to_quantify:
         if channel in list(channel_dict[data_selection].keys()):
@@ -56,7 +56,7 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     roi_name_sample = roi_name
     if dataset_options is not None:
         for dataset in dataset_options:
-            exp, slide, roi = split_string_at_pattern(dataset)
+            exp, slide, roi = split_string_at_pattern(dataset, pattern=delimiter)
             if roi == roi_name:
                 index = dataset_options.index(dataset) + 1
                 roi_name_sample = f"{exp}_{index}"
@@ -66,7 +66,7 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     return channel_frame
 
 
-def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_selection):
+def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_selection, delimiter: str="+++"):
     """
     Concatenate a quantification frame from one ROI to an existing frame that may contain quantification
     results for one or more ROIs.
@@ -75,7 +75,7 @@ def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_s
     """
     empty_master_frame = existing_frame is None or existing_frame.empty
     empty_new_frame = new_frame is None or new_frame.empty
-    exp, slide, roi_name = split_string_at_pattern(new_data_selection)
+    exp, slide, roi_name = split_string_at_pattern(new_data_selection, pattern=delimiter)
     if not empty_master_frame and not empty_new_frame:
         if roi_name not in existing_frame['sample'].tolist() and roi_name not in \
         existing_frame['description'].tolist() and set(list(existing_frame.columns)) == set(list(new_frame.columns)):

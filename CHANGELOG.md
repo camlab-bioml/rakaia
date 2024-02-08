@@ -7,7 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.12.0] - 2024-01-19
+## [0.13.0] - 2024-02-07
+
+### Added
+
+- Custom string delimiter input to change the string representation of ROIs within the session
+- Data refresh button for refreshing ROI selection in case of a `PreventUpdate` exception in the canvas
+callback
+- Add poetry files for development option (in envs)
+
+### Changed
+
+- Annotation dictionary entries internally represented by `pydantic` base model
+- Use only unique aliases in canvas legend: allows for channels representing the same measurement
+to be combined with the same colour and represented only once for simplicity
+- JSON and mongoDB documents now contain cluster colour annotations if they exist on export
+- JSON export includes aliases
+
+### Fixed
+
+- Added additional checks for panel length mismatches when files are not imported at the same time
+- Add ability to retain cluster assignments for individual ROIs when toggling
+- Cluster annotations can now be added to the canvas legend via toggle: can replace the channel labels
+when clusters are applied
+
+## [0.12.0] - 2024-01-26
 
 ### Added
 
@@ -15,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 to and/remove current and saved session configurations
 (blend parameters, global filters, channel selection, naming/aliases)
 (Note: uses an 0 Sandbox version for initial testing)
-- Custom exception for panel length mismatches on file parsing
+- Custom exception class for panel length mismatches on file parsing: verifies panel lengths both within single uploads
+and among all files in multi-upload
 - Optional integer input to down-sample the heatmap for proper rendering
 - Ability to export objects inside region annotations without having a matching quantification sheet:
 object ids (such as cells) can be exported in CSV format if the annotation has a corresponding mask
@@ -35,7 +60,11 @@ prompts instead of an `html.A` hyperlink
 with the pixel ratio
 - ROI thumbnail queries can now be generated from tiff and txt files
 - Download for the UMAP projection moved into the UMAP configuration modal
-
+- Annotation mask downloads (tiff in zip) will include the original mask name used to generate
+the annotations, if provided #88
+- Make the metadata import more generalizable based on columns present: look only for the label column
+and length match
+- Remove redundant cell outline computation on single mask import (boundary is computed by default)
 
 ### Fixed
 
@@ -47,6 +76,12 @@ imported from h5py
 - Fixed storage step of underlying image in `CanvasImage` to allow export to tiff with mask or grid mods
 - Fixed overwriting previous annotation shapes when annotation categories are changed: shape parsing
 for annotations will now consider only the most recent shape drawn
+- freeform drawn annotations will be filtered to include only indices within the boundary of the image #87
+- Fixed incorrectly formatted function for importing custom metadata table (channel labels and names)
+- Fixed proper setting of debugging mode for both Flask and dash server components. By default, debugging mode will be
+enabled for troubleshooting, with the possibility of switching the default in subsequent versions
+- Fixed improper shape clearing on canvas layout adjustments
+- Fixed improper cluster imports: casting to str and fixing `skimage.measure` `regionprops` ordering for circles
 
 ## [0.11.0] - 2023-12-21
 
