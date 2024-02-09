@@ -92,11 +92,11 @@ def register_app_layout(config, cache_dest):
                 html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
             style={"margin-bottom": "15px"}),
             html.H6(id="current-roi-ha", style={"float": "right"}),
-            dbc.Tab(label='Image Annotation', tab_id='image-annotation', active_label_style={"color": "#FB79B3"},
+            dbc.Tab(label='Image annotation', tab_id='image-annotation', active_label_style={"color": "#FB79B3"},
                     children=[
                 html.Div([dbc.Tabs(id='pixel-level-analysis',
                 children=[dbc.Tab(# label_class_name="fa-regular fa-file-image",
-                                  label="Image Analysis",
+                                  label="Image analysis",
                                   # label_style={"text-transform": "capitalize", "font-weight": "normal"},
                 tab_id='pixel-analysis',
                 children=[
@@ -322,7 +322,7 @@ def register_app_layout(config, cache_dest):
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([dbc.Col(html.Div([dbc.Button(
                         children=html.Span([html.I(className="fa-solid fa-solid fa-solid fa-file-export",
-                        style={"display": "inline-block"}),html.Div("Inputs/Downloads")],
+                        style={"display": "inline-block"}),html.Div("Show import panel")],
                         style={"margin-top": "-5px", "margin-bottom": "10px"}),
                                    id="inputs-offcanvas-button",
                                    color=None, n_clicks=0,
@@ -405,7 +405,7 @@ def register_app_layout(config, cache_dest):
                     ]),width=9),
                         dbc.Col([
                             html.Div(
-                                [html.H5("Channel Modification",
+                                [html.H5("Channel modification",
                                          style={'width': '75%', 'display': 'inline-block', "margin-top": "5px",
                                                 "margin-left": "10px"}),
                                  html.Abbr("\u2753", title="Select a channel in the current blend to \nchange colour, "
@@ -426,7 +426,7 @@ def register_app_layout(config, cache_dest):
                                 className="mx-auto", color="light", n_clicks=0,
                                 style={"display": "flex", "width": "auto", "align-items": "center",
                                 "float": "center", "justify-content": "center"}),
-                                 html.Div(dbc.Collapse(html.Div([html.H6("Pixel histogram", style={'width': '75%'}),
+                                html.Div(dbc.Collapse(html.Div([html.H6("Pixel histogram", style={'width': '75%'}),
                                 html.Div([dcc.Loading(dcc.Graph(id="pixel-hist", figure={'layout': dict(
                                 xaxis_showgrid=False, yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
                                 yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
@@ -446,7 +446,7 @@ def register_app_layout(config, cache_dest):
                                 html.Div([dbc.Button("Reset to default", id="set-default-rangeslider", className="me-1",
                                 size="sm", color='dark', outline=True, style={"float": "left",
                                         "margin-right": "12.5px", "height": "50%"}),
-                                dcc.Checklist(options=[' set range max to current upper bound'],
+                                dcc.Checklist(options=[' Set range max to current upper bound'],
                                                         value=[], id="custom-slider-max",
                                                style={"width": "90%", "float": "right", "margin-left": "10px"})],
                                 style={"display": "flex", "margin": "20px"}),
@@ -454,7 +454,7 @@ def register_app_layout(config, cache_dest):
                                  #           dcc.Input(id="custom-slider-max", type="number", value=None,
                                  #                     style={"width": "30%", "margin-left": "20px"})],
                                  #          style={"display": "block"}),
-                                 html.Div([dcc.Checklist(options=[' apply/refresh filter'], value=[], id="bool-apply-filter",
+                                 html.Div([dcc.Checklist(options=[' Apply/refresh filter'], value=[], id="bool-apply-filter",
                                                style={"width": "85%"}),
                                  dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
                                               style={"width": "85%", "display": "inline-block"}),
@@ -500,7 +500,7 @@ def register_app_layout(config, cache_dest):
                                     style={"display": "block"})
                                           ], style={"display": "flex"}),
                                     html.Br(),
-                                    html.Div([html.Abbr(dcc.Checklist(options=[' show channel intensities on hover'],
+                                    html.Div([html.Abbr(dcc.Checklist(options=[' Show channel intensities on hover'],
                                     value=[], id="channel-intensity-hover", style={"width": "90%"}),
                                     title="WARNING: speed is significantly compromised with this feature, "
                                             "particularly for large images."),
@@ -516,7 +516,7 @@ def register_app_layout(config, cache_dest):
                                               persistence=config['persistence'], persistence_type='local'),
                                     html.Br(),
                                     html.H6("Apply global filter"),
-                                    html.Div([dcc.Checklist(options=[' apply/refresh filter'], value=[],
+                                    html.Div([dcc.Checklist(options=[' Apply/refresh filter'], value=[],
                                                             id="bool-apply-global-filter",
                                                             style={"width": "85%"}),
                                               dcc.Dropdown(['median', 'gaussian'], 'median', id='global-filter-type',
@@ -547,7 +547,7 @@ def register_app_layout(config, cache_dest):
                                         id="add-mask-boundary", style={"margin-left": "35px",
                                         "margin-top": "10px"}),
                                         title="Use this feature only if the cell boundary was not derived on import"),
-                                    dcc.Checklist(options=[' show mask ID on hover'],
+                                    dcc.Checklist(options=[' Show mask ID on hover'],
                                         value=[], id="add-cell-id-mask-hover",
                                         style={"margin-left": "35px","margin-top": "10px"})],
                                         style={"display": "flex"})])
@@ -613,13 +613,13 @@ def register_app_layout(config, cache_dest):
                                 html.Div([daq.ToggleSwitch(label='Click annotation', id='enable_click_annotation',
                                 labelPosition='bottom', value=False, color="blue",
                                                            style={"width": "45%","margin-left": "-20px"}),
-                                dcc.Checklist(options=[' add circle on click'], value=[' add circle on click'],
+                                dcc.Checklist(options=[' Add circle on click'], value=[' add circle on click'],
                                                 id="click-annotation-add-circle", style={"margin-top": "12px"}),
                                 dcc.Input(id="click-annotation-assignment", type="text", value=None,
                                           placeholder="Add a cell type for click",
                                     style={"width": "65%", "margin-left": "1px"})],
                                          style={"display": "flex"}),
-                                dcc.Checklist(options=[' overlay grid'], value=[],
+                                dcc.Checklist(options=[' Overlay grid'], value=[],
                                 id="overlay-grid-canvas", style={"margin-top": "12px"}),
                                 html.Br(),
                                 dbc.Alert([], color='success', is_open=False, duration=1200, id='click-annotation-alert'),
@@ -632,16 +632,14 @@ def register_app_layout(config, cache_dest):
                                     id="annotation-preview", size='xl'),
                                 # html.Br(),
                                 html.Br(),
-                                          dbc.Button("Create preset", id="preset-button", className="me-1"),
-                                          html.Br(),
-                                          dbc.Popover(dcc.Input(id="set-preset", type="text",
-                                                                placeholder="Create a preset from the current channel",
-                                                                value=None,
-                                                                style={"width": "100%"}), target="preset-button",
-                                                      trigger="hover"),
-                                          html.Br(),
-                                          dcc.Dropdown(options=[], value=None, id='preset-options'),
-                                          dbc.Tooltip(children="", target="preset-options",
+                                dbc.Button("Create preset", id="preset-button", className="me-1"),
+                                html.Br(),
+                                dbc.Popover(dcc.Input(id="set-preset", type="text",
+                                    placeholder="Create a preset from the current channel", value=None,
+                                    style={"width": "100%"}), target="preset-button", trigger="hover"),
+                                html.Br(),
+                                dcc.Dropdown(options=[], value=None, id='preset-options'),
+                                dbc.Tooltip(children="", target="preset-options",
                                                       id="hover-preset-information", trigger="hover"),
                                 html.Br(),
                                 html.Div([du.Upload(id='upload-point-annotations', max_file_size=1000, max_files=1,
@@ -785,7 +783,7 @@ def register_app_layout(config, cache_dest):
 
                     ])])]),
 
-            dbc.Tab(label="Image Gallery", tab_id='gallery-tab', id='gallery-tab',
+            dbc.Tab(label="Image gallery", tab_id='gallery-tab', id='gallery-tab',
                         children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color="blue", style={"margin-right": "15px",
                                                                                                "margin-top": "10px"}),
@@ -807,7 +805,7 @@ def register_app_layout(config, cache_dest):
                         html.Div(id="image-gallery", children=[
                         dbc.Row(id="image-gallery-row")], style={"margin-top": "15px"}),
                                   ]),
-            dbc.Tab(label="Panel Metadata", tab_id='metadata-tab', children=
+            dbc.Tab(label="Panel metadata", tab_id='metadata-tab', children=
                         [html.Div([dbc.Row([
                         dbc.Col(html.Div([
                         dash_table.DataTable(id='imc-metadata-editable', columns=[], data=None,
@@ -815,14 +813,14 @@ def register_app_layout(config, cache_dest):
                         dbc.Col(html.Div([du.Upload(id='upload-metadata', max_file_size=1000, max_files=1,
                                             text='Import panel metadata in CSV format using drag and drop',
                                             filetypes=['csv'], upload_id="upload-image"),
-                        html.Button("Download Edited metadata", id="btn-download-metadata"),
+                        html.Button("Download edited metadata", id="btn-download-metadata"),
                         dcc.Download(id="download-edited-table")]),
                             width=3)])])]),
-                          dbc.Tab(label="Quantification/Clustering", tab_id='quantification-tab',
+                          dbc.Tab(label="Quantification/clustering", tab_id='quantification-tab',
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                html.Div([html.H6("Cell-Level Marker Expression", style={"margin-bottom": "10px"}),
+                                html.Div([html.H6("Cell-level marker expression", style={"margin-bottom": "10px"}),
                                 daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap', labelPosition='bottom',
                                     color="blue", value=True),
                                 dcc.Input(type="number", placeholder="Subset heatmap", id="subset-heatmap",
@@ -861,10 +859,10 @@ def register_app_layout(config, cache_dest):
                                 ]),
                                 ]), width=6),
                                     dbc.Col(html.Div([html.Br(),
-                                    html.Div([html.H6("Dimension Reduction"),
+                                    html.Div([html.H6("Dimension reduction"),
                                     dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
                                         style={"display": "inline-block", "margin-right": "7.5px",
-                                        "margin-top": "3px"}), html.Div("UMAP Options")],
+                                        "margin-top": "3px"}), html.Div("UMAP options")],
                                         style={"display": "flex", "margin-bottom": "5px", "margin-left": "15px"}),
                                         id="umap-config-button", className="mx-auto", color=None,
                                         n_clicks=0),
@@ -874,8 +872,8 @@ def register_app_layout(config, cache_dest):
                                         chunk_size=100, max_total_size=10000, max_files=1, filetypes=['csv'],
                                         default_style={"height": "0.1%"})],
                                              style={"height": "auto"}),
-                                        dcc.Checklist(options=[' dynamic update on expression barplot'],
-                                        value=[' dynamic update on expression barplot'],
+                                        dcc.Checklist(options=[' Dynamic update on expression barplot'],
+                                        value=[' Dynamic update on expression barplot'],
                                         id="dynamic-update-barplot", style={"margin-top": "12px"}),
                                         html.Br(),
                                         html.H6("Add annotation to cells"),
@@ -938,8 +936,8 @@ def register_app_layout(config, cache_dest):
                         id="quantification-config-modal", size='l', style={"margin-left": "10px",
                             "margin-top": "15px"})],
                                   ),
-            dbc.Tab(label="Dataset Query", tab_id='dataset-query', children=[
-                html.H6("Set Number of ROIs to return", style={"margin-top": "15px"}),
+            dbc.Tab(label="Dataset query", tab_id='dataset-query', children=[
+                html.H6("Set mumber of ROIs to return", style={"margin-top": "15px"}),
                 html.Div([dcc.Input(id="dataset-query-number", type="number",
                         placeholder="Number of ROIs to return",
                         value=10, style={"height": "25%"}),

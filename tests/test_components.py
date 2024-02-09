@@ -29,7 +29,7 @@ def test_basic_canvas_image():
     show_each_channel_intensity = []
     raw_data_dict = canvas_layers
     aliases = {"channel_1": "first", "channel_2": "second", "channel_3": "third"}
-    global_apply_filter = [' apply/refresh filter']
+    global_apply_filter = [' Apply/refresh filter']
     global_filter_type = "gaussian"
     global_filter_val = 5
     global_filter_sigma = 1
@@ -69,8 +69,8 @@ def test_basic_canvas_image():
 
 
     # overlay_grid = [' overlay grid']
-    add_cell_id_hover = [' show mask ID on hover']
-    show_each_channel_intensity = [" show channel intensities on hover"]
+    add_cell_id_hover = [' Show mask ID on hover']
+    show_each_channel_intensity = [" Show channel intensities on hover"]
 
     canvas_2 = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
@@ -86,8 +86,8 @@ def test_basic_canvas_image():
 
     cur_graph = px.imshow(canvas.get_image())
     # overlay_grid = [' overlay grid']
-    add_cell_id_hover = [' show mask ID on hover']
-    show_each_channel_intensity = [" show channel intensities on hover"]
+    add_cell_id_hover = [' Show mask ID on hover']
+    show_each_channel_intensity = [" Show channel intensities on hover"]
     canvas_3 = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
@@ -153,7 +153,7 @@ def test_basic_canvas_image():
     apply_cluster_on_mask = True
     mask_config = {"roi_1": {"array": np.full((100, 100, 3), 1), "boundary": np.zeros((100, 100, 3)),
                              "raw": np.full((100, 100), 1).astype(np.float32)}}
-    overlay_grid = [' overlay grid']
+    overlay_grid = [' Overlay grid']
     canvas_8 = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,

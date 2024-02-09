@@ -107,7 +107,7 @@ class CanvasImage:
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
                                             self.mask_config[self.mask_selection]["boundary"].astype(np.uint8), 1, 0)
 
-        if ' overlay grid' in self.overlay_grid:
+        if ' Overlay grid' in self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     generate_greyscale_grid_array((image.shape[0],
                                     image.shape[1])).astype(np.uint8), 1, 0)
@@ -220,7 +220,7 @@ class CanvasImage:
         # TODO: combine both the mask ID and channel intensity into one hover if both are requested
 
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0 and \
-                ' show mask ID on hover' in self.add_cell_id_hover:
+                ' Show mask ID on hover' in self.add_cell_id_hover:
             try:
                 # fig.update(data=[{'customdata': None}])
                 fig.update(data=[{'customdata': self.mask_config[self.mask_selection]["hover"]}])
@@ -228,7 +228,7 @@ class CanvasImage:
             except KeyError:
                 new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
 
-        elif " show channel intensities on hover" in self.show_each_channel_intensity:
+        elif " Show channel intensities on hover" in self.show_each_channel_intensity:
             # fig.update(data=[{'customdata': None}])
             hover_stack = np.stack(tuple(self.raw_data_dict[self.data_selection][elem] for \
                                          elem in self.currently_selected),

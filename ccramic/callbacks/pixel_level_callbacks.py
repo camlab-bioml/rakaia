@@ -74,7 +74,7 @@ from ccramic.io.readers import DashUploaderFileReader
 from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
-from ccramic.utils.alert import AlertMessage, file_import_message
+from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError
 import uuid
 from ccramic.utils.region import RegionAnnotation
 
@@ -1062,7 +1062,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             if ctx.triggered_id not in ["activate-coord"]:
                 try:
-                    # TODO: add ability to include the proportion here for custom scalebar lengths
                     image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
                     proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                     # if ctx.triggered_id == 'annotation_canvas':
@@ -1663,7 +1662,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
                     # if the upper bound is larger than the custom percentile, set it to the upper bound
-                    if ' set range max to current upper bound' in custom_max:
+                    if ' Set range max to current upper bound' in custom_max:
                         hist_max = upper_bound
                         tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     # set tick spacing between marks on the rangeslider
@@ -1693,7 +1692,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'custom-slider-max':
                 try:
-                    if ' set range max to current upper bound' in custom_max:
+                    if ' Set range max to current upper bound' in custom_max:
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
                             hist_max = float(cur_slider_values[1])
                         else:
@@ -1776,10 +1775,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
             color = current_blend_dict[selected_channel]['color']
             # evaluate the current states of the inputs. if they are the same as the new channel, do not update
-            if ' apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val, filter_sigma):
+            if ' Apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val, filter_sigma):
                 to_apply_filter = dash.no_update
             else:
-                to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val, filter_sigma) else []
+                to_apply_filter = [' Apply/refresh filter'] if None not in (filter_type, filter_val, filter_sigma) else []
             if filter_type == cur_filter_type:
                 filter_type_return = dash.no_update
             else:
@@ -1804,7 +1803,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             filter_val = preset_dict[preset_selection]['filter_val']
             filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
             color = current_blend_dict[selected_channel]['color']
-            to_apply_filter = [' apply/refresh filter'] if None not in (filter_type, filter_val) else []
+            to_apply_filter = [' Apply/refresh filter'] if None not in (filter_type, filter_val) else []
             filter_type_return = filter_type if filter_type is not None else "median"
             filter_val_return = filter_val if filter_val is not None else 3
             filter_sigma_return = filter_sigma if filter_sigma is not None else 1
@@ -1898,6 +1897,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise AssertionError
                 return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
+            except AttributeError:
+                # TODO: raise exception on None if the data could not be imported, likely due to a disk storage error
+                raise DataImportError(ALERT.warnings["possible-disk-storage-error"])
             except KeyError:
                 return []
         return []
@@ -2190,8 +2192,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #     """
     #     Wrap the canvas in a loading screen if hover text is used, as it severely slows down the speed of callbacks
     #     """
-    #     if ' show mask ID on hover' in show_mask_hover or \
-    #             " show channel intensities on hover" in show_channel_intensity_hover:
+    #     if ' Show mask ID on hover' in show_mask_hover or \
+    #             " Show channel intensities on hover" in show_channel_intensity_hover:
     #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=True)]
     #     else:
     #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=False)]
@@ -2266,7 +2268,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                 annotations_dict[data_selection][str(clickdata)] = RegionAnnotation(cell_type=annotation_cell_type,
                                                     annotation_column=annot_col, type='point').dict()
-                if ' add circle on click' in add_circle:
+                if ' Add circle on click' in add_circle:
                     circle_size = int(circle_size)
                     fig = CanvasLayout(cur_figure).clear_improper_shapes()
                     fig['layout']['shapes'].append(

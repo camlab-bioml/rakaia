@@ -5,12 +5,21 @@ from ccramic.parsers.pixel_level_parsers import (
     create_new_blending_dict,
     populate_image_dict_from_lazy_load,
     sparse_array_to_dense,
-    convert_between_dense_sparse_array)
+    convert_between_dense_sparse_array,
+    convert_rgb_to_greyscale)
 from scipy.sparse import csc_matrix
 import numpy as np
 from ccramic.utils.alert import PanelMismatchError
 import os
 from scipy.sparse import issparse
+
+def test_basic_conversion_rgb_to_greyscale():
+    rgb = np.full((1000, 1000, 3), 255)
+    greyscale = convert_rgb_to_greyscale(rgb)
+    assert len(greyscale.shape) == 2
+    greyscale_2 = convert_rgb_to_greyscale(greyscale)
+    assert np.array_equal(greyscale, greyscale_2)
+
 
 def test_basic_parser_tiff_to_dict(get_current_dir):
     uploaded_dict = FileParser([os.path.join(get_current_dir, "for_recolour.tiff")]).image_dict

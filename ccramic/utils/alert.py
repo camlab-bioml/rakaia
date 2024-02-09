@@ -10,12 +10,15 @@ class DataImportTour(BaseModel):
                                " be used only for datasets < 2GB"},
                 {'selector': '[id="read-filepath"]',
                 'content': "For large datasets (> 2GB) or multiple files, copy and paste either a filepath or directory and "
-                               "read files in directly and select Import local"},
+                               "read files directly by selecting Import local"},
                 {'selector': '[id="show-dataset-info"]',
                 'content': 'View a list of imported datasets and regions of interest (ROIs)'},
                 {'selector': '[id="data-collection"]',
                 'content': 'Select an ROI from the dropdown menu to populate the image gallery'
-                               ' and begin image analysis!'}]
+                               ' and begin image analysis'},
+                {'selector': '[id="annotation-canvas"]',
+                    'content': 'Create a multiplexed image in the canvas by selecting\n'
+                               ' channels/biomarkers from the Channel selection dropdown.'}]
 
 class AlertMessage(BaseModel):
     """
@@ -51,12 +54,23 @@ class AlertMessage(BaseModel):
                                 "Switch to zoom or pan before removing the annotation shapes.",
                       "invalid_dimensions": "The dimensions of the mask do not agree with the current ROI.",
                       "quantification_missing_mask": "Quantification requires an ROI with a compatible mask that has been applied to the" \
-                                    " canvas. Please review the required inputs."}
+                                    " canvas. Please review the required inputs.",
+                      "possible-disk-storage-error": "The imported data could not be read/cached. \n"
+                                                     "Check that there is sufficient disk storage to conduct analysis"
+                                                     " (typically 2x the size of the imported files)."}
 
 
 class PanelMismatchError(Exception):
+    """
+    Raise this exception when datasets with different panel lengths are uploaded into the same session
+    """
     pass
 
+class DataImportError(Exception):
+    """
+    Raise when imported data cannot be read fully into the session, likely due to a disk storage error
+    """
+    pass
 
 def file_import_message(imported_files: list):
     """
@@ -69,4 +83,5 @@ def file_import_message(imported_files: list):
         message = message + f"{upload}\n"
         if suffix not in unique_suffixes:
             unique_suffixes.append(suffix)
+    message = message + "\n Select a region (ROI) from the data collection dropdown to begin analysis."
     return message, unique_suffixes
