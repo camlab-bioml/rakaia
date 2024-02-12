@@ -1,3 +1,50 @@
+:root {
+  --widget: #0f4d92;
+}
+
+*{
+  font-family: Arial;
+}
+
+.dash-spinner.dash-default-spinner {
+    color: var(--widget);
+}
+
+.rc-slider-track {
+  background-color: var(--widget);
+}
+
+.rc-slider-dot-active {
+  border-color: var(--widget);
+}
+
+#radioitems label{
+  color: var(--widget);
+}
+
+[class*="primary"], input[type='radio'] {
+    color: var(--widget);
+}
+
+.rc-slider-handle {
+  background-color: var(--widget);
+  border-color: var(--widget);
+}
+
+.rc-slider-handle:hover {
+  border-color: var(--widget);
+}
+
+.rc-slider-handle-active:active {
+  border-color: var(--widget);
+}
+
+
+[class*="primary"]{
+    background-color: var(--widget);
+}
+
+
 .app-header {
     height: 60px;
     line-height: 60px;

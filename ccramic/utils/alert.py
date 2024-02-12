@@ -7,18 +7,21 @@ class DataImportTour(BaseModel):
     """
     steps: list = [{'selector': '[id="upload-image"]',
                     'content': "Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
-                               " be used only for datasets < 2GB"},
+                               " be used only for datasets < 2GB or if the app deployment is non-local (web-based)"},
                 {'selector': '[id="read-filepath"]',
-                'content': "For large datasets (> 2GB) or multiple files, copy and paste either a filepath or directory and "
+                'content': "For large datasets (> 2GB) on local deployments, "
+                           "copy and paste either a filepath or directory and "
                                "read files directly by selecting Import local"},
                 {'selector': '[id="show-dataset-info"]',
-                'content': 'View a list of imported datasets and regions of interest (ROIs)'},
+                'content': 'View a list of imported datasets and regions of interest (ROIs).'
+                           ' Multiple ROIs, files, and/or filetypes can be imported into the same session, '
+                           'provided that the biomarker panel is the same across all ROIs.'},
                 {'selector': '[id="data-collection"]',
                 'content': 'Select an ROI from the dropdown menu to populate the image gallery'
                                ' and begin image analysis'},
                 {'selector': '[id="annotation-canvas"]',
-                    'content': 'Create a multiplexed image in the canvas by selecting\n'
-                               ' channels/biomarkers from the Channel selection dropdown.'}]
+                    'content': 'Create a multiplexed image in the canvas by selecting channels/biomarkers\n'
+                               ' from the Channel selection dropdown.\n'}]
 
 class AlertMessage(BaseModel):
     """
