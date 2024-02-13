@@ -10,7 +10,7 @@ def test_basic_alerts():
 def test_tour_steps():
     tour_steps = DataImportTour().steps
     assert isinstance(tour_steps, list)
-    assert len(tour_steps) == 5
+    assert len(tour_steps) == 6
     assert 'upload-image' in tour_steps[0]['selector']
 
 def test_file_import_warning(get_current_dir):

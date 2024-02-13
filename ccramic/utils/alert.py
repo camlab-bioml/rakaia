@@ -21,7 +21,9 @@ class DataImportTour(BaseModel):
                                ' and begin image analysis'},
                 {'selector': '[id="annotation-canvas"]',
                     'content': 'Create a multiplexed image in the canvas by selecting channels/biomarkers\n'
-                               ' from the Channel selection dropdown.\n'}]
+                               ' from the Channel selection dropdown.\n'},
+                   {'selector': '[id="ccramic-documentation"]',
+                    'content': 'Visit the documentation for a full comprehensive user guide.'}]
 
 class AlertMessage(BaseModel):
     """

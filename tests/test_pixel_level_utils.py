@@ -449,22 +449,24 @@ def test_basic_svgpath_pixel_mask():
     assert bool_inside[131, 223]
     assert not bool_inside[130, 223]
     # Edit pixels inside and outside of the path to compute the statistics
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0)
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0,0)
     array[130, 223] = 5000
     array[131, 237] = 5000
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0)
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0, 0)
     array[131, 223] = 5000
-    mean, max, min = get_area_statistics_from_closed_path(array, svgpath)
+    mean, max, min, total = get_area_statistics_from_closed_path(array, svgpath)
     assert mean > 0
     assert max == 5000.0
     assert min == 0.0
+    assert total == max
     array[150, 220] = 500
-    mean_2, max_2, min_2 = get_area_statistics_from_closed_path(array, svgpath)
+    mean_2, max_2, min_2, total_2 = get_area_statistics_from_closed_path(array, svgpath)
     assert mean_2 > mean
     assert max_2 == 5000.0
     assert min_2 == 0.0
     array[152, 230] = -1.0
-    mean_3, max_3, min_3 = get_area_statistics_from_closed_path(array, svgpath)
+    assert total_2 > max_2
+    mean_3, max_3, min_3, total_3 = get_area_statistics_from_closed_path(array, svgpath)
     assert mean_2 > mean_3
     assert max_2 == 5000.0
     assert min_3 == -1.0
@@ -582,7 +584,3 @@ def test_filter_bool_eval():
     # assert no match if the filter is not currently applied
     assert channel_filter_matches(blend_dict, "channel_1", [' apply filter'], "gaussian", 5, 0.5)
     assert not channel_filter_matches(blend_dict, "channel_1", [], "gaussian", 5, 0.5)
-
-
-
-

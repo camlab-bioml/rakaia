@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-02-12
+## [0.13.0] - 2024-02-13
 
 ### Added
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 callback
 - Add poetry files for development option
 - Custom exception for data reading error at likely callback point where disk storage errors occur
+- Added integrated (total) signal to channel summary statistics
 
 ### Changed
 
@@ -26,6 +27,7 @@ to be combined with the same colour and represented only once for simplicity
 - JSON export includes aliases
 - MCD import now includes the acquisition ID in the ROI name in addition to the acquisition description
 to ensure unique ROI naming
+- modify UI theme
 
 ### Fixed
 

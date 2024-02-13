@@ -83,10 +83,14 @@ def recolour_greyscale(array, colour):
         return np.array(image)
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
+    """
+    Return a series of region statistics for a rectangular slice of a channel array
+    mean, max, min, and integrated (total) signal
+    """
     try:
         subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-        return np.average(subset), np.max(subset), np.min(subset)
+        return np.average(subset), np.max(subset), np.min(subset), np.sum(subset)
     except IndexError:
         return None, None, None
 
@@ -131,12 +135,15 @@ def get_bounding_box_for_svgpath(svgpath):
 def get_area_statistics_from_closed_path(array, svgpath):
     """
     Subset an array based on coordinates contained within a svg path drawn on the canvas
+    Return a series of region statistics for a rectangular slice of a channel array
+    mean, max, min, and integrated (total) signal
     """
     # https://dash.plotly.com/annotations?_gl=1*9dqxqk*_ga*ODM0NzUyNzQ3LjE2NjQyODUyNDc.*_ga_6G7EE0JNSC*MTY4MzU2MDY0My4xMDUuMS4xNjgzNTYyNDM3LjAuMC4w
 
     masked_array = path_to_mask(svgpath, array.shape)
     # masked_subset_data = ma.array(array, mask=masked_array)
-    return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array])
+    return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array]), \
+        np.sum(array[masked_array])
 
 
 # def convert_to_below_255(array):

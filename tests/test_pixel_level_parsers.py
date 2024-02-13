@@ -6,7 +6,8 @@ from ccramic.parsers.pixel_level_parsers import (
     populate_image_dict_from_lazy_load,
     sparse_array_to_dense,
     convert_between_dense_sparse_array,
-    convert_rgb_to_greyscale)
+    convert_rgb_to_greyscale,
+    populate_alias_dict_from_editable_metadata)
 from scipy.sparse import csc_matrix
 import numpy as np
 from ccramic.utils.alert import PanelMismatchError
@@ -123,3 +124,28 @@ def test_conversion_between_sparse_dense_matrices():
 
     with pytest.raises(TypeError):
         convert_between_dense_sparse_array(array, "fake_type")
+
+
+def test_basic_metadata_alias_parse():
+    editable_metadata = [
+        {'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'ccramic Label': 'FSP1'},
+        {'Channel Order': 2, 'Channel Name': 'channel_2', 'Channel Label': 'channel_2', 'ccramic Label': 'SMA'},
+        {'Channel Order': 3, 'Channel Name': 'channel_3', 'Channel Label': 'channel_3', 'ccramic Label': 'H3K27me3'},
+        {'Channel Order': 4, 'Channel Name': 'channel_4', 'Channel Label': 'channel_4', 'ccramic Label': 'pan_CK'},
+        {'Channel Order': 5, 'Channel Name': 'channel_5', 'Channel Label': 'channel_5', 'ccramic Label': 'Fibronectin'},
+        {'Channel Order': 6, 'Channel Name': 'channel_6', 'Channel Label': 'channel_6', 'ccramic Label': 'CD44'}]
+    labels = populate_alias_dict_from_editable_metadata(editable_metadata)
+    assert len(labels) == 6
+    assert labels['channel_4'] == 'pan_CK'
+
+    bad_meta = [
+        {'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'ccramic Label': 'FSP1'},
+        {'Channel Order': 2, 'Channel Label': 'channel_2', 'ccramic Label': 'SMA'}]
+    labels = populate_alias_dict_from_editable_metadata(bad_meta)
+    assert len(labels) == 1
+
+    bad_meta_2 = [{'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'ccramic Label': 'FSP1'},
+        {'Channel Order': 2, 'Channel Name': 'channel_2', 'Channel Label': 'channel_2'}]
+    labels = populate_alias_dict_from_editable_metadata(bad_meta_2)
+    assert len(labels) == 2
+    assert labels['channel_2'] == 'channel_2'

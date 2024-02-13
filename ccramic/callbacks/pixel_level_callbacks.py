@@ -15,7 +15,8 @@ from ccramic.inputs.pixel_level_inputs import (
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
     populate_image_dict_from_lazy_load,
-    create_new_blending_dict)
+    create_new_blending_dict,
+    populate_alias_dict_from_editable_metadata)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
     split_string_at_pattern,
@@ -61,7 +62,6 @@ from ccramic.io.session import (
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
-import pathlib
 import cv2
 from dash import dcc
 from dash.exceptions import PreventUpdate
@@ -471,8 +471,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                      current_blend_dict[elem])
                     all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
-                                                                               current_blend_dict[elem][
-                                                                                   'color'])).astype(np.uint8)
+                                                    current_blend_dict[elem]['color'])).astype(np.uint8)
                 error_config["error"] = ALERT.warnings["json_update_success"]
                 channel_list_return = dash.no_update
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
@@ -550,7 +549,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             current_blend_dict[elem], preset_dict[preset_selection])
                 # if the selected channel is in the current blend, check if a preset is used to override
                 elif elem in current_blend_dict.keys() and use_preset_condition:
-                    # do not override the colour of the curreht channel
+                    # do not override the colour of the current channel
                     current_blend_dict[elem] = apply_preset_to_blend_dict(
                         current_blend_dict[elem], preset_dict[preset_selection])
                 else:
@@ -714,10 +713,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 current_blend_dict[layer][preset_val] = preset_dict[preset_selection][preset_val]
 
             array = apply_preset_to_array(array, preset_dict[preset_selection])
-            all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
-                                                current_blend_dict[layer]['color']))
+            all_layers[data_selection][layer] = np.array(recolour_greyscale(array, current_blend_dict[layer]['color']))
             return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                                                         use_unique_key=app_config['serverside_overwrite'])
+                                    use_unique_key=app_config['serverside_overwrite'])
 
         raise PreventUpdate
 
@@ -1080,8 +1078,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if None not in (x_request, y_request, current_window) and \
                         nclicks_coord is not None and nclicks_coord > 0:
                     try:
-                        fig, new_layout = CanvasLayout(cur_graph).update_coordinate_window(current_window,
-                                                                                     x_request, y_request)
+                        fig, new_layout = CanvasLayout(cur_graph).update_coordinate_window(current_window, x_request, y_request)
                         return fig, new_layout
                     except (AssertionError, TypeError):
                         raise PreventUpdate
@@ -1278,10 +1275,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def create_channel_label_dict(metadata):
         if metadata is not None:
-            alias_dict = {}
-            for elem in metadata:
-                alias_dict[elem['Channel Name']] = elem['ccramic Label']
-            return alias_dict
+            return populate_alias_dict_from_editable_metadata(metadata)
 
     @dash_app.callback(
         Output("download-edited-table", "data"),
@@ -1427,7 +1421,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if graph is not None and graph_layout is not None and data_selection is not None and nclicks and stats_table_open:
             return RegionSummary(graph_layout, upload, layers, data_selection, aliases_dict).get_summary_frame()
         elif stats_table_open:
-            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [], 'Min': []}).to_dict(orient='records')
+            return pd.DataFrame(
+                {'Channel': [], 'Mean': [], 'Max': [], 'Min': [], 'Total': []}).to_dict(orient='records')
         raise PreventUpdate
 
     @dash_app.callback(Output('image-gallery-row', 'children'),

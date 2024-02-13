@@ -71,12 +71,10 @@ class RectangleRegion(ChannelRegion):
                 if not x_range_high >= x_range_low: raise AssertionError
                 if not y_range_high >= y_range_low: raise AssertionError
 
-                self.mean_exp, self.max_exp, self.min_exp = get_area_statistics_from_rect(self.channel_array,
-                                                                                          x_range_low,
-                                                                                          x_range_high,
-                                                                                          y_range_low, y_range_high)
+                self.mean_exp, self.max_exp, self.min_exp, self.integrated = get_area_statistics_from_rect(
+                    self.channel_array, x_range_low, x_range_high, y_range_low, y_range_high)
             except KeyError:
-                self.mean_exp, self.max_exp, self.min_exp = 0, 0, 0
+                self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
 
 class FreeFormRegion(ChannelRegion):
     """
@@ -95,10 +93,10 @@ class FreeFormRegion(ChannelRegion):
         else:
             self.path = None
         if self.path is not None:
-            self.mean_exp, self.max_exp, self.min_exp = get_area_statistics_from_closed_path(
+            self.mean_exp, self.max_exp, self.min_exp, self.integrated = get_area_statistics_from_closed_path(
                 self.channel_array, self.path)
         else:
-            self.mean_exp, self.max_exp, self.min_exp = 0, 0, 0
+            self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
 
 class RegionAnnotation(BaseModel):
     title: str = None

@@ -26,7 +26,7 @@ class RegionSummary:
         self.selected_channels = layers
         # initialize the empty frame
         self.summary_frame = pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                             'Min': []}).to_dict(orient='records')
+                             'Min': [], 'Total': []}).to_dict(orient='records')
 
         if 'shapes' in self.graph_layout and len(self.graph_layout['shapes']) > 0:
             self.compute_statistics_shapes()
@@ -48,6 +48,7 @@ class RegionSummary:
         mean_panel = []
         max_panel = []
         min_panel = []
+        total_panel = []
         aliases = []
         region = []
         region_index = 1
@@ -62,6 +63,7 @@ class RegionSummary:
                         mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                         max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                         min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                        total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
                         aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                         region.append(region_index)
                     # option 2: if a closed form shape is drawn
@@ -71,6 +73,7 @@ class RegionSummary:
                         mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                         max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                         min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                        total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
                         aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                         region.append(region_index)
                 region_index += 1
@@ -84,7 +87,7 @@ class RegionSummary:
                 pass
 
         layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
-                      'Region': region}
+                      'Total': total_panel, 'Region': region}
         self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
     def compute_statistics_rectangle(self, reg_type="zoom", redrawn=False):
@@ -97,6 +100,7 @@ class RegionSummary:
             mean_panel = []
             max_panel = []
             min_panel = []
+            total_panel = []
             aliases = []
 
             for layer in self.selected_channels:
@@ -105,10 +109,11 @@ class RegionSummary:
                 mean_panel.append(round(float(region.compute_pixel_mean()), 2))
                 max_panel.append(round(float(region.compute_pixel_max()), 2))
                 min_panel.append(round(float(region.compute_pixel_min()), 2))
+                total_panel.append(round(float(region.compute_integrated_signal()), 2))
                 aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
 
-            layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
-
+            layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
+                          'Total': total_panel}
             self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
         except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
@@ -122,6 +127,7 @@ class RegionSummary:
             mean_panel = []
             max_panel = []
             min_panel = []
+            total_panel = []
             aliases = []
             for layer in self.selected_channels:
                 for shape_path in self.graph_layout.values():
@@ -129,8 +135,11 @@ class RegionSummary:
                     mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                     max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                     min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                    total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
                 aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
-            layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel}
+
+            layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
+                          'Total': total_panel}
 
             self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 

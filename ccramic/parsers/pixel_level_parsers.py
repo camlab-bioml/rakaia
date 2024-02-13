@@ -352,3 +352,19 @@ def convert_rgb_to_greyscale(array: Union[np.array, np.ndarray]):
     if len(array.shape) >= 3:
         return np.array(Image.fromarray(array.astype(np.uint8)).convert('L')).astype(np.float32)
     return array
+
+
+def populate_alias_dict_from_editable_metadata(metadata: Union[dict, list, pd.DataFrame]):
+    """
+    Generate a dictionary of channel aliases from the key names based on an editable metadata dataframe
+    """
+    alias_dict = {}
+    for elem in metadata:
+        try:
+            alias_dict[elem['Channel Name']] = elem['ccramic Label']
+        except KeyError:
+            try:
+                alias_dict[elem['Channel Name']] = elem['Channel Name']
+            except KeyError:
+                pass
+    return alias_dict

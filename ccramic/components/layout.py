@@ -15,12 +15,13 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
 from ccramic.utils.alert import DataImportTour
+from ccramic.io.session import SessionTheme
 
 def register_app_layout(config, cache_dest):
 
     # set the default colours for the swatches from the config input
     DEFAULT_SWATCHES = generate_default_swatches(config)
-    DEFAULT_WIDGET_COLOUR = "#0f4d92"
+    DEFAULT_WIDGET_COLOUR = SessionTheme().widget_colour
 
     return html.Div([
         dash_tour_component.DashTour(
@@ -284,7 +285,7 @@ def register_app_layout(config, cache_dest):
                                                className="mb-3", color="secondary", n_clicks=0,
                                                style={"margin-top": "10px"}),
                                 dcc.Loading(dbc.Alert([], color='danger', is_open=False, id='db-connect-alert'),
-                                            fullscreen=False),
+                                            fullscreen=False, color=DEFAULT_WIDGET_COLOUR),
                                 html.Br(),
                                 html.H6("Select saved configuration"),
                                 dcc.Dropdown(id='db-config-options', multi=False, style={"width": "87%"}),
@@ -303,7 +304,7 @@ def register_app_layout(config, cache_dest):
                                 html.Br(),
                                 html.Br(),
                                 dcc.Loading(dbc.Alert([], color='success', is_open=False, duration=1500,
-                                              id='db-config-submit-alert'), fullscreen=False),
+                                        id='db-config-submit-alert'), fullscreen=False, color=DEFAULT_WIDGET_COLOUR),
                                 html.Div([
                                 dbc.Input(type="text", id="db-config-name", placeholder="Enter configuration name",
                                                   style={"width": "75%"}),
@@ -447,7 +448,7 @@ def register_app_layout(config, cache_dest):
                                 # keep zoom and pan bars to be able to modify the histogram view
                                 # 'modeBarButtonsToRemove': ['zoom', 'pan']
                                 # },
-                                ), type="default", fullscreen=False)])]),
+                                ), type="default", fullscreen=False, color=DEFAULT_WIDGET_COLOUR)])]),
                                 id="pixel-hist-collapse", is_open=False), style={"minHeight": "100px"}),
                                  html.Div([
                                 dcc.RangeSlider(0, 100, 1, value=[None, None],
@@ -551,7 +552,8 @@ def register_app_layout(config, cache_dest):
                                     html.H6("Set mask array and opacity"),
                                     dcc.Loading(dcc.Dropdown(id='mask-options', multi=False,
                                         options=[], style={'width': '100%', 'display': 'inline-block',
-                                        'margin-right': '-50'}), type="default", fullscreen=False),
+                                        'margin-right': '-50'}), type="default", fullscreen=False,
+                                                color=DEFAULT_WIDGET_COLOUR),
                                     dcc.Slider(0, 100, 2.5, value=35,
                                         id='mask-blending-slider', marks={0: '0%', 25: '25%',
                                         50: '50%', 75: '75%', 100: '100%'}),
@@ -591,7 +593,7 @@ def register_app_layout(config, cache_dest):
                                 html.Div(dbc.Collapse(html.Div([html.H6("Selection information",
                                 style={'width': '75%'}),
                                 html.Div([dash_table.DataTable(id='selected-area-table',
-                                columns=[{'id': p, 'name': p} for p in ['Channel', 'Mean', 'Max', 'Min', 'Region']],
+                                columns=[{'id': p, 'name': p} for p in ['Channel', 'Mean', 'Max', 'Min', 'Total', 'Region']],
                                 data=None)], style={"width": "85%"})]),
                                 id="area-stats-collapse", is_open=False), style={"margin-bottom": "0px"}),
                                 html.Br(),
@@ -933,7 +935,8 @@ def register_app_layout(config, cache_dest):
                                             "margin-top": "-5px"}, color="dark", outline=True)],
                                     style={"display": "flex", "margin-bottom": "10px"}),
                                     html.Div([dcc.Loading(dcc.Dropdown(id='umap-projection-options', multi=False,
-                                    options=[], style={"width": "200%"}), type="default", fullscreen=False),
+                                    options=[], style={"width": "200%"}), type="default", fullscreen=False,
+                                            color=DEFAULT_WIDGET_COLOUR),
                                     dbc.Button(children=html.Span([html.I(className="fa-solid fa-table-list",
                                     style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
                                     html.Div("Show distribution")], style={"display": "flex", "margin-bottom": "5px",
@@ -1026,7 +1029,7 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id="db-saved-configs"),
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
         dcc.Store(id='query-cell-id-lists'),
-        dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True),
+        dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event
             events=[{"event": "keydown",
