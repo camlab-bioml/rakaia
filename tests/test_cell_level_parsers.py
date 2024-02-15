@@ -12,9 +12,8 @@ def test_validation_of_measurements_csv(get_current_dir):
 
     # currently, validation requires only sample to pass
     measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'], axis=1)
-    valid_bad, err = validate_incoming_measurements_csv(measurements_bad)
-    assert valid_bad is None
-    assert err is None
+    with pytest.raises(QuantificationFormatError):
+        validate_incoming_measurements_csv(measurements_bad)
 
     valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None

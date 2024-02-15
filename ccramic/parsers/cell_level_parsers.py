@@ -8,7 +8,9 @@ from PIL import Image
 from ccramic.utils.cell_level_utils import (
     set_mandatory_columns,
     convert_mask_to_cell_boundary,
-    set_columns_to_drop)
+    set_columns_to_drop,
+    QuantificationColumns,
+    QuantificationFormatError)
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import anndata
 import sys
@@ -61,6 +63,11 @@ def validate_incoming_measurements_csv(measurements_csv, required_columns=set_ma
     Validate an incoming measurements CSV against the current canvas, and ensure that it has the required
     information columns
     """
+    if not any([column in measurements_csv.columns for column in QuantificationColumns().identifiers]):
+        raise QuantificationFormatError(
+            "The imported quantification results are missing at least one of the following:\n"
+            "`sample` or `description`, which should immediately follow the channel "
+            "columns in the CSV, and should link ROI names/masks to quantification results.")
     if not all([column in measurements_csv.columns for column in required_columns]):
         return None, None
     #TODO: find a different heuristic for validating the measurements CSV as it will contain multiple ROIs

@@ -16,6 +16,17 @@ def test_quantification_one_channel(get_current_dir):
     bad_array = np.full((600, mask.shape[1]), 7)
     assert quantify_one_channel(bad_array, mask) is None
 
+def test_quantification_valid_vals(get_current_dir):
+    """ Quantify one channel corresponding to Ki67
+    Verified in the viewer that cell 797 has the highest mean expression"""
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
+    channel_dict = {"set1+++slide0+++roi_1": {"Ki67":
+            np.array(Image.open(os.path.join(get_current_dir, "for_quant.tiff")))}}
+    mean_values_ki67 = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_1",
+                                                          ["Ki67"], mask_name="roi_1")
+    where_max = mean_values_ki67.iloc[mean_values_ki67['Ki67'].idxmax()]
+    assert where_max['cell_id'] == 797
+
 def test_quantification_multiple_channels(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
     channel_dict = {"set1+++slide0+++roi_1": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
@@ -27,7 +38,7 @@ def test_quantification_multiple_channels(get_current_dir):
     assert len(multi_frame.index) == int(np.max(mask))
     column_list = list(multi_frame.columns)
     assert 'sample' in multi_frame.columns
-    assert column_list.index('sample') == 3
+    assert column_list.index('sample') == 5
     assert all([elem in column_list[0:3] for elem in channel_list])
 
     dataset_options = ["set1+++slide0+++roi_1", "set1+++slide0+++roi_2"]

@@ -16,16 +16,15 @@ def quantify_one_channel(image, mask):
         # Get unique list of cell IDs. Remove '0' which corresponds to background
         cell_ids = np.unique(mask)
         cell_ids = cell_ids[cell_ids != 0]
-        offset = 1 if min(cell_ids) == 1 else 0
         # IMP: the cell ids start at 1, but the array positions start at 0, so offset the array positions by 1
-        positions = [elem - offset for elem in cell_ids]
-
+        offset = 1 if min(cell_ids) == 1 else 0
         # Output expression matrix
         expr_mat = np.zeros((1, len(cell_ids)))
 
-        for cell in positions:
+        for cell in cell_ids:
             is_cell = mask == cell
-            expr_mat[:, cell] = np.mean(image[is_cell])
+            # IMP: only apply the offset in the positions, not for the actual cell id
+            expr_mat[:, (cell - offset)] = np.mean(image[is_cell])
         # cell_ids_adata = [f"{image_name}_{str(cell_id)}" for cell_id in cell_ids]
 
         # adata = ad.AnnData(
@@ -39,7 +38,7 @@ def quantify_one_channel(image, mask):
         return None
 
 def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None,
-                                       dataset_options=None, delimiter: str="+++"):
+                                       dataset_options=None, delimiter: str="+++", mask_name: str=None):
     """
     Quantify multiple channels for a single ROI and concatenate into a dataframe with cells
     as rows and channels + metadata as columns
@@ -60,9 +59,11 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
             if roi == roi_name:
                 index = dataset_options.index(dataset) + 1
                 roi_name_sample = f"{exp}_{index}"
-    channel_frame['sample'] = roi_name_sample
+    # TODO: change the order of the identifying columns here, and set the description to the mask used for the quant
+    # to ensure matching
+    channel_frame['description'] = mask_name
     channel_frame['cell_id'] = pd.Series(range(1, (len(channel_frame.index) + 1)), dtype='int64')
-    channel_frame['description'] = roi_name
+    channel_frame['sample'] = roi_name_sample
     return channel_frame
 
 
