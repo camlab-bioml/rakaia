@@ -6,6 +6,13 @@ import numpy as np
 from ccramic.utils.pixel_level_utils import path_to_mask
 from dash_extensions.enrich import Serverside
 from typing import Union
+from pydantic import BaseModel
+
+class SessionTheme(BaseModel):
+    """
+    Sets the default theme elements for the session
+    """
+    widget_colour: str = "#0f4d92"
 
 class SessionServerside(Serverside):
     """

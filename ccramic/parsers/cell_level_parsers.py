@@ -8,7 +8,9 @@ from PIL import Image
 from ccramic.utils.cell_level_utils import (
     set_mandatory_columns,
     convert_mask_to_cell_boundary,
-    set_columns_to_drop)
+    set_columns_to_drop,
+    QuantificationColumns,
+    QuantificationFormatError)
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import anndata
 import sys
@@ -53,8 +55,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
                 return SessionServerside(embedding, key="umap-embedding",
                                          use_unique_key=unique_key_serverside), cols
             raise PreventUpdate
-        else:
-            return dash.no_update, cols
+        return dash.no_update, cols
     raise PreventUpdate
 
 
@@ -63,6 +64,11 @@ def validate_incoming_measurements_csv(measurements_csv, required_columns=set_ma
     Validate an incoming measurements CSV against the current canvas, and ensure that it has the required
     information columns
     """
+    if not any([column in measurements_csv.columns for column in QuantificationColumns().identifiers]):
+        raise QuantificationFormatError(
+            "The imported quantification results are missing at least one of the following:\n"
+            "`sample` or `description`, which should immediately follow the channel "
+            "columns in the CSV, and should link ROI names/masks to quantification results.")
     if not all([column in measurements_csv.columns for column in required_columns]):
         return None, None
     #TODO: find a different heuristic for validating the measurements CSV as it will contain multiple ROIs
@@ -146,11 +152,12 @@ def parse_masks_from_filenames(status):
     #     default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
     #     return {default_mask_name: filenames[0]}
     masks = {}
-    for mask_file in filenames:
-        default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
-        masks[default_mask_name] = mask_file
-    if len(masks) > 0:
-        return masks
+    if status.progress == 1.0:
+        for mask_file in filenames:
+            default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
+            masks[default_mask_name] = mask_file
+        if len(masks) > 0:
+            return masks
     raise PreventUpdate
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
@@ -373,8 +380,7 @@ def validate_coordinate_set_for_image(x=None, y=None, image=None):
     """
     if None not in (x, y) and image is not None:
         return int(x) <= image.shape[1] and int(y) <= image.shape[0]
-    else:
-        return False
+    return False
 
 def parse_quantification_sheet_from_h5ad(h5ad_file):
     """
@@ -392,7 +398,7 @@ def parse_quantification_sheet_from_h5ad(h5ad_file):
 def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
                                quantification_frame: Union[dict, pd.DataFrame]=None,
                                mask_identifier: str=None, quantification_sample_col: str='sample',
-                               quantification_object_col:str='cell_id', intersection=False):
+                               quantification_object_col:str='cell_id', intersection=False, normalize=True):
     """
     Produce a list of object ids (i.e. cells from segmentation) from a mask that is gated on
     one or more quantifiable traits. Cell ids are used to subset the mask to show only gated cells
@@ -408,8 +414,8 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
     for gating_elem in gating_selection:
         # do not add the string combo at the end
         combo = combo if gating_index < (len(gating_selection) - 1) else ""
-        query = query + f'(`{gating_elem}` >= {gating_dict[gating_elem][0]} &' \
-                        f'`{gating_elem}` <= {gating_dict[gating_elem][1]}) {combo}'
+        query = query + f'(`{gating_elem}` >= {gating_dict[gating_elem]["lower_bound"]} &' \
+                        f'`{gating_elem}` <= {gating_dict[gating_elem]["upper_bound"]}) {combo}'
         gating_index += 1
 
     # TODO: figure out parameters for matching the mask to the quantification sheet
@@ -427,7 +433,15 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
     if None not in (mask_identifier, id_list):
         mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier, id_list, quantification_sample_col)
     if mask_quant_match is not None:
-        query = quantification_frame.query(query)
+        # TODO: implement normalization of the gating inputs
+        frame = quantification_frame
+        if normalize:
+            frame = quantification_frame[quantification_frame.columns.intersection(gating_selection)]
+            frame = ((frame - frame.min()) / (frame.max() - frame.min()))
+        to_add = quantification_frame[quantification_frame.columns.intersection(
+            [designation_column, quantification_object_col])]
+        frame = frame.reset_index(drop=True).join(to_add)
+        query = frame.query(query)
         # pull the cell ids from the subset of the quantification frame from the query where the
         # mask matches the one provided
         cell_ids = query[query[designation_column] == mask_quant_match][quantification_object_col].tolist()

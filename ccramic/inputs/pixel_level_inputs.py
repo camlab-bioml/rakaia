@@ -10,6 +10,7 @@ from copy import deepcopy
 import numpy as np
 from PIL import Image
 import plotly.express as px
+from ccramic.io.session import SessionTheme
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False):
@@ -57,7 +58,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
     if (large_image or hovertext) and wrap:
         return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom),
-                                     type="default", fullscreen=False)
+                                     type="default", fullscreen=False, color=SessionTheme().widget_colour)
     else:
         return render_default_annotation_canvas(fullscreen_mode=enable_zoom)
 

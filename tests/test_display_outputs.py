@@ -29,6 +29,7 @@ def test_generate_channel_statistics_dataframe():
     assert list(stats_1['Max'] == [100, 300])
     assert list(stats_1['Min'] == [100, 300])
     assert list(stats_1['Mean'] == [100, 300])
+    assert list(stats_1['Total'] == [1100000.0, 3300000.0])
 
 
     # Second Option: when svg path is used for one channel
@@ -80,11 +81,11 @@ def test_generate_channel_statistics_dataframe():
     stats_3 = pd.DataFrame(
         RegionSummary(graph_layout_3, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
-
     assert len(stats_3) == 4
     assert list(stats_3['Max'] == [100, 300, 100, 300])
     assert list(stats_3['Min'] == [100, 300, 100, 300])
     assert list(stats_3['Mean'] == [100, 300, 100, 300])
+    assert list(stats_3['Total']) == [1711500.0, 5134500.0, 2226300.0, 6678900.0]
 
 
     # Option 4: when an existing svg path is edited
@@ -273,6 +274,3 @@ def test_fullscreen_canvas():
     fullscreen = FullScreenCanvas(canvas.to_dict(), {"autosize": True})
     fullscreen_canvas = fullscreen.get_canvas()
     assert len(fullscreen_canvas['layout']['shapes']) == len(fullscreen_canvas['layout']['annotations']) == 0
-
-
-

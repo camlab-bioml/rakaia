@@ -9,7 +9,8 @@ from ccramic.parsers.cell_level_parsers import (
     get_quantification_filepaths_from_drag_and_drop,
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
-    validate_imported_csv_annotations
+    validate_imported_csv_annotations,
+    object_id_list_from_gating
 )
 from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
@@ -701,4 +702,45 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return clust_dict
             except KeyError:
               raise PreventUpdate
+        raise PreventUpdate
+
+    @dash_app.callback(Output('gating-slider', 'value'),
+                       Input('gating-channel-options', 'value'),
+                       State('gating-dict', 'data'),
+                       State('quantification-dict', 'data'),)
+    def update_gating_thresholds(gate_selected, gating_dict, quantification_dict):
+        if None not in (gate_selected, quantification_dict):
+            if gating_dict and gate_selected in gating_dict:
+                return gating_dict[gate_selected]['lower_bound'], gating_dict[gate_selected]['upper_bound']
+            else:
+                return [0.0, 1.0]
+        raise PreventUpdate
+
+
+    @dash_app.callback(Output('gating-dict', 'data'),
+                       Input('gating-slider', 'value'),
+                       State('gating-dict', 'data'),
+                       Input('gating-channel-options', 'value'))
+    def update_gating_dict(gating_val, gating_dict, gate_selected):
+        if None not in (gating_val, gate_selected):
+            gating_dict = {gate_selected: {}} if gating_dict is None else gating_dict
+            if gate_selected not in gating_dict: gating_dict[gate_selected] = {}
+            gating_dict[gate_selected]['lower_bound'] = float(min(gating_val))
+            gating_dict[gate_selected]['upper_bound'] = float(max(gating_val))
+            return SessionServerside(gating_dict, key="gating_dict",
+                              use_unique_key=app_config['serverside_overwrite'])
+        raise PreventUpdate
+
+    @dash_app.callback(Output('gating-cell-list', 'data'),
+                       Input('gating-dict', 'data'),
+                       Input('data-collection', 'value'),
+                       Input('quantification-dict', 'data'),
+                       Input('mask-options', 'value'),
+                       State('gating-channel-options', 'value'))
+    def update_gating_cell_list(gating_dict, roi_selection, quantification_dict, mask_selection, cur_gate_selection):
+        if None not in (gating_dict, roi_selection, quantification_dict, mask_selection):
+            id_list = object_id_list_from_gating(gating_dict, [cur_gate_selection], pd.DataFrame(quantification_dict),
+                                                 mask_selection)
+            return SessionServerside(id_list, key="gating_cell_id_list",
+                              use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate

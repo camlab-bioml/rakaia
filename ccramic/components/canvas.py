@@ -17,7 +17,7 @@ from ccramic.utils.pixel_level_utils import (
 from ccramic.utils.cell_level_utils import generate_mask_with_cluster_annotations
 from plotly.graph_objs.layout import YAxis, XAxis
 from ccramic.utils.shapes import is_cluster_annotation_circle, is_bad_shape
-from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
+from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
 import pandas as pd
 import math
 from skimage import measure
@@ -33,7 +33,7 @@ class CanvasImage:
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                                                cluster_frame, cluster_type, custom_scale_val):
+                cluster_frame, cluster_type, custom_scale_val, apply_gating, gating_cell_id_list):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -63,6 +63,8 @@ class CanvasImage:
         self.cluster_frame = cluster_frame
         self.cluster_type = cluster_type
         self.custom_scale_val = custom_scale_val
+        self.apply_gating = apply_gating
+        self.gating_cell_id_list = gating_cell_id_list
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
@@ -87,6 +89,9 @@ class CanvasImage:
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
                     mask = self.mask_config[self.mask_selection]["array"].astype(np.uint8)
+                    if self.apply_gating:
+                        mask = subset_mask_outline_using_cell_id_list(self.mask_config[self.mask_selection]["raw"],
+                            self.mask_config[self.mask_selection]["raw"], self.gating_cell_id_list).astype(np.uint8)
                     mask = np.where(mask > 0, 255, 0)
                     image = cv2.addWeighted(image.astype(np.uint8), 1, mask.astype(np.uint8), mask_level, 0)
                 if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
@@ -94,7 +99,7 @@ class CanvasImage:
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
                                             self.mask_config[self.mask_selection]["boundary"].astype(np.uint8), 1, 0)
 
-        if ' overlay grid' in self.overlay_grid:
+        if ' Overlay grid' in self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     generate_greyscale_grid_array((image.shape[0],
                                     image.shape[1])).astype(np.uint8), 1, 0)
@@ -207,7 +212,7 @@ class CanvasImage:
         # TODO: combine both the mask ID and channel intensity into one hover if both are requested
 
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0 and \
-                ' show mask ID on hover' in self.add_cell_id_hover:
+                ' Show mask ID on hover' in self.add_cell_id_hover:
             try:
                 # fig.update(data=[{'customdata': None}])
                 fig.update(data=[{'customdata': self.mask_config[self.mask_selection]["hover"]}])
@@ -215,7 +220,7 @@ class CanvasImage:
             except KeyError:
                 new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
 
-        elif " show channel intensities on hover" in self.show_each_channel_intensity:
+        elif " Show channel intensities on hover" in self.show_each_channel_intensity:
             # fig.update(data=[{'customdata': None}])
             hover_stack = np.stack(tuple(self.raw_data_dict[self.data_selection][elem] for \
                                          elem in self.currently_selected),

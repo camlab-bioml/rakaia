@@ -12,6 +12,7 @@ import cv2
 import re
 import random
 import numexpr as ne
+from typing import Union
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -82,10 +83,14 @@ def recolour_greyscale(array, colour):
         return np.array(image)
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
+    """
+    Return a series of region statistics for a rectangular slice of a channel array
+    mean, max, min, and integrated (total) signal
+    """
     try:
         subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-        return np.average(subset), np.max(subset), np.min(subset)
+        return np.average(subset), np.max(subset), np.min(subset), np.sum(subset)
     except IndexError:
         return None, None, None
 
@@ -130,12 +135,15 @@ def get_bounding_box_for_svgpath(svgpath):
 def get_area_statistics_from_closed_path(array, svgpath):
     """
     Subset an array based on coordinates contained within a svg path drawn on the canvas
+    Return a series of region statistics for a rectangular slice of a channel array
+    mean, max, min, and integrated (total) signal
     """
     # https://dash.plotly.com/annotations?_gl=1*9dqxqk*_ga*ODM0NzUyNzQ3LjE2NjQyODUyNDc.*_ga_6G7EE0JNSC*MTY4MzU2MDY0My4xMDUuMS4xNjgzNTYyNDM3LjAuMC4w
 
     masked_array = path_to_mask(svgpath, array.shape)
     # masked_subset_data = ma.array(array, mask=masked_array)
-    return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array])
+    return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array]), \
+        np.sum(array[masked_array])
 
 
 # def convert_to_below_255(array):
@@ -446,3 +454,24 @@ def apply_filter_to_array(image, global_apply_filter, global_filter_type, global
                                                  int(global_filter_val)),
                                                  float(global_filter_sigma))
     return image
+
+
+def no_filter_chosen(current_blend_dict: dict, channel: str, filter_chosen: Union[list, str]):
+    """
+    Evaluates whether the currently selected channel has no filter applied, and the session
+    filter is set to None
+    """
+    return  current_blend_dict[channel]['filter_type'] is None and \
+            current_blend_dict[channel]['filter_val'] is None and \
+            current_blend_dict[channel]['filter_sigma'] is None and \
+            len(filter_chosen) == 0
+def channel_filter_matches(current_blend_dict: dict, channel: str, filter_chosen: Union[list, str],
+                           filter_name: str="median", filter_value: int = 3, filter_sigma: Union[int, float] = 1.0):
+    """
+    Evaluates whether the current channel's filters match the filter parameters currently
+    set in the session
+    """
+    return  current_blend_dict[channel]['filter_type'] == filter_name and \
+            current_blend_dict[channel]['filter_val'] == filter_value and \
+            current_blend_dict[channel]['filter_sigma'] == filter_sigma and \
+            len(filter_chosen) > 0

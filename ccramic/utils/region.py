@@ -12,6 +12,8 @@ class ChannelRegion:
         self.mean_exp = None
         self.max_exp = None
         self.min_exp = None
+        # integrated has the sum of the signal in a region
+        self.integrated = None
 
     def compute_pixel_mean(self):
         """
@@ -31,6 +33,9 @@ class ChannelRegion:
         Compute the max pixel intensity of the channel region
         """
         return self.max_exp
+
+    def compute_integrated_signal(self):
+        return self.integrated
 
 class RectangularKeys(BaseModel):
     """
@@ -57,7 +62,8 @@ class RectangleRegion(ChannelRegion):
             self.required_keys = self.key_dict[self.type]
         if all([elem in self.coordinate_dict] for elem in self.required_keys):
             try:
-                if not all([elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)]): raise AssertionError
+                if not all([elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)]):
+                    raise AssertionError
                 x_range_low = math.ceil(int(self.coordinate_dict[self.required_keys[0]]))
                 x_range_high = math.ceil(int(self.coordinate_dict[self.required_keys[1]]))
                 y_range_low = math.ceil(int(self.coordinate_dict[self.required_keys[2]]))
@@ -65,12 +71,10 @@ class RectangleRegion(ChannelRegion):
                 if not x_range_high >= x_range_low: raise AssertionError
                 if not y_range_high >= y_range_low: raise AssertionError
 
-                self.mean_exp, self.max_exp, self.min_exp = get_area_statistics_from_rect(self.channel_array,
-                                                                                          x_range_low,
-                                                                                          x_range_high,
-                                                                                          y_range_low, y_range_high)
+                self.mean_exp, self.max_exp, self.min_exp, self.integrated = get_area_statistics_from_rect(
+                    self.channel_array, x_range_low, x_range_high, y_range_low, y_range_high)
             except KeyError:
-                self.mean_exp, self.max_exp, self.min_exp = 0, 0, 0
+                self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
 
 class FreeFormRegion(ChannelRegion):
     """
@@ -89,10 +93,10 @@ class FreeFormRegion(ChannelRegion):
         else:
             self.path = None
         if self.path is not None:
-            self.mean_exp, self.max_exp, self.min_exp = get_area_statistics_from_closed_path(
+            self.mean_exp, self.max_exp, self.min_exp, self.integrated = get_area_statistics_from_closed_path(
                 self.channel_array, self.path)
         else:
-            self.mean_exp, self.max_exp, self.min_exp = 0, 0, 0
+            self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
 
 class RegionAnnotation(BaseModel):
     title: str = None

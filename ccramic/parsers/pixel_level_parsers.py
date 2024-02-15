@@ -1,5 +1,7 @@
 import h5py
 from pathlib import Path
+
+import numpy as np
 from tifffile import TiffFile
 from ccramic.utils.pixel_level_utils import (
     split_string_at_pattern,
@@ -8,6 +10,8 @@ from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 from ccramic.utils.alert import PanelMismatchError
 import pandas as pd
+from PIL import Image
+from typing import Union
 
 class FileParser:
     """
@@ -134,8 +138,9 @@ class FileParser:
                 # identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
                 #     len(tif.pages) > 1 else str(basename)
                 identifier = str("channel_" + str(multi_channel_index))
-                self.image_dict[roi][identifier] = None if self.lazy_load else page.asarray().astype(
-                    set_array_storage_type_from_config(self.array_store_type))
+                # tiff files could be RGB, so convert to greyscale for compatibility
+                self.image_dict[roi][identifier] = None if self.lazy_load else convert_rgb_to_greyscale(
+                    page.asarray()).astype(set_array_storage_type_from_config(self.array_store_type))
                 # add in a generic description for the ROI per tiff file
                 if multi_channel_index == 1:
                     self.dataset_information_frame["ROI"].append(str(roi))
@@ -172,7 +177,7 @@ class FileParser:
                 for acq in slide.acquisitions:
                     basename = str(Path(mcd_filepath).stem)
                     roi = f"{str(basename)}{self.delimiter}slide{str(slide_index)}" \
-                          f"{self.delimiter}{str(acq.description)}"
+                          f"{self.delimiter}{str(acq.description)}_{str(acq.id)}"
                     self.image_dict[roi] = {}
                     if channel_labels is None:
                         channel_labels = acq.channel_labels
@@ -191,7 +196,6 @@ class FileParser:
                            (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
                             raise PanelMismatchError("One or more ROIs imported from .mcd appear to have"
                             " different panel lengths. This is currently not supported by ccramic.")
-                    # img = mcd_file.read_acquisition(acq)
                     channel_index = 0
                     for channel in acq.channel_names:
                         self.image_dict[roi][channel] = None if self.lazy_load else channel.astype(
@@ -223,10 +227,11 @@ class FileParser:
             self.image_dict = {internal_name: {}}
             for slide_inside in mcd_file.slides:
                 for acq in slide_inside.acquisitions:
-                    if acq.description == roi_name:
+                    pattern = f"{str(acq.description)}_{str(acq.id)}"
+                    if pattern == roi_name:
                         channel_names = acq.channel_names
                         channel_index = 0
-                        img = mcd_file.read_acquisition(acq)
+                        img = mcd_file.read_acquisition(acq, strict=False)
                         for channel in img:
                             self.image_dict[internal_name][channel_names[channel_index]] = channel.astype(
                                 set_array_storage_type_from_config(self.array_store_type))
@@ -251,7 +256,7 @@ class FileParser:
             self.image_dict[roi] = {}
             # TODO: only read the acquisition if lazy loading is off
             if not self.lazy_load:
-                acq = acq_text_read.read_acquisition()
+                acq = acq_text_read.read_acquisition(strict=False)
             else:
                 acq = range(len(txt_channel_names))
             for image in acq:
@@ -342,3 +347,24 @@ def convert_between_dense_sparse_array(array, array_type="dense"):
     if array_type not in ["dense", "sparse"]:
         raise TypeError("The array type must be either dense or sparse")
     return csc_matrix(sparse_array_to_dense(array)) if array_type == "sparse" else sparse_array_to_dense(array)
+
+def convert_rgb_to_greyscale(array: Union[np.array, np.ndarray]):
+    if len(array.shape) >= 3:
+        return np.array(Image.fromarray(array.astype(np.uint8)).convert('L')).astype(np.float32)
+    return array
+
+
+def populate_alias_dict_from_editable_metadata(metadata: Union[dict, list, pd.DataFrame]):
+    """
+    Generate a dictionary of channel aliases from the key names based on an editable metadata dataframe
+    """
+    alias_dict = {}
+    for elem in metadata:
+        try:
+            alias_dict[elem['Channel Name']] = elem['ccramic Label']
+        except KeyError:
+            try:
+                alias_dict[elem['Channel Name']] = elem['Channel Name']
+            except KeyError:
+                pass
+    return alias_dict

@@ -1,11 +1,13 @@
 from dash import dcc
 import dash
+from ccramic.io.session import SessionTheme
 
 def wrap_child_in_loading(child, wrap=True, fullscreen=True, wrap_type="default"):
     """
     Wrap a child input in a dash loading screen if wrap is True. Otherwise, return the child as is
     """
-    return dcc.Loading(child, fullscreen=fullscreen, type=wrap_type) if wrap else child
+    return dcc.Loading(child, fullscreen=fullscreen, type=wrap_type,
+                       color=SessionTheme().widget_colour) if wrap else child
 
 def reset_graph_data(graph):
     """

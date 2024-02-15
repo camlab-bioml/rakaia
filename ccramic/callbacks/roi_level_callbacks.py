@@ -136,7 +136,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             first_image = image_dict[data_selection][first_image]
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 new_quant = quantify_multiple_channels_per_roi(image_dict, mask_dict[mask_selection]['raw'],
-                            data_selection, channels_to_quantify, aliases, dataset_options, delimiter)
+                            data_selection, channels_to_quantify, aliases, dataset_options, delimiter, mask_selection)
                 quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant,
                                                                      data_selection, delimiter)
                 return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",

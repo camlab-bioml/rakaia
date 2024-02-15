@@ -7,14 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-02-07
+## [0.13.0] - 2024-02-15
 
 ### Added
 
 - Custom string delimiter input to change the string representation of ROIs within the session
 - Data refresh button for refreshing ROI selection in case of a `PreventUpdate` exception in the canvas
 callback
-- Add poetry files for development option (in envs)
+- Add poetry files for development option
+- Custom exception for data reading error at likely callback point where disk storage errors occur
+- Added integrated (total) signal to channel summary statistics
+- single channel gating from quantification results: gating can be applied to a canvas mask
 
 ### Changed
 
@@ -23,6 +26,9 @@ callback
 to be combined with the same colour and represented only once for simplicity
 - JSON and mongoDB documents now contain cluster colour annotations if they exist on export
 - JSON export includes aliases
+- MCD import now includes the acquisition ID in the ROI name in addition to the acquisition description
+to ensure unique ROI naming
+- modify UI theme
 
 ### Fixed
 
@@ -30,6 +36,7 @@ to be combined with the same colour and represented only once for simplicity
 - Add ability to retain cluster assignments for individual ROIs when toggling
 - Cluster annotations can now be added to the canvas legend via toggle: can replace the channel labels
 when clusters are applied
+- `readimc` updated to `0.7.0` to include reading imc files with `strict=False` for leniency on corrupted data
 
 ## [0.12.0] - 2024-01-26
 

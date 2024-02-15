@@ -28,7 +28,9 @@ from ccramic.utils.pixel_level_utils import (
     get_first_image_from_roi_dictionary,
     set_array_storage_type_from_config,
     apply_filter_to_array,
-    split_string_at_pattern)
+    split_string_at_pattern,
+    no_filter_chosen,
+    channel_filter_matches)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -447,22 +449,24 @@ def test_basic_svgpath_pixel_mask():
     assert bool_inside[131, 223]
     assert not bool_inside[130, 223]
     # Edit pixels inside and outside of the path to compute the statistics
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0)
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0,0)
     array[130, 223] = 5000
     array[131, 237] = 5000
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0)
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0, 0)
     array[131, 223] = 5000
-    mean, max, min = get_area_statistics_from_closed_path(array, svgpath)
+    mean, max, min, total = get_area_statistics_from_closed_path(array, svgpath)
     assert mean > 0
     assert max == 5000.0
     assert min == 0.0
+    assert total == max
     array[150, 220] = 500
-    mean_2, max_2, min_2 = get_area_statistics_from_closed_path(array, svgpath)
+    mean_2, max_2, min_2, total_2 = get_area_statistics_from_closed_path(array, svgpath)
     assert mean_2 > mean
     assert max_2 == 5000.0
     assert min_2 == 0.0
     array[152, 230] = -1.0
-    mean_3, max_3, min_3 = get_area_statistics_from_closed_path(array, svgpath)
+    assert total_2 > max_2
+    mean_3, max_3, min_3, total_3 = get_area_statistics_from_closed_path(array, svgpath)
     assert mean_2 > mean_3
     assert max_2 == 5000.0
     assert min_3 == -1.0
@@ -564,3 +568,19 @@ def test_apply_filter_to_array(get_current_dir):
 
     no_filter = apply_filter_to_array(greyscale, False, "median", 1, 1)
     assert np.array_equal(greyscale, no_filter)
+
+
+def test_filter_bool_eval():
+    blend_dict = {"channel_1": {"color": "#FFFFFF", "x_lower_bound": None,
+                "x_upper_bound": None, "filter_type": None, "filter_val": None, "filter_sigma": None}}
+    assert no_filter_chosen(blend_dict, "channel_1", [])
+    blend_dict = {"channel_1": {"color": "#FFFFFF", "x_lower_bound": None,
+                "x_upper_bound": None, "filter_type": "median", "filter_val": None, "filter_sigma": None}}
+    assert not no_filter_chosen(blend_dict, "channel_1", [])
+
+    blend_dict = {"channel_1": {"color": "#FFFFFF", "x_lower_bound": None,
+                                "x_upper_bound": None, "filter_type": "gaussian", "filter_val": 5,
+                                "filter_sigma": 0.5}}
+    # assert no match if the filter is not currently applied
+    assert channel_filter_matches(blend_dict, "channel_1", [' apply filter'], "gaussian", 5, 0.5)
+    assert not channel_filter_matches(blend_dict, "channel_1", [], "gaussian", 5, 0.5)

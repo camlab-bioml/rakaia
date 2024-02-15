@@ -8,20 +8,37 @@ from dash.exceptions import PreventUpdate
 from PIL import Image
 import numpy as np
 from skimage.segmentation import find_boundaries
+from pydantic import BaseModel
+
+class QuantificationColumns(BaseModel):
+    """
+    Holds the default named columns that can come after the channel columns
+    """
+    identifiers: list = ['sample', 'description']
+    positions: list = ['sample', 'cell_id', 'description']
+    defaults: list = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
+                        'PhenoGraph_clusters', 'Labels']
+
+class QuantificationFormatError(Exception):
+    pass
+
 
 def set_columns_to_drop(measurements_csv=None):
-    defaults = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
-            'PhenoGraph_clusters', 'Labels']
     if measurements_csv is None:
-        return defaults
+        return QuantificationColumns().defaults
     else:
         # drop every column from sample and after, as these don't represent channels
-        try:
-            cols = list(measurements_csv.columns)
-            index_find = min(cols.index('sample'), cols.index('cell_id'))
-            return cols[index_find: len(cols)]
-        except (ValueError, IndexError):
-            return defaults
+        indices = []
+        cols = list(measurements_csv.columns)
+        for column in QuantificationColumns().positions:
+            try:
+                indices.append(cols.index(column))
+            except (KeyError, ValueError, IndexError):
+                pass
+        if not indices:
+            # TODO: decide if throw error for quantification results that are missing the key identifying columns
+            return QuantificationColumns().defaults
+        return cols[min(indices): len(measurements_csv.columns)]
 
 def set_mandatory_columns(only_sample=True):
     if only_sample:
