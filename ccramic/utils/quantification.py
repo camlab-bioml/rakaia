@@ -2,6 +2,7 @@ import numpy as np
 from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import pandas as pd
+from dash import html
 
 def quantify_one_channel(image, mask):
     """
@@ -88,3 +89,49 @@ def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_s
             return new_frame
         else:
             return existing_frame
+
+
+def populate_gating_dict_with_default_values(current_gate_dict: dict=None, parameter_list: list=None):
+    """
+    Populate a gating dict with default normalized values of 0 to 1 if the
+    parameter doesn't yet exist
+    """
+    current_gate_dict = {} if current_gate_dict is None else current_gate_dict
+    for param in parameter_list:
+        if param not in current_gate_dict:
+            current_gate_dict[param] = {'lower_bound': 0.0, 'upper_bound': 1.0}
+    return current_gate_dict
+
+def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_selected: str=None,
+                                          gating_vals: list=[0.0, 1.0]):
+    """
+    Update the current gating dictionary with the range slider values for a specific parameter from
+    the gating modifier dropdown
+    """
+    current_gate_dict = {gate_selected: {}} if current_gate_dict is None else current_gate_dict
+    if gate_selected not in current_gate_dict: current_gate_dict[gate_selected] = \
+        {'lower_bound': None, 'upper_bound': None}
+    # if current_gate_dict[gate_selected]['lower_bound'] != float(min(gating_vals)) and \
+    #         current_gate_dict[gate_selected]['upper_bound'] != float(max(gating_vals)):
+    current_gate_dict[gate_selected]['lower_bound'] = float(min(gating_vals))
+    current_gate_dict[gate_selected]['upper_bound'] = float(max(gating_vals))
+    return current_gate_dict
+
+def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
+                          current_gating_params: list=None):
+    """
+    Generate the HTML legend for the current parameters used for mask gating
+    """
+    if use_gating and gating_dict and current_gating_params:
+        children = [html.Span("Current gating parameters (norm 0-1)\n",
+                              style={"color": "black"}), html.Br()]
+        for current_param in current_gating_params:
+            try:
+                children.append(html.Span(f"{str(current_param)}: "
+                                      f"[{gating_dict[current_param]['lower_bound']},"
+                                      f"{gating_dict[current_param]['upper_bound']}]\n"))
+                children.append(html.Br())
+            except KeyError:
+                pass
+        return children
+    return []

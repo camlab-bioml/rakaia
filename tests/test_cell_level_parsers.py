@@ -222,7 +222,9 @@ def test_gating_cell_ids(get_current_dir):
     gating_selection = ['191Ir_DNA1', '168Er_Ki67']
     gating_dict = {'191Ir_DNA1': {'lower_bound': 0.2, 'upper_bound': 0.4},
                    '168Er_Ki67': {'lower_bound': 0.5, 'upper_bound': 1}}
-    cell_ids = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1")
+    cell_ids = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1_mask")
+    # test 1 has only cells up to 203, so can enforce that only one ROI was used
+    assert max(cell_ids) < 203
     assert len(cell_ids) > 0
     cell_id_intersection = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1",
                                                       intersection=True)

@@ -46,7 +46,11 @@ from ccramic.io.session import SessionServerside
 import uuid
 from ccramic.utils.session import non_truthy_to_prevent_update
 from ccramic.utils.cluster import assign_colours_to_cluster_annotations, cluster_label_children
-
+from ccramic.utils.quantification import (
+    populate_gating_dict_with_default_values,
+    update_gating_dict_with_slider_values,
+    gating_label_children
+)
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -704,43 +708,63 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
               raise PreventUpdate
         raise PreventUpdate
 
-    @dash_app.callback(Output('gating-slider', 'value'),
+    @dash_app.callback(Output('gating-cur-mod', 'options'),
+                       Output('gating-dict', 'data'),
+                       Output('gating-cur-mod', 'value'),
                        Input('gating-channel-options', 'value'),
+                       State('gating-dict', 'data'))
+    def update_current_gating_selection(gating_selection, current_gate_dict):
+        """
+        Update the dropdown options for the current gating selection. The multi-selection will define
+        the current set of parameters on which the mask is gated
+        """
+        if gating_selection:
+            return gating_selection, populate_gating_dict_with_default_values(
+                current_gate_dict, gating_selection), gating_selection[-1]
+        raise PreventUpdate
+
+    @dash_app.callback(Output('gating-slider', 'value'),
+                       Input('gating-cur-mod', 'value'),
                        State('gating-dict', 'data'),
                        State('quantification-dict', 'data'),)
     def update_gating_thresholds(gate_selected, gating_dict, quantification_dict):
+        """
+        Update the values shown in the gating range slider when a parameter is selected for mod
+        """
         if None not in (gate_selected, quantification_dict):
             if gating_dict and gate_selected in gating_dict:
                 return gating_dict[gate_selected]['lower_bound'], gating_dict[gate_selected]['upper_bound']
-            else:
-                return [0.0, 1.0]
+            return [0.0, 1.0]
         raise PreventUpdate
 
 
-    @dash_app.callback(Output('gating-dict', 'data'),
+    @dash_app.callback(Output('gating-dict', 'data', allow_duplicate=True),
                        Input('gating-slider', 'value'),
                        State('gating-dict', 'data'),
-                       Input('gating-channel-options', 'value'))
+                       State('gating-cur-mod', 'value'))
     def update_gating_dict(gating_val, gating_dict, gate_selected):
+        """
+        update the gating dictionary when a parameter has its values changed
+        """
         if None not in (gating_val, gate_selected):
-            gating_dict = {gate_selected: {}} if gating_dict is None else gating_dict
-            if gate_selected not in gating_dict: gating_dict[gate_selected] = {}
-            gating_dict[gate_selected]['lower_bound'] = float(min(gating_val))
-            gating_dict[gate_selected]['upper_bound'] = float(max(gating_val))
+            gating_dict = update_gating_dict_with_slider_values(gating_dict, gate_selected, gating_val)
             return SessionServerside(gating_dict, key="gating_dict",
                               use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
 
     @dash_app.callback(Output('gating-cell-list', 'data'),
+                       Output('gating-param-display', 'children'),
                        Input('gating-dict', 'data'),
                        Input('data-collection', 'value'),
                        Input('quantification-dict', 'data'),
                        Input('mask-options', 'value'),
-                       State('gating-channel-options', 'value'))
-    def update_gating_cell_list(gating_dict, roi_selection, quantification_dict, mask_selection, cur_gate_selection):
+                       State('gating-channel-options', 'value'),
+                       Input('gating-blend-type', 'value'))
+    def update_gating_cell_list(gating_dict, roi_selection, quantification_dict, mask_selection,
+                                cur_gate_selection, gating_type):
         if None not in (gating_dict, roi_selection, quantification_dict, mask_selection):
-            id_list = object_id_list_from_gating(gating_dict, [cur_gate_selection], pd.DataFrame(quantification_dict),
-                                                 mask_selection)
-            return SessionServerside(id_list, key="gating_cell_id_list",
-                              use_unique_key=app_config['serverside_overwrite'])
+            id_list = object_id_list_from_gating(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                        mask_selection, intersection=(gating_type == 'intersection'))
+            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=
+            app_config['serverside_overwrite']), gating_label_children(True, gating_dict, cur_gate_selection)
         raise PreventUpdate

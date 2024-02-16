@@ -406,19 +406,6 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
     should be retained with expression values in the channel range
     Can either use the intersection or union of gating on multiple traits
     """
-    # set the query representation of intersection or union in query
-    combo = "& " if intersection else "| "
-    query = ""
-    # build a query string for each of the elements to gate on
-    gating_index = 0
-    for gating_elem in gating_selection:
-        # do not add the string combo at the end
-        combo = combo if gating_index < (len(gating_selection) - 1) else ""
-        query = query + f'(`{gating_elem}` >= {gating_dict[gating_elem]["lower_bound"]} &' \
-                        f'`{gating_elem}` <= {gating_dict[gating_elem]["upper_bound"]}) {combo}'
-        gating_index += 1
-
-    # TODO: figure out parameters for matching the mask to the quantification sheet
     # set the possible mask names from the quantification sheet from either the description or the sample name
     designation_column = 'sample'
     try:
@@ -429,21 +416,40 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
             id_list = quantification_frame['sample'].to_list()
     except KeyError:
         id_list = None
+
+    to_add = quantification_frame[quantification_frame.columns.intersection(
+        [designation_column, quantification_object_col])]
+
+    # set the query representation of intersection or union in query
+    combo = "& " if intersection else "| "
+    query = ""
+    # build a query string for each of the elements to gate on
+    gating_index = 0
+    for gating_elem in gating_selection:
+        if gating_elem not in to_add.columns:
+            # do not add the string combo at the end
+            combo = combo if gating_index < (len(gating_selection) - 1) else ""
+            query = query + f'(`{gating_elem}` >= {gating_dict[gating_elem]["lower_bound"]} &' \
+                        f'`{gating_elem}` <= {gating_dict[gating_elem]["upper_bound"]}) {combo}'
+            gating_index += 1
+
+    # set the mandatory columns that need to be appended for the search: including the ROI descriptor and
+    # column to identify the cell ID
+
+    # TODO: figure out parameters for matching the mask to the quantification sheet
     mask_quant_match = None
     if None not in (mask_identifier, id_list):
         mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier, id_list, quantification_sample_col)
-    if mask_quant_match is not None:
-        # TODO: implement normalization of the gating inputs
+    if mask_quant_match is not None and query:
         frame = quantification_frame
         if normalize:
             frame = quantification_frame[quantification_frame.columns.intersection(gating_selection)]
             frame = ((frame - frame.min()) / (frame.max() - frame.min()))
-        to_add = quantification_frame[quantification_frame.columns.intersection(
-            [designation_column, quantification_object_col])]
         frame = frame.reset_index(drop=True).join(to_add)
         query = frame.query(query)
         # pull the cell ids from the subset of the quantification frame from the query where the
         # mask matches the one provided
+        # TODO: write test confirming that only cells from one ROI are retained
         cell_ids = query[query[designation_column] == mask_quant_match][quantification_object_col].tolist()
     else:
         cell_ids = []
