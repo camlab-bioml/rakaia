@@ -422,7 +422,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_quantification_with_annotations(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-annotations":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "annotations.csv")
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "annotations.csv", index = False)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -758,13 +758,13 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('data-collection', 'value'),
                        Input('quantification-dict', 'data'),
                        Input('mask-options', 'value'),
-                       State('gating-channel-options', 'value'),
+                       Input('gating-channel-options', 'value'),
                        Input('gating-blend-type', 'value'))
     def update_gating_cell_list(gating_dict, roi_selection, quantification_dict, mask_selection,
                                 cur_gate_selection, gating_type):
-        if None not in (gating_dict, roi_selection, quantification_dict, mask_selection):
+        if None not in (cur_gate_selection, roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
             id_list = object_id_list_from_gating(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
                         mask_selection, intersection=(gating_type == 'intersection'))
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=
             app_config['serverside_overwrite']), gating_label_children(True, gating_dict, cur_gate_selection)
-        raise PreventUpdate
+        return [], []

@@ -30,6 +30,10 @@ def test_quantification_valid_vals(get_current_dir):
     where_max = mean_values_ki67.iloc[mean_values_ki67['Ki67'].idxmax()]
     assert where_max['cell_id'] == 797
 
+    # assert where the largest cell is
+    where_largest = mean_values_ki67.iloc[mean_values_ki67['area'].idxmax()]
+    assert where_largest['cell_id'] == 1505
+
 def test_quantification_multiple_channels(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
     channel_dict = {"set1+++slide0+++roi_1": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
@@ -104,5 +108,5 @@ def test_gating_label_children():
      'channel_3': {'lower_bound': 0.26, 'upper_bound': 0.28}, 'channel_5': {'lower_bound': 0.33, 'upper_bound': 0.51}}
     current_gate = ["channel_1", "channel_2", "channel_6"]
     children = gating_label_children(True, gating_dict, current_gate)
-    assert len(children) == 6
+    assert len(children) == 7
     assert not gating_label_children(False, gating_dict, current_gate)

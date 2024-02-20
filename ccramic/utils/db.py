@@ -64,12 +64,11 @@ def preview_dataframe_from_db_config_list(config_list):
 def format_blend_config_document_for_insert(user, config_name, blend_dict, selected_channel_list, global_apply_filter,
                                             global_filter_type, global_filter_val, global_filter_sigma,
                                             data_selection: str=None, cluster_assignments: dict=None,
-                                            aliases: dict=None):
+                                            aliases: dict=None, gating_dict: dict=None):
     """
     Format a mongoDB document from a session config that can be posted to the `blend_config` collection
     in the `ccramic-db` mongoDB database
     """
     return JSONSessionDocument("db", user, config_name, blend_dict, selected_channel_list, global_apply_filter,
                                          global_filter_type, global_filter_val, global_filter_sigma,
-                                         data_selection, cluster_assignments, aliases).get_document()
-
+                                         data_selection, cluster_assignments, aliases, gating_dict).get_document()

@@ -641,7 +641,7 @@ def register_app_layout(config, cache_dest):
                                 ]),
                                 ], style={"margin-top": "10px"}),
                                 ]),
-                                dbc.Tab(label="Region/Presets",
+                                dbc.Tab(label="Region/presets",
                                 label_style={"color": DEFAULT_WIDGET_COLOUR},
                                 tab_id='region-config-tab',
                                 children=[dbc.Button(children=html.Span([html.I(className="fa-solid fa-chart-area",
@@ -793,7 +793,7 @@ def register_app_layout(config, cache_dest):
                                 "margin-top": "15px"}),
                                 html.Br(),
                                 ], style={"padding": "5px"}),
-                                dbc.Tab(label="Measure/Cluster", label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                dbc.Tab(label="Measure/cluster", label_style={"color": DEFAULT_WIDGET_COLOUR},
                                     children=[
                                 html.Br(),
                                 dbc.Button("Quantify current ROI", id="quantify-cur-roi-button",

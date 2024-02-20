@@ -46,7 +46,8 @@ class JSONSessionDocument:
                  blend_dict: dict=None, selected_channel_list: list=None,
                  global_apply_filter: Union[list, bool]=False, global_filter_type: str="median",
                  global_filter_val: int = 3, global_filter_sigma: float=1.0,
-                 data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None):
+                 data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None,
+                 gating_dict: dict=None):
         if save_type not in ["json", "db"]:
             raise TypeError("The `save_type` provided should be one of: `json`, for local exports,"
                             "or `db`, for formatting a document for the mongoDB database")
@@ -67,13 +68,15 @@ class JSONSessionDocument:
                                 "global_filter_type": global_filter_type, "global_filter_val": global_filter_val,
                                 "global_filter_sigma": global_filter_sigma}}
         self.document['cluster'] = cluster_assignments
+        self.document['gating'] = gating_dict
     def get_document(self):
         return self.document
 
 
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
                                global_filter_type, global_filter_val, global_filter_sigma,
-                               data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None):
+                               data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None,
+                               gating_dict: dict=None):
     """
     Write the session blend configuration dictionary to a JSON file
     """
@@ -82,7 +85,7 @@ def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_ap
     with open(param_json_path, "w") as outfile:
         dict_write = JSONSessionDocument("json", None, None, blend_dict, blend_layer_list, global_apply_filter,
                                          global_filter_type, global_filter_val, global_filter_sigma,
-                                         data_selection, cluster_assignments, aliases).get_document()
+                                         data_selection, cluster_assignments, aliases, gating_dict).get_document()
         json.dump(dict_write, outfile)
     return param_json_path
 

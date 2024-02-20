@@ -432,6 +432,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('db-config-options', 'value', allow_duplicate=True),
                        Output('db-config-name', 'value', allow_duplicate=True),
                        Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
+                       Output('gating-dict', 'data', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
             add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
@@ -481,18 +482,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 parse_global_filter_values_from_json(new_blend_dict['config'])
                 clust_return = {data_selection: new_blend_dict['cluster']} if \
                     'cluster' in new_blend_dict.keys() and new_blend_dict['cluster'] else dash.no_update
+                gate_return = new_blend_dict['gating'] if 'gating' in new_blend_dict.keys() else dash.no_update
                 return SessionServerside(all_layers, key="layer_dict", use_unique_key=app_config['serverside_overwrite']), \
                     current_blend_dict, error_config, channel_list_return, global_apply_filter, global_filter_type, \
-                    global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update, clust_return
+                    global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update, clust_return, gate_return
             # IMP: if the update does not occur, clear the database selection and auto filled config name
             else:
                 error_config["error"] = ALERT.warnings["json_update_error"]
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update
         elif data_selection is None:
             error_config["error"] = ALERT.warnings["json_requires_roi"]
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Input('image_layers', 'value'),
@@ -1288,7 +1290,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_edited_metadata(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-metadata":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "metadata.csv")
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "metadata.csv", index=False)
         raise PreventUpdate
 
     @dash_app.callback(Output('download-canvas-image-html', 'data'),
@@ -1319,15 +1321,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State("global-sigma-val-filter", 'value'),
                        State('cluster-colour-assignments-dict', 'data'),
                        State('data-collection', 'value'),
-                       State('alias-dict', 'data'))
+                       State('alias-dict', 'data'),
+                       State('gating-dict', 'data'))
     # @cache.memoize())
     def download_session_config_json(download_json, blend_dict, blend_layers, global_apply_filter,
-        global_filter_type, global_filter_val, global_filter_sigma, cluster_assignments, data_selection, aliases):
+        global_filter_type, global_filter_val, global_filter_sigma, cluster_assignments, data_selection, aliases, gating_dict):
         if blend_dict is not None and download_json > 0:
             download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             create_download_dir(download_dir)
             return dcc.send_file(write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
-            global_filter_type, global_filter_val, global_filter_sigma, data_selection, cluster_assignments, aliases))
+            global_filter_type, global_filter_val, global_filter_sigma, data_selection, cluster_assignments, aliases, gating_dict))
         raise PreventUpdate
 
     @dash_app.callback(Output('download-roi-h5py', 'data'),

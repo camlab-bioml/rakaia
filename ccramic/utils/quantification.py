@@ -9,7 +9,6 @@ def quantify_one_channel(image, mask):
     Takes an array of one channel with the matching mask and creates a vector of the mean values per
     segmented object
     """
-
     # reshape the image to retain only the first two dimensions
     image = image.reshape((image.shape[0], image.shape[1]))
     mask = mask.reshape((mask.shape[0], mask.shape[1]))
@@ -38,6 +37,29 @@ def quantify_one_channel(image, mask):
     else:
         return None
 
+def quantify_roi_xy_coordinates_area(mask):
+    """
+    Quantify the xy coordinates and area for every object in an ROI mask
+    Returns three arrays of values that can be cast to dataframe series: x, y, and area
+    """
+    # reshape the image to retain only the first two dimensions
+    mask = mask.reshape((mask.shape[0], mask.shape[1]))
+    vals_dict = {"x": None, "y": None, "area": None}
+    # Get unique list of cell IDs. Remove '0' which corresponds to background
+    cell_ids = np.unique(mask)
+    cell_ids = cell_ids[cell_ids != 0]
+    # IMP: the cell ids start at 1, but the array positions start at 0, so offset the array positions by 1
+    offset = 1 if min(cell_ids) == 1 else 0
+    for key in vals_dict.keys():
+        vals_dict[key] = np.zeros((1, len(cell_ids)))
+    for cell in cell_ids:
+        subset = np.where(mask == cell)
+        vals_dict['x'][:, (cell - offset)] = subset[1].mean()
+        vals_dict['y'][:, (cell - offset)] = subset[0].mean()
+        vals_dict['area'][:, (cell - offset)] = subset[0].shape[0]
+    return vals_dict['x'], vals_dict['y'], vals_dict['area']
+
+
 def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None,
                                        dataset_options=None, delimiter: str="+++", mask_name: str=None):
     """
@@ -65,6 +87,10 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     channel_frame['description'] = mask_name
     channel_frame['cell_id'] = pd.Series(range(1, (len(channel_frame.index) + 1)), dtype='int64')
     channel_frame['sample'] = roi_name_sample
+    x, y, area = quantify_roi_xy_coordinates_area(mask)
+    channel_frame['x'] = pd.Series(x.flatten())
+    channel_frame['y'] = pd.Series(y.flatten())
+    channel_frame['area'] = pd.Series(area.flatten())
     return channel_frame
 
 
@@ -123,13 +149,13 @@ def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
     Generate the HTML legend for the current parameters used for mask gating
     """
     if use_gating and gating_dict and current_gating_params:
-        children = [html.Span("Current gating parameters (norm 0-1)\n",
-                              style={"color": "black"}), html.Br()]
+        children = [html.B("Current gating parameters (norm 0-1)\n",
+                              style={"color": "black"}), html.Br(), html.Br()]
         for current_param in current_gating_params:
             try:
                 children.append(html.Span(f"{str(current_param)}: "
-                                      f"[{gating_dict[current_param]['lower_bound']},"
-                                      f"{gating_dict[current_param]['upper_bound']}]\n"))
+                                      f"{gating_dict[current_param]['lower_bound']},   "
+                                      f"{gating_dict[current_param]['upper_bound']}\n"))
                 children.append(html.Br())
             except KeyError:
                 pass
