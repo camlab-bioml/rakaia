@@ -273,6 +273,7 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
     """
     Get all the images in a session dictionary from a channel name for the gallery view
     """
+    # TODO: modify this function to accommodate lazy loading
     images = {}
     for roi in list(upload_dict.keys()):
         if 'metadata' not in roi:
@@ -475,3 +476,23 @@ def channel_filter_matches(current_blend_dict: dict, channel: str, filter_chosen
             current_blend_dict[channel]['filter_val'] == filter_value and \
             current_blend_dict[channel]['filter_sigma'] == filter_sigma and \
             len(filter_chosen) > 0
+
+
+def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_selection: str,
+                                    channel_aliases: dict=None):
+    """
+    Generate the cell styling conditions for the dash ag grid that displays the current channels
+    and their colours
+    """
+    cell_styling_conditions = []
+    if blend_dict is not None and current_blend is not None and data_selection is not None:
+        for key in current_blend:
+            try:
+                if key in blend_dict.keys() and blend_dict[key]['color'] != '#FFFFFF':
+                    label = channel_aliases[key] if channel_aliases is not None and \
+                                                    key in channel_aliases.keys() else key
+                    cell_styling_conditions.append({"condition": f"params.value == '{label}'",
+                                                    "style": {"color": f"{blend_dict[key]['color']}"}})
+            except KeyError:
+                pass
+    return cell_styling_conditions

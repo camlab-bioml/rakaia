@@ -5,7 +5,7 @@ import numpy as np
 from tifffile import TiffFile
 from ccramic.utils.pixel_level_utils import (
     split_string_at_pattern,
-    set_array_storage_type_from_config)
+    set_array_storage_type_from_config, get_default_channel_upper_bound_by_percentile)
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 from ccramic.utils.alert import PanelMismatchError
@@ -368,3 +368,18 @@ def populate_alias_dict_from_editable_metadata(metadata: Union[dict, list, pd.Da
             except KeyError:
                 pass
     return alias_dict
+
+
+def check_blend_dictionary_for_blank_bounds_by_channel(blend_dict: dict, channel_selected: str,
+                                                       channel_dict: dict, data_selection: str):
+    """
+    Check the current blend dictionary for the lower and upper bounds for a specific channel
+    If the bounds are None, replace with the default values
+    """
+    if not blend_dict[channel_selected]['x_lower_bound']:
+        blend_dict[channel_selected]['x_lower_bound'] = 0
+    if not blend_dict[channel_selected]['x_upper_bound']:
+        blend_dict[channel_selected]['x_upper_bound'] = \
+            get_default_channel_upper_bound_by_percentile(
+                channel_dict[data_selection][channel_selected])
+    return blend_dict

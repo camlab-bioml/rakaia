@@ -53,10 +53,10 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
                 scaled = StandardScaler().fit_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
                 return SessionServerside(embedding, key="umap-embedding",
-                                         use_unique_key=unique_key_serverside), cols
-            raise PreventUpdate
-        return dash.no_update, cols
-    raise PreventUpdate
+                                         use_unique_key=unique_key_serverside)
+            return dash.no_update
+        return dash.no_update
+    return dash.no_update
 
 
 def validate_incoming_measurements_csv(measurements_csv, required_columns=set_mandatory_columns()):

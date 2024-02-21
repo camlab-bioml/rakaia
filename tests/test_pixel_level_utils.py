@@ -30,7 +30,8 @@ from ccramic.utils.pixel_level_utils import (
     apply_filter_to_array,
     split_string_at_pattern,
     no_filter_chosen,
-    channel_filter_matches)
+    channel_filter_matches,
+    ag_grid_cell_styling_conditions)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -584,3 +585,11 @@ def test_filter_bool_eval():
     # assert no match if the filter is not currently applied
     assert channel_filter_matches(blend_dict, "channel_1", [' apply filter'], "gaussian", 5, 0.5)
     assert not channel_filter_matches(blend_dict, "channel_1", [], "gaussian", 5, 0.5)
+
+def test_ag_grid_cell_styling():
+    blend_dict = {"channel_1": {"color": "#FFFFFF"}, "channel_2": {"color": "#E22424"},
+                  "channel_3": {"color": "#CCFFE5"}}
+    aliases = {"channel_1": "ch1", "channel_2": "ch2", "channel_3": "ch3"}
+    cell_styling = ag_grid_cell_styling_conditions(blend_dict, list(blend_dict.keys()) + ["channel_4"], "roi_1", aliases)
+    assert cell_styling == [{'condition': "params.value == 'ch2'", 'style': {'color': '#E22424'}},
+                            {'condition': "params.value == 'ch3'", 'style': {'color': '#CCFFE5'}}]

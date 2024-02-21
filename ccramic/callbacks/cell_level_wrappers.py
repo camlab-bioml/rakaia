@@ -8,7 +8,6 @@ from ccramic.utils.cell_level_utils import (
     populate_cell_annotation_column_from_clickpoint
 )
 from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
-from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 import ast
 from ccramic.components.canvas import CanvasLayout
 from dash.exceptions import PreventUpdate

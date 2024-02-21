@@ -7,7 +7,8 @@ from ccramic.parsers.pixel_level_parsers import (
     sparse_array_to_dense,
     convert_between_dense_sparse_array,
     convert_rgb_to_greyscale,
-    populate_alias_dict_from_editable_metadata)
+    populate_alias_dict_from_editable_metadata,
+    check_blend_dictionary_for_blank_bounds_by_channel)
 from scipy.sparse import csc_matrix
 import numpy as np
 from ccramic.utils.alert import PanelMismatchError
@@ -149,3 +150,11 @@ def test_basic_metadata_alias_parse():
     labels = populate_alias_dict_from_editable_metadata(bad_meta_2)
     assert len(labels) == 2
     assert labels['channel_2'] == 'channel_2'
+
+def test_check_empty_blend_bounds():
+    blend_dict = {"channel_1": {"x_lower_bound": None, "x_upper_bound": None}}
+    channel_dict = {"roi_1": {"channel_1": np.full((1000, 1000), 7)}}
+    blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(blend_dict, "channel_1", channel_dict, "roi_1")
+    assert blend_dict == {'channel_1': {'x_lower_bound': 0, 'x_upper_bound': 7.0}}
+    blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(blend_dict, "channel_1", channel_dict, "roi_1")
+    assert blend_dict == {'channel_1': {'x_lower_bound': 0, 'x_upper_bound': 7.0}}

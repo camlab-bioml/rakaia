@@ -262,12 +262,12 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if n_clicks > 0:
                     return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
                             current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite']), \
-                        list(pd.DataFrame(quantification_dict).columns)
+                        dash.no_update, dash.no_update
                 else:
                     raise PreventUpdate
             except ValueError:
-                return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
-
+                # return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
+                raise PreventUpdate
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),

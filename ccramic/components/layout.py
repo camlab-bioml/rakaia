@@ -194,7 +194,9 @@ def register_app_layout(config, cache_dest):
                                                                         "height": "50%"}),
                                                        ],
                                                       style={"display": "flex"}),
-                                             dbc.Button("Set mask import", id="set-mask-name", className="me-1")]),
+                                        html.Br(),
+                                             dbc.Button("Set mask import", id="set-mask-name", className="me-1",
+                                                        style={"background-color": DEFAULT_WIDGET_COLOUR})]),
                                             id="mask-name-modal", size='l',
                                             style={"margin-left": "10px", "margin-top": "15px"}),
                                         du.Upload(id='upload-mask', max_file_size=30000,
@@ -464,8 +466,9 @@ def register_app_layout(config, cache_dest):
                                         "margin-right": "12.5px", "height": "50%"}),
                                 dcc.Checklist(options=[' Set range max to current upper bound'],
                                                         value=[], id="custom-slider-max",
-                                               style={"width": "90%", "float": "right", "margin-left": "10px",
-                                                      "accent-color": DEFAULT_WIDGET_COLOUR})],
+                                labelStyle={"margin-left": "5px", "float": "right", "justify-content": "right"},
+                                               style={"width": "100%", "float": "right", "margin-left": "10px",
+                                                      "margin-right": "5px", "accent-color": DEFAULT_WIDGET_COLOUR})],
                                 style={"display": "flex", "margin": "20px"}),
                                  # html.Div([html.H6("Set range maximum", style={'width': '75%', 'margin-left': '20px'}),
                                  #           dcc.Input(id="custom-slider-max", type="number", value=None,
@@ -869,7 +872,7 @@ def register_app_layout(config, cache_dest):
 
                     ])])]),
 
-            dbc.Tab(label="Image gallery", tab_id='gallery-tab', id='gallery-tab',
+            dbc.Tab(label="Channel gallery", tab_id='gallery-tab', id='gallery-tab',
                     label_style={"color": DEFAULT_WIDGET_COLOUR},
                         children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR,
@@ -920,7 +923,7 @@ def register_app_layout(config, cache_dest):
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                html.Div([html.U("Cell-level marker expression", style={"margin-bottom": "10px"}),
+                                html.Div([html.B("Cell-level marker expression", style={"margin-bottom": "10px"}),
                                 daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap', labelPosition='bottom',
                                     color=DEFAULT_WIDGET_COLOUR, value=True),
                                 dcc.Input(type="number", placeholder="Subset heatmap", id="subset-heatmap",
@@ -960,7 +963,7 @@ def register_app_layout(config, cache_dest):
                                 ]),
                                 ]), width=6),
                                     dbc.Col(html.Div([html.Br(),
-                                    html.Div([html.U("Dimension reduction", style={"margin-top": "2.5px"}),
+                                    html.Div([html.B("Dimension reduction", style={"margin-top": "2.5px"}),
                                     dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
                                         style={"display": "inline-block", "margin-right": "7.5px",
                                             "margin-top": "3px"}),
@@ -1048,7 +1051,7 @@ def register_app_layout(config, cache_dest):
                         id="quantification-config-modal", size='l', style={"margin-left": "10px",
                             "margin-top": "15px"})],
                                   ),
-            dbc.Tab(label="Dataset query", tab_id='dataset-query', label_style={"color": DEFAULT_WIDGET_COLOUR},
+            dbc.Tab(label="Dataset gallery", tab_id='dataset-query', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=[
                 html.H6("Set number of ROIs to return", style={"margin-top": "15px"}),
                 html.Div([dcc.Input(id="dataset-query-number", type="number",

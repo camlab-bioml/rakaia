@@ -1,4 +1,7 @@
 import collections
+
+import dash
+import pandas as pd
 import pytest
 import dash_extensions
 from ccramic.utils.cell_level_utils import *
@@ -36,11 +39,9 @@ def test_umap_from_quantification_dict(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
     returned_umap = return_umap_dataframe_from_quantification_dict(validated_measurements)
-    assert isinstance(returned_umap, tuple)
-    assert isinstance(returned_umap[0], dash_extensions.enrich.Serverside)
-    assert isinstance(returned_umap[1], list)
-    with pytest.raises(PreventUpdate):
-        return_umap_dataframe_from_quantification_dict(None)
+    assert isinstance(returned_umap, dash_extensions.enrich.Serverside)
+    assert len(pd.DataFrame(returned_umap.value)) == len(validated_measurements)
+    assert return_umap_dataframe_from_quantification_dict(None) == dash.no_update
 
 def test_receive_alert_on_incompatible_mask():
     upload_dict = {"experiment0+++slide0+++acq0": {"channel_1": np.empty((50, 50))}}

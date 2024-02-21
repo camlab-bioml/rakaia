@@ -1,4 +1,3 @@
-
 import os.path
 import dash.exceptions
 import dash_uploader as du
@@ -10,13 +9,13 @@ from ccramic.inputs.pixel_level_inputs import (
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
-    set_x_axis_placement_of_scalebar,
-    )
+    set_x_axis_placement_of_scalebar)
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
     populate_image_dict_from_lazy_load,
     create_new_blending_dict,
-    populate_alias_dict_from_editable_metadata)
+    populate_alias_dict_from_editable_metadata,
+    check_blend_dictionary_for_blank_bounds_by_channel)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
     split_string_at_pattern,
@@ -27,7 +26,6 @@ from ccramic.utils.pixel_level_utils import (
     select_random_colour_for_channel,
     apply_preset_to_blend_dict,
     filter_by_upper_and_lower_bound,
-    get_all_images_by_channel_name,
     set_channel_list_order,
     pixel_hist_from_array,
     validate_incoming_metadata_table,
@@ -35,7 +33,8 @@ from ccramic.utils.pixel_level_utils import (
     get_first_image_from_roi_dictionary,
     upper_bound_for_range_slider,
     no_filter_chosen,
-    channel_filter_matches)
+    channel_filter_matches,
+    ag_grid_cell_styling_conditions)
 # from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
@@ -77,6 +76,7 @@ from ccramic.utils.db import (
 from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError
 import uuid
 from ccramic.utils.region import RegionAnnotation
+from ccramic.parsers.roi_parsers import RegionThumbnail
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -446,14 +446,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "db-config-options" and db_config_selection is not None:
             # TODO: decide if the alias key needs to be removed from the blend dict imported from mongoDB
             new_blend_dict = match_db_config_to_request_str(db_config_list, db_config_selection)
-        # TODO: include the alias labels in the JSON as well
         metadata_return = extract_alias_labels_from_db_document(new_blend_dict, cur_metadata)
         metadata_return = metadata_return if len(metadata_return) > 0 else dash.no_update
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # conditions where the blend dictionary is updated
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
-            current_blend_dict = {key: value for key, value in current_blend_dict.items() if \
-                                  'metadata' not in key}
+            current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}
             panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict['channels'])
             match_all = current_blend_dict is None and all([len(uploaded_w_data[roi]) == \
                         len(new_blend_dict['channels']) for roi in uploaded_w_data.keys() if delimiter in roi])
@@ -462,13 +460,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if all_layers is None or data_selection not in all_layers.keys():
                     all_layers = {data_selection: {}}
                 for elem in add_to_layer:
-                    # make sure any bounds that are stored as None are overwritten with the default scaling
-                    if current_blend_dict[elem]['x_upper_bound'] is None:
-                        current_blend_dict[elem]['x_upper_bound'] = \
-                        get_default_channel_upper_bound_by_percentile(
-                        uploaded_w_data[data_selection][elem])
-                    if current_blend_dict[elem]['x_lower_bound'] is None:
-                        current_blend_dict[elem]['x_lower_bound'] = 0
+                    current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
+                        current_blend_dict, elem, uploaded_w_data, data_selection)
                     array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
                                                      current_blend_dict[elem])
                     all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
@@ -529,8 +522,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
                     #                                                     data_selection)
                     param_dict["current_roi"] = data_selection
-                    if cur_image_in_mod_menu is not None and cur_image_in_mod_menu in \
-                        current_blend_dict.keys():
+                    if cur_image_in_mod_menu is not None and cur_image_in_mod_menu in current_blend_dict.keys():
                         channel_modify = cur_image_in_mod_menu
                 else:
                     param_dict["current_roi"] = data_selection
@@ -561,11 +553,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # create a nested dict with the image and all of the filters being used for it
                     # if the same blend parameters have been transferred from another ROI, apply them
                     # set a default upper bound for the channel if the value is None
-                    if current_blend_dict[elem]['x_upper_bound'] is None:
-                        current_blend_dict[elem]['x_upper_bound'] = \
-                        get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem])
-                    if current_blend_dict[elem]['x_lower_bound'] is None:
-                        current_blend_dict[elem]['x_lower_bound'] = 0
+                    # if current_blend_dict[elem]['x_upper_bound'] is None:
+                    #     current_blend_dict[elem]['x_upper_bound'] = \
+                    #     get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem])
+                    # if current_blend_dict[elem]['x_lower_bound'] is None:
+                    #     current_blend_dict[elem]['x_lower_bound'] = 0
+                    current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
+                        current_blend_dict, elem, uploaded_w_data, data_selection)
                     # TODO: evaluate whether there should be a conditional here if the elem is already
                     #  present in the layers dictionary to save time
                     # affects if a channel is added and dropped
@@ -588,8 +582,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if swatch is not None:
             # IMP: need to reset the value of the swatch to None after transferring the colour
             return dict(hex=swatch), None
-        else:
-            raise PreventUpdate
+        raise PreventUpdate
 
     @dash_app.callback(Input("annotation-color-picker", 'value'),
                        State('images_in_blend', 'value'),
@@ -1145,7 +1138,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('blending_colours', 'data'),
                        State('alias-dict', 'data'),
                        State('uploaded_dict', 'data'),
-                       State('channel-order', 'data'),
+                       Input('channel-order', 'data'),
                        State('legend-size-slider', 'value'),
                        State('pixel-size-ratio', 'value'),
                        State('invert-annotations', 'value'),
@@ -1169,7 +1162,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
             x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
             cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
-            if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend"]:
+            if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend", "channel-order"]:
                 legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
                 cluster_assignments_in_legend, cluster_assignments_dict, data_selection) if toggle_legend else ''
                 canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
@@ -1441,17 +1434,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('preset-options', 'value'),
                        State('image_presets', 'data'),
                        Input('toggle-gallery-view', 'value'),
-                       State('unique-channel-list', 'value'),
+                       Input('unique-channel-list', 'value'),
                        Input('alias-dict', 'data'),
                        State('preset-button', 'n_clicks'),
                        State('blending_colours', 'data'),
                        Input('default-scaling-gallery', 'value'),
                        State('pixel-level-analysis', 'active_tab'),
+                       State('session_config', 'data'),
+                       State('dataset-delimiter', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize()
-    def create_image_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
+    def create_channel_tile_gallery_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          blend_colour_dict, toggle_scaling_gallery, active_tab):
+                          blend_colour_dict, toggle_scaling_gallery, active_tab, session_config, delimiter):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
@@ -1473,27 +1468,24 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # channel view
                 blend_return = dash.no_update
                 if view_by_channel and channel_selected is not None:
-                    views = get_all_images_by_channel_name(gallery_data, channel_selected)
+                    # TODO: modify single-channel view with lazy loading
+                    # views = get_all_images_by_channel_name(gallery_data, channel_selected)
+                    views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 10000,
+                                            delimiter=delimiter, use_greyscale=True).get_image_dict()
                     if toggle_scaling_gallery:
                         try:
-                            if blend_colour_dict[channel_selected]['x_lower_bound'] is None:
-                                blend_colour_dict[channel_selected]['x_lower_bound'] = 0
-                            if blend_colour_dict[channel_selected]['x_upper_bound'] is None:
-                                blend_colour_dict[channel_selected]['x_upper_bound'] = \
-                                get_default_channel_upper_bound_by_percentile(
-                                    gallery_data[data_selection][channel_selected])
+                            blend_colour_dict = check_blend_dictionary_for_blank_bounds_by_channel(
+                                blend_colour_dict, channel_selected, gallery_data, data_selection)
                             views = {key: apply_preset_to_array(resize_for_canvas(value),
-                                                        blend_colour_dict[channel_selected]) for \
-                                key, value in views.items()}
+                                    blend_colour_dict[channel_selected]) for key, value in views.items()}
                         except KeyError:
                             pass
                 else:
                     views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
 
                 if views is not None:
-                    row_children = generate_channel_tile_gallery_children(views, canvas_layout, zoom_keys,
-                                blend_colour_dict, preset_selection, preset_dict, aliases, nclicks,
-                                    toggle_gallery_zoom, toggle_scaling_gallery)
+                    row_children = generate_channel_tile_gallery_children(views, canvas_layout, zoom_keys, blend_colour_dict,
+                                    preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery)
                 else:
                     row_children = []
                 return row_children, blend_return
@@ -1518,30 +1510,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Set the inputs and parameters for the dash ag grid containing the current blend channels
         """
-        # current_blend = [elem['value'] for elem in current_blend] if current_blend is not None else None
         if current_blend is not None and len(current_blend) > 0:
             in_blend = [aliases[elem] for elem in current_blend]
-            cell_styling_conditions = []
-            if blend_colours is not None and current_blend is not None and data_selection is not None:
-                for key in current_blend:
-                    try:
-                        if key in blend_colours.keys() and blend_colours[key]['color'] != '#FFFFFF':
-                            label = aliases[key] if aliases is not None and key in aliases.keys() else key
-                            cell_styling_conditions.append( {"condition": f"params.value == '{label}'",
-                            "style": {"color": f"{blend_colours[key]['color']}"}})
-                    except KeyError:
-                        pass
-                if len(in_blend) > 0:
-                    to_return = pd.DataFrame(in_blend, columns=["Channel"]).to_dict(orient="records")
-                    return to_return , {"sortable": False, "filter": False,
-                         "cellStyle": {
-                             "styleConditions": cell_styling_conditions}}
-                else:
-                    return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), \
-                        {"sortable": False, "filter": False}
-        else:
-            return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), \
-                        {"sortable": False, "filter": False}
+            cell_styling_conditions = ag_grid_cell_styling_conditions(blend_colours, current_blend, data_selection, aliases)
+            if len(in_blend) > 0 and len(cell_styling_conditions) > 0:
+                to_return = pd.DataFrame(in_blend, columns=["Channel"]).to_dict(orient="records")
+                return to_return, {"sortable": False, "filter": False,
+                                   "cellStyle": {"styleConditions": cell_styling_conditions}}
+            else:
+                return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), {"sortable": False, "filter": False}
+        return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), {"sortable": False, "filter": False}
 
     @dash_app.callback(
         Output("area-stats-collapse", "is_open", allow_duplicate=True),

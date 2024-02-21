@@ -6,7 +6,9 @@ from ccramic.utils.pixel_level_utils import (
 from ccramic.parsers.pixel_level_parsers import convert_rgb_to_greyscale
 from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
 from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
-from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi, match_mask_name_to_quantification_sheet_roi
+from ccramic.parsers.cell_level_parsers import (
+    match_mask_name_with_roi,
+    match_mask_name_to_quantification_sheet_roi)
 from readimc import MCDFile, TXTFile
 import random
 import numpy as np
@@ -23,7 +25,7 @@ class RegionThumbnail:
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
                         global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                        global_filter_sigma=1, delimiter: str="+++"):
+                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False):
         self.session_config = session_config
         try:
             self.file_list = [file for file in self.session_config['uploads']]
@@ -43,6 +45,8 @@ class RegionThumbnail:
         self.global_filter_sigma = global_filter_sigma
         self.delimiter = delimiter
         self.query_selection = None
+        self.use_greyscale = use_greyscale
+
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
         self.roi_images = {}
@@ -84,29 +88,33 @@ class RegionThumbnail:
                         self.num_queries = len(self.query_selection['names'])
                         self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
                 for query in self.query_selection:
-                    acq = slide_inside.acquisitions[query]
-                    if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
-                       f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude:
-                        channel_names = acq.channel_names
-                        channel_index = 0
-                        img = mcd_file.read_acquisition(acq)
-                        acq_image = []
-                        for channel in img:
-                            # if the channel is in the current blend, use it
-                            if channel_names[channel_index] in self.currently_selected_channels and \
-                                    channel_names[channel_index] in self.blend_dict.keys():
-                                with_preset = apply_preset_to_array(channel,
-                                                                    self.blend_dict[channel_names[channel_index]])
-                                recoloured = np.array(recolour_greyscale(with_preset,
-                                                                         self.blend_dict[channel_names[channel_index]][
-                                                                             'color'])).astype(np.float32)
-                                acq_image.append(recoloured)
-                            channel_index += 1
-                        label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
-                       f"{str(acq.description)}_{str(acq.id)}"
-                        self.process_additive_image(acq_image, label)
-                    else:
-                        self.num_queries += 1
+                    try:
+                        acq = slide_inside.acquisitions[query]
+                        if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
+                           f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude:
+                            channel_names = acq.channel_names
+                            channel_index = 0
+                            img = mcd_file.read_acquisition(acq)
+                            acq_image = []
+                            for channel in img:
+                                # if the channel is in the current blend, use it
+                                if channel_names[channel_index] in self.currently_selected_channels and \
+                                        channel_names[channel_index] in self.blend_dict.keys():
+                                    with_preset = apply_preset_to_array(channel,
+                                                                        self.blend_dict[channel_names[channel_index]])
+                                    colour_use = self.blend_dict[channel_names[channel_index]]['color'] if not \
+                                        self.use_greyscale else '#FFFFFF'
+                                    recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(
+                                        np.float32)
+                                    acq_image.append(recoloured)
+                                channel_index += 1
+                            label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
+                                    f"{str(acq.description)}_{str(acq.id)}"
+                            self.process_additive_image(acq_image, label)
+                        else:
+                            self.num_queries += 1
+                    except OSError:
+                        pass
                     if len(self.roi_images) == self.num_queries:
                         break
                 else:
@@ -132,9 +140,9 @@ class RegionThumbnail:
                             channel_name in self.blend_dict.keys():
                         with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
                                                             self.blend_dict[channel_name])
-                        recoloured = np.array(recolour_greyscale(with_preset,
-                                                                 self.blend_dict[channel_name][
-                                                                     'color'])).astype(np.float32)
+                        colour_use = self.blend_dict[channel_name]['color'] if not \
+                            self.use_greyscale else '#FFFFFF'
+                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
                         acq_image.append(recoloured)
                     channel_index += 1
                 self.process_additive_image(acq_image, label)
@@ -154,9 +162,9 @@ class RegionThumbnail:
                             channel_name in self.blend_dict.keys():
                         with_preset = apply_preset_to_array(image,
                                                             self.blend_dict[channel_name])
-                        recoloured = np.array(recolour_greyscale(with_preset,
-                                                                 self.blend_dict[channel_name][
-                                                                     'color'])).astype(np.float32)
+                        colour_use = self.blend_dict[channel_name]['color'] if not \
+                            self.use_greyscale else '#FFFFFF'
+                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
                         acq_image.append(recoloured)
                     image_index += 1
                 self.process_additive_image(acq_image, label)
