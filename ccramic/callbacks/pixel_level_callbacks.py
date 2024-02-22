@@ -9,7 +9,7 @@ from ccramic.inputs.pixel_level_inputs import (
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
-    set_x_axis_placement_of_scalebar)
+    set_x_axis_placement_of_scalebar, update_canvas_filename)
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
     populate_image_dict_from_lazy_load,
@@ -325,14 +325,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                            canvas_return = dash.no_update
                         else:
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,
-                                            enable_zoom=enable_zoom, wrap=app_config['use_loading'])]
+                            enable_zoom=enable_zoom, wrap=app_config['use_loading'], filename=data_selection,
+                                        delimiter=delimiter)]
                     else:
                         canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
-                                                                                        wrap=app_config['use_loading'])]
+                                        wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                 # If there is an error on the dataset update, by default return a new fresh canvas
-                except (IndexError, AssertionError, KeyError) as e:
+                except (IndexError, AssertionError, KeyError):
                     canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None,
-                                    enable_zoom=enable_zoom, wrap=app_config['use_loading'])]
+                                    enable_zoom=enable_zoom, wrap=app_config['use_loading'],
+                                    filename=data_selection, delimiter=delimiter)]
                 try:
                     # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
                     if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
@@ -352,6 +354,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update, \
                     dash.no_update
             raise PreventUpdate
+        raise PreventUpdate
+
+    @dash_app.callback(Output('annotation_canvas', 'config'),
+                       Input('data-collection', 'value'),
+                       State('annotation_canvas', 'config'),
+                       State('dataset-delimiter', 'value'),
+                       prevent_initial_call=True)
+    def update_roi_download_name(roi_change, current_canvas_config, delim):
+        """
+        Update the name of the file output in the graph to match the ROI name
+        """
+        # TODO: decide if should have just the ROI name or the entire dataset identifier (current)
+        if roi_change and current_canvas_config: return update_canvas_filename(current_canvas_config, roi_change, delim)
         raise PreventUpdate
 
     @dash_app.callback(Input('image_layers', 'options'),
@@ -937,6 +952,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('cluster-annotations-legend', 'value'),
                        Input('apply-gating', 'value'),
                        Input('gating-cell-list', 'data'),
+                       State('dataset-delimiter', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -950,7 +966,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 global_apply_filter, global_filter_type, global_filter_val,
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
                                                 cluster_frame, cluster_type, download_canvas_tiff, custom_scale_val,
-                                                cluster_assignments_in_legend, apply_gating, gating_cell_id_list):
+                                                cluster_assignments_in_legend, apply_gating, gating_cell_id_list,
+                                                delimiter):
 
         """
         Update the canvas from either an underlying change to the source image, or a change to the hover template
@@ -996,7 +1013,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if ctx.triggered_id == "btn-download-canvas-tiff":
                     fig = dash.no_update
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
-                                                dest_dir=dest_path))
+                        dest_dir=dest_path, use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
                 return fig, canvas_tiff
             except (ValueError, AttributeError, KeyError, IndexError):
                 raise PreventUpdate
@@ -1290,14 +1307,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('annotation_canvas', 'figure'),
                        State('uploaded_dict', 'data'),
                        State('blending_colours', 'data'),
-                       State('annotation_canvas', 'style'))
+                       State('annotation_canvas', 'style'),
+                       State('data-collection', 'value'),
+                       State('dataset-delimiter', 'value'))
     # @cache.memoize())
-    def download_interactive_html_canvas(download_html, cur_graph, uploaded, blend_dict, canvas_style):
+    def download_interactive_html_canvas(download_html, cur_graph, uploaded, blend_dict, canvas_style,
+                                         dataset_selection, delimiter):
         if None not in (cur_graph, uploaded, blend_dict) and download_html > 0:
             try:
                 download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 create_download_dir(download_dir)
-                html_path = dcc.send_file(output_current_canvas_as_html(cur_graph, canvas_style, download_dir))
+                html_path = dcc.send_file(output_current_canvas_as_html(cur_graph, canvas_style, download_dir,
+                                        use_roi_name=True, roi_name=dataset_selection, delimiter=delimiter))
             except (ValueError, KeyError):
                 html_path = dash.no_update
             return html_path

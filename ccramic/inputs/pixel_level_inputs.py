@@ -11,9 +11,11 @@ import numpy as np
 from PIL import Image
 import plotly.express as px
 from ccramic.io.session import SessionTheme
+from ccramic.utils.pixel_level_utils import split_string_at_pattern
+
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
-                                     draggable=False):
+                                     draggable=False, filename: str="canvas", delimiter: str="+++"):
     """
     Return the default dcc.Graph annotation figure input. For multiple annotation graphs, a unique input ID
     must be used
@@ -27,6 +29,10 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
     else:
         style_canvas = {"width": "65vw", "height": "65vh"}
 
+    # set a custom output filename based on the current ROI
+    if filename != "canvas":
+        filename = set_roi_identifier_from_length(filename, delimiter=delimiter)
+
     canvas = dcc.Graph(config={"modeBarButtonsToAdd": [
                         # "drawline",
                         # "drawopenpath",
@@ -34,7 +40,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         # "drawcircle",
                         "drawrect",
                         "eraseshape"],
-                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
+                        'toImageButtonOptions': {'format': 'png', 'filename': filename, 'scale': 1},
                             # disable scrollable zoom for now to control the scale bar
                         'edits': {'shapePosition': False}, 'scrollZoom': fullscreen_mode},
                         relayoutData={'autosize': True},
@@ -48,7 +54,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
 def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False,
-                                                   wrap=True):
+                                                   wrap=True, filename: str="canvas", delimiter: str="+++"):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
     or
@@ -57,10 +63,10 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     # conditions for wrapping the canvas
     large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
     if (large_image or hovertext) and wrap:
-        return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom),
-                                     type="default", fullscreen=False, color=SessionTheme().widget_colour)
+        return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename,
+                        delimiter=delimiter), type="default", fullscreen=False, color=SessionTheme().widget_colour)
     else:
-        return render_default_annotation_canvas(fullscreen_mode=enable_zoom)
+        return render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename, delimiter=delimiter)
 
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
                               invert=False, proportion=0.1):
@@ -262,3 +268,29 @@ def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False):
     if invert_annot:
         x_axis_placement = 1 - x_axis_placement
     return x_axis_placement
+
+def set_roi_identifier_from_length(dataset_selection, length_threshold=5, delimiter: str="+++"):
+    """
+    Set the output name for a dataset based on the length of the ROI name
+    If the ROI name is below a certain length, output the entire dataset identifier
+    """
+    try:
+        exp, slide, roi = split_string_at_pattern(dataset_selection, delimiter)
+        # set a length limit: if the roi name is long enough to be informative, set as the output
+        roi_name_use = roi if len(roi) > length_threshold else dataset_selection
+        return roi_name_use
+    except (KeyError, IndexError, ValueError):
+        return dataset_selection
+
+def update_canvas_filename(canvas_config: dict, roi_name: str=None, delimiter: str="+++"):
+    """
+    update the canvas config with the latest ROI name
+    """
+    if canvas_config and roi_name:
+        try:
+            canvas_config['toImageButtonOptions']['filename'] = str(set_roi_identifier_from_length(roi_name,
+                                                                                    delimiter=delimiter))
+            return canvas_config
+        except KeyError:
+            pass
+    return canvas_config

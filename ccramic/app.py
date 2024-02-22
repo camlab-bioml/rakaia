@@ -40,7 +40,8 @@ def init_dashboard(server, authentic_id, config=None):
         dash_app._favicon = 'ccramic.ico'
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
-        server.config['FLASK_DEBUG'] = config['debug']
+        # do not use debugging mode if production is used
+        server.config['FLASK_DEBUG'] = config['is_dev_mode']
 
         du.configure_upload(dash_app, cache_dest)
 
@@ -76,7 +77,7 @@ def init_dashboard(server, authentic_id, config=None):
 
     dash_app.layout = register_app_layout(config, cache_dest)
 
-    dash_app.enable_dev_tools(debug=config['debug'])
+    dash_app.enable_dev_tools(debug=config['is_dev_mode'])
 
     init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, config)
     init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, config)

@@ -11,7 +11,7 @@ from ccramic.inputs.pixel_level_inputs import (
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
-    set_x_axis_placement_of_scalebar)
+    set_x_axis_placement_of_scalebar, update_canvas_filename)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -29,10 +29,10 @@ def test_return_canvas_input():
 
 def test_wrapping_canvas_based_on_image_dimensions():
     small_image = np.zeros((512,512,3), 'uint8')
-    small_canvas = wrap_canvas_in_loading_screen_for_large_images(small_image)
+    small_canvas = wrap_canvas_in_loading_screen_for_large_images(small_image, filename="exp0+++slide0+++roi_1")
     assert isinstance(small_canvas, dcc.Graph)
     large_image = np.zeros((3001,3001,3), 'uint8')
-    large_canvas = wrap_canvas_in_loading_screen_for_large_images(large_image)
+    large_canvas = wrap_canvas_in_loading_screen_for_large_images(large_image, filename="canvas_split")
     assert not isinstance(large_canvas, dcc.Graph)
     assert isinstance(large_canvas, dcc.Loading)
 
@@ -191,3 +191,14 @@ def test_register_x_axis_placement_scalebar():
     large = np.zeros((5260, 5260))
     placement = set_x_axis_placement_of_scalebar(large.shape[1], False)
     assert placement == 0.000025 * large.shape[1]
+
+def test_set_canvas_filename():
+    canvas_config = {"modeBarButtonsToAdd": ["drawclosedpath", "drawrect", "eraseshape"],
+                        'toImageButtonOptions': {'format': 'png', 'filename': "canvas", 'scale': 1},
+                            # disable scrollable zoom for now to control the scale bar
+                        'edits': {'shapePosition': False}, 'scrollZoom': True}
+    canvas_config = update_canvas_filename(canvas_config, "exp0+++slide0+++long_roi")
+    assert canvas_config['toImageButtonOptions']['filename'] == "long_roi"
+    canvas_config = update_canvas_filename(canvas_config, "exp0---slide0---roi_1")
+    assert canvas_config['toImageButtonOptions']['filename'] == "exp0---slide0---roi_1"
+    assert update_canvas_filename({"fake_dict": None}, "exp0+++slide0+++long_roi") == {"fake_dict": None}

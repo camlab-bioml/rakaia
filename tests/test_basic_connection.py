@@ -78,23 +78,23 @@ def test_basic_cli_outputs():
     parser = argparser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
-    assert vars(args) == {'auto_open': False, 'debug': True, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     parser = argparser()
     args = parser.parse_args(['-a'])
-    assert vars(args) == {'auto_open': True, 'debug': True, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True}
     assert "ccramic can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
-    assert vars(args) == {'auto_open': False, 'debug': True, 'loading': True, 'port': 8050, 'threading': True,
+    assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True}
     assert "ccramic can be initialized from the command line using:" in parser.usage
-    args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-d'])
-    assert vars(args) == {'auto_open': False, 'debug': False, 'loading': True, 'port': 8050, 'threading': True,
+    args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-pr'])
+    assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': False, 'swatches': None, 'array_type': 'int',
                           'serverside_overwrite': True}
 
@@ -112,7 +112,7 @@ def test_basic_cli_outputs():
                     reason="Do not run main test in GA due to memory restrictions")
 def test_basic_cli_outputs_main():
     """
-    Assert that when valid rguments are passed to main, there is no system exit but rather the expected
+    Assert that when valid arguments are passed to main, there is no system exit but rather the expected
     timeout after 5 seconds
     """
     class TimeoutException(Exception):
@@ -130,7 +130,7 @@ def test_basic_cli_outputs_main():
 
 def test_basic_app_return():
     config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
-              'swatches': None, 'debug': True}
+              'swatches': None, 'is_dev_mode': True}
     app = init_app(config)
     assert isinstance(app, Flask)
     app_2 = Flask("ccramic")

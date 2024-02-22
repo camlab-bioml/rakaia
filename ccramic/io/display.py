@@ -6,6 +6,7 @@ from tifffile import imwrite
 import numpy as np
 import plotly.graph_objs as go
 from typing import Union
+from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
 
 class RegionSummary:
     """
@@ -150,12 +151,14 @@ class RegionSummary:
         return self.summary_frame
 
 
-def output_current_canvas_as_tiff(canvas_image, dest_dir="/tmp/", output_file="canvas.tiff"):
+def output_current_canvas_as_tiff(canvas_image, dest_dir="/tmp/", output_default="canvas",
+                                  roi_name: str=None, use_roi_name=False, delimiter:str="+++"):
     """
     Output the current canvas image as a photometric tiff
     """
     if canvas_image is not None:
-        dest_file = str(os.path.join(dest_dir, output_file))
+        outname = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else output_default
+        dest_file = str(os.path.join(dest_dir, f"{outname}.tiff"))
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
         imwrite(dest_file, canvas_image.astype(np.uint8), photometric='rgb')
@@ -163,7 +166,8 @@ def output_current_canvas_as_tiff(canvas_image, dest_dir="/tmp/", output_file="c
     else:
         return None
 
-def output_current_canvas_as_html(cur_graph, canvas_style, dest_dir=None):
+def output_current_canvas_as_html(cur_graph, canvas_style, dest_dir=None, roi_name: str=None, delimiter: str="+++",
+                                  use_roi_name=False, output_default:str="canvas"):
     """
     Output the current `dcc.Graph` object as HTML with the same aspect ratio as the underlying array
     Returns the filepath string for `dcc.send_file`
@@ -174,9 +178,11 @@ def output_current_canvas_as_html(cur_graph, canvas_style, dest_dir=None):
     #                   yaxis=YAxis(showticklabels=False),
     #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
     fig.update_layout(dragmode="zoom")
-    fig.write_html(str(os.path.join(dest_dir, 'canvas.html')), default_width=canvas_style['width'],
+    outname = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else output_default
+    outfile = str(os.path.join(dest_dir, f"{outname}.html"))
+    fig.write_html(outfile, default_width=canvas_style['width'],
                    default_height=canvas_style['height'])
-    return str(os.path.join(dest_dir, 'canvas.html'))
+    return outfile
 
 
 class FullScreenCanvas:

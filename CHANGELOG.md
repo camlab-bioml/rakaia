@@ -31,6 +31,9 @@ to be combined with the same colour and represented only once for simplicity
 - MCD import now includes the acquisition ID in the ROI name in addition to the acquisition description
 to ensure unique ROI naming
 - modify UI theme
+- change `debug` command line option to `production-mode`: wraps debugging and production-level WSGI server
+into one command for concurrent deployments
+- image downloads will now include the ROI name in the file name output #92
 
 ### Fixed
 
