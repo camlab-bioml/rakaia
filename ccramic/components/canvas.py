@@ -82,7 +82,8 @@ class CanvasImage:
                         self.data_selection in self.cluster_assignments_dict.keys() and self.cluster_type == 'mask':
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
                                 self.cluster_frame[self.data_selection],
-                                self.cluster_assignments_dict[self.data_selection])
+                                self.cluster_assignments_dict[self.data_selection], use_gating_subset=self.apply_gating,
+                                                                        gating_subset_list=self.gating_cell_id_list)
                     annot_mask = annot_mask if annot_mask is not None else \
                         np.where(self.mask_config[self.mask_selection]["array"].astype(np.uint8) > 0, 255, 0)
                     image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask, mask_level, 0)

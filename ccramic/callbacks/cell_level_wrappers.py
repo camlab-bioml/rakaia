@@ -1,12 +1,11 @@
 import dash
 import pandas as pd
-from dash_extensions.enrich import Serverside
+from ccramic.io.session import SessionServerside
 from ccramic.utils.cell_level_utils import (
     populate_cell_annotation_column_from_bounding_box,
     get_cells_in_svg_boundary_by_mask_percentage,
     populate_cell_annotation_column_from_cell_id_list,
-    populate_cell_annotation_column_from_clickpoint
-)
+    populate_cell_annotation_column_from_clickpoint)
 from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
 import ast
 from ccramic.components.canvas import CanvasLayout
@@ -16,7 +15,7 @@ from ccramic.utils.shapes import is_bad_shape
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                                       mask_config, mask_toggle, mask_selection, sample_name=None,
-                                                        id_column='sample'):
+                                                        id_column='sample', config: dict=None):
     # loop through all of the existing annotations
     # for annotations that have not yet been imported, import and set the import status to True
     if None not in (annotations, quantification_frame) and len(quantification_frame) > 0 and len(annotations) > 0:
@@ -67,7 +66,8 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                             mask_toggle=mask_toggle, mask_dict=mask_config, mask_selection=mask_selection,
                             sample=sample_name, id_column=id_column)
                     annotations[data_selection][annotation]['imported'] = True
-            return quantification_frame.to_dict(orient="records"), Serverside(annotations)
+            return quantification_frame.to_dict(orient="records"), \
+                SessionServerside(annotations, key="annotation_dict", use_unique_key=config['serverside_overwrite'])
         else:
             raise PreventUpdate
     else:

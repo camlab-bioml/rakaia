@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-02-15
+## [0.13.0] - 2024-02-22
 
 ### Added
 
@@ -17,7 +17,9 @@ callback
 - Add poetry files for development option
 - Custom exception for data reading error at likely callback point where disk storage errors occur
 - Added integrated (total) signal to channel summary statistics
-- single channel gating from quantification results: gating can be applied to a canvas mask
+- single or multi-channel gating from quantification results: gating can be applied to a canvas mask and
+combined with clustering labels
+
 
 ### Changed
 

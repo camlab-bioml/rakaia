@@ -1,7 +1,4 @@
 import collections
-
-import dash
-import pandas as pd
 import pytest
 import dash_extensions
 from ccramic.utils.cell_level_utils import *
@@ -291,6 +288,7 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
     with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict)
+    assert np.array_equal(with_annotations[532, 457], np.array([250, 228, 176]))
     assert with_annotations.shape == (mask.shape[0], mask.shape[1], 3)
     # assert where type 1 is
     assert list(with_annotations[449, 414]) == list(with_annotations[484, 852]) == [147, 38, 82]
@@ -304,3 +302,25 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
                                                               retain_cells=False)
     # assert that where cells were before, there is nothing
     assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
+
+def test_apply_cluster_annotations_with_gating(get_current_dir):
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
+    cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
+    cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
+    gating_list = list(range(125, 175))
+    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                              use_gating_subset=True, gating_subset_list=gating_list)
+    # assert that a position where the cell is not gated, is blank
+    assert np.array_equal(with_annotations[532, 457], np.array([0, 0, 0]))
+
+
+def test_remove_latest_annotation():
+    annotations_dict_original = {"roi_1": {"annot_1": "This is an annotation", "annot_2": "This is also an annotation"}}
+    annotations_dict = remove_latest_annotation_entry(annotations_dict_original, "roi_1")
+    assert len(annotations_dict['roi_1']) == 1
+    annotations_dict = remove_latest_annotation_entry(annotations_dict, "roi_1")
+    assert not len(annotations_dict['roi_1'])
+    annotations_dict = remove_latest_annotation_entry(annotations_dict, "roi_1")
+    assert not len(annotations_dict['roi_1'])
+    assert remove_latest_annotation_entry(annotations_dict, None) == annotations_dict_original
+    assert not remove_latest_annotation_entry(None, "roi_1")

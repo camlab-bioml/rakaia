@@ -397,7 +397,8 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
         return None, None
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
-                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True):
+                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True,
+                                           use_gating_subset: bool = False, gating_subset_list: list=None):
     """
     Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
     remain as greyscale values
@@ -407,6 +408,9 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     cluster_frame = cluster_frame.astype(str)
     empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
     mask_array = mask_array.astype(np.uint32)
+    if use_gating_subset:
+        mask_bool = np.isin(mask_array, gating_subset_list)
+        mask_array[~mask_bool] = 0
     try:
         for cell_type in cluster_frame[cluster_col].unique().tolist():
             cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
@@ -427,3 +431,17 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
             return empty.astype(np.uint8)
     except KeyError:
         return None
+
+def remove_latest_annotation_entry(annotations_dict: dict=None, roi_selection: str=None):
+    """
+    Remove the latest annotation entry from the annotation hash table
+    """
+    if annotations_dict and roi_selection:
+        annot_dict = annotations_dict.copy()
+        try:
+            last = list(annot_dict[roi_selection].keys())[-1]
+            del annot_dict[roi_selection][last]
+        except (KeyError, IndexError):
+            pass
+        return annot_dict
+    return annotations_dict

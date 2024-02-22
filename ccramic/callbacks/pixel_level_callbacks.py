@@ -35,7 +35,6 @@ from ccramic.utils.pixel_level_utils import (
     no_filter_chosen,
     channel_filter_matches,
     ag_grid_cell_styling_conditions)
-# from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.components.canvas import CanvasImage, CanvasLayout
 from ccramic.io.display import (
@@ -2256,7 +2255,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                          'xref': 'x', 'y0': (y - circle_size), 'y1': (y + circle_size), 'yref': 'y'})
                 else:
                     fig = dash.no_update
-
                 return SessionServerside(annotations_dict, key="annotation_dict"), html.H6(f"Point {x, y} updated with "
                                                  f"{annotation_cell_type} in {annot_col}"), True, fig
             except KeyError:
@@ -2281,23 +2279,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             fig = CanvasLayout(cur_graph).add_point_annotations_as_circles(imported_annotations, first_image, circle_size)
             return CanvasLayout(fig).clear_improper_shapes()
-        raise PreventUpdate
-
-    @dash_app.callback(
-        Output("annotations-dict", "data", allow_duplicate=True),
-        State("annotations-dict", "data"),
-        State('data-collection', 'value'),
-        Input('undo-latest-annotation', 'n_clicks'),
-        prevent_initial_call=True)
-    def remove_latest_annotation(annotations, data_selection, nclicks):
-        if nclicks > 0 and None not in (annotations, data_selection):
-            try:
-                annot_dict = annotations.copy()
-                last = list(annot_dict[data_selection].keys())[-1]
-                del annot_dict[data_selection][last]
-                return annot_dict
-            except IndexError:
-                raise PreventUpdate
         raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),

@@ -16,11 +16,10 @@ from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
     identify_column_matching_roi_to_quantification,
-    validate_mask_shape_matches_image)
+    validate_mask_shape_matches_image, remove_latest_annotation_entry)
 from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
-    generate_umap_plot,
-    )
+    generate_umap_plot)
 from ccramic.io.pdf import AnnotationPDFWriter
 from ccramic.io.annotation_outputs import AnnotationRegionWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
@@ -41,7 +40,6 @@ from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
-from dash import html
 from ccramic.io.session import SessionServerside
 import uuid
 from ccramic.utils.session import non_truthy_to_prevent_update
@@ -49,8 +47,7 @@ from ccramic.utils.cluster import assign_colours_to_cluster_annotations, cluster
 from ccramic.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
-    gating_label_children
-)
+    gating_label_children)
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -263,10 +260,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
                             current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite']), \
                         dash.no_update, dash.no_update
-                else:
-                    raise PreventUpdate
+                raise PreventUpdate
             except ValueError:
-                # return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
                 raise PreventUpdate
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Output('umap-div-holder', 'style', allow_duplicate=True),
@@ -411,7 +406,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             data_selection, quantification_frame, data_dropdown_options, delimiter)
         quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
                                 quantification_frame, data_selection, mask_config, mask_toggle,
-                                mask_selection, sample_name=sample_name, id_column=id_column)
+                                mask_selection, sample_name=sample_name, id_column=id_column, config=app_config)
         return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=app_config['serverside_overwrite']), annotations
 
     @dash_app.callback(
@@ -630,6 +625,18 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return SessionServerside(frame.to_dict(orient="records"), key="point_annotations",
                                          use_unique_key=app_config['serverside_overwrite'])
             raise PreventUpdate
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("annotations-dict", "data", allow_duplicate=True),
+        State("annotations-dict", "data"),
+        State('data-collection', 'value'),
+        Input('undo-latest-annotation', 'n_clicks'),
+        prevent_initial_call=True)
+    def remove_latest_annotation(annotations, data_selection, nclicks):
+        if nclicks > 0 and None not in (annotations, data_selection):
+            return SessionServerside(remove_latest_annotation_entry(annotations, data_selection),
+                    key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
 
     @du.callback(Output('uploads_cluster', 'data', allow_duplicate=True),

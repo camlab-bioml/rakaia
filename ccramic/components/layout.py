@@ -682,11 +682,11 @@ def register_app_layout(config, cache_dest):
                                 html.Div("Show ROI annotations")], style={"display": "flex"}),
                                 id="show-annotation-table", className="mx-auto", color=None, n_clicks=0,
                                 style={"margin-top": "10px"}),
-                                # dbc.Button(children=html.Span([html.I(className="fa-solid fa-delete-left",
-                                # style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                # html.Div("Undo last annotation")], style={"display": "flex"}),
-                                # id="undo-latest-annotation", className="mx-auto", color=None, n_clicks=0,
-                                # style={"margin-top": "10px"})
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-delete-left",
+                                style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                html.Div("Undo last annotation")], style={"display": "flex"}),
+                                id="undo-latest-annotation", className="mx-auto", color=None, n_clicks=0,
+                                style={"margin-top": "10px"})
                                           ], style={"display": "flex", "width": "50%"}),
                                 html.Br(),
                                 html.Br(),
