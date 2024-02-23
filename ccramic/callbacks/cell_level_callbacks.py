@@ -388,6 +388,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Input("annotations-dict", "data"),
+        Input('undo-latest-annotation', 'n_clicks'),
         State('quantification-dict', 'data'),
         State('data-collection', 'value'),
         State('data-collection', 'options'),
@@ -397,16 +398,18 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('dataset-delimiter', 'value'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True))
-    def add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                            data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter):
+    def update_region_annotation_in_quantification_frame(annotations, undo_latest_annotation, quantification_frame,
+                        data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter):
         """
-        Add a region annotation to the cells of a quantification data frame
+        Add or remove region annotation to the segmented objects of a quantification data frame
+        Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         """
+        undo_last = ctx.triggered_id == 'undo-latest-annotation'
         sample_name, id_column = identify_column_matching_roi_to_quantification(
             data_selection, quantification_frame, data_dropdown_options, delimiter)
         quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
-                                quantification_frame, data_selection, mask_config, mask_toggle,
-                                mask_selection, sample_name=sample_name, id_column=id_column, config=app_config)
+            quantification_frame, data_selection, mask_config, mask_toggle, mask_selection, sample_name=sample_name,
+                                            id_column=id_column, config=app_config, remove=undo_last)
         return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=app_config['serverside_overwrite']), annotations
 
     @dash_app.callback(
@@ -627,17 +630,17 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             raise PreventUpdate
         raise PreventUpdate
 
-    @dash_app.callback(
-        Output("annotations-dict", "data", allow_duplicate=True),
-        State("annotations-dict", "data"),
-        State('data-collection', 'value'),
-        Input('undo-latest-annotation', 'n_clicks'),
-        prevent_initial_call=True)
-    def remove_latest_annotation(annotations, data_selection, nclicks):
-        if nclicks > 0 and None not in (annotations, data_selection):
-            return SessionServerside(remove_latest_annotation_entry(annotations, data_selection),
-                    key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
-        raise PreventUpdate
+    # @dash_app.callback(
+    #     Output("annotations-dict", "data", allow_duplicate=True),
+    #     State("annotations-dict", "data"),
+    #     State('data-collection', 'value'),
+    #     Input('undo-latest-annotation', 'n_clicks'),
+    #     prevent_initial_call=True)
+    # def remove_latest_annotation(annotations, data_selection, nclicks):
+    #     if nclicks > 0 and None not in (annotations, data_selection):
+    #         return SessionServerside(remove_latest_annotation_entry(annotations, data_selection),
+    #                 key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
+    #     raise PreventUpdate
 
     @du.callback(Output('uploads_cluster', 'data', allow_duplicate=True),
                  id='upload-cluster-annotations')

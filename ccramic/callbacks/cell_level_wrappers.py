@@ -5,7 +5,7 @@ from ccramic.utils.cell_level_utils import (
     populate_cell_annotation_column_from_bounding_box,
     get_cells_in_svg_boundary_by_mask_percentage,
     populate_cell_annotation_column_from_cell_id_list,
-    populate_cell_annotation_column_from_clickpoint)
+    populate_cell_annotation_column_from_clickpoint, remove_latest_annotation_entry)
 from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
 import ast
 from ccramic.components.canvas import CanvasLayout
@@ -14,12 +14,16 @@ from ccramic.utils.alert import AlertMessage
 from ccramic.utils.shapes import is_bad_shape
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
-                                                      mask_config, mask_toggle, mask_selection, sample_name=None,
-                                                        id_column='sample', config: dict=None):
+                                    mask_config, mask_toggle, mask_selection, sample_name=None, id_column='sample',
+                                    config: dict=None, remove: bool=False):
     # loop through all of the existing annotations
     # for annotations that have not yet been imported, import and set the import status to True
-    if None not in (annotations, quantification_frame) and len(quantification_frame) > 0 and len(annotations) > 0:
-        if data_selection in annotations.keys() and len(annotations[data_selection]) > 0:
+    if annotations and len(annotations) > 0:
+        # if removing the latest annotation, set it to not imported, replace with the default of None, then delete
+        if remove and annotations[data_selection]:
+            last = list(annotations[data_selection].keys())[-1]
+            annotations[data_selection][last]['imported'] = False
+        if data_selection in annotations.keys() and len(annotations[data_selection]) > 0 and quantification_frame:
             quantification_frame = pd.DataFrame(quantification_frame)
             for annotation in annotations[data_selection].keys():
                 if not annotations[data_selection][annotation]['imported']:
@@ -27,7 +31,7 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                     if annotations[data_selection][annotation]['type'] == "zoom":
                         quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
                         values_dict=dict(annotation), cell_type=annotations[data_selection][annotation]['cell_type'],
-                        annotation_column=annotations[data_selection][annotation]['annotation_column'])
+                        annotation_column=annotations[data_selection][annotation]['annotation_column'], remove=remove)
 
                     elif annotations[data_selection][annotation]['type'] == "path":
                         # TODO: decide which method of annotation to use
@@ -40,10 +44,9 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                                 mask_array=mask_config[mask_selection]["raw"], svgpath=annotation)
                             quantification_frame = populate_cell_annotation_column_from_cell_id_list(
                                 quantification_frame, cell_list=list(cells_included.keys()),
-                                cell_type=annotations[data_selection][annotation]['cell_type'],
-                            sample_name=sample_name,
-                                annotation_column=annotations[data_selection][annotation]['annotation_column'],
-                                id_column=id_column)
+                                cell_type=annotations[data_selection][annotation]['cell_type'], sample_name=sample_name,
+                            annotation_column=annotations[data_selection][annotation]['annotation_column'],
+                            id_column=id_column, remove=remove)
                         # option 2: convex envelope bounding box
                         else:
                             x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
@@ -52,24 +55,33 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                             quantification_frame = populate_cell_annotation_column_from_bounding_box(
                                 quantification_frame, values_dict=val_dict,
                                 cell_type=annotations[data_selection][annotation]['cell_type'],
-                                annotation_column=annotations[data_selection][annotation]['annotation_column'])
+                                annotation_column=annotations[data_selection][annotation]['annotation_column'],
+                                remove=remove)
                     elif annotations[data_selection][annotation]['type'] == "rect":
                         quantification_frame = populate_cell_annotation_column_from_bounding_box(
                             quantification_frame, values_dict=dict(annotation),
                             cell_type=annotations[data_selection][annotation]['cell_type'], box_type="rect",
-                            annotation_column=annotations[data_selection][annotation]['annotation_column'])
+                            annotation_column=annotations[data_selection][annotation]['annotation_column'],
+                            remove=remove)
                     elif annotations[data_selection][annotation]['type'] == "point":
                         quantification_frame = populate_cell_annotation_column_from_clickpoint(
                             quantification_frame, values_dict=ast.literal_eval(annotation),
                             cell_type=annotations[data_selection][annotation]['cell_type'],
                             annotation_column=annotations[data_selection][annotation]['annotation_column'],
                             mask_toggle=mask_toggle, mask_dict=mask_config, mask_selection=mask_selection,
-                            sample=sample_name, id_column=id_column)
+                            sample=sample_name, id_column=id_column, remove=remove)
                     annotations[data_selection][annotation]['imported'] = True
+
+            # if remove, remove the last annotation from the dictionary
+            if remove:
+                annotations = remove_latest_annotation_entry(annotations, data_selection)
             return quantification_frame.to_dict(orient="records"), \
                 SessionServerside(annotations, key="annotation_dict", use_unique_key=config['serverside_overwrite'])
-        else:
-            raise PreventUpdate
+        elif annotations:
+            if remove:
+                annotations = remove_latest_annotation_entry(annotations, data_selection)
+            return None, SessionServerside(annotations,
+            key="annotation_dict", use_unique_key=config['serverside_overwrite'])
     else:
         raise PreventUpdate
 

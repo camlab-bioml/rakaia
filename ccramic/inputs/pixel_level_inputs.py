@@ -263,7 +263,7 @@ def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False):
     `image_x_shape`: The dimension, in pixels, of the x-axis (width) of the image in the canvas
     """
     x_axis_placement = 0.000025 * image_x_shape
-    # make sure the placement is min 0.05 and max 0.1
+    # make sure the placement is min 0.05 and max 0.15
     x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
     if invert_annot:
         x_axis_placement = 1 - x_axis_placement

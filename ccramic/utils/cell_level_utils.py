@@ -200,15 +200,14 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
         return None
 
 def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=None,
-                                                    annotation_column="ccramic_cell_annotation",
-                                                    values_dict=None,
-                                                    cell_type=None, box_type="zoom"):
+                        annotation_column="ccramic_cell_annotation", values_dict=None, cell_type=None,
+                        box_type="zoom", remove: bool=False, default_val: str="None"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     by coordinate bounding box
     """
     if annotation_column not in measurements.columns:
-        measurements[annotation_column] = "None"
+        measurements[annotation_column] = default_val
 
     if coord_dict is None:
         coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
@@ -220,6 +219,10 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
             x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(values_dict)
         else:
             raise KeyError
+
+        # if the annotation is being removed/overwritten, replace the annotation with the default
+        cell_type = cell_type if not remove else default_val
+
         measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] >=
                                                         float(x_min)) &
                                                (measurements[str(f"{coord_dict['x_max']}")] <=
@@ -236,17 +239,17 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
     return measurements
 
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
-                                                    annotation_column="ccramic_cell_annotation",
-                                                    cell_identifier="cell_id",
-                                                    cell_type=None, sample_name=None, id_column='sample'):
+                        annotation_column="ccramic_cell_annotation",cell_identifier="cell_id", cell_type=None,
+                        sample_name=None, id_column='sample', remove: bool=False, default_val: str="None"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
     """
     if annotation_column not in measurements.columns:
-        measurements[annotation_column] = "None"
+        measurements[annotation_column] = default_val
 
     try:
+        cell_type = cell_type if not remove else default_val
         measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
                                                (measurements[id_column] == sample_name), cell_type,
                                                measurements[annotation_column])
@@ -256,22 +259,23 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
 
 
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
-                                                    annotation_column="ccramic_cell_annotation",
-                                                    cell_identifier="cell_id", values_dict=None, cell_type=None,
-                                                    mask_toggle=True, mask_dict=None, mask_selection=None,
-                                                    sample=None, id_column='sample'):
+                    annotation_column="ccramic_cell_annotation", cell_identifier="cell_id", values_dict=None,
+                    cell_type=None, mask_toggle=True, mask_dict=None, mask_selection=None, sample=None,
+                    id_column='sample', remove: bool=False, default_val: str="None"):
     """
     Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
     try:
         if annotation_column not in measurements.columns:
-            measurements[annotation_column] = "None"
+            measurements[annotation_column] = default_val
 
         if coord_dict is None:
             coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
 
         x = values_dict['points'][0]['x']
         y = values_dict['points'][0]['y']
+
+        cell_type = cell_type if not remove else default_val
 
         if mask_toggle and None not in (mask_dict, mask_selection) and len(mask_dict) > 0:
 

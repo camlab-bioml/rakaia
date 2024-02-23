@@ -15,7 +15,8 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
 from ccramic.utils.alert import DataImportTour
-from ccramic.io.session import SessionTheme
+from ccramic.io.session import SessionTheme, TabText
+
 
 def register_app_layout(config, cache_dest):
 
@@ -874,7 +875,10 @@ def register_app_layout(config, cache_dest):
 
             dbc.Tab(label="Channel gallery", tab_id='gallery-tab', id='gallery-tab',
                     label_style={"color": DEFAULT_WIDGET_COLOUR},
-                        children=[html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
+                        children=[
+                            html.Br(),
+                            html.H6(TabText().channel_tiles),
+                            html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR,
                                 style={"margin-right": "15px", "margin-top": "10px"}),
                                   daq.ToggleSwitch(label='View gallery by channel',
@@ -901,12 +905,7 @@ def register_app_layout(config, cache_dest):
                         [html.Div([dbc.Row([
                         dbc.Col(html.Div([
                         html.Br(),
-                        # TODO: Insert information in html text area for metadata
-                        html.H6("Panel metadata consists of a list of biomarkers corresponding to one or more "
-                                "experiments. ccramic requires internal channel identifiers (stored under"
-                                " the channel name) that are used within ccramic sessions to identify individual biomarkers."
-                                " Channel labels may be edited under the final column of the metadata table; these "
-                                "labels will be applied to the canvas and session inputs."),
+                        html.H6(TabText().metadata),
                         html.B("Panel metadata"),
                         html.Br(),
                         dash_table.DataTable(id='imc-metadata-editable', columns=[], data=None,
@@ -1053,6 +1052,8 @@ def register_app_layout(config, cache_dest):
                                   ),
             dbc.Tab(label="Dataset gallery", tab_id='dataset-query', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=[
+                html.Br(),
+                html.H6(TabText().region_gallery),
                 html.H6("Set number of ROIs to return", style={"margin-top": "15px"}),
                 html.Div([dcc.Input(id="dataset-query-number", type="number",
                         placeholder="Number of ROIs to return",

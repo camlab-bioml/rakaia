@@ -14,6 +14,26 @@ class SessionTheme(BaseModel):
     """
     widget_colour: str = "#0f4d92"
 
+class TabText(BaseModel):
+    """
+    Holds the html-compatible text explanations for different tabs
+    """
+    metadata: str = "Panel metadata consists of a list of biomarkers corresponding to one or more " \
+                    "experiments. ccramic requires internal channel identifiers (stored under" \
+                    " the channel name) that are used within ccramic sessions to identify individual biomarkers." \
+                    " Channel labels may be edited under the final column of the metadata table; these " \
+                    "labels will be applied to the canvas and session inputs."
+    channel_tiles: str = "Each region is comprised of one or more images corresponding to the " \
+                         "expression of a biomarker. Individual biomarker images, termed tiles, are visible in the " \
+                         "channel gallery when an ROI is selected, and one or more biomarkers can be added to the canvas " \
+                         "blend."
+    region_gallery: str = "Generate a thumbnail for one or more ROIs contained in the current session with the " \
+                          "blend parameters that are currently applied to the canvas. These thumbnails may be generated " \
+                          "randomly from the query below, or from subsetting the UMAP plot under the quantification tab. " \
+                          "Each thumbnail enables the specific ROI to be loaded into the main canvas."
+
+
+
 class SessionServerside(Serverside):
     """
     This class defines the string identification for Serverside objects depending on the session invocation
@@ -71,7 +91,6 @@ class JSONSessionDocument:
         self.document['gating'] = gating_dict
     def get_document(self):
         return self.document
-
 
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
                                global_filter_type, global_filter_val, global_filter_sigma,
