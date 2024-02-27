@@ -40,9 +40,11 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         # "drawcircle",
                         "drawrect",
                         "eraseshape"],
+                        # TODO: add in dimension specds for the width and height on the download
+                        # https://plotly.com/python/configuration-options/
                         'toImageButtonOptions': {'format': 'png', 'filename': filename, 'scale': 1},
                             # disable scrollable zoom for now to control the scale bar
-                        'edits': {'shapePosition': False}, 'scrollZoom': fullscreen_mode},
+                        'edits': {'shapePosition': False}, 'scrollZoom': fullscreen_mode, 'displaylogo': False},
                         relayoutData={'autosize': True},
                         id=input_id,
                             style=style_canvas,
@@ -69,7 +71,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
         return render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename, delimiter=delimiter)
 
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
-                              invert=False, proportion=0.1):
+                              invert=False, proportion=0.1, scale_color: str="white"):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -78,12 +80,12 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
     else:
         scale_val = scale_value
     scale_annot = str(scale_val) + "μm"
-    scale_text = f'<span style="color: white">{scale_annot}</span><br>'
+    scale_text = f'<span style="color: {scale_color}">{scale_annot}</span><br>'
     figure = go.Figure(figure)
     half = float(proportion) / 2
     # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
     x = float((x_axis_left + half) if not invert else (x_axis_left - half))
-    figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
+    figure.add_annotation(text=scale_text, font={"size": font_size, 'color': scale_color}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
                        x=x,

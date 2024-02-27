@@ -7,6 +7,8 @@ import numpy as np
 import plotly.graph_objs as go
 from typing import Union
 from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
+# import io
+# from PIL import Image
 
 class RegionSummary:
     """
@@ -209,3 +211,37 @@ class FullScreenCanvas:
 
     def get_canvas_layout(self):
         return self.canvas_layout
+
+# TODO: work on the annotations scale relative to the background image
+# def plotly_fig2array(fig, array):
+#     # convert Plotly fig to an array
+#     ratio = 0.00125 * (array.shape[1] / array.shape[0]) * array.shape[1]
+#     fig['layout']['annotations'][0]['font']['size'] = int(fig['layout']['annotations'][0]['font']['size'] * ratio)
+#     fig['layout']['annotations'][1]['font']['size'] = int(fig['layout']['annotations'][1]['font']['size'] * ratio)
+#     fig_bytes = fig.to_image(format="webp", width=array.shape[1], height=array.shape[0], scale=5)
+#     buf = io.BytesIO(fig_bytes)
+#     img = Image.open(buf)
+#     return np.array(Image.fromarray(np.asarray(img)).convert('RGB')).astype(np.uint8)
+
+def generate_preset_options_preview_text(preset_dict: dict=None):
+    """
+    Generate the HTML compatible text that supplies the list of possible presets that the user can select
+    """
+    text = ''
+    if preset_dict:
+        for stud, val in preset_dict.items():
+            try:
+                try:
+                    low_bound = round(float(val['x_lower_bound']))
+                except TypeError:
+                    low_bound = None
+                try:
+                    up_bound = round(float(val['x_upper_bound']))
+                except TypeError:
+                    up_bound = None
+                text = text + f"{stud}: \r\n l_bound: {low_bound}, " \
+                          f"y_bound: {up_bound}, filter type: {val['filter_type']}, " \
+                          f"filter val: {val['filter_val']}, filter_sigma: {val['filter_sigma']} \r\n"
+            except KeyError:
+                pass
+    return text

@@ -1,10 +1,10 @@
 import os.path
-
 from ccramic.io.display import (
     RegionSummary,
     output_current_canvas_as_tiff,
     output_current_canvas_as_html,
-    FullScreenCanvas)
+    FullScreenCanvas,
+    generate_preset_options_preview_text)
 import numpy as np
 import pandas as pd
 import tempfile
@@ -274,3 +274,12 @@ def test_fullscreen_canvas():
     fullscreen = FullScreenCanvas(canvas.to_dict(), {"autosize": True})
     fullscreen_canvas = fullscreen.get_canvas()
     assert len(fullscreen_canvas['layout']['shapes']) == len(fullscreen_canvas['layout']['annotations']) == 0
+
+def test_output_preset_text():
+    presets = {"preset_1": {"x_lower_bound": 1, "x_upper_bound": 10, 'filter_type': 'gaussian',
+                            'filter_val': 1, 'filter_sigma': 1.0}}
+    preset_preview = generate_preset_options_preview_text(presets)
+    assert preset_preview == 'preset_1: \r\n l_bound: 1, y_bound: 10, ' \
+                             'filter type: gaussian, filter val: 1, filter_sigma: 1.0 \r\n'
+    preset_malformed = {"preset_1": {"fake_keys": None}}
+    assert generate_preset_options_preview_text(preset_malformed) == ''

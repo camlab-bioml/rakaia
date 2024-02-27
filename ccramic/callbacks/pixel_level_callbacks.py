@@ -41,7 +41,8 @@ from ccramic.io.display import (
     RegionSummary,
     output_current_canvas_as_tiff,
     output_current_canvas_as_html,
-    FullScreenCanvas)
+    FullScreenCanvas,
+    generate_preset_options_preview_text)
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
 from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
@@ -76,6 +77,12 @@ from ccramic.utils.alert import AlertMessage, file_import_message, DataImportErr
 import uuid
 from ccramic.utils.region import RegionAnnotation
 from ccramic.parsers.roi_parsers import RegionThumbnail
+from ccramic.utils.filter import (
+    return_current_or_default_filter_apply,
+    return_current_or_default_filter_param,
+    return_current_channel_blend_params,
+    return_current_or_default_channel_color,
+    return_current_default_params_with_preset)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -953,6 +960,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('apply-gating', 'value'),
                        Input('gating-cell-list', 'data'),
                        State('dataset-delimiter', 'value'),
+                       State('scalebar-color', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -967,7 +975,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
                                                 cluster_frame, cluster_type, download_canvas_tiff, custom_scale_val,
                                                 cluster_assignments_in_legend, apply_gating, gating_cell_id_list,
-                                                delimiter):
+                                                delimiter, scale_color):
 
         """
         Update the canvas from either an underlying change to the source image, or a change to the hover template
@@ -998,7 +1006,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter,
                 global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val,
-                                     apply_gating, gating_cell_id_list)
+                                     apply_gating, gating_cell_id_list, scale_color)
                 fig = canvas.generate_canvas()
                 if cluster_type == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig)
@@ -1057,11 +1065,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('toggle-canvas-scalebar', 'value'),
                        State('legend-size-slider', 'value'),
                        State('invert-annotations', 'value'),
+                       State('scalebar-color', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_coord_or_zoom_change(cur_graph, cur_graph_layout, x_request, y_request, current_window,
                              nclicks_coord, data_selection, image_dict, custom_scale_val, pixel_ratio,
-                            toggle_scalebar, legend_size, invert_annot):
+                            toggle_scalebar, legend_size, invert_annot, scale_col):
 
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
@@ -1077,12 +1086,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
                     proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                     # if ctx.triggered_id == 'annotation_canvas':
-                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion)
+                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout,
+                                                    pixel_ratio, proportion, scale_col)
                     # if ctx.triggered_id == "custom-scale-val":
                     pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                     x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
                     cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
-                                                        pixel_ratio, image_shape, legend_size, proportion)
+                                            pixel_ratio, image_shape, legend_size, proportion, scale_col)
                     # elif ctx.triggered_id == 'pixel-size-ratio':
                     #     cur_graph = CanvasLayout(cur_graph).use_custom_scalebar_value(custom_scale_val, pixel_ratio, proportion)
                     return cur_graph, cur_graph_layout
@@ -1162,13 +1172,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('custom-scale-val', 'value'),
                        Input('cluster-annotations-legend', 'value'),
                        State('cluster-colour-assignments-dict', 'data'),
+                       Input('scalebar-color', 'value'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
                                                    cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
                                                    channel_order, legend_size, pixel_ratio, invert_annot,
                                                    legend_orientation, custom_scale_val, cluster_assignments_in_legend,
-                                                   cluster_assignments_dict):
+                                                   cluster_assignments_dict, scalebar_col):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend) or
         updates the scalebar length with a custom value
@@ -1183,10 +1194,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 cluster_assignments_in_legend, cluster_assignments_dict, data_selection) if toggle_legend else ''
                 canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
                 return CanvasLayout(canvas).clear_improper_shapes()
-            elif ctx.triggered_id in ["toggle-canvas-scalebar"]:
+            elif ctx.triggered_id in ["toggle-canvas-scalebar", "scalebar-color"]:
                 proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                 canvas = CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
-                                                                pixel_ratio, image_shape, legend_size, proportion)
+                        pixel_ratio, image_shape, legend_size, proportion, scalebar_col)
                 return CanvasLayout(canvas).clear_improper_shapes()
         raise PreventUpdate
 
@@ -1323,6 +1334,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 html_path = dash.no_update
             return html_path
         raise PreventUpdate
+
+    # @dash_app.callback(Output('download-canvas-image-tiff-annotations', 'data'),
+    #                    Input('btn-download-canvas-tiff-annotations', 'n_clicks'),
+    #                    State('annotation_canvas', 'figure'),
+    #                    State('data-collection', 'value'),
+    #                    State('dataset-delimiter', 'value'),
+    #                    State('uploaded_dict', 'data'))
+    # # @cache.memoize())
+    # def download_tiff_w_annotations(download_tiff_annotations, cur_graph, data_selection, delimiter, uploaded):
+    #     if None not in (cur_graph, uploaded, data_selection) and download_tiff_annotations > 0:
+    #         dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
+    #         first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
+    #         fig = go.Figure(cur_graph)
+    #         fig.update_layout(margin=dict(
+    #                     l=0,
+    #                     r=0,
+    #                     b=0,
+    #                     t=0,
+    #                     pad=0
+    #                 ))
+    #         canvas = plotly_fig2array(fig, first_image)
+    #         return dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas,
+    #                 dest_dir=dest_path, use_roi_name=True,roi_name=data_selection, delimiter=delimiter))
+    #     raise PreventUpdate
 
     @dash_app.callback(Output('download-session-config-json', 'data'),
                        Input('btn-download-session-config-json', 'n_clicks'),
@@ -1769,45 +1804,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:
-            filter_type = current_blend_dict[selected_channel]['filter_type']
-            filter_val = current_blend_dict[selected_channel]['filter_val']
-            filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
-            color = current_blend_dict[selected_channel]['color']
-            # evaluate the current states of the inputs. if they are the same as the new channel, do not update
-            if ' Apply/refresh filter' in cur_bool_filter and None not in (filter_type, filter_val, filter_sigma):
-                to_apply_filter = dash.no_update
-            else:
-                to_apply_filter = [' Apply/refresh filter'] if None not in (filter_type, filter_val, filter_sigma) else []
-            if filter_type == cur_filter_type:
-                filter_type_return = dash.no_update
-            else:
-                filter_type_return = filter_type if filter_type is not None else cur_filter_type
-            if filter_val == cur_filter_val:
-                filter_val_return = dash.no_update
-            else:
-                filter_val_return = filter_val if filter_val is not None else cur_filter_val
-            if filter_sigma == cur_filter_sigma:
-                filter_sigma_return = dash.no_update
-            else:
-                filter_sigma_return = filter_sigma if filter_sigma is not None else cur_filter_sigma
-            if color == cur_colour['hex']:
-                color_return = dash.no_update
-            else:
-                color_return = dict(hex=color) if color is not None and color not in \
-                                                  ['#FFFFFF', '#ffffff'] else dash.no_update
+            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict, selected_channel)
+            to_apply_filter = return_current_or_default_filter_apply(cur_bool_filter, filter_type, filter_val, filter_sigma)
+            filter_type_return = return_current_or_default_filter_param(cur_filter_type, filter_type)
+            filter_val_return = return_current_or_default_filter_param(cur_filter_val, filter_val)
+            filter_sigma_return = return_current_or_default_filter_param(cur_filter_sigma, filter_sigma)
+            color_return = return_current_or_default_channel_color(cur_colour, color)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
-            filter_type = preset_dict[preset_selection]['filter_type']
-            filter_val = preset_dict[preset_selection]['filter_val']
-            filter_sigma = current_blend_dict[selected_channel]['filter_sigma']
-            color = current_blend_dict[selected_channel]['color']
-            to_apply_filter = [' Apply/refresh filter'] if None not in (filter_type, filter_val) else []
-            filter_type_return = filter_type if filter_type is not None else "median"
-            filter_val_return = filter_val if filter_val is not None else 3
-            filter_sigma_return = filter_sigma if filter_sigma is not None else 1
-            color_return = dict(hex=color) if color is not None and color not in \
-                                                  ['#FFFFFF', '#ffffff'] else dash.no_update
+            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict,
+                                                                                               selected_channel)
+            to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return = \
+                return_current_default_params_with_preset(filter_type, filter_val, filter_sigma, color)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         raise PreventUpdate
 
@@ -1865,21 +1874,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the hover information on the list of presets so that the user can preview the parameters before selecting
         """
-        if preset_dict is not None and len(preset_dict) > 0:
-            text = ''
-            for stud, val in preset_dict.items():
-                try:
-                    low_bound = round(float(val['x_lower_bound']))
-                except TypeError:
-                    low_bound = None
-                try:
-                    up_bound = round(float(val['x_upper_bound']))
-                except TypeError:
-                    up_bound = None
-                text = text + f"{stud}: \r\n l_bound: {low_bound}, " \
-                              f"y_bound: {up_bound}, filter type: {val['filter_type']}, " \
-                              f"filter val: {val['filter_val']} \r\n"
-
+        if preset_dict:
+            text = generate_preset_options_preview_text(preset_dict)
             return html.Textarea(text, style={"width": "200px", "height": f"{100 * len(preset_dict)}px"})
         raise PreventUpdate
 

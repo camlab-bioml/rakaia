@@ -33,7 +33,9 @@ class CanvasImage:
                  legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                  show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                cluster_frame, cluster_type, custom_scale_val, apply_gating, gating_cell_id_list):
+                cluster_frame, cluster_type: str="mask", custom_scale_val: int=None,
+                 apply_gating: bool=False, gating_cell_id_list: list=None,
+                 annotation_color: str="white"):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -65,6 +67,7 @@ class CanvasImage:
         self.custom_scale_val = custom_scale_val
         self.apply_gating = apply_gating
         self.gating_cell_id_list = gating_cell_id_list
+        self.annotation_color = annotation_color
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
@@ -143,7 +146,8 @@ class CanvasImage:
                 if self.toggle_scalebar:
                     fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
                                                     x_axis_left=x_axis_placement, pixel_ratio=self.pixel_ratio,
-                                                    invert=self.invert_annot, proportion=self.proportion)
+                                                    invert=self.invert_annot, proportion=self.proportion,
+                                                    scale_color=self.annotation_color)
 
                 fig = go.Figure(fig)
                 fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -166,7 +170,8 @@ class CanvasImage:
             if self.toggle_scalebar:
                 fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
                                                 x_axis_left=x_axis_placement, pixel_ratio=self.pixel_ratio,
-                                                invert=self.invert_annot, proportion=self.proportion)
+                                                invert=self.invert_annot, proportion=self.proportion,
+                                                scale_color=self.annotation_color)
 
             fig = go.Figure(fig)
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
@@ -206,7 +211,7 @@ class CanvasImage:
             fig.add_shape(type="line",
                           xref="paper", yref="paper",
                           x0=x_0, y0=0.05, x1=x_1,
-                          y1=0.05, line=dict(color="white", width=2))
+                          y1=0.05, line=dict(color=self.annotation_color, width=2))
 
         # set the custom hovertext if is is requested
         # the masking mask ID get priority over the channel intensity hover
@@ -285,7 +290,7 @@ class CanvasLayout:
         return self.figure
 
     def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size,
-                     proportion=0.1):
+                     proportion=0.1, annotation_color: str="white"):
         try:
             proportion = float(proportion / pixel_ratio)
         except ZeroDivisionError:
@@ -300,7 +305,7 @@ class CanvasLayout:
         fig.add_shape(type="line",
                       xref="paper", yref="paper",
                       x0=x_0, y0=0.05, x1=x_1,
-                      y1=0.05, line=dict(color="white", width=2))
+                      y1=0.05, line=dict(color=annotation_color, width=2))
 
         try:
             high = max(self.figure['layout']['xaxis']['range'][1],
@@ -316,8 +321,8 @@ class CanvasLayout:
             custom_scale_val = None
 
         fig = add_scale_value_to_figure(fig, image_shape, scale_value=custom_scale_val,
-                                        font_size=legend_size, x_axis_left=x_axis_placement,
-                                        invert=invert_annot, proportion=proportion)
+                                font_size=legend_size, x_axis_left=x_axis_placement, invert=invert_annot,
+                                proportion=proportion, scale_color=annotation_color)
 
         return fig.to_dict()
 
@@ -347,7 +352,7 @@ class CanvasLayout:
             return self.add_legend_text(legend_text, x_axis_placement, legend_size)
 
     def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot,
-                        pixel_ratio, image_shape, legend_size, proportion=0.1):
+                        pixel_ratio, image_shape, legend_size, proportion=0.1, scalebar_color: str="white"):
         cur_shapes = [shape for shape in self.cur_shapes if \
                       shape not in [None, "None"] and 'type' in shape and shape['type'] \
                       in ['rect', 'path', 'circle'] and not is_bad_shape(shape)]
@@ -359,7 +364,7 @@ class CanvasLayout:
             return self.figure
         else:
             return self.add_scalebar(x_axis_placement, invert_annot,
-                    pixel_ratio, image_shape, legend_size, proportion)
+                    pixel_ratio, image_shape, legend_size, proportion, scalebar_color)
 
     def change_annotation_size(self, legend_size):
         """
@@ -398,7 +403,8 @@ class CanvasLayout:
         self.figure['layout']['shapes'] = self.cur_shapes
         return self.figure
 
-    def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio, proportion=0.1):
+    def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio, proportion=0.1,
+                                   scalebar_col: str="white"):
         """
         update the scalebar value when zoom is used
         Loop through the annotations to identify the scalebar value when y = 0.06
@@ -436,7 +442,7 @@ class CanvasLayout:
                     pixel_ratio))
                 scale_val = scale_val if scale_val > 0 else 1
                 scale_annot = str(scale_val) + "μm"
-                scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
+                scale_text = f'<span style="color: {scalebar_col}">{str(scale_annot)}</span><br>'
                 # get the index of the list element corresponding to this text annotation
                 index = self.figure['layout']['annotations'].index(annotations)
                 self.figure['layout']['annotations'][index]['text'] = scale_text
