@@ -273,6 +273,11 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask, clusters, colors, "roi_1")
     assert len(fig['layout']['shapes']) > 1000
 
+    fig = go.Figure(px.imshow(image))
+    fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask, clusters, colors, "roi_1", 2,
+                                            use_gating=True, gating_cell_id_list=list(range(101, 106, 1)))
+    assert len(fig['layout']['shapes']) == 5
+
     fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
     assert len(fig['layout']['shapes']) == 1

@@ -38,17 +38,21 @@ class AnnotationRegionWriter:
         if self.roi_selection in self.annotation_dict.keys() and \
             len(self.annotation_dict[self.roi_selection].items()) > 0:
             for key, value in self.annotation_dict[self.roi_selection].items():
-                # TODO: for now, just use svg paths
-                # make sure that the mask is not None so that the ids inside the mask can be extracted
+                objects_included = []
+                # for now, just use svg paths to extract mask object annotation
                 if value['type'] == 'path' and value['mask_selection'] is not None:
                     objects_included = get_cells_in_svg_boundary_by_mask_percentage(
-                        mask_array=self.mask_dict[value['mask_selection']]["raw"], svgpath=key)
+                        mask_array=self.mask_dict[value['mask_selection']]["raw"], svgpath=key).keys()
+                elif value['type'] == 'gate' and value['mask_selection'] is not None:
+                    objects_included = list(key)
+                if objects_included:
                     for obj in objects_included:
                         self.region_object_frame['ROI'].append(self.acquisition_name)
                         self.region_object_frame['mask_name'].append(str(value['mask_selection']))
                         self.region_object_frame['cell_id'].append(int(obj))
                         self.region_object_frame['annotation_col'].append(str(value['annotation_column']))
                         self.region_object_frame['annotation'].append(str(value['cell_type']))
+
         if not pd.DataFrame(self.region_object_frame).empty:
             pd.DataFrame(self.region_object_frame).to_csv(self.filepath, index=False)
             return self.filepath

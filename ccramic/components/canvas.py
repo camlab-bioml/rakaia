@@ -494,19 +494,21 @@ class CanvasLayout:
         return self.figure
 
     def add_cluster_annotations_as_circles(self, mask, cluster_frame, cluster_assignments,
-                                           data_selection, circle_size=2):
+                                           data_selection, circle_size=2, use_gating: bool=False,
+                                           gating_cell_id_list: list=None):
         """
-        Add an annotation circle to every mask centroid by cluster annotation
+        Add an annotation circle to every mask object in a mask, or in a list of gated objects
         requires:
         mask = a mask with raw object values starting at 1 in numpt int32 form
         cluster_frame = a dataframe with the columns `cell_id` and `cluster`
         cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
         data_selection = string representation of the current ROI
         """
-        shapes = self.cur_shapes
+        shapes = self.cur_shapes if self.cur_shapes else []
         cluster_frame = pd.DataFrame(cluster_frame)
         cluster_frame = cluster_frame.astype(str)
-        for mask_id in np.unique(mask):
+        ids_use = gating_cell_id_list if (gating_cell_id_list is not None and use_gating) else np.unique(mask)
+        for mask_id in ids_use:
             # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
             subset = np.where(mask == int(mask_id), int(mask_id), 0)
             region_props = measure.regionprops(subset)

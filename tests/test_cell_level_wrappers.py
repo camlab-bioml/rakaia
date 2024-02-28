@@ -122,6 +122,25 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     assert 'ccramic_cell_annotation' in quantification_frame.columns
     assert 'mature' in list(quantification_frame['ccramic_cell_annotation'])
 
+    gated_cell_tuple = (102, 154, 134, 201, 209, 244)
+    # annotate using gated cell method
+    annotations_dict = {'roi_1': {
+        gated_cell_tuple:
+            {'title': 'None', 'body': 'None',
+             'cell_type': 'mature', 'imported': False, 'type': 'gate',
+             'annotation_column': 'gating_test'}
+    }}
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
+                                sample_name='Dilution_series_1_1', config=app_config)
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'gating_test' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['gating_test'])
+    # assert that the gated positions are offset by 1 (0-indexed)
+    assert quantification_frame.index[quantification_frame['gating_test'] == 'mature'].tolist() == \
+           [int(elem) - 1 for elem in sorted(list(gated_cell_tuple))]
+
 
 def test_basic_annotation_dict_without_quantification_frame(get_current_dir):
     annotations_dict = {'roi_1': {
@@ -205,6 +224,43 @@ def test_basic_callback_remove_annotations_quantification_frame_2(get_current_di
     assert not 'mature' in list(quantification_frame['ccramic_cell_annotation'])
     assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['None']
 
+def test_basic_callback_remove_annotations_quantification_frame_3(get_current_dir):
+    """
+    Test that adding gated cells and removing works as expected
+    """
+    app_config = {'serverside_overwrite': True}
+    mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
+
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+
+    gated_cell_tuple = (102, 154, 134, 201, 209, 244)
+    # annotate using gated cell method
+    annotations_dict = {'roi_1': {
+        gated_cell_tuple:
+            {'title': 'None', 'body': 'None',
+             'cell_type': 'mature', 'imported': False, 'type': 'gate',
+             'annotation_column': 'gating_test', 'mask_selection': 'mask'}
+    }}
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+            measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
+            sample_name='Dilution_series_1_1', config=app_config)
+
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'gating_test' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['gating_test'])
+    # assert that the gated positions are offset by 1 (0-indexed)
+    assert quantification_frame.index[quantification_frame['gating_test'] == 'mature'].tolist() == \
+           [int(elem) - 1 for elem in sorted(list(gated_cell_tuple))]
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+                    quantification_frame.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
+                    sample_name='Dilution_series_1_1', config=app_config, remove=True)
+
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'gating_test' in quantification_frame.columns
+    assert not 'mature' in list(quantification_frame['gating_test'])
+    assert quantification_frame.index[quantification_frame['gating_test'] == 'mature'].tolist() == []
 
 def test_basic_shape_removal_from_canvas():
     import plotly.graph_objects as go

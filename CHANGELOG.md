@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-02-23
+## [0.13.0] - 2024-02-28
 
 ### Added
 
@@ -18,7 +18,8 @@ callback
 - Custom exception for data reading error at likely callback point where disk storage errors occur
 - Added integrated (total) signal to channel summary statistics
 - single or multichannel gating from quantification results: gating can be applied to a canvas mask and
-combined with clustering labels
+combined with clustering labels (mask and circle)
+- Add annotation from gated cell list to quantification results or CSV object list output
 - removing the most recent annotation will also apply to the quantification frame annotations: will
 set any annotated objects in quantification to the default `None`
 

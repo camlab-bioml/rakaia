@@ -32,27 +32,30 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                         quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
                         values_dict=dict(annotation), cell_type=annotations[data_selection][annotation]['cell_type'],
                         annotation_column=annotations[data_selection][annotation]['annotation_column'], remove=remove)
-
-                    elif annotations[data_selection][annotation]['type'] == "path":
-                        # TODO: decide which method of annotation to use
+                    # TODO: add in annotation from gated cell list here
+                    elif annotations[data_selection][annotation]['type'] in ["path", "gate"] and mask_toggle and \
+                                None not in (mask_config, mask_selection) and len(mask_config) > 0:
+                        cells_included = []
+                        # option 1: list from gated cells
+                        if annotations[data_selection][annotation]['type'] == "gate":
+                            cells_included = {cell: 100.0 for cell in list(annotation)}
                         # if a mask is enabled, use the mask ID threshold method
                         # otherwise, make a convex envelope bounding box
-
-                        # option 1: mask ID threshold
-                        if mask_toggle and None not in (mask_config, mask_selection) and len(mask_config) > 0:
+                        # option 2: mask ID threshold from path
+                        elif annotations[data_selection][annotation]['type'] == "path":
                             cells_included = get_cells_in_svg_boundary_by_mask_percentage(
                                 mask_array=mask_config[mask_selection]["raw"], svgpath=annotation)
-                            quantification_frame = populate_cell_annotation_column_from_cell_id_list(
-                                quantification_frame, cell_list=list(cells_included.keys()),
-                                cell_type=annotations[data_selection][annotation]['cell_type'], sample_name=sample_name,
+                        quantification_frame = populate_cell_annotation_column_from_cell_id_list(
+                            quantification_frame, cell_list=list(cells_included.keys()),
+                            cell_type=annotations[data_selection][annotation]['cell_type'], sample_name=sample_name,
                             annotation_column=annotations[data_selection][annotation]['annotation_column'],
                             id_column=id_column, remove=remove)
-                        # option 2: convex envelope bounding box
-                        else:
-                            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
-                            val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
+                        # option 2: convex envelope bounding box from path
+                    elif annotations[data_selection][annotation]['type'] == "path":
+                        x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
+                        val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
                                         'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
-                            quantification_frame = populate_cell_annotation_column_from_bounding_box(
+                        quantification_frame = populate_cell_annotation_column_from_bounding_box(
                                 quantification_frame, values_dict=val_dict,
                                 cell_type=annotations[data_selection][annotation]['cell_type'],
                                 annotation_column=annotations[data_selection][annotation]['annotation_column'],

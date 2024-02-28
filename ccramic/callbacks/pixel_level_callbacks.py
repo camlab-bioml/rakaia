@@ -75,7 +75,9 @@ from ccramic.utils.db import (
     extract_alias_labels_from_db_document)
 from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError
 import uuid
-from ccramic.utils.region import RegionAnnotation
+from ccramic.utils.region import (
+    RegionAnnotation,
+    check_for_valid_annotation_hash)
 from ccramic.parsers.roi_parsers import RegionThumbnail
 from ccramic.utils.filter import (
     return_current_or_default_filter_apply,
@@ -320,8 +322,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
                     session_config=session_config, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
-                    if data_selection in image_dict.keys() and \
-                            all([image_dict[data_selection][elem] is not None for \
+                    if data_selection in image_dict.keys() and all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
                         # get the first image in the ROI and check the dimensions
                         first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
@@ -483,8 +484,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 for elem in add_to_layer:
                     current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
                         current_blend_dict, elem, uploaded_w_data, data_selection)
-                    array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
-                                                     current_blend_dict[elem])
+                    array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
                     all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                     current_blend_dict[elem]['color'])).astype(np.uint8)
                 error_config["error"] = ALERT.warnings["json_update_success"]
@@ -657,7 +657,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                         colour['hex'])).astype(np.uint8)
-
                     return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
                                                 use_unique_key=app_config['serverside_overwrite'])
                 raise PreventUpdate
@@ -1013,8 +1012,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig = fig.remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask:
                     fig = CanvasLayout(fig)
-                    fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
-                        pd.DataFrame(cluster_frame[data_selection]), cluster_assignments_dict, data_selection)
+                    fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"], pd.DataFrame(
+                cluster_frame[data_selection]), cluster_assignments_dict, data_selection, 2, apply_gating, gating_cell_id_list)
                 # set if the image is to be downloaded or not
                 dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 canvas_tiff = dash.no_update
@@ -2088,21 +2087,33 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-options', 'value'),
         State('mask-blending-slider', 'value'),
         State('add-mask-boundary', 'value'),
-        State('quant-annotation-col', 'value'))
+        State('quant-annotation-col', 'value'),
+        Input('gating-annotation-create', 'n_clicks'),
+        State('apply-gating', 'value'),
+        State('quant-annotation-col-gating', 'value'),
+        State('gating-annotation-assignment', 'value'),
+        State('gating-cell-list', 'data'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
-                               canvas_layout, annotations_dict, data_selection, cur_layers,
-                               mask_toggle, mask_selection, mask_blending_level, add_mask_boundary, annot_col):
-        if create_annotation and None not in (annotation_title, annotation_body,
-                                              canvas_layout, data_selection, cur_layers):
-            if annotations_dict is None or len(annotations_dict) < 1:
-                annotations_dict = {}
-            if data_selection not in annotations_dict.keys():
-                annotations_dict[data_selection] = {}
+                               canvas_layout, annotations_dict, data_selection, cur_layers, mask_toggle,
+        mask_selection, mask_blending_level, add_mask_boundary, annot_col, add_annot_gating, apply_gating,
+                               gating_annot_col, gating_annot_type, gating_cell_id_list):
+        annotations_dict = check_for_valid_annotation_hash(annotations_dict, data_selection)
+        # Option 1: if triggered from gating
+        if ctx.triggered_id == "gating-annotation-create" and add_annot_gating and apply_gating and None not in \
+                (gating_annot_col, gating_annot_type, gating_cell_id_list, mask_selection, data_selection, cur_layers):
+            annotations_dict[data_selection][tuple(gating_cell_id_list)] = RegionAnnotation(
+                title=None, body=None, cell_type=gating_annot_type, imported=False,
+                annotation_column=gating_annot_col, type="gate", channels=cur_layers, use_mask=mask_toggle,
+                mask_selection=mask_selection, mask_blending_level=mask_blending_level, add_mask_boundary=add_mask_boundary).dict()
+            return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
+        # Option 2: if triggered from region drawing
+        elif ctx.triggered_id == "create-annotation" and create_annotation and None not in \
+                (annotation_title, annotation_body, canvas_layout, data_selection, cur_layers):
             # use the data collection as the highest key for each ROI, then use the canvas coordinates to
             # uniquely identify a region
-
             # IMP: convert the dictionary to a sorted tuple to use as a key
             # https://stackoverflow.com/questions/1600591/using-a-python-dictionary-as-a-key-non-nested
+            # TODO: add in logic here to allow gated cell annotation from the relevant inputs
             annotation_list = {}
             # Option 1: if zoom is used
             if isinstance(canvas_layout, dict) and 'shapes' not in canvas_layout:
@@ -2110,7 +2121,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # Option 2: if a shape is drawn on the canvas
             elif 'shapes' in canvas_layout and isinstance(canvas_layout, dict) and len(canvas_layout['shapes']) > 0:
                 # only get the shapes that are a rect or path, the others are canvas annotations
-                # TODO: set using only the most recent shape to be added to avoid duplication
+                # set using only the most recent shape to be added to avoid duplication
                 for shape in [canvas_layout['shapes'][-1]]:
                     if shape['type'] == 'path':
                         annotation_list[shape['path']] = 'path'
@@ -2152,8 +2163,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("inputs-offcanvas", "is_open"),
         Input("inputs-offcanvas-button", "n_clicks"),
-        State("inputs-offcanvas", "is_open"),
-    )
+        State("inputs-offcanvas", "is_open"))
     def toggle_offcanvas_inputs(n1, is_open):
         if n1:
             return not is_open
@@ -2205,6 +2215,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("quant-annotation-col", "options"),
         Output('quant-annotation-col-in-tab', 'options'),
+        Output('quant-annotation-col-gating', 'options'),
         Input('add-annotation-col', 'n_clicks'),
         State('new-annotation-col', 'value'),
         State('quant-annotation-col', 'options'),
@@ -2215,9 +2226,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def add_new_annotation_column(add_new_col_canvas, new_col_canvas, current_cols_canvas,
                                   add_new_col_quant, new_col_quant, current_cols_quant):
         """
-        Add a new annotation column to the dropdown menu possibilities for quantification
-        Will add the category to both the dropdown in the canvas annotation and quantification tab
-        Both dropdown outputs will always have the same columns
+        Add a new annotation column to the dropdown menu possibilities for annotation
+        Will add the category to all of the dropdown menus where annotation can occur: Currently these are:
+            - region (under Region/presets -> Add region annotation)
+            - gating (under Configuration -> Gating)
+            - quantification (Under Quantification/clustering -> UMAP options)
+        All dropdown outputs will always have the same columns
         """
         # Cases where the callback will occur: if either button is clicked and the corresponding input field is not empty
         trigger_canvas = ctx.triggered_id == "add-annotation-col" and add_new_col_canvas > 0 and new_col_canvas
@@ -2229,7 +2243,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if not isinstance(cur_cols, list) and len(cur_cols) > 0: raise AssertionError
             if col_to_add not in cur_cols:
                 cur_cols.append(col_to_add)
-            return cur_cols, cur_cols
+            return cur_cols, cur_cols, cur_cols
         raise PreventUpdate
 
     @dash_app.callback(

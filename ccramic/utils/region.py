@@ -110,3 +110,14 @@ class RegionAnnotation(BaseModel):
     mask_selection: str = None
     mask_blending_level: float = 35.0
     add_mask_boundary: Union[bool, list, str] = True
+
+def check_for_valid_annotation_hash(annotations_dict: dict=None, roi_selection: str=None):
+    """
+    Check the current annotation hash table, and create a new one if id doesn't exist,
+    or add in the current ROI if not present
+    """
+    if annotations_dict is None or len(annotations_dict) < 1:
+        annotations_dict = {}
+    if roi_selection and roi_selection not in annotations_dict.keys():
+        annotations_dict[roi_selection] = {}
+    return annotations_dict
