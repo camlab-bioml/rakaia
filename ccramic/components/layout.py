@@ -739,7 +739,7 @@ def register_app_layout(config, cache_dest):
                                 [dash_table.DataTable(id='annotation-table', columns=[], data=None, editable=False,
                                 filter_action='native', row_selectable='multi', column_selectable='multi'),
                                 html.Br(),
-                                # dbc.Button("Delete selected annotation", id='delete-annotation-tabular')
+                                dbc.Button("Delete selected annotation(s)", id='delete-annotation-tabular')
                                  ]),
                                     id="annotation-preview", size='xl'),
                                 # html.Br(),

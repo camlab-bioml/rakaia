@@ -316,11 +316,11 @@ def test_apply_cluster_annotations_with_gating(get_current_dir):
 
 def test_remove_latest_annotation():
     annotations_dict_original = {"roi_1": {"annot_1": "This is an annotation", "annot_2": "This is also an annotation"}}
-    annotations_dict = remove_latest_annotation_entry(annotations_dict_original, "roi_1")
+    annotations_dict = remove_annotation_entry_by_indices(annotations_dict_original, "roi_1")
     assert len(annotations_dict['roi_1']) == 1
-    annotations_dict = remove_latest_annotation_entry(annotations_dict, "roi_1")
+    annotations_dict = remove_annotation_entry_by_indices(annotations_dict, "roi_1")
     assert not len(annotations_dict['roi_1'])
-    annotations_dict = remove_latest_annotation_entry(annotations_dict, "roi_1")
+    annotations_dict = remove_annotation_entry_by_indices(annotations_dict, "roi_1")
     assert not len(annotations_dict['roi_1'])
-    assert remove_latest_annotation_entry(annotations_dict, None) == annotations_dict_original
-    assert not remove_latest_annotation_entry(None, "roi_1")
+    assert remove_annotation_entry_by_indices(annotations_dict, None) == annotations_dict_original
+    assert not remove_annotation_entry_by_indices(None, "roi_1")

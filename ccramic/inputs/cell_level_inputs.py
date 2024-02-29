@@ -169,8 +169,11 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         # only recreate the graph if new data are passed from the UMAP, not on a recolouring of the UMAP
         if triggered_id not in ["umap-projection-options"] or category_column is None:
             # IMP: reset the index for the heatmap to avoid uneven box sizes
-            fig = generate_channel_heatmap(subset_frame.reset_index(drop=True), cols_include=cols_include,
+            try:
+                fig = generate_channel_heatmap(subset_frame.reset_index(drop=True), cols_include=cols_include,
                                            subset_val=subset_val)
+            except ValueError:
+                fig = go.Figure()
             fig['layout']['uirevision'] = True
         else:
             fig = dash.no_update

@@ -1,3 +1,4 @@
+import tempfile
 from ccramic.entrypoint import init_app, __version__
 import argparse
 import sys
@@ -61,6 +62,9 @@ def argparser():
                              "be required for array values between 0 and 1, but uint arrays will likely consume less memory. "
                              "Default is float",
                         dest="array_type", default="float", type=str, choices=["float", "int"])
+    parser.add_argument('-cs', "--cache-storage", action="store",
+                        help="Set the output path for the temporary session caches. Default is the temp directory",
+                        dest="cache_dest", default=str(tempfile.gettempdir()), type=str)
 
     return parser
 
@@ -81,7 +85,8 @@ def main(sysargs = sys.argv[1:]):
                   'swatches': args.swatches,
                   'array_store_type': args.array_type,
                   'serverside_overwrite': args.serverside_overwrite,
-                  'is_dev_mode': args.is_dev_mode}
+                  'is_dev_mode': args.is_dev_mode,
+                  'cache_dest': args.cache_dest}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:

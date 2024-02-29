@@ -5,7 +5,7 @@ from ccramic.utils.cell_level_utils import (
     populate_cell_annotation_column_from_bounding_box,
     get_cells_in_svg_boundary_by_mask_percentage,
     populate_cell_annotation_column_from_cell_id_list,
-    populate_cell_annotation_column_from_clickpoint, remove_latest_annotation_entry)
+    populate_cell_annotation_column_from_clickpoint, remove_annotation_entry_by_indices)
 from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
 import ast
 from ccramic.components.canvas import CanvasLayout
@@ -15,14 +15,26 @@ from ccramic.utils.shapes import is_bad_shape
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                     mask_config, mask_toggle, mask_selection, sample_name=None, id_column='sample',
-                                    config: dict=None, remove: bool=False):
+                                    config: dict=None, remove: bool=False, indices_remove: list=None):
     # loop through all of the existing annotations
     # for annotations that have not yet been imported, import and set the import status to True
     if annotations and len(annotations) > 0:
         # if removing the latest annotation, set it to not imported, replace with the default of None, then delete
         if remove and annotations[data_selection]:
-            last = list(annotations[data_selection].keys())[-1]
-            annotations[data_selection][last]['imported'] = False
+            # set the ids for the indices to remove
+            if not indices_remove:
+                last = list(annotations[data_selection].keys())[-1]
+                annotations[data_selection][last]['imported'] = False
+            else:
+                id_list = [elem['id'] for elem in annotations[data_selection].values() if 'id' in elem]
+                for index_position in indices_remove:
+                    try:
+                        id_annot = id_list[index_position]
+                        for annotation in annotations[data_selection].values():
+                            if annotation['id'] == id_annot:
+                                annotation['imported'] = False
+                    except IndexError:
+                        pass
         if data_selection in annotations.keys() and len(annotations[data_selection]) > 0 and quantification_frame:
             quantification_frame = pd.DataFrame(quantification_frame)
             for annotation in annotations[data_selection].keys():
@@ -77,12 +89,12 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
 
             # if remove, remove the last annotation from the dictionary
             if remove:
-                annotations = remove_latest_annotation_entry(annotations, data_selection)
+                annotations = remove_annotation_entry_by_indices(annotations, data_selection, indices_remove)
             return quantification_frame.to_dict(orient="records"), \
                 SessionServerside(annotations, key="annotation_dict", use_unique_key=config['serverside_overwrite'])
         elif annotations:
             if remove:
-                annotations = remove_latest_annotation_entry(annotations, data_selection)
+                annotations = remove_annotation_entry_by_indices(annotations, data_selection, indices_remove)
             return None, SessionServerside(annotations,
             key="annotation_dict", use_unique_key=config['serverside_overwrite'])
     else:

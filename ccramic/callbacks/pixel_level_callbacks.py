@@ -42,7 +42,8 @@ from ccramic.io.display import (
     output_current_canvas_as_tiff,
     output_current_canvas_as_html,
     FullScreenCanvas,
-    generate_preset_options_preview_text)
+    generate_preset_options_preview_text,
+    annotation_preview_table)
 from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
 from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
 from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
@@ -85,6 +86,7 @@ from ccramic.utils.filter import (
     return_current_channel_blend_params,
     return_current_or_default_channel_color,
     return_current_default_params_with_preset)
+import shortuuid
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -2102,9 +2104,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "gating-annotation-create" and add_annot_gating and apply_gating and None not in \
                 (gating_annot_col, gating_annot_type, gating_cell_id_list, mask_selection, data_selection, cur_layers):
             annotations_dict[data_selection][tuple(gating_cell_id_list)] = RegionAnnotation(
-                title=None, body=None, cell_type=gating_annot_type, imported=False,
-                annotation_column=gating_annot_col, type="gate", channels=cur_layers, use_mask=mask_toggle,
-                mask_selection=mask_selection, mask_blending_level=mask_blending_level, add_mask_boundary=add_mask_boundary).dict()
+                title=None, body=None, cell_type=gating_annot_type, imported=False, annotation_column=gating_annot_col,
+                type="gate", channels=cur_layers, use_mask=mask_toggle, mask_selection=mask_selection,
+                mask_blending_level=mask_blending_level, add_mask_boundary=add_mask_boundary, id=str(shortuuid.uuid())).dict()
             return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and None not in \
@@ -2132,7 +2134,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 annotations_dict[data_selection][key] = RegionAnnotation(title = annotation_title, body = annotation_body,
                 cell_type = annotation_cell_type, imported = False, annotation_column = annot_col, type = value,
                 channels = cur_layers, use_mask = mask_toggle, mask_selection = mask_selection,
-                mask_blending_level = mask_blending_level, add_mask_boundary = add_mask_boundary).dict()
+                mask_blending_level = mask_blending_level, add_mask_boundary = add_mask_boundary, id=str(shortuuid.uuid())).dict()
             return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
 
@@ -2143,21 +2145,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def populate_annotations_table_preview(annotations_dict, dataset_selection):
         if None not in (annotations_dict, dataset_selection):
-            try:
-                columns_keep = ['title', 'body', 'cell_type', 'annotation_column', 'type']
-                if len(annotations_dict[dataset_selection]) > 0:
-                    annotation_list = []
-                    for key, value in annotations_dict[dataset_selection].items():
-                        value = dict((k, value[k]) for k in columns_keep)
-                        for sub_key, sub_value in value.items():
-                            value[sub_key] = str(sub_value)
-                        annotation_list.append(value)
-                    columns = [{'id': p, 'name': p, 'editable': False} for p in columns_keep]
-                    return annotation_list, columns
-                else:
-                    return [], []
-            except KeyError:
-                return [], []
+            return annotation_preview_table(annotations_dict, dataset_selection)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2276,7 +2264,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 y = clickdata['points'][0]['y']
 
                 annotations_dict[data_selection][str(clickdata)] = RegionAnnotation(cell_type=annotation_cell_type,
-                                                    annotation_column=annot_col, type='point').dict()
+                                            annotation_column=annot_col, type='point', id=str(shortuuid.uuid())).dict()
                 if ' Add circle on click' in add_circle:
                     circle_size = int(circle_size)
                     fig = CanvasLayout(cur_figure).clear_improper_shapes()

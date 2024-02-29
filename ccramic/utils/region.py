@@ -1,7 +1,12 @@
 import math
-from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path
+
+from ccramic.utils.cell_level_utils import get_min_max_values_from_zoom_box, get_min_max_values_from_rect_box
+from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path, \
+    get_bounding_box_for_svgpath
 from pydantic import BaseModel
 from typing import Union
+import ast
+
 class ChannelRegion:
     """
     This abstract class defines a region for a particular channel
@@ -99,6 +104,7 @@ class FreeFormRegion(ChannelRegion):
             self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
 
 class RegionAnnotation(BaseModel):
+    id: str = None
     title: str = None
     body: str = None
     cell_type: str = None
@@ -121,3 +127,56 @@ def check_for_valid_annotation_hash(annotations_dict: dict=None, roi_selection: 
     if roi_selection and roi_selection not in annotations_dict.keys():
         annotations_dict[roi_selection] = {}
     return annotations_dict
+
+class AnnotationPreviewGenerator:
+    """
+    Generates a text-based preview of an annotation to be compatible with the annotation preview table,
+    which summarizes all of the current annotations in the selected ROI
+    Different annotation types will have different string previews:
+        - region: lists the bounding box coordinates
+        - point: lists the xy coordinates
+        - gating: lists the number of objects in the gate
+    """
+
+    def generate_annotation_preview(self, annot_key, annot_type="zoom"):
+        """
+        Generates a list of previews for each annotation in the current ROI
+        """
+        if annot_type == "point":
+            return self.generate_point_preview(annot_key)
+        elif annot_type == "gate":
+            # if use gating, simply add the number of cells
+            return f"{len(annot_key)} cells"
+        elif annot_type in ['zoom', 'rect', 'path']:\
+            return self.generate_region_preview(annot_key, annot_type)
+        return None
+
+    @staticmethod
+    def generate_region_preview(key, reg_type="zoom"):
+        """
+        Generate a preview of a region key. Has the following general tuple structures:
+        Zoom:
+        (('xaxis.range[0]', 826), ('xaxis.range[1]', 836), ('yaxis.range[0]', 12), ('yaxis.range[1]', 21))
+        Rectangle:
+        (('x0', 826), ('x1', 836), ('y0', 12), ('y1', 21))
+        svg path:
+        'M670.7797603577856,478.9708311618908L675.5333177884905,487.2270098573258L676.0336922548805,'
+        '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
+        """
+        x_min, x_max, y_min, y_max = None, None, None, None
+        if reg_type == "zoom":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
+        elif reg_type =="rect":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
+        elif reg_type == "path":
+            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
+        return f"x: [{round(x_min)}, {round(x_max)}]\n y: [{round(y_min)}, {round(y_max)}]"
+
+    @staticmethod
+    def generate_point_preview(key):
+        """
+        Generate a preview of the click point key. Has the following general string structure:
+        "{'points': [{'x': 582, 'y': 465}]}"
+        """
+        eval_points = ast.literal_eval(key)
+        return f"x: {eval_points['points'][0]['x']}, y: {eval_points['points'][0]['y']}"

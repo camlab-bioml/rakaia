@@ -14,6 +14,7 @@ import shutil
 from dash import dcc
 import pandas as pd
 from dash.exceptions import PreventUpdate
+import ast
 
 
 class AnnotationRegionWriter:
@@ -121,8 +122,8 @@ class AnnotationMaskWriter:
                 # if using an svgpath, get the mask for the interior pixels
                 elif value['type'] == 'point':
                     try:
-                        x = eval(key)['points'][0]['x']
-                        y = eval(key)['points'][0]['y']
+                        x = ast.literal_eval(key)['points'][0]['x']
+                        y = ast.literal_eval(key)['points'][0]['y']
                         if self.mask is not None:
                             cell_id = self.mask[y, x]
 
@@ -190,13 +191,14 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
         for key, value in annotations_dict[data_selection].items():
             if value['type'] in ['point', 'points']:
                 try:
-                    points['x'].append(eval(key)['points'][0]['x'])
-                    points['y'].append(eval(key)['points'][0]['y'])
+                    points['x'].append(ast.literal_eval(key)['points'][0]['x'])
+                    points['y'].append(ast.literal_eval(key)['points'][0]['y'])
                     points['annotation_col'].append(value['annotation_column'])
                     points['annotation'].append(value['cell_type'])
                     points['ROI'].append(roi_name)
                     if mask_used is not None:
-                        cell_id = mask_used[eval(key)['points'][0]['y'], eval(key)['points'][0]['x']].astype(int)
+                        cell_id = mask_used[ast.literal_eval(key)['points'][0]['y'],
+                                ast.literal_eval(key)['points'][0]['x']].astype(int)
                         points[mask_selection + "_cell_id"].append(cell_id)
                 except KeyError:
                     pass

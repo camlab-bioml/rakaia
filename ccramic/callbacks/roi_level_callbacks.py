@@ -147,36 +147,3 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         else:
             error_config["error"] = AlertMessage().warnings["quantification_missing_mask"]
             return dash.no_update, error_config, dash.no_update, dash.no_update
-
-    # @dash_app.callback(
-    #     Output("annotations-dict", "data", allow_duplicate=True),
-    #     Output('annotation_canvas', 'figure', allow_duplicate=True),
-    #     Input('delete-annotation-tabular', 'n_clicks'),
-    #     State('annotation-table', 'selected_rows'),
-    #     State('data-collection', 'value'),
-    #     State('annotations-dict', 'data'),
-    #     State('annotation_canvas', 'figure'),
-    #     prevent_initial_call=True)
-    # def delete_selected_annotations(trigger_delete, active_selection, cur_selection, annot_dict, cur_fig):
-    #     """
-    #     Delete annotations in the current ROI by tabular selection
-    #     """
-    #     if None not in (active_selection, cur_selection, annot_dict, cur_fig):
-    #         original_keys = list(annot_dict[cur_selection].keys())
-    #         shapes = cur_fig['layout']['shapes'].copy()
-    #         new_shapes = []
-    #         try:
-    #             for to_delete in active_selection:
-    #                 key = original_keys[int(to_delete)]
-    #                 if annot_dict[cur_selection][key]['type'] == 'path':
-    #                     for shape in shapes:
-    #                         if not (shape['type'] == 'path' and str(shape['path']) == str(key)):
-    #                             new_shapes.append(shape)
-    #                 annot_dict[cur_selection].pop(key)
-    #                 cur_fig['layout']['shapes'] = new_shapes if new_shapes else shapes
-    #             return SessionServerside(annot_dict, key="annotation_dict",
-    #                                  use_unique_key=app_config['serverside_overwrite']), cur_fig
-    #         except (KeyError, ValueError, TypeError, IndexError):
-    #             raise PreventUpdate
-    #     else:
-    #         raise PreventUpdate

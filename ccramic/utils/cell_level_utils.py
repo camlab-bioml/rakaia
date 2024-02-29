@@ -436,15 +436,19 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     except KeyError:
         return None
 
-def remove_latest_annotation_entry(annotations_dict: dict=None, roi_selection: str=None):
+def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selection: str=None,
+                                       index_list: list=None):
     """
-    Remove the latest annotation entry from the annotation hash table
+    Remove annotation hash entries by a list of indices, generated either from the annotation preview
+    table or triggering the list
     """
     if annotations_dict and roi_selection:
         annot_dict = annotations_dict.copy()
+        key_list = list(annot_dict[roi_selection].keys())
+        index_list = index_list if index_list else [-1]
         try:
-            last = list(annot_dict[roi_selection].keys())[-1]
-            del annot_dict[roi_selection][last]
+            for index_to_remove in index_list:
+                del annot_dict[roi_selection][key_list[index_to_remove]]
         except (KeyError, IndexError):
             pass
         return annot_dict

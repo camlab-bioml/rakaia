@@ -10,13 +10,12 @@ from ccramic.parsers.cell_level_parsers import (
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    object_id_list_from_gating
-)
+    object_id_list_from_gating)
 from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
     identify_column_matching_roi_to_quantification,
-    validate_mask_shape_matches_image, remove_latest_annotation_entry)
+    validate_mask_shape_matches_image)
 from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
     generate_umap_plot)
@@ -126,7 +125,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # empty_col = ctx.triggered_id == "umap-projection-options" and umap_col_selection is None
         if quantification_dict is not None:
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
-            if ctx.triggered_id not in ["umap-projection-options"] and umap_layout is not None:
+            if ctx.triggered_id not in ["umap-projection-options"]:
                 try:
                     subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict,
                                                                           umap_col_selection, prev_categories)
@@ -396,21 +395,26 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('apply-mask', 'value'),
         State('mask-options', 'value'),
         State('dataset-delimiter', 'value'),
+        Input('delete-annotation-tabular', 'n_clicks'),
+        State('annotation-table', 'selected_rows'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True))
     def update_region_annotation_in_quantification_frame(annotations, undo_latest_annotation, quantification_frame,
-                        data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter):
+                        data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
+                        delete_from_table, annot_table_selection):
         """
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         """
-        undo_last = ctx.triggered_id == 'undo-latest-annotation'
+        remove = ctx.triggered_id in ["undo-latest-annotation", "delete-annotation-tabular"]
+        indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
         sample_name, id_column = identify_column_matching_roi_to_quantification(
             data_selection, quantification_frame, data_dropdown_options, delimiter)
         quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
             quantification_frame, data_selection, mask_config, mask_toggle, mask_selection, sample_name=sample_name,
-                                            id_column=id_column, config=app_config, remove=undo_last)
-        return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=app_config['serverside_overwrite']), annotations
+                            id_column=id_column, config=app_config, remove=remove, indices_remove=indices_remove)
+        return SessionServerside(quant_frame, key="quantification_dict",
+                use_unique_key=app_config['serverside_overwrite']), annotations
 
     @dash_app.callback(
         Output("download-edited-annotations", "data"),
@@ -629,18 +633,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                          use_unique_key=app_config['serverside_overwrite'])
             raise PreventUpdate
         raise PreventUpdate
-
-    # @dash_app.callback(
-    #     Output("annotations-dict", "data", allow_duplicate=True),
-    #     State("annotations-dict", "data"),
-    #     State('data-collection', 'value'),
-    #     Input('undo-latest-annotation', 'n_clicks'),
-    #     prevent_initial_call=True)
-    # def remove_latest_annotation(annotations, data_selection, nclicks):
-    #     if nclicks > 0 and None not in (annotations, data_selection):
-    #         return SessionServerside(remove_latest_annotation_entry(annotations, data_selection),
-    #                 key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
-    #     raise PreventUpdate
 
     @du.callback(Output('uploads_cluster', 'data', allow_duplicate=True),
                  id='upload-cluster-annotations')

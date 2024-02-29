@@ -10,22 +10,24 @@ import shutil
 import os
 import dash_bootstrap_components as dbc
 from ccramic.components.layout import register_app_layout
+
 def init_dashboard(server, authentic_id, config=None):
 
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the serveroutput cache dir and clean it every time a new dash session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
-        if os.access("/tmp/", os.R_OK):
+        if os.access(config['cache_dest'], os.R_OK):
             # TODO: establish cleaning the tmp dir for any sub directory that has ccramic cache in it
-            subdirs = [x[0] for x in os.walk('/tmp/') if 'ccramic_cache' in x[0]]
+            subdirs = [x[0] for x in os.walk(config['cache_dest']) if 'ccramic_cache' in x[0]]
             # remove any parent directory that has a ccramic cache in it
             for dir in subdirs:
                 if os.access(os.path.dirname(dir), os.R_OK) and os.access(dir, os.R_OK):
                     shutil.rmtree(os.path.dirname(dir))
-            cache_dest = os.path.join("/tmp/", authentic_id, "ccramic_cache")
+            cache_dest = os.path.join(config['cache_dest'], authentic_id, "ccramic_cache")
         else:
-            cache_dest = os.path.join(str(os.path.abspath(os.path.join(os.path.dirname(__file__)))), authentic_id,
-                                      "ccramic_cache")
+            # try to find the default tempdir if the supplied cache is not permissible
+            cache_dest = os.path.join(str(tempfile.gettempdir()), authentic_id, "ccramic_cache")
+
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest)
 

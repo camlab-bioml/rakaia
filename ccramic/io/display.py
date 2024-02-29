@@ -1,6 +1,6 @@
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
-from ccramic.utils.region import RectangleRegion, FreeFormRegion
+from ccramic.utils.region import RectangleRegion, FreeFormRegion, AnnotationPreviewGenerator
 import os
 from tifffile import imwrite
 import numpy as np
@@ -153,7 +153,7 @@ class RegionSummary:
         return self.summary_frame
 
 
-def output_current_canvas_as_tiff(canvas_image, dest_dir="/tmp/", output_default="canvas",
+def output_current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_default="canvas",
                                   roi_name: str=None, use_roi_name=False, delimiter:str="+++"):
     """
     Output the current canvas image as a photometric tiff
@@ -245,3 +245,29 @@ def generate_preset_options_preview_text(preset_dict: dict=None):
             except KeyError:
                 pass
     return text
+
+
+def annotation_preview_table(annotation_dict: dict=None, roi_selection: str=None):
+    """
+    Generate a preview table for the annotations in the current ROI
+    The preview table is returned as a list of dictionaries, with each entry corresponding to one annotation
+    Columns are returned as a list od dictionaries, with each entry corresponding to one HTML-compatible column
+    in the dash data frame
+    """
+    if annotation_dict and roi_selection and roi_selection in annotation_dict.keys():
+        columns_keep = ['id', 'cell_type', 'annotation_column', 'type']
+        if len(annotation_dict[roi_selection]) > 0:
+            preview_writer = AnnotationPreviewGenerator()
+            annotation_list = []
+            for key, value in annotation_dict[roi_selection].items():
+                try:
+                    value = dict((k, value[k]) for k in columns_keep)
+                    for sub_key, sub_value in value.items():
+                        value[sub_key] = str(sub_value)
+                    value['preview'] = preview_writer.generate_annotation_preview(key, value['type'])
+                    annotation_list.append(value)
+                except (KeyError, ValueError, TypeError):
+                    pass
+            columns = [{'id': p, 'name': p, 'editable': False} for p in columns_keep + ["preview"]]
+            return annotation_list, columns
+    return [], []
