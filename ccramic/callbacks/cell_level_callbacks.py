@@ -406,15 +406,17 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         """
-        remove = ctx.triggered_id in ["undo-latest-annotation", "delete-annotation-tabular"]
-        indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
-        sample_name, id_column = identify_column_matching_roi_to_quantification(
+        if data_selection:
+            remove = ctx.triggered_id in ["undo-latest-annotation", "delete-annotation-tabular"]
+            indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
+            sample_name, id_column = identify_column_matching_roi_to_quantification(
             data_selection, quantification_frame, data_dropdown_options, delimiter)
-        quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
+            quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
             quantification_frame, data_selection, mask_config, mask_toggle, mask_selection, sample_name=sample_name,
                             id_column=id_column, config=app_config, remove=remove, indices_remove=indices_remove)
-        return SessionServerside(quant_frame, key="quantification_dict",
+            return SessionServerside(quant_frame, key="quantification_dict",
                 use_unique_key=app_config['serverside_overwrite']), annotations
+        raise PreventUpdate
 
     @dash_app.callback(
         Output("download-edited-annotations", "data"),

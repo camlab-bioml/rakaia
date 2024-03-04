@@ -37,6 +37,7 @@ setup(
                       "dash-bootstrap-components", "imctools", "tifffile", "dash[testing]", "selenium",
                       "diskcache", "h5py", "dash>=2.9.0", "readimc>=0.7.0", "Cython", "dash-auth", "Flask-HTTPAuth",
                       "scipy", "dash-draggable", "pytest-cov", "sd-material-ui", "dash-ag-grid",
-                      "dash-mantine-components", "numexpr", "pymongo", "pydantic", "dash-tour-component"],
+                      "dash-mantine-components", "numexpr", "pymongo", "pydantic", "dash-tour-component",
+                      "shortuuid"],
     python_requires=">=3.9.0",
 )

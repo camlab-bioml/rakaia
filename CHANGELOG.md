@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-02-29
+## [0.13.0] - 2024-03-04
 
 ### Added
 
@@ -23,6 +23,7 @@ combined with clustering labels (mask and circle)
 - removing the most recent annotation will also apply to the quantification frame annotations: will
 set any annotated objects in quantification to the default `None`
 - Delete annotations by choice from the annotation preview table #89
+- Toggle switch for enabling ROI change using left and right arrow keys
 
 ### Changed
 

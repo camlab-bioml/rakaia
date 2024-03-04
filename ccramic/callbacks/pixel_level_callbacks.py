@@ -36,6 +36,7 @@ from ccramic.utils.pixel_level_utils import (
     channel_filter_matches,
     ag_grid_cell_styling_conditions)
 # from ccramic.utils.session import remove_ccramic_caches
+from ccramic.utils.session import validate_session_upload_config
 from ccramic.components.canvas import CanvasImage, CanvasLayout
 from ccramic.io.display import (
     RegionSummary,
@@ -58,7 +59,6 @@ from ccramic.io.session import (
     subset_mask_for_data_export,
     create_download_dir,
     SessionServerside)
-# from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
@@ -85,7 +85,8 @@ from ccramic.utils.filter import (
     return_current_or_default_filter_param,
     return_current_channel_blend_params,
     return_current_or_default_channel_color,
-    return_current_default_params_with_preset)
+    return_current_default_params_with_preset,
+    apply_filter_to_channel)
 import shortuuid
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -127,8 +128,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, import_type):
         if path and clicks > 0:
-            session_config = cur_session if cur_session is not None and \
-                            len(cur_session['uploads']) > 0 else {'uploads': []}
+            session_config = validate_session_upload_config(cur_session)
             error_config = {"error": None} if error_config is None else error_config
             if import_type == "filepath":
                 if os.path.isfile(path):
@@ -166,8 +166,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if dialog.ShowModal() == wx.ID_OK:
                 filenames = dialog.GetPaths()
                 if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
-                    session_config = cur_session if cur_session is not None and \
-                                                    len(cur_session['uploads']) > 0 else {'uploads': []}
+                    session_config = validate_session_upload_config(cur_session)
                     for filename in filenames:
                         session_config["uploads"].append(filename)
                     dialog.Destroy()
@@ -187,8 +186,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         populate the session uploads list from the list of uploads from a given execution.
         Requires the intermediate list as the callback is restricted to one output
         """
-        session_config = cur_session if cur_session is not None and \
-                                        len(cur_session['uploads']) > 0 else {'uploads': []}
+        session_config = validate_session_upload_config(cur_session)
         if upload_list is not None and len(upload_list) > 0:
             for new_upload in upload_list:
                 if new_upload not in session_config["uploads"]:
@@ -461,7 +459,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
             add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
         """
-        Update the blend layer dictionary and currently selected channels from a JSON upload
+        Update the blend layer dictionary and currently selected channels from a JSON-formatted upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
         they will be modified on future selection
         Requires that the channel modification menu be empty to make sure that parameters are updated properly
@@ -645,17 +643,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
                                 float(current_blend_dict[layer]['x_upper_bound']))
 
-                    if len(filter_chosen) > 0 and filter_name is not None:
-                        if filter_name == "median" and int(filter_value) >= 1:
-                            try:
-                                array = median_filter(array, int(filter_value))
-                            except ValueError:
-                                pass
-                        else:
-                            # array = gaussian_filter(array, int(filter_value))
-                            if int(filter_value) % 2 != 0 and int(filter_value) >= 1:
-                                array = cv2.GaussianBlur(array, (int(filter_value),
-                                                                 int(filter_value)), float(filter_sigma))
+                    array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
+                    # if len(filter_chosen) > 0 and filter_name is not None:
+                    #     if filter_name == "median" and int(filter_value) >= 1:
+                    #         try:
+                    #             array = median_filter(array, int(filter_value))
+                    #         except ValueError:
+                    #             pass
+                    #     else:
+                    #         # array = gaussian_filter(array, int(filter_value))
+                    #         if int(filter_value) % 2 != 0 and int(filter_value) >= 1:
+                    #             array = cv2.GaussianBlur(array, (int(filter_value),
+                    #                                              int(filter_value)), float(filter_sigma))
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                         colour['hex'])).astype(np.uint8)
@@ -792,16 +791,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                 float(current_blend_dict[layer]['x_upper_bound']))
 
                     if len(filter_chosen) > 0 and filter_name is not None:
-                        if filter_name == "median" and int(filter_value) >= 1:
-                            try:
-                                array = median_filter(array, int(filter_value))
-                            except ValueError:
-                                pass
-                        else:
-                            # array = gaussian_filter(array, int(filter_value))
-                            if int(filter_value) % 2 != 0:
-                                array = cv2.GaussianBlur(array, (int(filter_value),
-                                            int(filter_value)), float(filter_sigma))
+                        array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
+                        # if filter_name == "median" and int(filter_value) >= 1:
+                        #     try:
+                        #         array = median_filter(array, int(filter_value))
+                        #     except ValueError:
+                        #         pass
+                        # else:
+                        #     # array = gaussian_filter(array, int(filter_value))
+                        #     if int(filter_value) % 2 != 0:
+                        #         array = cv2.GaussianBlur(array, (int(filter_value),
+                        #                     int(filter_value)), float(filter_sigma))
 
                         current_blend_dict[layer]['filter_type'] = filter_name
                         current_blend_dict[layer]['filter_val'] = filter_value
@@ -2255,23 +2255,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
         if None not in (clickdata, data_selection, cur_figure) and enable_click_annotation and 'points' in clickdata:
             try:
-                if annotations_dict is None or len(annotations_dict) < 1:
-                    annotations_dict = {}
-                if data_selection not in annotations_dict.keys():
-                    annotations_dict[data_selection] = {}
+                annotations_dict = check_for_valid_annotation_hash(annotations_dict, data_selection)
 
-                x = clickdata['points'][0]['x']
-                y = clickdata['points'][0]['y']
+                x, y = clickdata['points'][0]['x'], clickdata['points'][0]['y']
 
                 annotations_dict[data_selection][str(clickdata)] = RegionAnnotation(cell_type=annotation_cell_type,
                                             annotation_column=annot_col, type='point', id=str(shortuuid.uuid())).dict()
                 if ' Add circle on click' in add_circle:
-                    circle_size = int(circle_size)
                     fig = CanvasLayout(cur_figure).clear_improper_shapes()
-                    fig['layout']['shapes'].append(
-                        {'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
-                         'x0': (x - circle_size), 'x1': (x + circle_size),
-                         'xref': 'x', 'y0': (y - circle_size), 'y1': (y + circle_size), 'yref': 'y'})
+                    fig['layout']['shapes'].append({'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
+                    'x0': (x - int(circle_size)), 'x1': (x + int(circle_size)),
+                    'xref': 'x', 'y0': (y - int(circle_size)), 'y1': (y + int(circle_size)), 'yref': 'y'})
                 else:
                     fig = dash.no_update
                 return SessionServerside(annotations_dict, key="annotation_dict"), html.H6(f"Point {x, y} updated with "
@@ -2307,14 +2301,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('keyboard-listener', 'n_events'),
                        State('data-collection', 'value'),
                        State('data-collection', 'options'),
+                       State('enable-roi-change-key', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def click_to_new_roi(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options):
+    def click_to_new_roi(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options,
+                         allow_arrow_change):
         """
         Use the forward and backwards buttons to click to a new ROI
         Alternatively, use the directional arrow buttons from an event listener
         """
-        if None not in (cur_data_selection, cur_options):
+        if None not in (cur_data_selection, cur_options) and allow_arrow_change:
             cur_index = cur_options.index(cur_data_selection)
             try:
                 prev_trigger = previous_roi_trigger(ctx.triggered_id, prev_roi, key_listener, n_events)

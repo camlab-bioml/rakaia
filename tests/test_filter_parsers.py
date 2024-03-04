@@ -4,8 +4,23 @@ from ccramic.utils.filter import (
     return_current_or_default_filter_param,
     return_current_channel_blend_params,
     return_current_or_default_channel_color,
-    return_current_default_params_with_preset)
+    return_current_default_params_with_preset,
+    apply_filter_to_channel)
 import dash
+import numpy as np
+
+def test_apply_filter_to_array():
+    channel_array = np.random.rand(100, 100, 3)
+    filtered_median = apply_filter_to_channel(channel_array)
+    assert not np.array_equal(channel_array, filtered_median)
+    # assert no change if median filter is applied with a kernel that is too large
+    filter_median_bad_kernel = apply_filter_to_channel(channel_array, filter_value=-1)
+    assert np.array_equal(filter_median_bad_kernel, channel_array)
+    gaussian_filtered = apply_filter_to_channel(channel_array, filter_name="gaussian")
+    assert not np.array_equal(channel_array, gaussian_filtered)
+    gaussian_filtered_bad_kernel = apply_filter_to_channel(channel_array, filter_name="gaussian",
+                                                                    filter_value=2)
+    assert np.array_equal(channel_array, gaussian_filtered_bad_kernel)
 
 def test_basic_filter_parsers():
     blend_dict = {"channel_1": {"color": '#FFFFFF', "filter_type": "median", "filter_val": 3,  "filter_sigma": 1.0}}

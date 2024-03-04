@@ -4,7 +4,8 @@ import pytest
 
 from ccramic.utils.session import (
     remove_ccramic_caches,
-    non_truthy_to_prevent_update)
+    non_truthy_to_prevent_update,
+    validate_session_upload_config)
 import tempfile
 from dash.exceptions import PreventUpdate
 
@@ -33,3 +34,9 @@ def test_non_truthy_to_update_prevention():
         non_truthy_to_prevent_update(False)
     with pytest.raises(PreventUpdate):
         non_truthy_to_prevent_update("")
+
+def test_validate_session_uploads():
+    assert validate_session_upload_config() == {'uploads': []}
+    assert validate_session_upload_config({"fake_key": "fake_val"}) == {'uploads': []}
+    upload_dict = {'uploads': ['file_1.mcd']}
+    assert validate_session_upload_config(upload_dict) == upload_dict

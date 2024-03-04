@@ -1,5 +1,26 @@
 import dash
 from typing import Union
+import numpy as np
+import cv2
+from scipy.ndimage import median_filter
+def apply_filter_to_channel(channel_array: Union[np.array, np.ndarray]=None, filter_chosen: Union[bool, list]=True,
+                                filter_name: str="median", filter_value: int=3, filter_sigma: Union[int, float]=1.0):
+    """
+    Apply a median or gaussian filter to a channel with constraints for the filter type
+    """
+    if filter_chosen and filter_name:
+        if filter_name == "median" and int(filter_value) >= 1:
+            try:
+                channel_array = median_filter(channel_array, int(filter_value))
+            except ValueError:
+                pass
+        else:
+            # array = gaussian_filter(array, int(filter_value))
+            if int(filter_value) % 2 != 0 and int(filter_value) >= 1:
+                channel_array = cv2.GaussianBlur(channel_array, (int(filter_value),
+                                int(filter_value)), float(filter_sigma))
+    return channel_array
+
 
 def return_current_channel_blend_params(blend_dict: dict, selected_channel: str=None):
     """

@@ -1,7 +1,7 @@
 # ccramic
 
-ccramic: **C**ell-type **C**lassification (using) 
-**R**apid **A**nalysis (of) **M**ultiplexed **I**maging 
+ccramic: **C**ell-type **C**lassification (using)
+**R**apid **A**nalysis (of) **M**ultiplexed **I**maging
 (mass) **C**ytometry in the browser
 
 <p align="center">
@@ -9,13 +9,27 @@ ccramic: **C**ell-type **C**lassification (using)
 </p>
 
 
+ccramic provides streamlined in-browser analysis of multiplexed imaging datasets.
+The ccramic viewer is capable of rapid, interactive analysis of large regions of interest (ROI)
+from imaging technologies such as imaging mass cytometry (IMC),
+Immunofluorescence (IF) and others. Tools in the ccramic analysis
+suite include:
 
-ccramic provides streamlined in-browser interactive analysis of multiplexed imaging datasets.
-The ccramic viewer is capable of rapid analysis of large regions of interest (ROI)
-from imaging technologies such as imaging mass cytometry (IMC), 
-Immunofluorescence (IF) and others. The analysis suite includes
-pixel level analysis, object/segmentation detection, region annotation,
-object quantification, among other tools. 
+- pixel level analysis for publication-quality blended images
+- object/segmentation detection
+- region/focal annotation
+- object quantification
+- cluster and heatmap visualization
+- dataset-wide profiling
+- NoSQL database integration
+
+ccramic benefits from on-demand data loading and requires minimal upfront data
+configuration for ease-of-use image analysis. It places no restrictions on
+data or project size, permitting users to visualize and analyze hundreds of
+regions or images in a single session.
+
+Importantly, ccramic does not require any coding/scripting, or
+any pre-defined project directories with specific file structures.
 
 
 ## Installation
@@ -72,8 +86,11 @@ From source, ccramic can be updated locally using the following commands:
 ```
 # navigate to the directory where you cloned ccramic from github
 cd ccramic
+# activate your env first, if using conda
+# conda activate ccramic
 git switch main
 git pull --all
+pip install -r requirements.txt
 pip install .
 ```
 
@@ -85,6 +102,9 @@ After installation, ccramic can be run through conda or simply executed using th
 conda activate ccramic
 ccramic
 ```
+The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access ccramic.
+
+### Help
 
 The ClI options for running ccramic can be viewed using:
 
@@ -92,7 +112,9 @@ The ClI options for running ccramic can be viewed using:
 ccramic -h
 ```
 
-The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access ccramic.
+Additional information on the CLI options available for running custom ccramic sessions can be
+found in the documentation: https://camlab-bioml.github.io/ccramic-doc/docs/cli
+
 
 The current version of ccramic can also be checked on the command line with the following (v0.4.0 or later):
 
@@ -100,16 +122,10 @@ The current version of ccramic can also be checked on the command line with the 
 ccramic -v
 ```
 
-### Command line configurations
-
-Command line options for running custom ccramic sessions can be
-found in the documentation: https://camlab-bioml.github.io/ccramic-doc/docs/cli
-
-
 ## Documentation
 
-The official user guide documentation for ccramic can be 
-found here: camlab-bioml.github.io/ccramic-doc/
+The official user guide documentation for ccramic can be
+found [here](https://camlab-bioml.github.io/ccramic-doc/docs/installation)
 
 ## mongoDB
 
@@ -155,4 +171,5 @@ ccramic -d
 ## Troubleshooting
 
 Troubleshooting tips can be found in the `Troubleshooting`
-section of the documentation: https://camlab-bioml.github.io/ccramic-doc/docs/troubleshooting
+section of the [documentation](
+https://camlab-bioml.github.io/ccramic-doc/docs/troubleshooting)
