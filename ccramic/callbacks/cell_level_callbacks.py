@@ -1,6 +1,5 @@
 import dash
 import pandas as pd
-
 from ccramic.parsers.cell_level_parsers import (
     parse_cell_subtypes_from_restyledata,
     parse_and_validate_measurements_csv,
@@ -111,18 +110,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings, annot_cols, restyle_data,
                                             umap_col_selection, prev_categories, channels_to_display,
                                             heatmap_channel_options, normalize_heatmap, subset_heatmap):
-        # TODO: incorporate subsetting based on legend selection
-        # uses the restyledata for the current legend selection to figure out which selections have been made
-        # Example 1: user selected only the third legend item to view
-        # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
-        # Example 2: user selects all but the the second item to view
-        # [{'visible': ['legendonly']}, [2]]
-        # print(restyle_data)
-
-        # do not update if the tab is switched and the umap layout is reset to the default
-        # tab_switch = ctx.triggered_id == "umap-plot" and umap_layout in [{"autosize": True}]
-        # do not update if the trigger is the column options and there isn't one selected
-        # empty_col = ctx.triggered_id == "umap-projection-options" and umap_col_selection is None
+        # TODO: figure out how to decouple the quantification update from the heatmap rendering:
+        #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered, which is
+        #  very slow for large quant results
         if quantification_dict is not None:
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id not in ["umap-projection-options"]:
@@ -406,6 +396,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         """
+        # TODO: use toggle for adding annotations to quantification frame or not
         if data_selection:
             remove = ctx.triggered_id in ["undo-latest-annotation", "delete-annotation-tabular"]
             indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None

@@ -527,6 +527,8 @@ def test_get_additive_image():
     assert np.min(additive) == 6000.0
     assert np.mean(additive) == 6000.0
 
+    assert get_additive_image(layer_dict, []) is None
+
 def test_retrieval_first_roi_dict_image():
     layer_dict = {"channel_1": np.full((200, 200, 3), 1000),
                   "channel_2": np.full((200, 200, 3), 2000),

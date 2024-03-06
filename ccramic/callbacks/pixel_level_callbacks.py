@@ -9,7 +9,8 @@ from ccramic.inputs.pixel_level_inputs import (
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
-    set_x_axis_placement_of_scalebar, update_canvas_filename)
+    set_x_axis_placement_of_scalebar, update_canvas_filename,
+    set_canvas_viewport)
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
     populate_image_dict_from_lazy_load,
@@ -923,6 +924,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        # Output('annotation_canvas', 'relayoutData'),
                        Output('download-canvas-image-tiff', 'data'),
                        # Output('data-collection', 'value', allow_duplicate=True),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -962,6 +964,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('gating-cell-list', 'data'),
                        State('dataset-delimiter', 'value'),
                        State('scalebar-color', 'value'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -976,7 +979,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
                                                 cluster_frame, cluster_type, download_canvas_tiff, custom_scale_val,
                                                 cluster_assignments_in_legend, apply_gating, gating_cell_id_list,
-                                                delimiter, scale_color):
+                                                delimiter, scale_color, error_config):
 
         """
         Update the canvas from either an underlying change to the source image, or a change to the hover template
@@ -994,6 +997,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
                 data_selection is not None and currently_selected and len(channel_order) > 0 and not global_not_enabled \
                 and not channel_order_same and data_selection in canvas_layers and canvas_layers[data_selection]:
+            error_config = {"error": None} if error_config is None else error_config
                 # data_selection in canvas_layers:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
@@ -1023,9 +1027,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig = dash.no_update
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                         dest_dir=dest_path, use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
-                return fig, canvas_tiff
-            except (ValueError, AttributeError, KeyError, IndexError):
-                raise PreventUpdate
+                return fig, canvas_tiff, dash.no_update
+            except (ValueError, AttributeError, KeyError, IndexError) as e:
+                error_config["error"] = str(e)
+                return dash.no_update, dash.no_update, error_config
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
         #     fig = cur_graph if cur_graph is not None else go.Figure()
@@ -1048,7 +1053,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         #                           pad=0
         #                       ), dragmode="zoom")
         #     return fig, None, {'autosize': True}
-
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
@@ -1088,7 +1092,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                     # if ctx.triggered_id == 'annotation_canvas':
                     cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout,
-                                                    pixel_ratio, proportion, scale_col)
+                                                            pixel_ratio, proportion, scale_col)
                     # if ctx.triggered_id == "custom-scale-val":
                     pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                     x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
@@ -1185,7 +1189,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         re-render the canvas if the user requests to remove the annotations (scalebar and legend) or
         updates the scalebar length with a custom value
         """
-        if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
+        # do not trigger update if the channel order is maintained
+        chan_same = ctx.triggered_id in ["channel-order"] and channel_order == currently_selected
+        if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict) and not chan_same:
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
             x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
@@ -1427,36 +1433,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def update_canvas_size(value, current_canvas, data_selection,
                            image_dict, add_layer, cur_sizing):
         if None not in (add_layer, value, data_selection, image_dict):
-            try:
-                first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
-                aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
-            except (KeyError, AttributeError):
-                aspect_ratio = 1
-
-            # if the current canvas is not None, update using the aspect ratio
-            # otherwise, use aspect of 1
-            if aspect_ratio is None and current_canvas is not None and \
-                    'range' in current_canvas['layout']['xaxis'] and \
-                    'range' in current_canvas['layout']['yaxis']:
-                try:
-                    # aspect ratio is width divided by height
-                    if aspect_ratio is None:
-                        aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
-                               int(current_canvas['layout']['yaxis']['range'][0])
-                except (KeyError, ZeroDivisionError):
-                    aspect_ratio = 1
-
-            width = float(value * aspect_ratio)
-            height = float(value)
-            try:
-                if cur_sizing['height'] != f'{height}vh' and cur_sizing['width'] != f'{width}vh':
-                    return {'width': f'{width}vh', 'height': f'{height}vh'}
-                else:
-                    raise PreventUpdate
-            except KeyError:
-                return {'width': f'{width}vh', 'height': f'{height}vh'}
-        # elif value is not None and current_canvas is None:
-        #     return {'width': f'{value}vh', 'height': f'{value}vh'}
+            return set_canvas_viewport(value, image_dict, data_selection, current_canvas, cur_sizing)
         return {'width': f'{value}vh', 'height': f'{value}vh'}
 
     @dash_app.callback(

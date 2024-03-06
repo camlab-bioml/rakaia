@@ -24,7 +24,7 @@ def quantify_one_channel(image, mask):
         for cell in cell_ids:
             is_cell = mask == cell
             # IMP: only apply the offset in the positions, not for the actual cell id
-            expr_mat[:, (cell - offset)] = np.mean(image[is_cell])
+            expr_mat[:, int(cell - offset)] = np.mean(image[is_cell])
         # cell_ids_adata = [f"{image_name}_{str(cell_id)}" for cell_id in cell_ids]
 
         # adata = ad.AnnData(
@@ -54,9 +54,9 @@ def quantify_roi_xy_coordinates_area(mask):
         vals_dict[key] = np.zeros((1, len(cell_ids)))
     for cell in cell_ids:
         subset = np.where(mask == cell)
-        vals_dict['x'][:, (cell - offset)] = subset[1].mean()
-        vals_dict['y'][:, (cell - offset)] = subset[0].mean()
-        vals_dict['area'][:, (cell - offset)] = subset[0].shape[0]
+        vals_dict['x'][:, int(cell - offset)] = subset[1].mean()
+        vals_dict['y'][:, int(cell - offset)] = subset[0].mean()
+        vals_dict['area'][:, int(cell - offset)] = subset[0].shape[0]
     return vals_dict['x'], vals_dict['y'], vals_dict['area']
 
 
@@ -84,6 +84,7 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
                 roi_name_sample = f"{exp}_{index}"
     # TODO: change the order of the identifying columns here, and set the description to the mask used for the quant
     # to ensure matching
+    # TODO: figure out what the ROI designation should be
     channel_frame['description'] = mask_name
     channel_frame['cell_id'] = pd.Series(range(1, (len(channel_frame.index) + 1)), dtype='int64')
     channel_frame['sample'] = roi_name_sample
@@ -129,7 +130,7 @@ def populate_gating_dict_with_default_values(current_gate_dict: dict=None, param
     return current_gate_dict
 
 def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_selected: str=None,
-                                          gating_vals: list=[0.0, 1.0]):
+                                          gating_vals: tuple=(0.0, 1.0)):
     """
     Update the current gating dictionary with the range slider values for a specific parameter from
     the gating modifier dropdown

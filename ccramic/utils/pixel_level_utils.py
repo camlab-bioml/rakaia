@@ -414,12 +414,16 @@ def random_hex_colour_generator(number=10):
 
 
 def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
-    image_shape = layer_dict[channel_list[0]].shape
-    image = np.zeros(image_shape)
-    for elem in channel_list:
-        blend = layer_dict[elem]
-        image = ne.evaluate("image + blend")
-    return image.astype(np.float32)
+    if layer_dict and channel_list:
+        image_shape = layer_dict[channel_list[0]].shape
+        image = np.zeros(image_shape)
+        channel_list  = [channel for channel in channel_list if channel in layer_dict.keys()]
+        if channel_list:
+            for elem in channel_list:
+                blend = layer_dict[elem]
+                image = ne.evaluate("image + blend")
+        return image.astype(np.float32)
+    return None
 
 def get_first_image_from_roi_dictionary(roi_dictionary):
     """

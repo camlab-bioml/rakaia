@@ -1,4 +1,5 @@
 import dash
+from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import dcc, html
 from ccramic.utils.cell_level_utils import convert_mask_to_cell_boundary
 import plotly.graph_objs as go
@@ -11,8 +12,8 @@ import numpy as np
 from PIL import Image
 import plotly.express as px
 from ccramic.io.session import SessionTheme
-from ccramic.utils.pixel_level_utils import split_string_at_pattern
-
+from ccramic.utils.pixel_level_utils import split_string_at_pattern, get_first_image_from_roi_dictionary
+from typing import Union
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False, filename: str="canvas", delimiter: str="+++"):
@@ -296,3 +297,36 @@ def update_canvas_filename(canvas_config: dict, roi_name: str=None, delimiter: s
         except KeyError:
             pass
     return canvas_config
+
+def set_canvas_viewport(size_slider_val: Union[float, int]=None,
+                        image_dict: dict=None, data_selection: str=None,
+                        current_canvas: Union[go.Figure, dict]=None, cur_canvas_layout: dict=None):
+    """
+    Set the canvas viewport based on the canvas size range slider, as well as the aspect ratio of
+    the ROI dimensions
+    returns a hash for the width and height in vh: {'width': f'{value}vh', 'height': f'{value}vh'}
+    """
+    try:
+        first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+        aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
+    except (KeyError, AttributeError, IndexError):
+        if current_canvas is not None and 'layout' in current_canvas and \
+                'range' in current_canvas['layout']['xaxis'] and \
+                'range' in current_canvas['layout']['yaxis']:
+            try:
+                aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                                   int(current_canvas['layout']['yaxis']['range'][0])
+            except (KeyError, ZeroDivisionError):
+                aspect_ratio = 1
+        else:
+            aspect_ratio = 1
+
+    width = float(size_slider_val * aspect_ratio)
+    height = float(size_slider_val)
+    try:
+        if cur_canvas_layout['height'] != f'{height}vh' and cur_canvas_layout['width'] != f'{width}vh':
+            return {'width': f'{width}vh', 'height': f'{height}vh'}
+        else:
+            raise PreventUpdate
+    except KeyError:
+        return {'width': f'{width}vh', 'height': f'{height}vh'}

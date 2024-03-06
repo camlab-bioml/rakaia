@@ -86,7 +86,10 @@ class RegionThumbnail:
                     elif 'names' in self.query_selection:
                         acq_names = [f"{str(acq.description)}_{str(acq.id)}" for acq in slide_inside.acquisitions]
                         self.num_queries = len(self.query_selection['names'])
-                        self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
+                        try:
+                            self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
+                        except ValueError:
+                            self.query_selection = []
                 for query in self.query_selection:
                     try:
                         acq = slide_inside.acquisitions[query]

@@ -31,8 +31,9 @@ def register_app_layout(config, cache_dest):
         dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})]),
                   id="alert-modal", size='xl'),
         # this modal is for the fullscreen view and does not belong in a nested tab
-        dbc.Modal(children=dbc.ModalBody([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
-                                                                           fullscreen_mode=True)]),
+        dbc.Modal(children=[dbc.ModalHeader(),
+            dbc.ModalBody([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
+                                                                           fullscreen_mode=True)])],
             id="fullscreen-canvas", fullscreen=True, size='xl',
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
                               "max-width": "none", "max-height": "none"}),
@@ -700,7 +701,12 @@ def register_app_layout(config, cache_dest):
                                 html.Div("Add region annotation")], style={"display": "flex"}),
                                     id="region-annotation", className="mx-auto", color=None, n_clicks=0,
                                     disabled=True, style={"margin-top": "10px"}),
-                                #TODO: update the logic for the button that can clear annotation shapes
+                                # TODO: toggle to add annotations to quant sheet or not
+                                # dcc.Checklist(options=[' add annotations to quantification results'], value=[
+                                #     ' add annotations to quantification results'],
+                                #     id="quantification-annotation-import", style={"margin-top": "12px",
+                                #     "accent-color": DEFAULT_WIDGET_COLOUR, "margin-left": "11.5px"}),
+                                # html.Br(),
                                 html.Div([dbc.Button(children=html.Span([html.I(className="fa-solid fa-delete-left",
                                 style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
                                 html.Div("Clear annotation shapes")],style={"display": "flex"}),

@@ -1,6 +1,8 @@
 import dash
 import numpy as np
 import plotly.graph_objs as go
+import pytest
+from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import html
 from ccramic.inputs.pixel_level_inputs import (
     render_default_annotation_canvas,
@@ -11,7 +13,8 @@ from ccramic.inputs.pixel_level_inputs import (
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
-    set_x_axis_placement_of_scalebar, update_canvas_filename)
+    set_x_axis_placement_of_scalebar, update_canvas_filename,
+    set_canvas_viewport)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -202,3 +205,21 @@ def test_set_canvas_filename():
     canvas_config = update_canvas_filename(canvas_config, "exp0---slide0---roi_1")
     assert canvas_config['toImageButtonOptions']['filename'] == "exp0---slide0---roi_1"
     assert update_canvas_filename({"fake_dict": None}, "exp0+++slide0+++long_roi") == {"fake_dict": None}
+
+
+def test_window_viewport_settings():
+    image_dict = {"roi_1": {"channel_1": np.zeros((2500, 1000))}}
+    cur_layout = {'height': None, 'width': None}
+    viewport = set_canvas_viewport(30, image_dict, "roi_1", None, cur_layout)
+    assert viewport == {'width': '12.0vh', 'height': '30.0vh'}
+    with pytest.raises(PreventUpdate):
+        set_canvas_viewport(30, image_dict, "roi_1", None, viewport)
+    assert set_canvas_viewport(30, image_dict, "roi_1", None, {}) == {'width': '12.0vh', 'height': '30.0vh'}
+
+    blank_image_dict = {"roi_1": {}}
+    canvas_layout = {'layout': {'xaxis': {"range": [0, 1000]}, 'yaxis': {"range": [2500, 0]}}}
+    assert set_canvas_viewport(30, blank_image_dict, "roi_1", canvas_layout, cur_layout) == \
+           {'width': '12.0vh', 'height': '30.0vh'}
+
+    assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}) == \
+           {'width': '30.0vh', 'height': '30.0vh'}
