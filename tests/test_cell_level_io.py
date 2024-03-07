@@ -92,7 +92,7 @@ def test_output_point_annotations_as_csv():
                                     None, False, None, image_dict,
                                     authentic_id, tmpdirname)
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'point_annotations.csv', 'type': None}
+            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
     mask_dict = {'mask': {'raw': image}}
 
@@ -101,7 +101,7 @@ def test_output_point_annotations_as_csv():
                                                         authentic_id, tmpdirname)
 
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation,mask_cell_id\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'point_annotations.csv', 'type': None}
+            'pos1_1,235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
 
     point_annotations = export_point_annotations_as_csv(1, 'pos1_1', annotations_dict, 'Patient1+++slide0+++pos1_1',
@@ -110,7 +110,7 @@ def test_output_point_annotations_as_csv():
 
     # assert that the mask id is not included if the image to compare cannot be found
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'point_annotations.csv', 'type': None}
+            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
     # assert no update occurs if one of the keys is malformed
 

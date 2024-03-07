@@ -378,19 +378,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if roi_change and current_canvas_config: return update_canvas_filename(current_canvas_config, roi_change, delim)
         raise PreventUpdate
 
-    @dash_app.callback(Input('image_layers', 'options'),
+    @dash_app.callback(Output('channel-quantification-list', 'options'),
+                       Output('channel-quantification-list', 'value'),
+                       Input('image_layers', 'options'),
                        Input('alias-dict', 'data'),
                        State('channel-quantification-list', 'value'),
-                       Output('channel-quantification-list', 'options'),
-                       Output('channel-quantification-list', 'value'),
+                       Input('quant-toggle-list', 'value'),
                        prevent_initial_call=True)
-    def create_channel_options_for_quantification(channel_options, aliases, cur_selection):
+    def create_channel_options_for_quantification(channel_options, aliases, cur_selection, toggle_channels_quant):
         """
         Create the dropdown options for the channels for quantification
         If channels are already selected, keep them and just update the labels
         """
-        channel_list_options = [{'label': value, 'value': key} for key, value in aliases.items()]
-        channel_list_selected = list(aliases.keys()) if not cur_selection else cur_selection
+        channel_list_options = [{'label': value, 'value': key} for key, value in aliases.items()] if aliases else []
+        channel_list_selected = list(aliases.keys()) if (aliases and not cur_selection) else cur_selection
+        channel_list_selected = channel_list_selected if toggle_channels_quant else []
         return channel_list_options, channel_list_selected
 
     @dash_app.callback(Output('images_in_blend', 'options'),
@@ -1205,7 +1207,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                 canvas = CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
                         pixel_ratio, image_shape, legend_size, proportion, scalebar_col)
-                return CanvasLayout(canvas).clear_improper_shapes()
+                return CanvasLayout(canvas).get_fig()
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
@@ -1321,25 +1323,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(Output('download-canvas-image-html', 'data'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('btn-download-canvas-html', 'n_clicks'),
                        State('annotation_canvas', 'figure'),
                        State('uploaded_dict', 'data'),
                        State('blending_colours', 'data'),
                        State('annotation_canvas', 'style'),
                        State('data-collection', 'value'),
-                       State('dataset-delimiter', 'value'))
+                       State('dataset-delimiter', 'value'),
+                       State('session_alert_config', 'data'))
     # @cache.memoize())
     def download_interactive_html_canvas(download_html, cur_graph, uploaded, blend_dict, canvas_style,
-                                         dataset_selection, delimiter):
+                                         dataset_selection, delimiter, error_config):
         if None not in (cur_graph, uploaded, blend_dict) and download_html > 0:
             try:
                 download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 create_download_dir(download_dir)
                 html_path = dcc.send_file(output_current_canvas_as_html(cur_graph, canvas_style, download_dir,
                                         use_roi_name=True, roi_name=dataset_selection, delimiter=delimiter))
-            except (ValueError, KeyError):
+                error_config = dash.no_update
+            except (ValueError, KeyError) as e:
+                error_config = {"error": None} if error_config is None else error_config
+                error_config["error"] = str(e)
                 html_path = dash.no_update
-            return html_path
+            return html_path, error_config
         raise PreventUpdate
 
     # @dash_app.callback(Output('download-canvas-image-tiff-annotations', 'data'),

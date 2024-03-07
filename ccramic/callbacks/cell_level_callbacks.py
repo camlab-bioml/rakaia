@@ -388,13 +388,15 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('delete-annotation-tabular', 'n_clicks'),
         State('annotation-table', 'selected_rows'),
         Output('quantification-dict', 'data', allow_duplicate=True),
-        Output("annotations-dict", "data", allow_duplicate=True))
+        Output("annotations-dict", "data", allow_duplicate=True),
+        Output('annotation-table', 'selected_rows', allow_duplicate=True))
     def update_region_annotation_in_quantification_frame(annotations, undo_latest_annotation, quantification_frame,
                         data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
                         delete_from_table, annot_table_selection):
         """
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
+        Any selected rows in the annotation preview table are reset to avoid erroneous indices
         """
         # TODO: use toggle for adding annotations to quantification frame or not
         if data_selection:
@@ -406,7 +408,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             quantification_frame, data_selection, mask_config, mask_toggle, mask_selection, sample_name=sample_name,
                             id_column=id_column, config=app_config, remove=remove, indices_remove=indices_remove)
             return SessionServerside(quant_frame, key="quantification_dict",
-                use_unique_key=app_config['serverside_overwrite']), annotations
+                use_unique_key=app_config['serverside_overwrite']), annotations, []
         raise PreventUpdate
 
     @dash_app.callback(
@@ -417,7 +419,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_quantification_with_annotations(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-annotations":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "annotations.csv", index = False)
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "measurements.csv", index = False)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -438,8 +440,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 blend_dict, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
             dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-            if not os.path.exists(dest_path):
-                os.makedirs(dest_path)
+            if not os.path.exists(dest_path): os.makedirs(dest_path)
             return dcc.send_file(non_truthy_to_prevent_update(AnnotationPDFWriter(annotations_dict, canvas_layers,
                 data_selection, mask_config, aliases, dest_path, "annotations.pdf", blend_dict, global_apply_filter,
                 global_filter_type, global_filter_val, global_filter_sigma).generate_annotation_pdf()), type="application/pdf")
@@ -462,8 +463,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads', 'annotation_masks')
-            if not os.path.exists(dest_path):
-                os.makedirs(dest_path)
+            if not os.path.exists(dest_path): os.makedirs(dest_path)
             # check that the mask is compatible with the current image
             if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
                                                                                 mask_dict[mask_selection]['raw']):
@@ -555,7 +555,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                           mask_dict, apply_mask, mask_selection, image_dict, delimiter):
         exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
         return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection, mask_dict, apply_mask,
-                                               mask_selection, image_dict, authentic_id, tmpdirname)
+                                        mask_selection, image_dict, authentic_id, tmpdirname, delimiter, True)
 
     @dash_app.callback(
         Output("download-region-csv", "data"),
@@ -601,9 +601,10 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("quantification-roi-modal", "is_open"),
         Input('quantify-cur-roi-button', 'n_clicks'),
         Input('quantify-cur-roi-execute', 'n_clicks'),
-        [State("quantification-roi-modal", "is_open")])
-    def toggle_show_quantification_config_modal(n1, execute, is_open):
-        if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0:
+        State("quantification-roi-modal", "is_open"),
+        State('channel-quantification-list', 'value'))
+    def toggle_show_quantification_config_modal(n1, execute, is_open, channels_to_quantify):
+        if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify:
             return False
         else:
             if n1:
@@ -699,29 +700,30 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 clust_dict[data_selection][cluster_selection] = colour_selection['hex']
                 return clust_dict
-            except KeyError:
-              raise PreventUpdate
+            except KeyError: raise PreventUpdate
         raise PreventUpdate
 
     @dash_app.callback(Output('gating-cur-mod', 'options'),
                        Output('gating-dict', 'data'),
                        Output('gating-cur-mod', 'value'),
                        Input('gating-channel-options', 'value'),
-                       State('gating-dict', 'data'))
-    def update_current_gating_selection(gating_selection, current_gate_dict):
+                       State('gating-dict', 'data'),
+                       Input('quantification-dict', 'data'))
+    def update_current_gating_selection(gating_selection, current_gate_dict, quant_dict):
         """
         Update the dropdown options for the current gating selection. The multi-selection will define
         the current set of parameters on which the mask is gated
         """
         if gating_selection:
-            return gating_selection, populate_gating_dict_with_default_values(
-                current_gate_dict, gating_selection), gating_selection[-1]
-        raise PreventUpdate
+            gates_to_keep = [gate for gate in gating_selection if gate in pd.DataFrame(quant_dict).columns]
+            return gates_to_keep, populate_gating_dict_with_default_values(current_gate_dict, gating_selection), \
+                gates_to_keep[-1] if len(gates_to_keep) > 0 else None
+        return dash.no_update, dash.no_update, None
 
     @dash_app.callback(Output('gating-slider', 'value'),
                        Input('gating-cur-mod', 'value'),
                        State('gating-dict', 'data'),
-                       State('quantification-dict', 'data'),)
+                       State('quantification-dict', 'data'))
     def update_gating_thresholds(gate_selected, gating_dict, quantification_dict):
         """
         Update the values shown in the gating range slider when a parameter is selected for mod

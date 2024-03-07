@@ -267,6 +267,10 @@ class CanvasLayout:
                 isinstance(figure['layout']['shapes'], tuple):
             figure['layout']['shapes'] = [shape for shape in figure['layout']['shapes'] if \
                                           shape and not is_bad_shape(shape)]
+        try:
+            figure['layout']['yaxis']['domain'] = [0, 1]
+            figure['layout']['xaxis']['domain'] = [0, 1]
+        except KeyError: pass
         self.figure = figure
         # TODO: add condition checking whether the annotations or shapes are held in tuples (do not allow)
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
@@ -285,8 +289,11 @@ class CanvasLayout:
 
         for shape in self.cur_shapes:
             if 'label' in shape and 'texttemplate' in shape['label']:
-                shape['label'].pop('texttemplate')
+                shape['label'] = {}
+
     def get_fig(self):
+        self.figure['layout']['shapes'] = self.cur_shapes
+        self.figure['layout']['annotations'] = self.cur_annotations
         return self.figure
 
     def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size,
@@ -358,6 +365,9 @@ class CanvasLayout:
                       in ['rect', 'path', 'circle'] and not is_bad_shape(shape)]
         cur_annotations = [annot for annot in self.cur_annotations if \
                            annot is not None and 'y' in annot and annot['y'] != 0.06]
+        for shape in cur_shapes:
+            if 'label' in shape and 'texttemplate' in shape['label']:
+                shape['label'] = {}
         self.figure['layout']['annotations'] = cur_annotations
         self.figure['layout']['shapes'] = cur_shapes
         if not toggle_scalebar:

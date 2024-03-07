@@ -295,3 +295,8 @@ def test_canvas_layout_editor(get_current_dir):
                              'yaxis.range[0]': 275.0, 'yaxis.range[1]': 225.0}
     assert fig['layout']['xaxis']['range'] == [225.0, 275.0]
     assert fig['layout']['yaxis']['range'] == [275.0, 225.0]
+
+    fig_malformed = go.Figure(px.imshow(image)).to_dict()
+    del fig_malformed['layout']['yaxis']['domain']
+    fig = CanvasLayout(fig_malformed).get_fig()
+    assert fig['layout']['yaxis']['domain']

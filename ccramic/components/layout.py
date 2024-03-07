@@ -870,6 +870,10 @@ def register_app_layout(config, cache_dest):
                                 dbc.Modal(id="quantification-roi-modal", children=dbc.ModalBody([
                                 dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute",
                                            style={"background-color": DEFAULT_WIDGET_COLOUR}),
+                                html.Br(),
+                                dcc.Checklist(id="quant-toggle-list", value=[' select/deselect all'],
+                                options=[' select/deselect all'], style={"accent-color": DEFAULT_WIDGET_COLOUR}),
+                                html.Br(),
                                 html.H6("Select channels to quantify"),
                                 dcc.Checklist(id="channel-quantification-list", value=[], options=[],
                                               style={"accent-color": DEFAULT_WIDGET_COLOUR}),

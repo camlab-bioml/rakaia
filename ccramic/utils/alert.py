@@ -58,8 +58,10 @@ class AlertMessage(BaseModel):
                       "invalid_annotation_shapes": "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes.",
                       "invalid_dimensions": "The dimensions of the mask do not agree with the current ROI.",
-                      "quantification_missing_mask": "Quantification requires an ROI with a compatible mask that has been applied to the" \
-                                    " canvas. Please review the required inputs.",
+                      "quantification_missing": "Quantification requires the following inputs: \n\n"
+                                                "- an ROI with a compatible mask that has been applied to the canvas. \n"
+                                                "- at least one channel/biomarker selected for quantification. \n\n"
+                                                "Please review the required inputs.",
                       "possible-disk-storage-error": "The imported data could not be read/cached. \n"
                                                      "Check that there is sufficient disk storage to conduct analysis"
                                                      " (typically 2x the size of the imported files)."}

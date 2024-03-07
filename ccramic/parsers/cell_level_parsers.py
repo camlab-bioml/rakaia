@@ -426,7 +426,7 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
     # build a query string for each of the elements to gate on
     gating_index = 0
     for gating_elem in gating_selection:
-        if gating_elem not in to_add.columns:
+        if gating_elem not in to_add.columns and gating_elem in list(quantification_frame.columns):
             # do not add the string combo at the end
             combo = combo if gating_index < (len(gating_selection) - 1) else ""
             query = query + f'(`{gating_elem}` >= {gating_dict[gating_elem]["lower_bound"]} &' \

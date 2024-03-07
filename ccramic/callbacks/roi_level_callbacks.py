@@ -131,7 +131,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         error_config = {"error": None} if error_config is None else error_config
         if execute > 0 and None not in (image_dict, data_selection, mask_selection, channels_to_quantify) and \
-                apply_mask:
+                apply_mask and len(channels_to_quantify) > 0:
             first_image = list(image_dict[data_selection].keys())[0]
             first_image = image_dict[data_selection][first_image]
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
@@ -145,5 +145,5 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 error_config["error"] = AlertMessage().warnings["invalid_dimensions"]
                 return dash.no_update, error_config, dash.no_update, dash.no_update
         else:
-            error_config["error"] = AlertMessage().warnings["quantification_missing_mask"]
+            error_config["error"] = AlertMessage().warnings["quantification_missing"]
             return dash.no_update, error_config, dash.no_update, dash.no_update

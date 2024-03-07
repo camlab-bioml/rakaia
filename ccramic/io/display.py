@@ -7,8 +7,7 @@ import numpy as np
 import plotly.graph_objs as go
 from typing import Union
 from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
-# import io
-# from PIL import Image
+from ccramic.components.canvas import CanvasLayout
 
 class RegionSummary:
     """
@@ -174,14 +173,20 @@ def output_current_canvas_as_html(cur_graph, canvas_style, dest_dir=None, roi_na
     Output the current `dcc.Graph` object as HTML with the same aspect ratio as the underlying array
     Returns the filepath string for `dcc.send_file`
     """
-    fig = go.Figure(cur_graph)
+    # ensure that the domains are between 0 and 1
+    try:
+        cur_graph['layout']['yaxis']['domain'] = [0, 1]
+        cur_graph['layout']['xaxis']['domain'] = [0, 1]
+    except KeyError: pass
+    cur_graph = CanvasLayout(cur_graph)
+    fig = go.Figure(cur_graph.get_fig())
     # fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
     #                   xaxis=XAxis(showticklabels=False),
     #                   yaxis=YAxis(showticklabels=False),
     #                   margin=dict(l=0, r=0, b=0, t=0, pad=0))
     fig.update_layout(dragmode="zoom")
-    outname = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else output_default
-    outfile = str(os.path.join(dest_dir, f"{outname}.html"))
+    out_name = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else output_default
+    outfile = str(os.path.join(dest_dir, f"{out_name}.html"))
     fig.write_html(outfile, default_width=canvas_style['width'],
                    default_height=canvas_style['height'])
     return outfile

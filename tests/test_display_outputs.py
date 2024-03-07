@@ -263,6 +263,20 @@ def test_output_canvas_html_to_file():
             os.remove(canvas_link)
         assert not os.path.exists(canvas_link)
 
+    fig_2 = go.Figure(px.imshow(canvas_image)).to_dict()
+    del fig_2['layout']['yaxis']['domain']
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file_path = os.path.join(tmpdirname, "canvas.html")
+        assert not os.path.exists(file_path)
+        canvas_link = output_current_canvas_as_html(fig_2, style, tmpdirname)
+        assert os.path.exists(file_path)
+        assert str(file_path) == str(canvas_link)
+        if os.access(canvas_link, os.W_OK):
+            os.remove(canvas_link)
+        assert not os.path.exists(canvas_link)
+
+
+
 def test_fullscreen_canvas():
     all_white = np.full((600, 600, 3), 255).astype(np.uint8)
     canvas = go.Figure(px.imshow(all_white))

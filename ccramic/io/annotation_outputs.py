@@ -1,4 +1,6 @@
 import numpy as np
+
+from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
 from ccramic.io.session import create_download_dir
 from ccramic.utils.cell_level_utils import (
     get_min_max_values_from_zoom_box,
@@ -24,7 +26,8 @@ class AnnotationRegionWriter:
     This export can effectively replace the export of a quantification sheet with matched annotations in the event
     that quantification results are not available
     """
-    def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict, delimiter: str="+++"):
+    def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict, delimiter: str="+++",
+                 use_roi_name=True):
         self.annotation_dict = annotation_dict
         self.roi_selection = data_selection
         exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
@@ -32,9 +35,12 @@ class AnnotationRegionWriter:
         self.mask_dict = mask_dict
         self.region_object_frame = {"ROI": [], "mask_name": [], "cell_id": [], "annotation_col": [], "annotation": []}
         self.filepath = None
+        self.out_name = set_roi_identifier_from_length(self.roi_selection, delimiter=delimiter) if \
+            use_roi_name else None
 
     def write_csv(self, dest_dir: str, dest_file: str="region_annotations.csv"):
         create_download_dir(dest_dir)
+        dest_file = f"{self.out_name}_regions.csv" if self.out_name else dest_file
         self.filepath = str(os.path.join(dest_dir, dest_file))
         if self.roi_selection in self.annotation_dict.keys() and \
             len(self.annotation_dict[self.roi_selection].items()) > 0:
@@ -165,7 +171,7 @@ class AnnotationMaskWriter:
 
 def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_selection,
                                     mask_dict, apply_mask, mask_selection, image_dict,
-                                    authentic_id, tmpdirname):
+                                    authentic_id, tmpdirname, delimiter: str="+++", use_roi_name: bool=True):
     """
     Parse through the dictionary of annotations and export the point annotations to a CSV file
     """
@@ -204,7 +210,8 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
                     pass
         if len(points['x']) > 0:
             frame = pd.DataFrame(points)
-            return dcc.send_data_frame(frame.to_csv, "point_annotations.csv", index=False)
+            out_name = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else ""
+            return dcc.send_data_frame(frame.to_csv, f"{out_name}_points.csv", index=False)
         else:
             raise PreventUpdate
     else:
