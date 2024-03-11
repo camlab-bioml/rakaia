@@ -1,3 +1,4 @@
+import dash
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -255,7 +256,7 @@ def apply_preset_to_array(array, preset):
             if int(preset['filter_val']) % 2 != 0 and int(preset['filter_val']) >= 1:
                 array = cv2.GaussianBlur(array, (int(preset['filter_val']), int(preset['filter_val'])),
                                          int(preset['filter_sigma']))
-        return array
+    return array
 
 def apply_preset_to_blend_dict(blend_dict, preset_dict):
     """
@@ -348,21 +349,24 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     upper_percentile = float(np.percentile(data, percentile))
     return upper_percentile if upper_percentile > 0 else 1.0
 
-def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options):
+def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options,
+                                                  cur_dataset_preview: Union[list, dict]=None):
     """
     On button prompt, remove a dataset option from the options list.
     """
     if remove_clicks > 0 and None not in (cur_data_selection, cur_options):
         return_list = cur_options.copy()
         return_list.remove(cur_data_selection)
-        return return_list, None, [], None
+        cur_dataset_preview = [elem for elem in cur_dataset_preview if elem['ROI'] != cur_data_selection] if \
+            cur_dataset_preview else dash.no_update
+        return return_list, None, [], None, cur_dataset_preview
     else:
         raise PreventUpdate
 
-def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_blend, aliases, triggered_id):
+def set_channel_list_order(set_order_clicks, order_row_data, channel_order, current_blend, aliases, triggered_id):
     """
     Set the blend order of channels in the canvas based on either the existing order of addition,
-    or the sorting from a dash-ag-grid that is passed as rowdata
+    or the sorting from a dash-ag-grid that is passed as row data
     """
     channel_order = [] if channel_order is None or len(channel_order) < 1 else channel_order
     # input 1: if a channel is added or removed
@@ -373,10 +377,10 @@ def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_ble
         # make sure to remove any channels that are no longer selected while maintaining order
         return [elem for elem in channel_order if elem in current_blend]
     # option 2: if a unique order is set by the draggable grid
-    elif triggered_id == "set-sort" and rowdata is not None and set_order_clicks > 0:
+    elif triggered_id == "set-sort" and order_row_data is not None and set_order_clicks > 0:
         # imp: when taking the order from the dash grid, these are the values, so need to convert back to keys
         channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for \
-                         elem in rowdata]
+                         elem in order_row_data]
         return channel_order
     else:
         return []

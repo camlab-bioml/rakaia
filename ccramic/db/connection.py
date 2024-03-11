@@ -1,13 +1,18 @@
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from ccramic.utils.db import format_blend_config_document_for_insert
+from pymongo.collection import Collection
 
 class AtlasDatabaseConnection:
     """
     This class represents a user connection to a mongoDB Atlas database
+    An existing client can be passed, or a new one can be created using a connection string and username/password
+    combination. By default, a collection is created using the sandbox connection (for now)
+    The client should have the following configurations: a database corresponding to the `database_name` i.e. `ccramic`,
+    and inside the database, a collection corresponding to the `blend_collection_name` i.e. `blend_config`
     """
     def __init__(self, username: str = None, password: str = None, database_name: str = "ccramic",
-                 blend_collection_name: str = "blend_config"):
+                 blend_collection_name: str = "blend_config", existing_client: MongoClient=None):
         self.username = username
         self.password = password
         self.connection_string = f"mongodb+srv://{self.username}:{self.password}@ccramic-db" \
@@ -17,13 +22,16 @@ class AtlasDatabaseConnection:
         self.client = None
         self.database = None
         self.blend_collection = None
+        self.existing_client = existing_client
 
-    def create_connection(self):
+    def create_connection(self, new_collection: Collection = None):
         try:
-            self.client = MongoClient(self.connection_string, server_api=ServerApi('1'))
+            self.client = MongoClient(self.connection_string, server_api=ServerApi('1')) if not self.existing_client \
+                else self.existing_client
             # set the name of the database and collection
             self.database = self.client[self.database_name]
-            self.blend_collection = self.database[self.blend_collection_name]
+            self.blend_collection = self.database[self.blend_collection_name] if not \
+                new_collection else new_collection
             self.client.admin.command('ping')
             return True, "Connection to ccramic-db successful"
         except Exception as e:

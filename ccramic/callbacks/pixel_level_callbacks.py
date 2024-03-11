@@ -260,17 +260,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('data-collection', 'value', allow_duplicate=True),
                        Output('image_layers', 'options', allow_duplicate=True),
                        Output('image_layers', 'value', allow_duplicate=True),
+                       Output('dataset-preview-table', 'data', allow_duplicate=True),
                        Input('remove-collection', 'n_clicks'),
                        State('data-collection', 'value'),
                        State('data-collection', 'options'),
+                       State('dataset-preview-table', 'data'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def remove_dataset_from_collection(remove_clicks, cur_data_selection, cur_options):
+    def remove_dataset_from_collection(remove_clicks, cur_data_selection, cur_options, data_preview):
         """
         Use the trash icon to remove a dataset collection from the possible selections
-        Causes a reset of the canvas, channel selection, and channel modification menus
+        Causes a reset of the canvas, channel selection, channel modification menus. and the data preview table
         """
-        return delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options)
+        return delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options, data_preview)
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
                        Input('uploaded_dict_template', 'data'),
@@ -374,7 +376,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the name of the file output in the graph to match the ROI name
         """
-        # TODO: decide if should have just the ROI name or the entire dataset identifier (current)
         if roi_change and current_canvas_config: return update_canvas_filename(current_canvas_config, roi_change, delim)
         raise PreventUpdate
 
@@ -558,7 +559,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[elem] = {'color': None, 'x_lower_bound': 0, 'x_upper_bound':
                         get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem]),
                             'filter_type': None, 'filter_val': None, 'filter_sigma': None}
-                    # TODO: default colour is white, but can set auto selection here for starting colours
                     current_blend_dict[elem]['color'] = '#FFFFFF'
                     if autofill_channel_colours:
                         current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
@@ -571,7 +571,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[elem] = apply_preset_to_blend_dict(
                         current_blend_dict[elem], preset_dict[preset_selection])
                 else:
-                    # TODO: default colour is white, but can set auto selection here for starting colours
                     if autofill_channel_colours:
                         current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     # create a nested dict with the image and all of the filters being used for it
@@ -893,7 +892,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Reset the canvas to blank on an ROI change
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
-        #TODO: new update here does not reset the canvas to blank between ROI selections for smoother transition
         if new_selection is not None:
             canvas_return = dash.no_update
             if 'shapes' in cur_canvas['layout'] and len(cur_canvas['layout']['shapes']) > 0:
@@ -1153,7 +1151,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #     pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
     #     if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
     #         try:
-    #             # TODO: change the scalebar length in conjunction with the value
     #             fig = CanvasLayout(cur_graph).use_custom_scalebar_value(custom_scale_val, pixel_ratio)
     #         except (KeyError, AssertionError):
     #             fig = dash.no_update
@@ -1274,7 +1271,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             metadata_read = pd.read_csv(metadata_config['uploads'][0])
             metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
             if metadata_validated is not None and 'ccramic Label' not in metadata_validated.keys():
-                # TODO: decide if overwrite existing metadata, or just replace editable labels
                 # make sure that the internal keys from channel names stay the same
                 metadata_validated['Channel Name'] = pd.DataFrame(cur_metadata)['Channel Name']
                 metadata_validated['ccramic Label'] = metadata_validated["Channel Label"]
@@ -1482,11 +1478,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('pixel-level-analysis', 'active_tab'),
                        State('session_config', 'data'),
                        State('dataset-delimiter', 'value'),
+                       State('data-collection', 'options'),
                        prevent_initial_call=True)
     # @cache.memoize()
     def create_channel_tile_gallery_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          blend_colour_dict, toggle_scaling_gallery, active_tab, session_config, delimiter):
+                          blend_colour_dict, toggle_scaling_gallery, active_tab, session_config, delimiter, options):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
@@ -1508,10 +1505,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # channel view
                 blend_return = dash.no_update
                 if view_by_channel and channel_selected is not None:
-                    # TODO: modify single-channel view with lazy loading
                     # views = get_all_images_by_channel_name(gallery_data, channel_selected)
                     views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 10000,
-                                            delimiter=delimiter, use_greyscale=True).get_image_dict()
+                            delimiter=delimiter, use_greyscale=True, dataset_options=options).get_image_dict()
                     if toggle_scaling_gallery:
                         try:
                             blend_colour_dict = check_blend_dictionary_for_blank_bounds_by_channel(
@@ -1525,7 +1521,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                 if views is not None:
                     row_children = generate_channel_tile_gallery_children(views, canvas_layout, zoom_keys, blend_colour_dict,
-                                    preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery)
+                        preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery)
                 else:
                     row_children = []
                 return row_children, blend_return
@@ -1730,6 +1726,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('pixel-intensity-slider', 'marks', allow_duplicate=True),
                        Output('pixel-intensity-slider', 'step', allow_duplicate=True),
                        Output('custom-slider-max', 'value', allow_duplicate=True),
+                       # Output('blending_colours', 'data', allow_duplicate=True),
+                       # Output('image_layers', 'value', allow_duplicate=True),
                        State('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
@@ -1737,15 +1735,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('pixel-intensity-slider', 'value'),
                        Input('set-default-rangeslider', 'n_clicks'),
                        State('custom-slider-max', 'value'),
+                       # Input('set-default-rangeslider-all', 'n_clicks'),
+                       # State('image_layers', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
-    def reset_intensity_slider_to_default(selected_channel, uploaded, data_selection,
-                                                     current_blend_dict, cur_slider_values, reset, cur_max):
+    def reset_intensity_slider_to_default(selected_channel, uploaded, data_selection, current_blend_dict,
+                                    cur_slider_values, reset, cur_max):
         """
         Reset the range slider for the current channel to the default values (min of 0 and max of 99th pixel
         percentile)
         """
-        if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and reset > 0:
+        # TODO: could add here the button for all channels to reset to default
+        if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
+            # if ctx.triggered_id == "set-default-rangeslider-all" and channels_in_blend:
+            #     for channel in channels_in_blend:
+            #         current_blend_dict[channel]['x_lower_bound'] = 0
+            #         current_blend_dict[channel]['x_upper_bound'] = float(get_default_channel_upper_bound_by_percentile(
+            #             uploaded[data_selection][channel]))
             hist_max = upper_bound_for_range_slider(uploaded[data_selection][selected_channel])
             upper_bound = float(get_default_channel_upper_bound_by_percentile(uploaded[data_selection][selected_channel]))
             if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
@@ -1878,7 +1884,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise AssertionError
                 return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
             except AttributeError:
-                # TODO: raise exception on None if the data could not be imported, likely due to a disk storage error
                 raise DataImportError(ALERT.warnings["possible-disk-storage-error"])
             except KeyError:
                 return []
@@ -1994,15 +1999,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("alert-modal", "is_open"),
         Output("alert-information", "children"),
         Input('session_alert_config', 'data'),
+        State('toggle-session-messages', 'value'),
         prevent_initial_call=True)
-    def show_alert_modal(alert_dict):
+    def show_alert_modal(alert_dict, show_messages):
         """
         If the alert dict is populated with a warning, show the warning in the modal. Otherwise, do not populate and
         don't show the modal
         """
-
         if alert_dict is not None and len(alert_dict) > 0 and "error" in alert_dict.keys() and \
-                alert_dict["error"] is not None:
+                alert_dict["error"] is not None and show_messages:
             children = [html.H6("Message: \n"), html.H6(alert_dict["error"])]
             return True, children
         return False, None
@@ -2099,7 +2104,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # uniquely identify a region
             # IMP: convert the dictionary to a sorted tuple to use as a key
             # https://stackoverflow.com/questions/1600591/using-a-python-dictionary-as-a-key-non-nested
-            # TODO: add in logic here to allow gated cell annotation from the relevant inputs
             annotation_list = {}
             # Option 1: if zoom is used
             if isinstance(canvas_layout, dict) and 'shapes' not in canvas_layout:

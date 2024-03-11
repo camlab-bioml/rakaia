@@ -1,4 +1,5 @@
 import os
+import dash
 import pytest
 import plotly
 from ccramic.utils.pixel_level_utils import (
@@ -411,6 +412,7 @@ def test_basic_dataset_dropdown_removal():
     removed = delete_dataset_option_from_list_interactively(1, "dataset2", dataset_options)
     assert "dataset2" not in removed[0]
     assert "dataset1" in removed[0]
+    assert isinstance(removed[-1], dash._callback.NoUpdate)
     with pytest.raises(PreventUpdate):
         delete_dataset_option_from_list_interactively(1, None, dataset_options)
     with pytest.raises(PreventUpdate):

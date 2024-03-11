@@ -145,7 +145,7 @@ def write_session_data_to_h5py(dest_dir, metadata_frame, data_dict, data_selecti
                     pass
     try:
         hf.close()
-    except:
+    except (Exception,):
         pass
 
     return str(relative_filename)
