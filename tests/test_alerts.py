@@ -16,9 +16,9 @@ def test_tour_steps():
 def test_file_import_warning(get_current_dir):
     files = [os.path.join(get_current_dir, "data.h5"), os.path.join(get_current_dir, "query.mcd")]
     message, unique = file_import_message(files)
-    assert message == 'Read in the following files:\n'\
-                        '/home/matt/github/ccramic/tests/data.h5\n'\
-                        '/home/matt/github/ccramic/tests/query.mcd\n'\
+    assert message == f'Read in the following files:\n'\
+                        f'{os.path.join(get_current_dir, "data.h5")}\n'\
+                        f'{os.path.join(get_current_dir, "query.mcd")}\n'\
                         '\n'\
                         ' Select a region (ROI) from the data collection dropdown to begin analysis.'
     assert len(unique) == 2

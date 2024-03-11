@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-03-08
+## [0.13.0] - 2024-03-11
 
 ### Added
 
@@ -25,6 +25,7 @@ set any annotated objects in quantification to the default `None`
 - Delete annotations by choice from the annotation preview table #89
 - Toggle switch for enabling ROI change using left and right arrow keys
 - Toggle button for select/deselect all for in-browser quantification
+- Toggle button for disabling in-session messages (Default is to enable for safety)
 
 ### Changed
 
