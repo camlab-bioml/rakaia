@@ -1,4 +1,29 @@
+import pathlib
 from pydantic import BaseModel
+
+class DataImportTour(BaseModel):
+    """
+    Contains the steps used for the dash tour component for data import assistance
+    """
+    steps: list = [{'selector': '[id="upload-image"]',
+                    'content': "Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
+                               " be used only for datasets < 2GB or if the app deployment is non-local (web-based)"},
+                {'selector': '[id="read-filepath"]',
+                'content': "For large datasets (> 2GB) on local deployments, "
+                           "copy and paste either a filepath or directory and "
+                               "read files directly by selecting Import local"},
+                {'selector': '[id="show-dataset-info"]',
+                'content': 'View a list of imported datasets and regions of interest (ROIs).'
+                           ' Multiple ROIs, files, and/or filetypes can be imported into the same session, '
+                           'provided that the biomarker panel is the same across all ROIs.'},
+                {'selector': '[id="data-collection"]',
+                'content': 'Select an ROI from the dropdown menu to populate the image gallery'
+                               ' and begin image analysis'},
+                {'selector': '[id="annotation-canvas"]',
+                    'content': 'Create a multiplexed image in the canvas by selecting channels/biomarkers\n'
+                               ' from the Channel selection dropdown.\n'},
+                   {'selector': '[id="ccramic-documentation"]',
+                    'content': 'Visit the documentation for a full comprehensive user guide.'}]
 
 class AlertMessage(BaseModel):
     """
@@ -33,9 +58,55 @@ class AlertMessage(BaseModel):
                       "invalid_annotation_shapes": "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes.",
                       "invalid_dimensions": "The dimensions of the mask do not agree with the current ROI.",
-                      "quantification_missing_mask": "Quantification requires an ROI with a compatible mask that has been applied to the" \
-                                    " canvas. Please review the required inputs."}
+                      "quantification_missing": "Quantification requires the following inputs: \n\n"
+                                                "- an ROI with a compatible mask that has been applied to the canvas. \n"
+                                                "- at least one channel/biomarker selected for quantification. \n\n"
+                                                "Please review the required inputs.",
+                      "possible-disk-storage-error": "The imported data could not be read/cached. \n"
+                                                     "Check that there is sufficient disk storage to conduct analysis"
+                                                     " (typically 2x the size of the imported files)."}
+
+
+class ToolTips(BaseModel):
+    tooltips: dict = {"delimiter": "Set a custom delimiter for the string representation of datasets. "
+                                "Should be used if imported datasets contain filenames or identifiers with"
+                                "string overlap with the current delimiter.",
+                      "import-tour": "Click here to get a tour of the components required for dataset import.",
+                      "local-dialog": "Browse the local file system using a dialog. "
+                                      "IMPORTANT: may not be compatible with the specific OS.",
+                      "delete-selection": "Remove the current data collection. (IMPORTANT): cannot be undone.",
+                      "roi-refresh": "Refresh the current dataset selection. "
+                                    "Can be used if the ROI loading has become corrupted",
+                      "channel-mod": "Select a channel in the current blend to \nchange colour, "
+                                                           "pixel intensity, or apply a filter.",
+                      "annot-reimport": "Re-import the current ROI annotations into the quantification "
+                                            "results. Annotations must be re-added each time the quantification "
+                                            "results are re-generated, or if annotations were generated "
+                                            "without quantification results."}
 
 
 class PanelMismatchError(Exception):
+    """
+    Raise this exception when datasets with different panel lengths are uploaded into the same session
+    """
     pass
+
+class DataImportError(Exception):
+    """
+    Raise when imported data cannot be read fully into the session, likely due to a disk storage error
+    """
+    pass
+
+def file_import_message(imported_files: list):
+    """
+    Generate the import alert for files read into the session
+    """
+    unique_suffixes = []
+    message = "Read in the following files:\n"
+    for upload in imported_files:
+        suffix = pathlib.Path(upload).suffix
+        message = message + f"{upload}\n"
+        if suffix not in unique_suffixes:
+            unique_suffixes.append(suffix)
+    message = message + "\n Select a region (ROI) from the data collection dropdown to begin analysis."
+    return message, unique_suffixes

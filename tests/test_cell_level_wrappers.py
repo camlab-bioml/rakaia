@@ -1,12 +1,13 @@
 import dash.exceptions
 import pytest
-
 import os
 import tifffile
 from ccramic.callbacks.cell_level_wrappers import *
+from ccramic.io.session import SessionServerside
 
 def test_basic_callback_import_annotations_quantification_frame(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+    app_config = {'serverside_overwrite': True}
     bounds = {'xaxis.range[0]': 826, 'xaxis.range[1]': 836, 'yaxis.range[0]': 12, 'yaxis.range[1]': 21}
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
@@ -16,17 +17,16 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
-                                        measurements.to_dict(orient="records"), "roi_1", None, False, None)
+                                        measurements.to_dict(orient="records"), "roi_1", None, False, None,
+                                        config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
                                                         (quantification_frame["y_max"] == 20)]) == ['mature']
-    assert isinstance(serverside, Serverside)
+    assert isinstance(serverside, SessionServerside)
 
     with pytest.raises(PreventUpdate):
-        callback_add_region_annotation_to_quantification_frame(None,
-                                                               measurements.to_dict(orient="records"), "roi_1", None,
-                                                               False, None)
+        callback_add_region_annotation_to_quantification_frame(None, None, "roi_1", None, False, None)
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     bounds = {'x0': 826, 'x1': 836, 'y0': 12, 'y1': 21}
@@ -38,10 +38,8 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
-                                                                                              measurements.to_dict(
-                                                                                                  orient="records"),
-                                                                                              "roi_1", None, False,
-                                                                                              None)
+                                        measurements.to_dict(orient="records"), "roi_1", None, False,
+                                        None, config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
@@ -54,10 +52,8 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
-                                                                                    quantification_frame.to_dict(
-                                                                                                  orient="records"),
-                                                                                              "roi_1", None, False,
-                                                                                              None)
+                                        quantification_frame.to_dict(orient="records"), "roi_1", None, False,
+                                        None, config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
     assert "different" not in quantification_frame["ccramic_cell_annotation"].to_list()
     assert "different" in quantification_frame["broad"].to_list()
@@ -85,7 +81,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
                                         measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
-                                        sample_name='Dilution_series_1_1')
+                                        sample_name='Dilution_series_1_1', config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert len(quantification_frame[
@@ -96,9 +92,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                     quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
 
     with pytest.raises(dash.exceptions.PreventUpdate):
-        quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
-                                    measurements.to_dict(orient="records"),b"roi_1", None, False,
-                                    None,sample_name='Dilution_series_1_1')
+        quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(None,
+                                    None,b"roi_1", None, False,
+                                    None, sample_name='Dilution_series_1_1', config=app_config)
 
     assert len(quantification_frame[
                    quantification_frame["ccramic_cell_annotation"] == "mature"]) == 2
@@ -109,7 +105,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
 
 
     annotations_dict = {'roi_1': {
-        "{'points': [{'x': 534, 'y': 648}]}":
+        "{'points': [{'x': 582, 'y': 465}]}":
             {'title': 'fake_title', 'body': 'fake_body',
              'cell_type': 'mature', 'imported': False, 'type': 'point',
              'annotation_column': 'ccramic_cell_annotation'}
@@ -120,14 +116,168 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
-                                                                                              measurements.to_dict(
-                                                                                                  orient="records"),
-                                                                                              "roi_1", mask_dict, True,
-                                                                                              "mask_1",
-                                                                                              sample_name='Dilution_series_1_1')
+                                    measurements.to_dict(orient="records"), "roi_1", mask_dict, True,
+                                    "mask_1", sample_name='Dilution_series_1_1', config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'ccramic_cell_annotation' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['ccramic_cell_annotation'])
 
+    gated_cell_tuple = (102, 154, 134, 201, 209, 244)
+    # annotate using gated cell method
+    annotations_dict = {'roi_1': {
+        gated_cell_tuple:
+            {'title': 'None', 'body': 'None',
+             'cell_type': 'mature', 'imported': False, 'type': 'gate',
+             'annotation_column': 'gating_test'}
+    }}
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
+                                sample_name='Dilution_series_1_1', config=app_config)
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'gating_test' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['gating_test'])
+    # assert that the gated positions are offset by 1 (0-indexed)
+    assert quantification_frame.index[quantification_frame['gating_test'] == 'mature'].tolist() == \
+           [int(elem) - 1 for elem in sorted(list(gated_cell_tuple))]
+
+
+def test_basic_annotation_dict_without_quantification_frame(get_current_dir):
+    annotations_dict = {'roi_1': {
+        "{'points': [{'x': 582, 'y': 465}]}":
+            {'title': 'fake_title', 'body': 'fake_body',
+             'cell_type': 'mature', 'imported': False, 'type': 'point',
+             'annotation_column': 'ccramic_cell_annotation'}
+    }}
+
+    mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
+    app_config = {'serverside_overwrite': True}
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                        None, "roi_1", mask_dict, True, "mask_1", sample_name='Dilution_series_1_1',
+                                        config=app_config)
+    assert quantification_frame is None
+    assert not serverside.value['roi_1']["{'points': [{'x': 582, 'y': 465}]}"]['imported']
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+                    None, "roi_1", mask_dict, True, "mask_1", sample_name='Dilution_series_1_1',
+                    config=app_config, remove=True)
+    assert not serverside.value['roi_1']
+
+
+def test_basic_callback_remove_annotations_quantification_frame(get_current_dir):
+    """
+    Test that removing an annotation sets the column back to the defaults
+    Here, remove the first annotation an keep the last one
+    """
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+    app_config = {'serverside_overwrite': True}
+    bounds = {'xaxis.range[0]': 826, 'xaxis.range[1]': 836, 'yaxis.range[0]': 12, 'yaxis.range[1]': 21}
+
+    annotation = {'title': 'fake_title', 'body': 'fake_body',
+                  'cell_type': 'mature', 'imported': False, 'type': 'zoom',
+                  'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_1'}
+
+    annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation,
+                                  "{'points': [{'x': 582, 'y': 465}]}":
+                                      {'title': 'fake_title', 'body': 'fake_body',
+                                       'cell_type': 'mature', 'imported': False, 'type': 'point',
+                                       'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_2'}
+                                  }}
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                        measurements.to_dict(orient="records"), "roi_1", None, False, None,
+                                        config=app_config)
+    quantification_frame = pd.DataFrame(quantification_frame)
+
+    assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
+                                                        (quantification_frame["y_max"] == 20)]) == ['mature']
+
+    # Remove the most recent annotation
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+                                    quantification_frame.to_dict(orient="records"), "roi_1", None, False, None,
+                                    config=app_config, remove=True, indices_remove=[0])
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
+                                                                (quantification_frame["y_max"] == 20)]) == ['None']
+
+def test_basic_callback_remove_annotations_quantification_frame_2(get_current_dir):
+    """
+    Test that removing an annotation sets the column back to the defaults
+    Here, remove the last annotation by index and keep the first
+    """
+    app_config = {'serverside_overwrite': True}
+    bounds = {'xaxis.range[0]': 826, 'xaxis.range[1]': 836, 'yaxis.range[0]': 12, 'yaxis.range[1]': 21}
+
+    annotation = {'title': 'fake_title', 'body': 'fake_body',
+                  'cell_type': 'first', 'imported': False, 'type': 'zoom',
+                  'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_1'}
+
+    annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation,
+                                  "{'points': [{'x': 582, 'y': 465}]}":
+                                      {'title': 'fake_title', 'body': 'fake_body',
+                                       'cell_type': 'mature', 'imported': False, 'type': 'point',
+                                       'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_2'}
+                                  }}
+    mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
+
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+                                    measurements.to_dict(orient="records"), "roi_1", mask_dict, True,
+                                    "mask_1", sample_name='Dilution_series_1_1', config=app_config)
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'ccramic_cell_annotation' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['ccramic_cell_annotation'])
+    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['None', 'first', 'mature']
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+                                    quantification_frame.to_dict(orient="records"), "roi_1", mask_dict, True,
+                                    "mask_1", sample_name='Dilution_series_1_1', config=app_config, remove=True,
+                                    indices_remove=[1])
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'ccramic_cell_annotation' in quantification_frame.columns
+    assert not 'mature' in list(quantification_frame['ccramic_cell_annotation'])
+    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['None', 'first']
+
+def test_basic_callback_remove_annotations_quantification_frame_3(get_current_dir):
+    """
+    Test that removing an annotation sets the column back to the defaults
+    Here, remove the last annotation without an index using gating
+    """
+    app_config = {'serverside_overwrite': True}
+    mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
+
+    measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
+
+    gated_cell_tuple = (102, 154, 134, 201, 209, 244)
+    # annotate using gated cell method
+    annotations_dict = {'roi_1': {
+        gated_cell_tuple:
+            {'title': 'None', 'body': 'None',
+             'cell_type': 'mature', 'imported': False, 'type': 'gate',
+             'annotation_column': 'gating_test', 'mask_selection': 'mask', 'id': 'gating_1'}
+    }}
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+            measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
+            sample_name='Dilution_series_1_1', config=app_config)
+
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'gating_test' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['gating_test'])
+    # assert that the gated positions are offset by 1 (0-indexed)
+    assert quantification_frame.index[quantification_frame['gating_test'] == 'mature'].tolist() == \
+           [int(elem) - 1 for elem in sorted(list(gated_cell_tuple))]
+
+    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+                    quantification_frame.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
+                    sample_name='Dilution_series_1_1', config=app_config, remove=True, indices_remove=[0, 1, 2])
+
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert 'gating_test' in quantification_frame.columns
+    assert not 'mature' in list(quantification_frame['gating_test'])
+    assert quantification_frame.index[quantification_frame['gating_test'] == 'mature'].tolist() == []
 
 def test_basic_shape_removal_from_canvas():
     import plotly.graph_objects as go
@@ -168,3 +318,15 @@ def test_basic_shape_removal_from_canvas():
     assert isinstance(warning, dict)
     assert warning["error"] == "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes."
+
+def test_reset_annotations_import():
+    annot_dict = {"roi_1": {"annot_1": {"imported": True}, "annot_2": {"imported": True}, "annot_3": {"imported": True}}}
+    assert all([elem['imported'] for elem in annot_dict['roi_1'].values()])
+    annot_dict_serverside = reset_annotation_import(annot_dict, "roi_1", {"serverside_overwrite": True})
+    assert all([not elem['imported'] for elem in annot_dict_serverside.value['roi_1'].values()])
+
+    # for ROIs not specified as the current one, do not reimport
+    annot_mismatch = {"roi_2": {"annot_1": {"imported": True},
+                                "annot_2": {"imported": True}, "annot_3": {"imported": True}}}
+    annot_reset_mismatch = reset_annotation_import(annot_mismatch, "roi_1", {"serverside_overwrite": True}, False)
+    assert annot_mismatch == annot_reset_mismatch

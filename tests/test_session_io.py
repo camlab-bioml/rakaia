@@ -2,11 +2,13 @@ import tempfile
 import os
 import numpy as np
 
-from ccramic.io.session import (write_blend_config_to_json,
-                                write_session_data_to_h5py,
-                                subset_mask_for_data_export,
-                                create_download_dir,
-                                SessionServerside)
+from ccramic.io.session import (
+    write_blend_config_to_json,
+    write_session_data_to_h5py,
+    subset_mask_for_data_export,
+    create_download_dir,
+    SessionServerside,
+    TabText)
 
 def test_session_serverside_objects():
     blend_dict = {"channel_1": np.full((1000, 1000), 1)}
@@ -40,13 +42,20 @@ def test_write_config_json():
         global_filter_type = "gaussian"
         global_filter_val = 3
         global_filter_sigma = 1
+
+        aliases = {}
+        for key in blend_dict.keys():
+            aliases[key] = key
+
+        clusters = {"roi_1": {"cell_type_1": "#FFFFFF", "cell_type_2": "#FFFFFF"}}
+
         json_path = write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
-                                               global_filter_type, global_filter_val, global_filter_sigma)
+                                               global_filter_type, global_filter_val, global_filter_sigma,
+                                               "roi_1", clusters, aliases)
         assert os.path.exists(json_path)
         if os.access(json_path, os.W_OK):
             os.remove(json_path)
         assert not os.path.exists(json_path)
-
 
 def test_write_session_data_to_h5py():
 
@@ -107,3 +116,8 @@ def test_generate_subset_mask_for_export():
 
     canvas_layout = {'shapes': [{'line': {'color': 'white', 'width': 2}, 'type': 'line', 'x0': 0.875, 'x1': 0.95, 'xref': 'paper', 'y0': 0.05, 'y1': 0.05, 'yref': 'paper'}, {'editable': True, 'label': {'text': '', 'texttemplate': ''}, 'xref': 'x', 'yref': 'y', 'layer': 'above', 'opacity': 1, 'line': {'color': 'white', 'width': 4, 'dash': 'solid'}, 'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd', 'type': 'rect', 'x0': 305.4451219512195, 'y0': 87.76219512195122, 'x1': 515.8109756097562, 'y1': 346.6036585365854}]}
     assert subset_mask_for_data_export(canvas_layout, (600, 600)) is None
+
+def test_tab_text():
+    texts = TabText()
+    assert 'channel_tiles' in list(texts.__fields__.keys())
+    assert len(list(texts.__fields__.keys())) == 3

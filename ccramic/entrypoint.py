@@ -8,7 +8,7 @@ from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWa
 import warnings
 
 _program = "ccramic"
-__version__ = "0.12.0"
+__version__ = "0.13.0"
 
 def init_app(cli_config):
     # suppress numba depreciation warnings from umap
@@ -23,7 +23,7 @@ def init_app(cli_config):
     # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
 
     cache = Cache(config = {
-        "DEBUG": cli_config['debug'],  # some Flask specific configs
+        "DEBUG": cli_config['is_dev_mode'],  # some Flask specific configs
         "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
         "CACHE_DEFAULT_TIMEOUT": 300
     })

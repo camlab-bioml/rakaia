@@ -1,3 +1,4 @@
+import dash
 import numpy as np
 import pandas as pd
 from PIL import Image
@@ -12,6 +13,7 @@ import cv2
 import re
 import random
 import numexpr as ne
+from typing import Union
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -82,10 +84,14 @@ def recolour_greyscale(array, colour):
         return np.array(image)
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
+    """
+    Return a series of region statistics for a rectangular slice of a channel array
+    mean, max, min, and integrated (total) signal
+    """
     try:
         subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-        return np.average(subset), np.max(subset), np.min(subset)
+        return np.average(subset), np.max(subset), np.min(subset), np.sum(subset)
     except IndexError:
         return None, None, None
 
@@ -130,12 +136,15 @@ def get_bounding_box_for_svgpath(svgpath):
 def get_area_statistics_from_closed_path(array, svgpath):
     """
     Subset an array based on coordinates contained within a svg path drawn on the canvas
+    Return a series of region statistics for a rectangular slice of a channel array
+    mean, max, min, and integrated (total) signal
     """
     # https://dash.plotly.com/annotations?_gl=1*9dqxqk*_ga*ODM0NzUyNzQ3LjE2NjQyODUyNDc.*_ga_6G7EE0JNSC*MTY4MzU2MDY0My4xMDUuMS4xNjgzNTYyNDM3LjAuMC4w
 
     masked_array = path_to_mask(svgpath, array.shape)
     # masked_subset_data = ma.array(array, mask=masked_array)
-    return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array])
+    return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array]), \
+        np.sum(array[masked_array])
 
 
 # def convert_to_below_255(array):
@@ -247,13 +256,13 @@ def apply_preset_to_array(array, preset):
             if int(preset['filter_val']) % 2 != 0 and int(preset['filter_val']) >= 1:
                 array = cv2.GaussianBlur(array, (int(preset['filter_val']), int(preset['filter_val'])),
                                          int(preset['filter_sigma']))
-        return array
+    return array
 
 def apply_preset_to_blend_dict(blend_dict, preset_dict):
     """
     Populate the blend dict from a preset dict
     """
-    assert all([key in blend_dict.keys() for key in preset_dict.keys()])
+    if not all([key in blend_dict.keys() for key in preset_dict.keys()]): raise AssertionError
     for key, value in preset_dict.items():
         # do not change the color from a preset
         if key != "color":
@@ -265,6 +274,7 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
     """
     Get all the images in a session dictionary from a channel name for the gallery view
     """
+    # TODO: modify this function to accommodate lazy loading
     images = {}
     for roi in list(upload_dict.keys()):
         if 'metadata' not in roi:
@@ -287,14 +297,6 @@ def validate_incoming_metadata_table(metadata, upload_dict):
              roi not in ['metadata', 'metadata_columns']]):
         return metadata
     return None
-    # if isinstance(metadata, pd.DataFrame) and
-    #     assert "Channel Label" in metadata.columns
-    #     assert "Channel Name" in metadata.columns
-    #     for roi in list(upload_dict.keys()):
-    #         if 'metadata' not in roi:
-    #             assert len(upload_dict[roi].keys()) == len(metadata.index)
-    #     return metadata
-    # return None
 
 
 def create_new_coord_bounds(window_dict, x_request, y_request):
@@ -303,7 +305,7 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
     and the requested coordinate is approximately the middle of the new window
     """
     try:
-        assert all([value is not None for value in window_dict.values()])
+        if not all([value is not None for value in window_dict.values()]): raise AssertionError
         # first cast the bounds as int, then cast as floats and add significant digits
         # 634.5215773809524
         x_request = float(x_request) + 0.000000000000
@@ -319,27 +321,8 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
         new_y_low = float(float(y_request - midway_y) + 0.000000000000)
         new_y_high = float(float(y_request + midway_y) + 0.000000000000)
         return new_x_low, new_x_high, new_y_low, new_y_high
-    except (AssertionError, KeyError):
+    except KeyError:
         return None
-
-# def copy_values_within_nested_dict(dict, current_data_selection, new_data_selection):
-#     """
-#     Copy the blend dictionary parameters (colour, filtering, scaling) from one acquisition/ROI in a nested
-#     dictionary to another
-#     """
-#     cur_exp, cur_slide, cur_acq = split_string_at_pattern(current_data_selection)
-#     new_exp, new_slide, new_acq = split_string_at_pattern(new_data_selection)
-#
-#     if new_exp not in list(dict.keys()):
-#         dict[new_exp] = {}
-#     if new_slide not in list(dict[new_exp].keys()):
-#         dict[new_exp][new_slide] = {}
-#     if new_acq not in list(dict[new_exp][new_slide].keys()):
-#         dict[new_exp][new_slide][new_acq] = {}
-#
-#     for key, value in dict[cur_exp][cur_slide][cur_acq].items():
-#         dict[new_exp][new_slide][new_acq][key] = value
-#     return dict
 
 def per_channel_intensity_hovertext(channel_list):
     """
@@ -349,14 +332,11 @@ def per_channel_intensity_hovertext(channel_list):
     """
     data_index = 0
     hover_template = "x: %{x}, y: %{y} <br>"
-    try:
-        assert isinstance(channel_list, list)
-        for elem in channel_list:
-            assert channel_list.index(elem) == data_index
-            hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
-            data_index += 1
-    except AssertionError:
-        pass
+    if not isinstance(channel_list, list): return hover_template + "<extra></extra>"
+    for elem in channel_list:
+        if not channel_list.index(elem) == data_index: return hover_template + "<extra></extra>"
+        hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"
+        data_index += 1
     hover_template = hover_template + "<extra></extra>"
     return hover_template
 
@@ -369,21 +349,24 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     upper_percentile = float(np.percentile(data, percentile))
     return upper_percentile if upper_percentile > 0 else 1.0
 
-def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options):
+def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options,
+                                                  cur_dataset_preview: Union[list, dict]=None):
     """
     On button prompt, remove a dataset option from the options list.
     """
     if remove_clicks > 0 and None not in (cur_data_selection, cur_options):
         return_list = cur_options.copy()
         return_list.remove(cur_data_selection)
-        return return_list, None, [], None
+        cur_dataset_preview = [elem for elem in cur_dataset_preview if elem['ROI'] != cur_data_selection] if \
+            cur_dataset_preview else dash.no_update
+        return return_list, None, [], None, cur_dataset_preview
     else:
         raise PreventUpdate
 
-def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_blend, aliases, triggered_id):
+def set_channel_list_order(set_order_clicks, order_row_data, channel_order, current_blend, aliases, triggered_id):
     """
     Set the blend order of channels in the canvas based on either the existing order of addition,
-    or the sorting from a dash-ag-grid that is passed as rowdata
+    or the sorting from a dash-ag-grid that is passed as row data
     """
     channel_order = [] if channel_order is None or len(channel_order) < 1 else channel_order
     # input 1: if a channel is added or removed
@@ -394,10 +377,10 @@ def set_channel_list_order(set_order_clicks, rowdata, channel_order, current_ble
         # make sure to remove any channels that are no longer selected while maintaining order
         return [elem for elem in channel_order if elem in current_blend]
     # option 2: if a unique order is set by the draggable grid
-    elif triggered_id == "set-sort" and rowdata is not None and set_order_clicks > 0:
+    elif triggered_id == "set-sort" and order_row_data is not None and set_order_clicks > 0:
         # imp: when taking the order from the dash grid, these are the values, so need to convert back to keys
         channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for \
-                         elem in rowdata]
+                         elem in order_row_data]
         return channel_order
     else:
         return []
@@ -435,12 +418,16 @@ def random_hex_colour_generator(number=10):
 
 
 def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
-    image_shape = layer_dict[channel_list[0]].shape
-    image = np.zeros(image_shape)
-    for elem in channel_list:
-        blend = layer_dict[elem]
-        image = ne.evaluate("image + blend")
-    return image.astype(np.float32)
+    if layer_dict and channel_list:
+        image_shape = layer_dict[channel_list[0]].shape
+        image = np.zeros(image_shape)
+        channel_list  = [channel for channel in channel_list if channel in layer_dict.keys()]
+        if channel_list:
+            for elem in channel_list:
+                blend = layer_dict[elem]
+                image = ne.evaluate("image + blend")
+        return image.astype(np.float32)
+    return None
 
 def get_first_image_from_roi_dictionary(roi_dictionary):
     """
@@ -461,7 +448,7 @@ def apply_filter_to_array(image, global_apply_filter, global_filter_type, global
     if global_filter_type not in ['gaussian', 'median']:
         raise TypeError("The global filter type should be either gaussian or median.")
     global_filter_applied = (isinstance(global_apply_filter, bool) and global_apply_filter) or (
-        isinstance(global_apply_filter, list) and len(global_apply_filter) > 0)
+        isinstance(global_apply_filter, list) and global_apply_filter)
     if global_filter_applied and None not in (global_filter_type, global_filter_val) and \
             int(global_filter_val) % 2 != 0:
         if global_filter_type == "median" and int(global_filter_val) >= 1:
@@ -476,3 +463,44 @@ def apply_filter_to_array(image, global_apply_filter, global_filter_type, global
                                                  int(global_filter_val)),
                                                  float(global_filter_sigma))
     return image
+
+
+def no_filter_chosen(current_blend_dict: dict, channel: str, filter_chosen: Union[list, str]):
+    """
+    Evaluates whether the currently selected channel has no filter applied, and the session
+    filter is set to None
+    """
+    return  current_blend_dict[channel]['filter_type'] is None and \
+            current_blend_dict[channel]['filter_val'] is None and \
+            current_blend_dict[channel]['filter_sigma'] is None and \
+            len(filter_chosen) == 0
+def channel_filter_matches(current_blend_dict: dict, channel: str, filter_chosen: Union[list, str],
+                           filter_name: str="median", filter_value: int = 3, filter_sigma: Union[int, float] = 1.0):
+    """
+    Evaluates whether the current channel's filters match the filter parameters currently
+    set in the session
+    """
+    return  current_blend_dict[channel]['filter_type'] == filter_name and \
+            current_blend_dict[channel]['filter_val'] == filter_value and \
+            current_blend_dict[channel]['filter_sigma'] == filter_sigma and \
+            len(filter_chosen) > 0
+
+
+def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_selection: str,
+                                    channel_aliases: dict=None):
+    """
+    Generate the cell styling conditions for the dash ag grid that displays the current channels
+    and their colours
+    """
+    cell_styling_conditions = []
+    if blend_dict is not None and current_blend is not None and data_selection is not None:
+        for key in current_blend:
+            try:
+                if key in blend_dict.keys() and blend_dict[key]['color'] != '#FFFFFF':
+                    label = channel_aliases[key] if channel_aliases is not None and \
+                                                    key in channel_aliases.keys() else key
+                    cell_styling_conditions.append({"condition": f"params.value == '{label}'",
+                                                    "style": {"color": f"{blend_dict[key]['color']}"}})
+            except KeyError:
+                pass
+    return cell_styling_conditions

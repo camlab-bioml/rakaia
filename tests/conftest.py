@@ -2,6 +2,7 @@ import pytest
 import os
 from ccramic.entrypoint import init_app
 from functools import wraps
+import tempfile
 
 @pytest.fixture(scope="module")
 def get_current_dir():
@@ -12,7 +13,7 @@ def get_current_dir():
 def ccramic_flask_test_app():
     app = init_app(cli_config={'use_local_dialog': False, 'use_loading': True,
                                'persistence': True, 'swatches': None, 'array_store_type': 'float',
-                               'serverside_overwrite': True, 'debug': True})
+                               'serverside_overwrite': True, 'is_dev_mode': True, 'cache_dest': tempfile.gettempdir()})
     app.config.update({
         "TESTING": True,
     })

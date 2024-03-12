@@ -5,6 +5,34 @@ import pandas as pd
 import numpy as np
 from ccramic.utils.pixel_level_utils import path_to_mask
 from dash_extensions.enrich import Serverside
+from typing import Union
+from pydantic import BaseModel
+
+class SessionTheme(BaseModel):
+    """
+    Sets the default theme elements for the session
+    """
+    widget_colour: str = "#0f4d92"
+
+class TabText(BaseModel):
+    """
+    Holds the html-compatible text explanations for different tabs
+    """
+    metadata: str = "Panel metadata consists of a list of biomarkers corresponding to one or more " \
+                    "experiments. ccramic requires internal channel identifiers (stored under" \
+                    " the channel name) that are used within ccramic sessions to identify individual biomarkers." \
+                    " Channel labels may be edited under the final column of the metadata table; these " \
+                    "labels will be applied to the canvas and session inputs."
+    channel_tiles: str = "Each region is comprised of one or more images corresponding to the " \
+                         "expression of a biomarker. Individual biomarker images, termed tiles, are visible in the " \
+                         "channel gallery when an ROI is selected, and one or more biomarkers can be added to the canvas " \
+                         "blend."
+    region_gallery: str = "Generate a thumbnail for one or more ROIs contained in the current session with the " \
+                          "blend parameters that are currently applied to the canvas. These thumbnails may be generated " \
+                          "randomly from the query below, or from subsetting the UMAP plot under the quantification tab. " \
+                          "Each thumbnail enables the specific ROI to be loaded into the main canvas."
+
+
 
 class SessionServerside(Serverside):
     """
@@ -27,17 +55,56 @@ def create_download_dir(dest_dir):
     if not os.path.exists(dest_dir):
         os.makedirs(dest_dir)
 
+class JSONSessionDocument:
+    """
+    Represents a JSON saved configuration of session and ROI variables
+    Saved configurations include blend parameters for all channels, naming/aliases,
+    global filters, and cluster colour annotations, if imported
+    Used for local export to JSON or insertion into a mongoDB collection
+    """
+    def __init__(self, save_type="json", user: str=None, document_name: str=None,
+                 blend_dict: dict=None, selected_channel_list: list=None,
+                 global_apply_filter: Union[list, bool]=False, global_filter_type: str="median",
+                 global_filter_val: int = 3, global_filter_sigma: float=1.0,
+                 data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None,
+                 gating_dict: dict=None):
+        if save_type not in ["json", "db"]:
+            raise TypeError("The `save_type` provided should be one of: `json`, for local exports,"
+                            "or `db`, for formatting a document for the mongoDB database")
+        self.format = save_type
+        self.document = {}
+        if self.format == "db":
+            self.document['user'] = user
+            self.document['name'] = document_name
+        if aliases is not None:
+            for key in blend_dict.keys():
+                if key in aliases.keys():
+                    blend_dict[key]['alias'] = aliases[key]
+        self.document['channels'] = blend_dict
+        cluster_assignments = cluster_assignments[data_selection] if None not in \
+                            (cluster_assignments, data_selection) and data_selection in \
+                            cluster_assignments.keys() else None
+        self.document['config'] = {"blend": selected_channel_list, "filter": {"global_apply_filter": global_apply_filter,
+                                "global_filter_type": global_filter_type, "global_filter_val": global_filter_val,
+                                "global_filter_sigma": global_filter_sigma}}
+        self.document['cluster'] = cluster_assignments
+        self.document['gating'] = gating_dict
+    def get_document(self):
+        return self.document
+
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
-                               global_filter_type, global_filter_val, global_filter_sigma):
+                               global_filter_type, global_filter_val, global_filter_sigma,
+                               data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None,
+                               gating_dict: dict=None):
     """
     Write the session blend configuration dictionary to a JSON file
     """
+    # write the aliases to the blend_dict if they exist
     param_json_path = str(os.path.join(dest_dir, 'param.json'))
     with open(param_json_path, "w") as outfile:
-        dict_write = {"channels": blend_dict, "config":
-            {"blend": blend_layer_list, "filter":
-                {"global_apply_filter": global_apply_filter, "global_filter_type": global_filter_type,
-                 "global_filter_val": global_filter_val, "global_filter_sigma": global_filter_sigma}}}
+        dict_write = JSONSessionDocument("json", None, None, blend_dict, blend_layer_list, global_apply_filter,
+                                         global_filter_type, global_filter_val, global_filter_sigma,
+                                         data_selection, cluster_assignments, aliases, gating_dict).get_document()
         json.dump(dict_write, outfile)
     return param_json_path
 
@@ -78,7 +145,7 @@ def write_session_data_to_h5py(dest_dir, metadata_frame, data_dict, data_selecti
                     pass
     try:
         hf.close()
-    except:
+    except (Exception,):
         pass
 
     return str(relative_filename)

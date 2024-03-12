@@ -8,21 +8,37 @@ from dash.exceptions import PreventUpdate
 from PIL import Image
 import numpy as np
 from skimage.segmentation import find_boundaries
+from pydantic import BaseModel
+
+class QuantificationColumns(BaseModel):
+    """
+    Holds the default named columns that can come after the channel columns
+    """
+    identifiers: list = ['sample', 'description']
+    positions: list = ['sample', 'cell_id', 'description']
+    defaults: list = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
+                        'PhenoGraph_clusters', 'Labels']
+
+class QuantificationFormatError(Exception):
+    pass
 
 
 def set_columns_to_drop(measurements_csv=None):
-    defaults = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
-            'PhenoGraph_clusters', 'Labels']
     if measurements_csv is None:
-        return defaults
+        return QuantificationColumns().defaults
     else:
         # drop every column from sample and after, as these don't represent channels
-        try:
-            cols = list(measurements_csv.columns)
-            index_find = min(cols.index('sample'), cols.index('cell_id'))
-            return cols[index_find: len(cols)]
-        except (ValueError, IndexError):
-            return defaults
+        indices = []
+        cols = list(measurements_csv.columns)
+        for column in QuantificationColumns().positions:
+            try:
+                indices.append(cols.index(column))
+            except (KeyError, ValueError, IndexError):
+                pass
+        if not indices:
+            # TODO: decide if throw error for quantification results that are missing the key identifying columns
+            return QuantificationColumns().defaults
+        return cols[min(indices): len(measurements_csv.columns)]
 
 def set_mandatory_columns(only_sample=True):
     if only_sample:
@@ -30,59 +46,23 @@ def set_mandatory_columns(only_sample=True):
     else:
         return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
-# def get_pixel(mask, i, j):
-#     if len(mask.shape) > 2:
-#         return mask[i][j][0]
-#     else:
-#         return mask[i][j]
-
 def get_min_max_values_from_zoom_box(coord_dict):
-    try:
-        assert all([elem in coord_dict.keys() for elem in \
-                    ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']])
-        x_min = min(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
-        x_max = max(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
-        y_min = min(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
-        y_max = max(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
-        return x_min, x_max, y_min, y_max
-    except AssertionError:
-        return None
+    if not all([elem in coord_dict.keys() for elem in \
+                    ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']]): return None
+    x_min = min(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
+    x_max = max(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
+    y_min = min(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
+    y_max = max(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
+    return x_min, x_max, y_min, y_max
 
 def get_min_max_values_from_rect_box(coord_dict):
-    try:
-        assert all([elem in coord_dict.keys() for elem in \
-                    ['x0', 'x1', 'y0', 'y1']])
-        x_min = min(coord_dict['x0'], coord_dict['x1'])
-        x_max = max(coord_dict['x0'], coord_dict['x1'])
-        y_min = min(coord_dict['y0'], coord_dict['y1'])
-        y_max = max(coord_dict['y0'], coord_dict['y1'])
-        return x_min, x_max, y_min, y_max
-    except AssertionError:
-        return None
-
-# def convert_mask_to_cell_boundary(mask, outline_color=255, greyscale=True):
-#     """
-#     Convert a mask array with filled in cell masks to an array with drawn boundaries with black interiors of cells
-#     """
-#     if greyscale:
-#         outlines = np.full((mask.shape[0], mask.shape[1]), 3)
-#     else:
-#         outlines = np.stack([np.empty(mask[0].shape), mask[0], mask[1]], axis=2)
-#     for i in range(mask.shape[0]):
-#         for j in range(mask.shape[1]):
-#             pixel = get_pixel(mask, i, j)
-#             if pixel != 0:
-#                 if i != 0 and get_pixel(mask, i - 1, j) != pixel:
-#                     outlines[i][j] = outline_color
-#                 elif i != mask.shape[0] - 1 and get_pixel(mask, i + 1, j) != pixel:
-#                     outlines[i][j] = outline_color
-#                 elif j != 0 and get_pixel(mask, i, j - 1) != pixel:
-#                     outlines[i][j] = outline_color
-#                 elif j != mask.shape[1] - 1 and get_pixel(mask, i, j + 1) != pixel:
-#                     outlines[i][j] = outline_color
-#
-#     # Floating point errors can occaisionally put us very slightly below 0
-#     return np.where(outlines >= 0, outlines, 0).astype(np.uint8)
+    if not all([elem in coord_dict.keys() for elem in \
+                    ['x0', 'x1', 'y0', 'y1']]): return None
+    x_min = min(coord_dict['x0'], coord_dict['x1'])
+    x_max = max(coord_dict['x0'], coord_dict['x1'])
+    y_min = min(coord_dict['y0'], coord_dict['y1'])
+    y_max = max(coord_dict['y0'], coord_dict['y1'])
+    return x_min, x_max, y_min, y_max
 
 def convert_mask_to_cell_boundary(mask):
     boundaries = find_boundaries(mask, mode='outer', connectivity=1)
@@ -94,25 +74,22 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
     Subset measurements frame based on a range of UMAP coordinates in the x and y axes
     Expects that the length of both frames are equal
     """
-    try:
-        assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
-                                                          'yaxis.range[0]', 'yaxis.range[1]']])
-        if len(measurements) != len(umap_frame):
-            umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
-        #     umap_frame.reset_index()
-        #     measurements.reset_index()
-        query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
-                         f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
-                         f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
-                         f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
-        # if len(measurements) != len(umap_frame):
-        #     query.reset_index()
-        # use the normalized values if they exist
-        measurements_to_use = normalized_values if normalized_values is not None else measurements
-        subset = measurements_to_use.loc[query.index.tolist()]
-        return subset
-    except AssertionError:
-        return None
+    if not all([elem in coordinates_dict for elem in ['xaxis.range[0]', 'xaxis.range[1]',
+                                                      'yaxis.range[0]', 'yaxis.range[1]']]): return None
+    if len(measurements) != len(umap_frame):
+        umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
+    #     umap_frame.reset_index()
+    #     measurements.reset_index()
+    query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
+                             f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
+                             f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
+                             f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
+    # if len(measurements) != len(umap_frame):
+    #     query.reset_index()
+    # use the normalized values if they exist
+    measurements_to_use = normalized_values if normalized_values is not None else measurements
+    subset = measurements_to_use.loc[query.index.tolist()]
+    return subset
 
 
 def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
@@ -125,8 +102,8 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
     """
     try:
         umap_frame.columns = ['UMAP1', 'UMAP2']
-        assert all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
-                                                          'yaxis.range[0]', 'yaxis.range[1]']])
+        if not all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']]): raise AssertionError
         if len(measurements) != len(umap_frame):
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
         #     umap_frame.reset_index()
@@ -144,7 +121,7 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
         measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
                                                    annotation_value, measurements[annotation_column])
 
-    except (KeyError, AssertionError):
+    except KeyError:
         pass
     return measurements
 
@@ -192,15 +169,14 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
         return None
 
 def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=None,
-                                                    annotation_column="ccramic_cell_annotation",
-                                                    values_dict=None,
-                                                    cell_type=None, box_type="zoom"):
+                        annotation_column="ccramic_cell_annotation", values_dict=None, cell_type=None,
+                        box_type="zoom", remove: bool=False, default_val: str="None"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     by coordinate bounding box
     """
     if annotation_column not in measurements.columns:
-        measurements[annotation_column] = "None"
+        measurements[annotation_column] = default_val
 
     if coord_dict is None:
         coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
@@ -212,6 +188,10 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
             x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(values_dict)
         else:
             raise KeyError
+
+        # if the annotation is being removed/overwritten, replace the annotation with the default
+        cell_type = cell_type if not remove else default_val
+
         measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] >=
                                                         float(x_min)) &
                                                (measurements[str(f"{coord_dict['x_max']}")] <=
@@ -222,23 +202,23 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
                                                 float(y_max)),
                                                         cell_type,
                                                     measurements[annotation_column])
-    except (KeyError, AssertionError):
+    except KeyError:
         pass
 
     return measurements
 
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
-                                                    annotation_column="ccramic_cell_annotation",
-                                                    cell_identifier="cell_id",
-                                                    cell_type=None, sample_name=None, id_column='sample'):
+                        annotation_column="ccramic_cell_annotation",cell_identifier="cell_id", cell_type=None,
+                        sample_name=None, id_column='sample', remove: bool=False, default_val: str="None"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
     """
     if annotation_column not in measurements.columns:
-        measurements[annotation_column] = "None"
+        measurements[annotation_column] = default_val
 
     try:
+        cell_type = cell_type if not remove else default_val
         measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
                                                (measurements[id_column] == sample_name), cell_type,
                                                measurements[annotation_column])
@@ -248,22 +228,23 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
 
 
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
-                                                    annotation_column="ccramic_cell_annotation",
-                                                    cell_identifier="cell_id", values_dict=None, cell_type=None,
-                                                    mask_toggle=True, mask_dict=None, mask_selection=None,
-                                                    sample=None, id_column='sample'):
+                    annotation_column="ccramic_cell_annotation", cell_identifier="cell_id", values_dict=None,
+                    cell_type=None, mask_toggle=True, mask_dict=None, mask_selection=None, sample=None,
+                    id_column='sample', remove: bool=False, default_val: str="None"):
     """
     Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
     try:
         if annotation_column not in measurements.columns:
-            measurements[annotation_column] = "None"
+            measurements[annotation_column] = default_val
 
         if coord_dict is None:
             coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
 
         x = values_dict['points'][0]['x']
         y = values_dict['points'][0]['y']
+
+        cell_type = cell_type if not remove else default_val
 
         if mask_toggle and None not in (mask_dict, mask_selection) and len(mask_dict) > 0:
 
@@ -308,7 +289,7 @@ def process_mask_array_for_hovertemplate(mask_array):
 
 def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85):
     """
-    Derive a list of cell IDs from a mask that are contained within an svg path based on a threshold
+    Derive a list of cell IDs from a mask that are contained within the svg path based on a threshold
     For example, with a threshold of 0.85, one would include a cell ID if 85% of the cell's pixels are
     contained within the svg path
     Returns a dict with the cell ID from the mask and its percentage
@@ -367,14 +348,15 @@ def generate_greyscale_grid_array(array_shape, dim=100):
     return np.array(Image.fromarray(empty).convert('RGB')).astype(np.uint8)
 
 
-def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options):
+def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options,
+                                                   delimiter: str="+++"):
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
     prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1
     """
     quantification_frame = pd.DataFrame(quantification_frame)
-    exp, slide, acq = split_string_at_pattern(data_selection)
+    exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
     if 'description' in quantification_frame.columns and acq in quantification_frame['description'].tolist():
         return acq, 'description'
     elif 'sample' in quantification_frame.columns:
@@ -388,7 +370,8 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
         return None, None
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
-                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True):
+                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True,
+                                           use_gating_subset: bool = False, gating_subset_list: list=None):
     """
     Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
     remain as greyscale values
@@ -398,20 +381,44 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
     cluster_frame = cluster_frame.astype(str)
     empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
     mask_array = mask_array.astype(np.uint32)
-    for cell_type in cluster_frame[cluster_col].unique().tolist():
-        cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
-        # make sure that the cells are integers so that they match the array values of the mask
-        cell_list = [int(i) for i in cell_list]
-        annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
-        annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
-        annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
-        empty = empty + annot_mask
-    # Find where the cells are annotated, and add back in the ones that are not
-    if retain_cells:
-        already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
-        mask_array[already_cells] = 0
-        # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
-        # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
-        return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
-    else:
-        return empty.astype(np.uint8)
+    if use_gating_subset:
+        mask_bool = np.isin(mask_array, gating_subset_list)
+        mask_array[~mask_bool] = 0
+    try:
+        for cell_type in cluster_frame[cluster_col].unique().tolist():
+            cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
+            # make sure that the cells are integers so that they match the array values of the mask
+            cell_list = [int(i) for i in cell_list]
+            annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
+            annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
+            annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
+            empty = empty + annot_mask
+        # Find where the cells are annotated, and add back in the ones that are not
+        if retain_cells:
+            already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
+            mask_array[already_cells] = 0
+            # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
+            # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
+            return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
+        else:
+            return empty.astype(np.uint8)
+    except KeyError:
+        return None
+
+def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selection: str=None,
+                                       index_list: list=None):
+    """
+    Remove annotation hash entries by a list of indices, generated either from the annotation preview
+    table or triggering the list
+    """
+    if annotations_dict and roi_selection:
+        annot_dict = annotations_dict.copy()
+        key_list = list(annot_dict[roi_selection].keys())
+        index_list = index_list if index_list else [-1]
+        try:
+            for index_to_remove in index_list:
+                del annot_dict[roi_selection][key_list[index_to_remove]]
+        except (KeyError, IndexError):
+            pass
+        return annot_dict
+    return annotations_dict

@@ -4,22 +4,22 @@ from matplotlib.backends.backend_pdf import PdfPages
 from ccramic.utils.cell_level_utils import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box)
-from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
 import numpy as np
 import cv2
 from PIL import Image
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 
-from ccramic.utils.pixel_level_utils import apply_filter_to_array
-
+from ccramic.utils.pixel_level_utils import (
+    apply_filter_to_array,
+    get_bounding_box_for_svgpath)
 
 class AnnotationPDFWriter:
     """
     Represents an instance of a matplotlib backend pdf writer for a dictionary of image annotations
     """
     def __init__(self, annotations_dict, canvas_layers: dict, data_selection: str, mask_config: dict,
-                                    aliases: dict, dest_dir="/tmp/", output_file="annotations.pdf", blend_dict=None,
+                                    aliases: dict, dest_dir:str=None, output_file="annotations.pdf", blend_dict=None,
                                     global_apply_filter=False, global_filter_type="median", global_filter_val=3,
                                     global_filter_sigma=1):
         self.annotations_dict = annotations_dict

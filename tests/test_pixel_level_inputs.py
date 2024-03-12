@@ -1,6 +1,8 @@
 import dash
 import numpy as np
 import plotly.graph_objs as go
+import pytest
+from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import html
 from ccramic.inputs.pixel_level_inputs import (
     render_default_annotation_canvas,
@@ -11,7 +13,8 @@ from ccramic.inputs.pixel_level_inputs import (
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
-    set_x_axis_placement_of_scalebar)
+    set_x_axis_placement_of_scalebar, update_canvas_filename,
+    set_canvas_viewport)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -29,10 +32,10 @@ def test_return_canvas_input():
 
 def test_wrapping_canvas_based_on_image_dimensions():
     small_image = np.zeros((512,512,3), 'uint8')
-    small_canvas = wrap_canvas_in_loading_screen_for_large_images(small_image)
+    small_canvas = wrap_canvas_in_loading_screen_for_large_images(small_image, filename="exp0+++slide0+++roi_1")
     assert isinstance(small_canvas, dcc.Graph)
     large_image = np.zeros((3001,3001,3), 'uint8')
-    large_canvas = wrap_canvas_in_loading_screen_for_large_images(large_image)
+    large_canvas = wrap_canvas_in_loading_screen_for_large_images(large_image, filename="canvas_split")
     assert not isinstance(large_canvas, dcc.Graph)
     assert isinstance(large_canvas, dcc.Loading)
 
@@ -133,7 +136,34 @@ def test_tick_marker_spacing_range_slider():
     assert small_step == 0.03
 
 
-def test_generate_legend_text():
+def test_generate_legend_text_channels():
+    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
+                                                   "Nuclear": np.array([1, 1, 1, 1]),
+                                                   "Cytoplasm": np.array([2, 2, 2, 2]),
+                                                   "Other_Nuclear": np.array([3, 3, 3, 3])},
+                   "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
+                                                   "Nuclear": np.array([4, 4, 4, 4]),
+                                                   "Cytoplasm": np.array([5, 5, 5, 5]),
+                                                   "Other_Nuclear": np.array([6, 6, 6, 6])}}
+    blend_dict = create_new_blending_dict(upload_dict)
+    channel_order = list(blend_dict.keys())
+    aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto", "Other_Nuclear": "nuclear"}
+    orientation = "horizontal"
+    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, orientation)
+    assert "<br>" not in legend_text
+    assert "dna" in legend_text
+    assert not "DNA" in legend_text
+    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical")
+    assert "<br>" in legend_text
+    assert "dna" in legend_text
+    assert not "DNA" in legend_text
+
+    # assert each alias shows up only once in the legend
+    assert legend_text == '<span style="color:#FFFFFF">dna</span><br><span style="color:#FFFFFF">' \
+                          'nuclear</span><br><span style="color:#FFFFFF">cyto</span><br>'
+
+
+def test_generate_legend_text_clustering():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
                                                    "Nuclear": np.array([1, 1, 1, 1]),
                                                    "Cytoplasm": np.array([2, 2, 2, 2])},
@@ -144,15 +174,14 @@ def test_generate_legend_text():
     blend_dict = create_new_blending_dict(upload_dict)
     channel_order = list(blend_dict.keys())
     aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto"}
-    orientation = "horizontal"
-    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, orientation)
-    assert "<br>" not in legend_text
-    assert "dna" in legend_text
-    assert not "DNA" in legend_text
-    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical")
-    assert "<br>" in legend_text
-    assert "dna" in legend_text
-    assert not "DNA" in legend_text
+    annot_dict = {"experiment0+++slide0+++acq0": {"cell_type_1": '#00FF66', "cell_type_2": "5500FF",
+                                                  "cell_type_3": "FF009A"}}
+    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
+                                              True, annot_dict, "experiment0+++slide0+++acq0")
+    assert legend_text == '<span style="color:#00FF66">cell_type_1</span><br><span style="color:5500FF">' \
+                          'cell_type_2</span><br><span style="color:FF009A">cell_type_3</span><br>'
+    assert not generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
+                                              True, annot_dict, "experiment0+++slide0+++acq1")
 
 
 def test_register_x_axis_placement_scalebar():
@@ -165,3 +194,32 @@ def test_register_x_axis_placement_scalebar():
     large = np.zeros((5260, 5260))
     placement = set_x_axis_placement_of_scalebar(large.shape[1], False)
     assert placement == 0.000025 * large.shape[1]
+
+def test_set_canvas_filename():
+    canvas_config = {"modeBarButtonsToAdd": ["drawclosedpath", "drawrect", "eraseshape"],
+                        'toImageButtonOptions': {'format': 'png', 'filename': "canvas", 'scale': 1},
+                            # disable scrollable zoom for now to control the scale bar
+                        'edits': {'shapePosition': False}, 'scrollZoom': True}
+    canvas_config = update_canvas_filename(canvas_config, "exp0+++slide0+++long_roi")
+    assert canvas_config['toImageButtonOptions']['filename'] == "long_roi"
+    canvas_config = update_canvas_filename(canvas_config, "exp0---slide0---roi_1")
+    assert canvas_config['toImageButtonOptions']['filename'] == "exp0---slide0---roi_1"
+    assert update_canvas_filename({"fake_dict": None}, "exp0+++slide0+++long_roi") == {"fake_dict": None}
+
+
+def test_window_viewport_settings():
+    image_dict = {"roi_1": {"channel_1": np.zeros((2500, 1000))}}
+    cur_layout = {'height': None, 'width': None}
+    viewport = set_canvas_viewport(30, image_dict, "roi_1", None, cur_layout)
+    assert viewport == {'width': '12.0vh', 'height': '30.0vh'}
+    with pytest.raises(PreventUpdate):
+        set_canvas_viewport(30, image_dict, "roi_1", None, viewport)
+    assert set_canvas_viewport(30, image_dict, "roi_1", None, {}) == {'width': '12.0vh', 'height': '30.0vh'}
+
+    blank_image_dict = {"roi_1": {}}
+    canvas_layout = {'layout': {'xaxis': {"range": [0, 1000]}, 'yaxis': {"range": [2500, 0]}}}
+    assert set_canvas_viewport(30, blank_image_dict, "roi_1", canvas_layout, cur_layout) == \
+           {'width': '12.0vh', 'height': '30.0vh'}
+
+    assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}) == \
+           {'width': '30.0vh', 'height': '30.0vh'}

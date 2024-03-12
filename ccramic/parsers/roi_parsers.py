@@ -3,9 +3,12 @@ from ccramic.utils.pixel_level_utils import (
     apply_preset_to_array,
     recolour_greyscale,
     apply_filter_to_array)
+from ccramic.parsers.pixel_level_parsers import convert_rgb_to_greyscale
 from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
 from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
-from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi, match_mask_name_to_quantification_sheet_roi
+from ccramic.parsers.cell_level_parsers import (
+    match_mask_name_with_roi,
+    match_mask_name_to_quantification_sheet_roi)
 from readimc import MCDFile, TXTFile
 import random
 import numpy as np
@@ -22,7 +25,7 @@ class RegionThumbnail:
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
                         global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                        global_filter_sigma=1):
+                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False):
         self.session_config = session_config
         try:
             self.file_list = [file for file in self.session_config['uploads']]
@@ -40,7 +43,10 @@ class RegionThumbnail:
         self.global_filter_type = global_filter_type
         self.global_filter_val = global_filter_val
         self.global_filter_sigma = global_filter_sigma
+        self.delimiter = delimiter
         self.query_selection = None
+        self.use_greyscale = use_greyscale
+
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
         self.roi_images = {}
@@ -78,31 +84,40 @@ class RegionThumbnail:
                         self.query_selection = [i for i in self.query_selection['indices'] if \
                                            len(slide_inside.acquisitions) > i >= 0]
                     elif 'names' in self.query_selection:
-                        acq_names = [acq.description for acq in slide_inside.acquisitions]
+                        acq_names = [f"{str(acq.description)}_{str(acq.id)}" for acq in slide_inside.acquisitions]
                         self.num_queries = len(self.query_selection['names'])
-                        self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
+                        try:
+                            self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
+                        except ValueError:
+                            self.query_selection = []
                 for query in self.query_selection:
-                    acq = slide_inside.acquisitions[query]
-                    if f"{basename}+++slide{slide_index}+++{acq.description}" not in self.rois_exclude:
-                        channel_names = acq.channel_names
-                        channel_index = 0
-                        img = mcd_file.read_acquisition(acq)
-                        acq_image = []
-                        for channel in img:
-                            # if the channel is in the current blend, use it
-                            if channel_names[channel_index] in self.currently_selected_channels and \
-                                    channel_names[channel_index] in self.blend_dict.keys():
-                                with_preset = apply_preset_to_array(channel,
-                                                                    self.blend_dict[channel_names[channel_index]])
-                                recoloured = np.array(recolour_greyscale(with_preset,
-                                                                         self.blend_dict[channel_names[channel_index]][
-                                                                             'color'])).astype(np.float32)
-                                acq_image.append(recoloured)
-                            channel_index += 1
-                        label = f"{basename}+++slide{slide_index}+++{acq.description}"
-                        self.process_additive_image(acq_image, label)
-                    else:
-                        self.num_queries += 1
+                    try:
+                        acq = slide_inside.acquisitions[query]
+                        if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
+                           f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude:
+                            channel_names = acq.channel_names
+                            channel_index = 0
+                            img = mcd_file.read_acquisition(acq)
+                            acq_image = []
+                            for channel in img:
+                                # if the channel is in the current blend, use it
+                                if channel_names[channel_index] in self.currently_selected_channels and \
+                                        channel_names[channel_index] in self.blend_dict.keys():
+                                    with_preset = apply_preset_to_array(channel,
+                                                                        self.blend_dict[channel_names[channel_index]])
+                                    colour_use = self.blend_dict[channel_names[channel_index]]['color'] if not \
+                                        self.use_greyscale else '#FFFFFF'
+                                    recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(
+                                        np.float32)
+                                    acq_image.append(recoloured)
+                                channel_index += 1
+                            label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
+                                    f"{str(acq.description)}_{str(acq.id)}"
+                            self.process_additive_image(acq_image, label)
+                        else:
+                            self.num_queries += 1
+                    except OSError:
+                        pass
                     if len(self.roi_images) == self.num_queries:
                         break
                 else:
@@ -126,11 +141,11 @@ class RegionThumbnail:
                     channel_name = str(f"channel_{channel_index}")
                     if channel_name in self.currently_selected_channels and \
                             channel_name in self.blend_dict.keys():
-                        with_preset = apply_preset_to_array(page.asarray(),
+                        with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
                                                             self.blend_dict[channel_name])
-                        recoloured = np.array(recolour_greyscale(with_preset,
-                                                                 self.blend_dict[channel_name][
-                                                                     'color'])).astype(np.float32)
+                        colour_use = self.blend_dict[channel_name]['color'] if not \
+                            self.use_greyscale else '#FFFFFF'
+                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
                         acq_image.append(recoloured)
                     channel_index += 1
                 self.process_additive_image(acq_image, label)
@@ -150,9 +165,9 @@ class RegionThumbnail:
                             channel_name in self.blend_dict.keys():
                         with_preset = apply_preset_to_array(image,
                                                             self.blend_dict[channel_name])
-                        recoloured = np.array(recolour_greyscale(with_preset,
-                                                                 self.blend_dict[channel_name][
-                                                                     'color'])).astype(np.float32)
+                        colour_use = self.blend_dict[channel_name]['color'] if not \
+                            self.use_greyscale else '#FFFFFF'
+                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
                         acq_image.append(recoloured)
                     image_index += 1
                 self.process_additive_image(acq_image, label)
@@ -172,7 +187,7 @@ class RegionThumbnail:
         Process the additive image prior to appending to the gallery, includes matching the mask and
         applying global filters
         """
-        matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options)
+        matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
         summed_image = sum([image for image in image_list]).astype(np.float32)
         summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,
                                              self.global_filter_type, self.global_filter_val,
@@ -181,14 +196,12 @@ class RegionThumbnail:
         # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
         if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
                 validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]):
-            # TODO: establish the ability to subset the mask to just the cells from the query
-            # for each ROI
             # requires reverse matching the sample or description to the ROI name in the app
             # if the query cell is list exists, subset the mask
             if self.query_cell_id_lists is not None:
                 sam_names = list(self.query_cell_id_lists.keys())
                 # match the sample name in te quant sheet to the matched mask name
-                # TODO: update logic here when the names do not match exactly from
+                # TODO: update logic here when the names do not match exactly from quantification to mask
                 # in-app quantification
                 sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
                 if sam_name is not None:

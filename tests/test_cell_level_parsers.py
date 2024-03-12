@@ -12,9 +12,8 @@ def test_validation_of_measurements_csv(get_current_dir):
 
     # currently, validation requires only sample to pass
     measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'], axis=1)
-    valid_bad, err = validate_incoming_measurements_csv(measurements_bad)
-    assert valid_bad is None
-    assert err is None
+    with pytest.raises(QuantificationFormatError):
+        validate_incoming_measurements_csv(measurements_bad)
 
     valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None
@@ -42,6 +41,10 @@ def test_parsing_quantification_filepaths():
     uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=1, total_size_mb=1)
     upload_session = get_quantification_filepaths_from_drag_and_drop(uploader)
     assert len(upload_session['uploads']) > 0
+    with pytest.raises(PreventUpdate):
+        uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
+        get_quantification_filepaths_from_drag_and_drop(uploader)
+
 
 def test_parsing_incoming_measurements_csv(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
@@ -74,6 +77,9 @@ def test_parse_mask_filenames():
     mask_files = parse_masks_from_filenames(uploader)
     assert 'mask' in mask_files.keys()
     assert mask_files['mask'] == "mask.tiff"
+    with pytest.raises(PreventUpdate):
+        uploader = UploadStatus(uploaded_files=["mask.tiff"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
+        parse_masks_from_filenames(uploader)
 
 def test_read_in_mask_from_filepath(get_current_dir):
     masks_dict = {"mask": os.path.join(get_current_dir, "mask.tiff")}
@@ -207,5 +213,32 @@ def test_parse_quantification_sheet_from_anndata(get_current_dir):
 def test_return_umap_dataframe_from_quantification_dict(get_current_dir):
     quant_sheet = pd.DataFrame({'Channel_1': [1, 2, 3, 4, 5, 6], 'Channel_2': [1, 2, 3, 4, 5, 6]})
     cur_umap = pd.DataFrame({'UMAP1': [1, 2, 3, 4, 5, 6], 'UMAP2': [1, 2, 3, 4, 5, 6]})
-    umap, cols = return_umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False)
+    umap = return_umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False)
     assert isinstance(umap, dash._callback.NoUpdate)
+
+def test_gating_cell_ids(get_current_dir):
+
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    gating_selection = ['191Ir_DNA1', '168Er_Ki67']
+    gating_dict = {'191Ir_DNA1': {'lower_bound': 0.2, 'upper_bound': 0.4},
+                   '168Er_Ki67': {'lower_bound': 0.5, 'upper_bound': 1}}
+    cell_ids = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1_mask")
+    # test 1 has only cells up to 203, so can enforce that only one ROI was used
+    assert max(cell_ids) < 203
+    assert len(cell_ids) > 0
+    cell_id_intersection = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1",
+                                                      intersection=True)
+    assert len(cell_ids) > len(cell_id_intersection)
+
+    fake_frame = pd.DataFrame({"191Ir_DNA1": [1, 2, 3, 4, 5],
+                               "168Er_Ki67": [1, 2, 3, 4, 5]})
+
+    # if there is no column to match the ids to the mask, return empty
+    assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
+                                                      intersection=True) == []
+
+    fake_frame = pd.DataFrame({"191Ir_DNA1": [1, 2, 3, 4, 5],
+                               "168Er_Ki67": [1, 2, 3, 4, 5],
+                               "description": ["roi", "roi", "roi", "roi", "roi"]})
+    assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
+                                      intersection=True) == []

@@ -1,10 +1,11 @@
+import tempfile
 from ccramic.entrypoint import init_app, __version__
 import argparse
 import sys
 import webbrowser
 from threading import Timer
 import os
-# from waitress import serve
+from waitress import serve
 
 def argparser():
     parser = argparse.ArgumentParser(add_help=False,
@@ -33,9 +34,10 @@ def argparser():
                         help="Set the port for ccramic on local runs. Default: 5000. Other options to consider are "
                              "8050, 8080",
                         dest="port", default=5000, type=int)
-    parser.add_argument('-d', "--disable-debug", action="store_false",
-                        help="Disable debugging mode. By default, debugging is enabled",
-                        dest="debug")
+    parser.add_argument('-pr', "--production-mode", action="store_false",
+                        help="Enable production mode. This will generate a production-level WSGI server,"
+                             "and will switch the application out of debug mode. Default: not enabled",
+                        dest="is_dev_mode")
     parser.add_argument('-dt', "--disable-threading", action="store_false",
                         help="Disable threading. By default, threading is enabled.",
                         dest="threading")
@@ -60,6 +62,9 @@ def argparser():
                              "be required for array values between 0 and 1, but uint arrays will likely consume less memory. "
                              "Default is float",
                         dest="array_type", default="float", type=str, choices=["float", "int"])
+    parser.add_argument('-cs', "--cache-storage", action="store",
+                        help="Set the output path for the temporary session caches. Default is the temp directory",
+                        dest="cache_dest", default=str(tempfile.gettempdir()), type=str)
 
     return parser
 
@@ -80,15 +85,19 @@ def main(sysargs = sys.argv[1:]):
                   'swatches': args.swatches,
                   'array_store_type': args.array_type,
                   'serverside_overwrite': args.serverside_overwrite,
-                  'debug': args.debug}
+                  'is_dev_mode': args.is_dev_mode,
+                  'cache_dest': args.cache_dest}
 
     app = init_app(cli_config=CLI_CONFIG)
     if args.auto_open:
         Timer(1, open_browser).start()
-    app.run(host='0.0.0.0', debug=args.debug, threaded=args.threading, port=args.port)
-    # TODO: establish criteria for deploying in production using waitress server
-    # https://stackoverflow.com/questions/14814201/can-i-serve-multiple-clients-using-just-flask-app-run-as-standalone
-    # serve(app, host='0.0.0.0', port=args.port)
+
+    if CLI_CONFIG['is_dev_mode']:
+        app.run(host='0.0.0.0', debug=args.is_dev_mode, threaded=args.threading, port=args.port)
+    else:
+        # TODO: establish criteria for deploying in production using waitress server
+        # https://stackoverflow.com/questions/14814201/can-i-serve-multiple-clients-using-just-flask-app-run-as-standalone
+        serve(app, host='0.0.0.0', port=args.port)
 
 if __name__ == "__main__":
     main()

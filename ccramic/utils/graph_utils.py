@@ -1,5 +1,6 @@
-
-def strip_invalid_shapes_from_graph_layout(cur_graph):
+from typing import Union
+import plotly.graph_objs as go
+def strip_invalid_shapes_from_graph_layout(cur_graph: Union[go.Figure, dict]):
     """
     Remove any incorrectly formatted graph objects
     """

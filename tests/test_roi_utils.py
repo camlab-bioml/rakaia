@@ -4,6 +4,7 @@ import numpy as np
 from PIL import Image
 from ccramic.utils.cell_level_utils import convert_mask_to_cell_boundary
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids, subset_mask_outline_using_cell_id_list
+from ccramic.utils.region import check_for_valid_annotation_hash
 
 def test_generate_dict_of_roi_cell_ids(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
@@ -25,3 +26,8 @@ def test_basic_mask_boundary_subsetting(get_current_dir):
     assert np.max(mask_with_boundary) > np.max(outline_subset)
 
     assert subset_mask_outline_using_cell_id_list(np.zeros((90, 90)), mask_with_boundary, []) is None
+
+def test_basic_check_annotation_hash():
+    assert check_for_valid_annotation_hash() == {}
+    assert check_for_valid_annotation_hash(None, "roi_1") == {"roi_1": {}}
+    assert check_for_valid_annotation_hash({"roi_1": {}}, "roi_1") == {"roi_1": {}}

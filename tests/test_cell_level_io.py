@@ -92,7 +92,7 @@ def test_output_point_annotations_as_csv():
                                     None, False, None, image_dict,
                                     authentic_id, tmpdirname)
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'point_annotations.csv', 'type': None}
+            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
     mask_dict = {'mask': {'raw': image}}
 
@@ -101,7 +101,7 @@ def test_output_point_annotations_as_csv():
                                                         authentic_id, tmpdirname)
 
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation,mask_cell_id\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'point_annotations.csv', 'type': None}
+            'pos1_1,235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
 
     point_annotations = export_point_annotations_as_csv(1, 'pos1_1', annotations_dict, 'Patient1+++slide0+++pos1_1',
@@ -110,7 +110,7 @@ def test_output_point_annotations_as_csv():
 
     # assert that the mask id is not included if the image to compare cannot be found
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'point_annotations.csv', 'type': None}
+            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
     # assert no update occurs if one of the keys is malformed
 
@@ -227,6 +227,20 @@ def test_output_region_writer(get_current_dir):
         assert 'cell type 2' in region_frame['annotation'].to_list()
         assert 'ccramic_cell_annotation' in region_frame['annotation_col'].to_list()
 
+        gated_cell_tuple = (102, 154, 134, 201, 209, 244)
+        # annotate using gated cell method
+        annotations_dict_gate = {'Patient1+++slide0+++pos1_1': {
+            gated_cell_tuple:
+                {'title': 'None', 'body': 'None',
+                 'cell_type': 'mature', 'imported': False, 'type': 'gate',
+                 'annotation_column': 'gating_test', 'mask_selection': 'mask'}}}
+
+        region_writer_gate = AnnotationRegionWriter(annotations_dict_gate, 'Patient1+++slide0+++pos1_1', mask_dict)
+        region_writer_gate.write_csv(dest_dir=tmpdirname)
+        region_frame = pd.DataFrame(region_writer_gate.region_object_frame)
+        assert 'mature' in region_frame['annotation'].to_list()
+        assert len(region_frame.index[region_frame['annotation'] == 'mature'].tolist()) == len(gated_cell_tuple) == \
+            len(region_frame)
 
         empty_dict = {'Patient1+++slide0+++pos1_1': {}}
         region_writer = AnnotationRegionWriter(empty_dict, 'Patient1+++slide0+++pos1_1', mask_dict)

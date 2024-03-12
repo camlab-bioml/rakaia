@@ -36,11 +36,9 @@ def test_umap_from_quantification_dict(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
     returned_umap = return_umap_dataframe_from_quantification_dict(validated_measurements)
-    assert isinstance(returned_umap, tuple)
-    assert isinstance(returned_umap[0], dash_extensions.enrich.Serverside)
-    assert isinstance(returned_umap[1], list)
-    with pytest.raises(PreventUpdate):
-        return_umap_dataframe_from_quantification_dict(None)
+    assert isinstance(returned_umap, dash_extensions.enrich.Serverside)
+    assert len(pd.DataFrame(returned_umap.value)) == len(validated_measurements)
+    assert return_umap_dataframe_from_quantification_dict(None) == dash.no_update
 
 def test_receive_alert_on_incompatible_mask():
     upload_dict = {"experiment0+++slide0+++acq0": {"channel_1": np.empty((50, 50))}}
@@ -290,6 +288,7 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
     with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict)
+    assert np.array_equal(with_annotations[532, 457], np.array([250, 228, 176]))
     assert with_annotations.shape == (mask.shape[0], mask.shape[1], 3)
     # assert where type 1 is
     assert list(with_annotations[449, 414]) == list(with_annotations[484, 852]) == [147, 38, 82]
@@ -303,3 +302,25 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
                                                               retain_cells=False)
     # assert that where cells were before, there is nothing
     assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
+
+def test_apply_cluster_annotations_with_gating(get_current_dir):
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
+    cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
+    cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
+    gating_list = list(range(125, 175))
+    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                              use_gating_subset=True, gating_subset_list=gating_list)
+    # assert that a position where the cell is not gated, is blank
+    assert np.array_equal(with_annotations[532, 457], np.array([0, 0, 0]))
+
+
+def test_remove_latest_annotation():
+    annotations_dict_original = {"roi_1": {"annot_1": "This is an annotation", "annot_2": "This is also an annotation"}}
+    annotations_dict = remove_annotation_entry_by_indices(annotations_dict_original, "roi_1")
+    assert len(annotations_dict['roi_1']) == 1
+    annotations_dict = remove_annotation_entry_by_indices(annotations_dict, "roi_1")
+    assert not len(annotations_dict['roi_1'])
+    annotations_dict = remove_annotation_entry_by_indices(annotations_dict, "roi_1")
+    assert not len(annotations_dict['roi_1'])
+    assert remove_annotation_entry_by_indices(annotations_dict, None) == annotations_dict_original
+    assert not remove_annotation_entry_by_indices(None, "roi_1")

@@ -60,12 +60,10 @@ def test_query_parser_txt(get_current_dir):
     assert 'query_from_text+++slide0+++0' in roi_query.keys()
     assert len(roi_query) == 1
 
-
-
 def test_roi_query_parser_predefined(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")
     session_config = {"uploads": [str(mcd)]}
-    dataset_selection = "query+++slide0+++PAP"
+    dataset_selection = "query+++slide0+++PAP_1"
     channels = ["Ir191", "Ir193"]
     blend_dict = {"ArAr80": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None,
                              "filter_val": None},
@@ -87,22 +85,41 @@ def test_roi_query_parser_predefined(get_current_dir):
     assert len(roi_query) == 2
     assert dataset_selection in roi_query.keys()
 
-    defined_names = {'names': ['PAP']}
+    defined_names = {'names': ['PAP_1']}
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 4, [],
                                                      predefined_indices=defined_names).get_image_dict()
     assert len(roi_query) == 1
     assert dataset_selection in roi_query.keys()
 
-    mask_roi_dict = {"PAP": {"boundary": np.full((100, 100), 7), "raw": np.full((100, 100), 7)},
-                     "HIER": {"boundary": np.full((100, 100), 0)},
-                     "roi_3": {"boundary": np.zeros((100, 100))}}
+    mask_roi_dict = {"PAP_1": {"boundary": np.full((100, 100, 3), 7), "raw": np.full((100, 100), 7)},
+                     "HIER_2": {"boundary": np.full((100, 100, 3), 0)},
+                     "roi_3": {"boundary": np.zeros((100, 100, 3))}}
 
-    defined_names = {'names': ['PAP']}
-    query_cell_id_lists = {'PAP': [7]}
+    defined_names = {'names': ['PAP_1']}
+    query_cell_id_lists = {'PAP_1': [7]}
     roi_query_w_mask = RegionThumbnail(session_config, blend_dict, channels, 4, [],
                             predefined_indices=defined_names, mask_dict=mask_roi_dict,
-                                       dataset_options=['query+++slide0+++PAP'],
+                                       dataset_options=['query+++slide0+++PAP_1'],
                             query_cell_id_lists=query_cell_id_lists).get_image_dict()
     assert len(roi_query_w_mask) == 1
     assert dataset_selection in roi_query_w_mask.keys()
-    assert not np.array_equal(roi_query['query+++slide0+++PAP'], roi_query_w_mask['query+++slide0+++PAP'])
+    assert not np.array_equal(roi_query['query+++slide0+++PAP_1'], roi_query_w_mask['query+++slide0+++PAP_1'])
+
+    # assertion if no query cells are used, just use the boundary
+    roi_query_w_mask = RegionThumbnail(session_config, blend_dict, channels, 4, [],
+                                       predefined_indices=defined_names, mask_dict=mask_roi_dict,
+                                       dataset_options=['query+++slide0+++PAP_1'],
+                                       query_cell_id_lists=None).get_image_dict()
+    assert len(roi_query_w_mask) == 1
+    assert dataset_selection in roi_query_w_mask.keys()
+    assert not np.array_equal(roi_query['query+++slide0+++PAP_1'], roi_query_w_mask['query+++slide0+++PAP_1'])
+
+    # assert nothing is returned if the names don't match
+    defined_names = {'names': ['PAP_1_mask']}
+    query_cell_id_lists = {'PAP_1_mask': [7]}
+    roi_query_w_mask = RegionThumbnail(session_config, blend_dict, channels, 4, [],
+                                       predefined_indices=defined_names, mask_dict=mask_roi_dict,
+                                       dataset_options=['query+++slide0+++PAP_1'],
+                                       query_cell_id_lists=query_cell_id_lists).get_image_dict()
+
+    assert not roi_query_w_mask

@@ -1,4 +1,5 @@
 import dash
+from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import dcc, html
 from ccramic.utils.cell_level_utils import convert_mask_to_cell_boundary
 import plotly.graph_objs as go
@@ -10,9 +11,12 @@ from copy import deepcopy
 import numpy as np
 from PIL import Image
 import plotly.express as px
+from ccramic.io.session import SessionTheme
+from ccramic.utils.pixel_level_utils import split_string_at_pattern, get_first_image_from_roi_dictionary
+from typing import Union
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
-                                     draggable=False):
+                                     draggable=False, filename: str="canvas", delimiter: str="+++"):
     """
     Return the default dcc.Graph annotation figure input. For multiple annotation graphs, a unique input ID
     must be used
@@ -26,6 +30,10 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
     else:
         style_canvas = {"width": "65vw", "height": "65vh"}
 
+    # set a custom output filename based on the current ROI
+    if filename != "canvas":
+        filename = set_roi_identifier_from_length(filename, delimiter=delimiter)
+
     canvas = dcc.Graph(config={"modeBarButtonsToAdd": [
                         # "drawline",
                         # "drawopenpath",
@@ -33,9 +41,11 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         # "drawcircle",
                         "drawrect",
                         "eraseshape"],
-                        'toImageButtonOptions': {'format': 'png', 'filename': 'canvas', 'scale': 1},
+                        # TODO: add in dimension specds for the width and height on the download
+                        # https://plotly.com/python/configuration-options/
+                        'toImageButtonOptions': {'format': 'png', 'filename': filename, 'scale': 1},
                             # disable scrollable zoom for now to control the scale bar
-                        'edits': {'shapePosition': False}, 'scrollZoom': fullscreen_mode},
+                        'edits': {'shapePosition': False}, 'scrollZoom': fullscreen_mode, 'displaylogo': False},
                         relayoutData={'autosize': True},
                         id=input_id,
                             style=style_canvas,
@@ -47,7 +57,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
 def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False,
-                                                   wrap=True):
+                                                   wrap=True, filename: str="canvas", delimiter: str="+++"):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
     or
@@ -56,13 +66,13 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     # conditions for wrapping the canvas
     large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
     if (large_image or hovertext) and wrap:
-        return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom),
-                                     type="default", fullscreen=False)
+        return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename,
+                        delimiter=delimiter), type="default", fullscreen=False, color=SessionTheme().widget_colour)
     else:
-        return render_default_annotation_canvas(fullscreen_mode=enable_zoom)
+        return render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename, delimiter=delimiter)
 
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
-                              invert=False, proportion=0.1):
+                              invert=False, proportion=0.1, scale_color: str="white"):
     """
     add a scalebar value to a canvas figure based on the dimensions of the current image
     """
@@ -71,12 +81,12 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
     else:
         scale_val = scale_value
     scale_annot = str(scale_val) + "μm"
-    scale_text = f'<span style="color: white">{scale_annot}</span><br>'
+    scale_text = f'<span style="color: {scale_color}">{scale_annot}</span><br>'
     figure = go.Figure(figure)
     half = float(proportion) / 2
     # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
     x = float((x_axis_left + half) if not invert else (x_axis_left - half))
-    figure.add_annotation(text=scale_text, font={"size": font_size}, xref='paper',
+    figure.add_annotation(text=scale_text, font={"size": font_size, 'color': scale_color}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
                        x=x,
@@ -218,23 +228,35 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
         return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1
 
 
-def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical"):
+def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
+                                use_cluster_annotations=False, cluster_colour_dict: dict=None,
+                                data_selection: str=None):
     """
     Generate the string annotation text for a canvas based on the channels and selected colour of the channel
     """
     legend_text = ''
-    # cur_canvas['layout']['shapes'] = [shape for shape in cur_canvas['layout']['shapes'] if \
-    #                                   shape is not None and 'label' in shape and \
-    #                                   shape['label'] is not None and 'texttemplate' not in shape[
-    #                                       'label']]
     gap = "" if legend_orientation == "vertical" else " "
     line_break = "<br>" if legend_orientation == "vertical" else ""
-    for image in channel_order:
+    # use only unique aliases in the legend to allow merging of identical channels
+    aliases_used = []
+    if not use_cluster_annotations:
+        for image in channel_order:
         # if blend_colour_dict[image]['color'] not in ['#ffffff', '#FFFFFF']:
-        label = aliases[image] if aliases is not None and image in aliases.keys() else image
-        legend_text = legend_text + f'<span style="color:' \
+            label = aliases[image] if aliases is not None and image in aliases.keys() else image
+            if label not in aliases_used:
+                legend_text = legend_text + f'<span style="color:' \
                                     f'{blend_colour_dict[image]["color"]}"' \
                                     f'>{label}{gap}</span>{line_break}'
+                aliases_used.append(label)
+    elif use_cluster_annotations and cluster_colour_dict:
+        try:
+            # these will automatically be unique
+            for clust in list(cluster_colour_dict[data_selection].keys()):
+                legend_text = legend_text + f'<span style="color:' \
+                                        f'{cluster_colour_dict[data_selection][clust]}"' \
+                                        f'>{clust}{gap}</span>{line_break}'
+        except KeyError:
+            pass
     return legend_text
 
 
@@ -244,8 +266,67 @@ def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False):
     `image_x_shape`: The dimension, in pixels, of the x-axis (width) of the image in the canvas
     """
     x_axis_placement = 0.000025 * image_x_shape
-    # make sure the placement is min 0.05 and max 0.1
+    # make sure the placement is min 0.05 and max 0.15
     x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
     if invert_annot:
         x_axis_placement = 1 - x_axis_placement
     return x_axis_placement
+
+def set_roi_identifier_from_length(dataset_selection, length_threshold=5, delimiter: str="+++"):
+    """
+    Set the output name for a dataset based on the length of the ROI name
+    If the ROI name is below a certain length, output the entire dataset identifier
+    """
+    try:
+        exp, slide, roi = split_string_at_pattern(dataset_selection, delimiter)
+        # set a length limit: if the roi name is long enough to be informative, set as the output
+        roi_name_use = roi if len(roi) > length_threshold else dataset_selection
+        return roi_name_use
+    except (KeyError, IndexError, ValueError):
+        return dataset_selection
+
+def update_canvas_filename(canvas_config: dict, roi_name: str=None, delimiter: str="+++"):
+    """
+    update the canvas config with the latest ROI name
+    """
+    if canvas_config and roi_name:
+        try:
+            canvas_config['toImageButtonOptions']['filename'] = str(set_roi_identifier_from_length(roi_name,
+                                                                                    delimiter=delimiter))
+            return canvas_config
+        except KeyError:
+            pass
+    return canvas_config
+
+def set_canvas_viewport(size_slider_val: Union[float, int]=None,
+                        image_dict: dict=None, data_selection: str=None,
+                        current_canvas: Union[go.Figure, dict]=None, cur_canvas_layout: dict=None):
+    """
+    Set the canvas viewport based on the canvas size range slider, as well as the aspect ratio of
+    the ROI dimensions
+    returns a hash for the width and height in vh: {'width': f'{value}vh', 'height': f'{value}vh'}
+    """
+    try:
+        first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+        aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
+    except (KeyError, AttributeError, IndexError):
+        if current_canvas is not None and 'layout' in current_canvas and \
+                'range' in current_canvas['layout']['xaxis'] and \
+                'range' in current_canvas['layout']['yaxis']:
+            try:
+                aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
+                                   int(current_canvas['layout']['yaxis']['range'][0])
+            except (KeyError, ZeroDivisionError):
+                aspect_ratio = 1
+        else:
+            aspect_ratio = 1
+
+    width = float(size_slider_val * aspect_ratio)
+    height = float(size_slider_val)
+    try:
+        if cur_canvas_layout['height'] != f'{height}vh' and cur_canvas_layout['width'] != f'{width}vh':
+            return {'width': f'{width}vh', 'height': f'{height}vh'}
+        else:
+            raise PreventUpdate
+    except KeyError:
+        return {'width': f'{width}vh', 'height': f'{height}vh'}
