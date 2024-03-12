@@ -14,7 +14,7 @@ from ccramic.entrypoint import __version__
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
-from ccramic.utils.alert import DataImportTour
+from ccramic.utils.alert import DataImportTour, ToolTips
 from ccramic.io.session import SessionTheme, TabText
 
 
@@ -23,6 +23,7 @@ def register_app_layout(config, cache_dest):
     # set the default colours for the swatches from the config input
     DEFAULT_SWATCHES = generate_default_swatches(config)
     DEFAULT_WIDGET_COLOUR = SessionTheme().widget_colour
+    TOOLTIPS = ToolTips().tooltips
 
     return html.Div([
         dash_tour_component.DashTour(accentColor=DEFAULT_WIDGET_COLOUR,
@@ -63,10 +64,7 @@ def register_app_layout(config, cache_dest):
                     html.Div([html.B("Select dataset identifier delimiter", style={"margin-right": "20px"}),
                              dcc.Input(id="dataset-delimiter", value="+++", type="text", debounce=True,
                               persistence=config['persistence'], persistence_type='local', style={"width": "20%"}),
-                    dbc.Tooltip("Set a custom delimiter for the string representation of datasets. "
-                                "Should be used if imported datasets contain filenames or identifiers with"
-                                "string overlap with the current delimiter.",
-                                target="dataset-delimiter")], style={"display": "flex"}),
+                    dbc.Tooltip(TOOLTIPS['delimiter'], target="dataset-delimiter")], style={"display": "flex"}),
                     html.Br(),
                     html.Div([daq.ToggleSwitch(label='Enable canvas scroll zoom', id='enable-canvas-scroll-zoom',
                                      labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False,
@@ -146,7 +144,7 @@ def register_app_layout(config, cache_dest):
                                 style={"display": "flex"}), id="dash-import-tour",
                                 className="mb-3", color=None, n_clicks=0, style={"width": "20%",
                                     "margin-top": "-3px"})], style={"display": "flex"}),
-                                dbc.Tooltip("Click here to get a tour of the components required for dataset import.",
+                                dbc.Tooltip(TOOLTIPS['import-tour'],
                                     target="dash-import-tour"),
                                 du.Upload(id='upload-image', max_file_size=30000,
                                               text='Import imaging data from MCD or tiff files using drag and drop',
@@ -171,9 +169,7 @@ def register_app_layout(config, cache_dest):
                                                                 "background-color": DEFAULT_WIDGET_COLOUR})],
                                              style={"display": "flex"}),
                                     add_local_file_dialog(use_local_dialog=config['use_local_dialog']),
-                                    dbc.Tooltip("Browse the local file system using a dialog."
-                                                " IMPORTANT: may not be compatible with the specific OS.",
-                                                target="local-dialog-file"),
+                                    dbc.Tooltip(TOOLTIPS['local-dialog'], target="local-dialog-file"),
                                     html.Div([html.Span([
                                         dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-info",
                                                                               style={"display": "inline-block",
@@ -189,8 +185,7 @@ def register_app_layout(config, cache_dest):
                                                                       style={"width": "100vw"}),
                                                    id="remove-collection", color=None, n_clicks=0,
                                                    style={"margin-top": "-5px", "height": "10%"}),
-                                        dbc.Tooltip("Remove the current data collection. "
-                                                    "(IMPORTANT): cannot be undone.", target="remove-collection")],
+                                        dbc.Tooltip(TOOLTIPS['delete-selection'], target="remove-collection")],
                                         style={"width": "100%"}),
                                         html.Br(),
                                         html.Br(),
@@ -203,8 +198,7 @@ def register_app_layout(config, cache_dest):
                                         dbc.Button("Refresh selection", id="data-selection-refresh", className="me-1",
                                         size="sm", color='dark', outline=True, style={"float": "left",
                                                 "margin-right": "12.5px", "height": "50%"}),
-                                        dbc.Tooltip("Refresh the current dataset selection. "
-                                        "Can be used if the ROI loading has become corrupted", target="data-selection-refresh"),
+                                        dbc.Tooltip(TOOLTIPS['roi-refresh'], target="data-selection-refresh"),
                                         html.Br(),
                                         html.Br(),
                                         html.H5("Import mask"),
@@ -452,13 +446,18 @@ def register_app_layout(config, cache_dest):
                     ]),width=9),
                         dbc.Col([
                             html.Div(
-                                [html.H5("Channel modification",
-                                         style={'width': '75%', 'display': 'inline-block', "margin-top": "3px",
-                                                "margin-left": "10px"}),
-                                 html.Abbr("\u2753", title="Select a channel in the current blend to \nchange colour, "
-                                                           "pixel intensity, or apply a filter.",
-                                           style={'width': '5%', 'display': 'inline-block'}),
-                                 dcc.Dropdown(id='images_in_blend', multi=False),
+                                [html.Div([html.H5("Channel modification",
+                                         style={'width': '77.5%', "margin-top": "3px", "text-align": "center"}),
+                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-question",
+                                                                       style={"display": "inline-block",
+                                                                              "margin-right": "7.5px",
+                                                                              "margin-top": "-5px"})],
+                                                               style={"display": "flex"}), id="channel-mod-hover",
+                                            className="mb-3", color=None, n_clicks=0, style={"width": "20%",
+                                                    "margin-top": "3px" ,"margin-left": "-10px"})],
+                                          style={"display": "flex"}),
+                                 dbc.Tooltip(TOOLTIPS['channel-mod'], target="channel-mod-hover"),
+                                 dcc.Dropdown(id='images_in_blend', multi=False, style={"margin-top": "7.5px"}),
                                  html.Br(),
                                  daq.ColorPicker(id="annotation-color-picker", label="Current channel color",
                                                  value=dict(hex="#00ABFC", rgb=None)),
@@ -850,8 +849,12 @@ def register_app_layout(config, cache_dest):
                                 dbc.Tab(label="Measure/cluster", label_style={"color": DEFAULT_WIDGET_COLOUR},
                                     children=[
                                 html.Br(),
-                                dbc.Button("Quantify current ROI", id="quantify-cur-roi-button",
-                                           style={"background-color": DEFAULT_WIDGET_COLOUR}),
+                                html.Div([dbc.Button("Quantify current ROI", id="quantify-cur-roi-button",
+                                           style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": "10px"}),
+                                dbc.Button("Re-import annotations into quant", id="quant-annot-reimport",
+                                style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-left": "10px"}, size='sm')],
+                                style={"display": "flex", "justifyContent": "center"}),
+                                dbc.Tooltip(TOOLTIPS['annot-reimport'], target="quant-annot-reimport"),
                                 html.Br(),
                                 html.Br(),
                                 html.Div([

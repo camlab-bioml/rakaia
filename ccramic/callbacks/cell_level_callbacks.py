@@ -23,7 +23,7 @@ from ccramic.io.annotation_outputs import AnnotationRegionWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.callbacks.cell_level_wrappers import (
     callback_add_region_annotation_to_quantification_frame,
-    callback_remove_canvas_annotation_shapes)
+    callback_remove_canvas_annotation_shapes, reset_annotation_import)
 from ccramic.io.annotation_outputs import AnnotationMaskWriter, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
 from ccramic.utils.pixel_level_utils import split_string_at_pattern, random_hex_colour_generator
@@ -387,12 +387,13 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('dataset-delimiter', 'value'),
         Input('delete-annotation-tabular', 'n_clicks'),
         State('annotation-table', 'selected_rows'),
+        Input('quant-annot-reimport', 'n_clicks'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True),
         Output('annotation-table', 'selected_rows', allow_duplicate=True))
     def update_region_annotation_in_quantification_frame(annotations, undo_latest_annotation, quantification_frame,
                         data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
-                        delete_from_table, annot_table_selection):
+                        delete_from_table, annot_table_selection, reimport_annots):
         """
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
@@ -404,6 +405,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
             sample_name, id_column = identify_column_matching_roi_to_quantification(
             data_selection, quantification_frame, data_dropdown_options, delimiter)
+            if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
+                annotations = reset_annotation_import(annotations, data_selection, app_config, False)
             quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
             quantification_frame, data_selection, mask_config, mask_toggle, mask_selection, sample_name=sample_name,
                             id_column=id_column, config=app_config, remove=remove, indices_remove=indices_remove)

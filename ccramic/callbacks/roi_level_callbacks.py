@@ -1,6 +1,7 @@
 import dash
 import pandas as pd
 
+from ccramic.callbacks.cell_level_wrappers import reset_annotation_import
 from ccramic.parsers.roi_parsers import RegionThumbnail
 from ccramic.io.gallery_outputs import generate_roi_query_gallery_children
 from ccramic.utils.quantification import (

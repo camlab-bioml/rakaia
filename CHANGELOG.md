@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.13.0] - 2024-03-11
+## [0.13.0] - 2024-03-12
 
 ### Added
 
@@ -26,6 +26,7 @@ set any annotated objects in quantification to the default `None`
 - Toggle switch for enabling ROI change using left and right arrow keys
 - Toggle button for select/deselect all for in-browser quantification
 - Toggle button for disabling in-session messages (Default is to enable for safety)
+- Button to re-import ROI annotations into the quantification frame when the quant frame is re-generated
 
 ### Changed
 
@@ -42,6 +43,7 @@ into one command for concurrent deployments
 - image downloads will now include the ROI name in the file name output #92
 - Annotation preview table now contains the `preview` column which describes either the bounds
 of the annotation or the objects contained within in a short string
+
 
 ### Fixed
 

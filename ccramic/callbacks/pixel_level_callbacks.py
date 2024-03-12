@@ -2071,7 +2071,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('region-annotation-body', 'value'),
         State('region-annotation-cell-types', 'value'),
         State('annotation_canvas', 'relayoutData'),
-        State("annotations-dict", "data"),
+        State('annotations-dict', 'data'),
         State('data-collection', 'value'),
         State('image_layers', 'value'),
         State('apply-mask', 'value'),

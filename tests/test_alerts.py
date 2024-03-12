@@ -1,6 +1,7 @@
 from ccramic.utils.alert import (
     AlertMessage, file_import_message,
-    DataImportTour)
+    DataImportTour,
+    ToolTips)
 import os
 
 def test_basic_alerts():
@@ -22,3 +23,8 @@ def test_file_import_warning(get_current_dir):
                         '\n'\
                         ' Select a region (ROI) from the data collection dropdown to begin analysis.'
     assert len(unique) == 2
+
+
+def test_tooltips():
+    assert isinstance(ToolTips().tooltips, dict)
+    assert "delimiter" in ToolTips().tooltips.keys()

@@ -131,3 +131,12 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
         return cur_canvas, error_config
     else:
         raise PreventUpdate
+
+def reset_annotation_import(annotation_dict: dict=None, roi_selection: str=None, app_config: dict=None,
+                            return_as_serverside: bool=True):
+    if annotation_dict and roi_selection and roi_selection in annotation_dict:
+        for value in annotation_dict[roi_selection].values():
+            value['imported'] = False
+    return SessionServerside(annotation_dict, key="annotation_dict",
+                             use_unique_key=app_config['serverside_overwrite']) if \
+        return_as_serverside else annotation_dict

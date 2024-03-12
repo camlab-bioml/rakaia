@@ -318,3 +318,15 @@ def test_basic_shape_removal_from_canvas():
     assert isinstance(warning, dict)
     assert warning["error"] == "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes."
+
+def test_reset_annotations_import():
+    annot_dict = {"roi_1": {"annot_1": {"imported": True}, "annot_2": {"imported": True}, "annot_3": {"imported": True}}}
+    assert all([elem['imported'] for elem in annot_dict['roi_1'].values()])
+    annot_dict_serverside = reset_annotation_import(annot_dict, "roi_1", {"serverside_overwrite": True})
+    assert all([not elem['imported'] for elem in annot_dict_serverside.value['roi_1'].values()])
+
+    # for ROIs not specified as the current one, do not reimport
+    annot_mismatch = {"roi_2": {"annot_1": {"imported": True},
+                                "annot_2": {"imported": True}, "annot_3": {"imported": True}}}
+    annot_reset_mismatch = reset_annotation_import(annot_mismatch, "roi_1", {"serverside_overwrite": True}, False)
+    assert annot_mismatch == annot_reset_mismatch

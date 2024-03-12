@@ -67,6 +67,24 @@ class AlertMessage(BaseModel):
                                                      " (typically 2x the size of the imported files)."}
 
 
+class ToolTips(BaseModel):
+    tooltips: dict = {"delimiter": "Set a custom delimiter for the string representation of datasets. "
+                                "Should be used if imported datasets contain filenames or identifiers with"
+                                "string overlap with the current delimiter.",
+                      "import-tour": "Click here to get a tour of the components required for dataset import.",
+                      "local-dialog": "Browse the local file system using a dialog. "
+                                      "IMPORTANT: may not be compatible with the specific OS.",
+                      "delete-selection": "Remove the current data collection. (IMPORTANT): cannot be undone.",
+                      "roi-refresh": "Refresh the current dataset selection. "
+                                    "Can be used if the ROI loading has become corrupted",
+                      "channel-mod": "Select a channel in the current blend to \nchange colour, "
+                                                           "pixel intensity, or apply a filter.",
+                      "annot-reimport": "Re-import the current ROI annotations into the quantification "
+                                            "results. Annotations must be re-added each time the quantification "
+                                            "results are re-generated, or if annotations were generated "
+                                            "without quantification results."}
+
+
 class PanelMismatchError(Exception):
     """
     Raise this exception when datasets with different panel lengths are uploaded into the same session
