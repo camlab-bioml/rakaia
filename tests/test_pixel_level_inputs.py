@@ -14,7 +14,8 @@ from ccramic.inputs.pixel_level_inputs import (
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
-    set_canvas_viewport)
+    set_canvas_viewport,
+    marker_correlation_children)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -223,3 +224,10 @@ def test_window_viewport_settings():
 
     assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}) == \
            {'width': '30.0vh', 'height': '30.0vh'}
+
+def test_generate_marker_correlation_information():
+    children = marker_correlation_children(None, None)
+    assert not children
+    children = marker_correlation_children(0.50, 1.00)
+    assert len(children) > 2
+    assert children

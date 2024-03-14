@@ -8,7 +8,7 @@ from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWa
 import warnings
 
 _program = "ccramic"
-__version__ = "0.13.0"
+__version__ = "0.14.0"
 
 def init_app(cli_config):
     # suppress numba depreciation warnings from umap

@@ -330,3 +330,20 @@ def set_canvas_viewport(size_slider_val: Union[float, int]=None,
             raise PreventUpdate
     except KeyError:
         return {'width': f'{width}vh', 'height': f'{height}vh'}
+
+def marker_correlation_children(target_proportion_in_mask: Union[int, float]=None,
+                                target_proportion_relative: Union[int, float]=None):
+    """
+    Generate the HTML legend for the current parameters used for mask gating
+    """
+    if target_proportion_in_mask:
+        children = [html.B("Marker correlation: \n",
+                           style={"color": "black"}), html.Br(), html.Br(),
+                    html.Span(f"Target proportion in mask relative to image: "
+                              f"{round(target_proportion_in_mask, 4)}\n")]
+        if target_proportion_relative:
+            children.append(html.Br())
+            children.append(html.Span(f"Target overlap in mask relative to baseline: "
+                                      f"{round(target_proportion_relative, 4)}\n"))
+        return children
+    return []

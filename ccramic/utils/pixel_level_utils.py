@@ -58,7 +58,6 @@ def generate_default_swatches(config):
     except KeyError:
         return DEFAULTS
 
-
 def recolour_greyscale(array, colour):
     """
     Convert a greyscale image into an RGB with a designated colour
@@ -445,12 +444,12 @@ def apply_filter_to_array(image, global_apply_filter, global_filter_type, global
     Note: incorrect values applied to the array will not return an error, but will return the original array,
     as this function is meant to be used in the application
     """
-    if global_filter_type not in ['gaussian', 'median']:
-        raise TypeError("The global filter type should be either gaussian or median.")
     global_filter_applied = (isinstance(global_apply_filter, bool) and global_apply_filter) or (
         isinstance(global_apply_filter, list) and global_apply_filter)
     if global_filter_applied and None not in (global_filter_type, global_filter_val) and \
             int(global_filter_val) % 2 != 0:
+        if global_filter_type not in ['gaussian', 'median']:
+            raise TypeError("The global filter type should be either gaussian or median.")
         if global_filter_type == "median" and int(global_filter_val) >= 1:
             try:
                 image = cv2.medianBlur(image, int(global_filter_val))
@@ -504,3 +503,52 @@ def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_
             except KeyError:
                 pass
     return cell_styling_conditions
+
+
+def marker_correlation_metrics(image_dict: dict, roi_selection: str, target_channel: str,
+                               baseline_channel: str=None, target_threshold: Union[float, int]=0,
+                               baseline_threshold: Union[float, int]=0, mask: Union[np.array, np.ndarray]=None,
+                               blend_dict: dict=None, use_blend_params: bool=True):
+    """
+    Generate marker correlation metrics for a target marker compared to a baseline marker expression
+    Output will generate a tuple of values:
+    - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
+    - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
+    marker expression at the baseline threshold, relative to the total marker expression inside the mask
+    """
+    if image_dict is not None and roi_selection in image_dict and target_channel in \
+            image_dict[roi_selection] and mask is not None:
+        if use_blend_params and blend_dict and target_channel in blend_dict:
+            target_threshold = blend_dict[target_channel]['x_lower_bound'] if \
+                blend_dict[target_channel]['x_lower_bound'] else 0
+            target_array = apply_filter_to_array(image_dict[roi_selection][target_channel],
+                                                 blend_dict[target_channel]['filter_type'] is not None,
+                            blend_dict[target_channel]['filter_type'], blend_dict[target_channel]['filter_val'],
+                            blend_dict[target_channel]['filter_sigma'])
+        else:
+            target_array = image_dict[roi_selection][target_channel]
+        # get the boolean mask for the expression of the target
+        target_threshold_bool = target_array > float(target_threshold)
+        target_threshold_in_mask = np.logical_and(target_threshold_bool, mask > 0)
+        # compute proportion of target signal inside mask relative to whole image
+        target_proportion_in_mask = float((np.sum(target_array[target_threshold_in_mask]) /
+                                           np.sum(target_array[target_threshold_bool])))
+        if baseline_channel and baseline_channel in image_dict[roi_selection]:
+            if use_blend_params and blend_dict and baseline_channel in blend_dict:
+                baseline_threshold = blend_dict[baseline_channel]['x_lower_bound'] if \
+                    blend_dict[baseline_channel]['x_lower_bound'] else 0
+                baseline_array = apply_filter_to_array(image_dict[roi_selection][baseline_channel],
+                                                     blend_dict[baseline_channel]['filter_type'] is not None,
+                                                     blend_dict[baseline_channel]['filter_type'],
+                                                     blend_dict[baseline_channel]['filter_val'],
+                                                     blend_dict[baseline_channel]['filter_sigma'])
+            else:
+                baseline_array = image_dict[roi_selection][baseline_channel]
+            marker_overlap_in_cell = np.logical_and(target_threshold_in_mask,
+                                    baseline_array > float(baseline_threshold))
+            target_proportion_relative = np.sum(image_dict[roi_selection][target_channel][marker_overlap_in_cell]) / \
+                                         np.sum(image_dict[roi_selection][target_channel][target_threshold_in_mask])
+        else:
+            target_proportion_relative = None
+        return target_proportion_in_mask, target_proportion_relative
+    return None, None

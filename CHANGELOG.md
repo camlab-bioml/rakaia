@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2024-03-14
+
+### Added
+
+- tab for marker correlation: set a target and baseline marker with masking to get
+proportion of marker overlap between mask/image and target to baseline within mask objects
+(uses current channel blend parameters for filter and threshold)
+
 ## [0.13.0] - 2024-03-12
 
 ### Added

@@ -7,7 +7,7 @@ from threading import Timer
 import os
 from waitress import serve
 
-def argparser():
+def cli_parser():
     parser = argparse.ArgumentParser(add_help=False,
                                      description="ccramic: Cell-type Classification (using) Rapid Analysis (of) Multiplexed "
                                                  "Imaging (mass) Cytometry using Flask and Dash.",
@@ -18,11 +18,11 @@ def argparser():
             If a different port is used, replace 5000 with the provided port number.''')
 
     parser.add_argument('-v', "--version", action="version",
-                        help="Show the current ccramic version then exit.",
+                        help="Show the current ccramic version then exit. Does not execute the application.",
                         version=f"This is ccramic: v{__version__}")
 
     parser.add_argument('-h', "--help", action="help",
-                        help="Show the help output and exit.",
+                        help="Show the help/options menu and exit. Does not execute the application.",
                         dest="help")
     parser.add_argument('-a', "--auto-open", action="store_true",
                         help="automatically open the browser when the dash is called. Default: False",
@@ -71,7 +71,7 @@ def argparser():
 
 def main(sysargs = sys.argv[1:]):
 
-    parser = argparser()
+    parser = cli_parser()
     args = parser.parse_args(sysargs)
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):

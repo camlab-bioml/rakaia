@@ -7,7 +7,7 @@ import socket
 import platform
 import os
 from subprocess import Popen, PIPE
-from ccramic.wsgi import argparser, main
+from ccramic.wsgi import cli_parser, main
 from ccramic.entrypoint import init_app
 from ccramic.app import init_dashboard
 from ccramic.app import init_pixel_level_callbacks
@@ -76,14 +76,14 @@ def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
 
 
 def test_basic_cli_outputs():
-    parser = argparser()
+    parser = cli_parser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
     assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
     assert "ccramic can be initialized from the command line using:" in parser.usage
-    parser = argparser()
+    parser = cli_parser()
     args = parser.parse_args(['-a'])
     assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',

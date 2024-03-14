@@ -10,7 +10,7 @@ from ccramic.inputs.pixel_level_inputs import (
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
-    set_canvas_viewport)
+    set_canvas_viewport, marker_correlation_children)
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
     populate_image_dict_from_lazy_load,
@@ -35,7 +35,7 @@ from ccramic.utils.pixel_level_utils import (
     upper_bound_for_range_slider,
     no_filter_chosen,
     channel_filter_matches,
-    ag_grid_cell_styling_conditions)
+    ag_grid_cell_styling_conditions, marker_correlation_metrics)
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.utils.session import validate_session_upload_config
 from ccramic.components.canvas import CanvasImage, CanvasLayout
@@ -381,20 +381,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('channel-quantification-list', 'options'),
                        Output('channel-quantification-list', 'value'),
+                       Output('baseline-channel-cor', 'options'),
+                       Output('target-channel-cor', 'options'),
                        Input('image_layers', 'options'),
                        Input('alias-dict', 'data'),
                        State('channel-quantification-list', 'value'),
                        Input('quant-toggle-list', 'value'),
                        prevent_initial_call=True)
-    def create_channel_options_for_quantification(channel_options, aliases, cur_selection, toggle_channels_quant):
+    def create_channel_options_for_quantification_correlation(channel_options,
+                                    aliases, cur_selection, toggle_channels_quant):
         """
-        Create the dropdown options for the channels for quantification
+        Create the dropdown options for the channels for quantification and marker corelation
         If channels are already selected, keep them and just update the labels
         """
         channel_list_options = [{'label': value, 'value': key} for key, value in aliases.items()] if aliases else []
         channel_list_selected = list(aliases.keys()) if (aliases and not cur_selection) else cur_selection
         channel_list_selected = channel_list_selected if toggle_channels_quant else []
-        return channel_list_options, channel_list_selected
+        return channel_list_options, channel_list_selected, channel_list_options, channel_list_options
 
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Output('images_in_blend', 'value'),
@@ -2398,3 +2401,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if activate_tour: return True
         return False
+
+    @dash_app.callback(Output('marker-cor-display', 'children'),
+                       Input('target-channel-cor', 'value'),
+                       Input('baseline-channel-cor', 'value'),
+                       State('uploaded_dict', 'data'),
+                       Input('data-collection', 'value'),
+                       State('mask-dict', 'data'),
+                       Input('apply-mask', 'value'),
+                       Input('mask-options', 'value'),
+                       Input('blending_colours', 'data'),
+                       prevent_initial_call=True)
+    # @cache.memoize())
+    def show_marker_correlation(target, baseline, image_dict, roi_selection, mask_dict, apply_mask, mask_selection,
+                                blending_dict):
+        """
+        Display the marker correlation statistics for a target and baseline (if provided)
+        """
+        if target and image_dict and roi_selection and mask_selection:
+            target_mask, target_baseline = marker_correlation_metrics(image_dict, roi_selection, target, baseline,
+            mask=mask_dict[mask_selection]["raw"] if (apply_mask and mask_selection) else None, blend_dict=blending_dict)
+            return marker_correlation_children(target_mask, target_baseline)
+        raise PreventUpdate
