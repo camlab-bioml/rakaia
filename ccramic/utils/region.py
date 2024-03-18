@@ -1,8 +1,7 @@
 import math
-
 from ccramic.utils.cell_level_utils import get_min_max_values_from_zoom_box, get_min_max_values_from_rect_box
 from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path, \
-    get_bounding_box_for_svgpath
+    get_bounding_box_for_svgpath, RectangularKeys
 from pydantic import BaseModel
 from typing import Union
 import ast
@@ -41,16 +40,6 @@ class ChannelRegion:
 
     def compute_integrated_signal(self):
         return self.integrated
-
-class RectangularKeys(BaseModel):
-    """
-    Defines the possible keys for different rectangular regions on the canvas
-    Options vary depending on if zoom is used, or a rectangular shape is drawn fresh
-    or edited
-    """
-    keys: dict = {"zoom": ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]'),
-                  "rect": ('x0', 'x1', 'y0', 'y1'),
-                  "rect_redrawn": ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')}
 
 class RectangleRegion(ChannelRegion):
     """

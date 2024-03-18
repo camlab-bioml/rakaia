@@ -684,6 +684,14 @@ def register_app_layout(config, cache_dest):
                                             html.Div("Create gating annotation")], style={"display": "flex"}),
                                             id="gating-annotation-create", className="mx-auto", color=None, n_clicks=0,
                                             style={"margin-top": "10px"}),
+                                            html.Br(),
+                                            # TODO: add feature to merge custom gating from external sources
+                                            # into quantification
+                                            # html.Br(),
+                                            # du.Upload(id='upload-custom-gating', max_file_size=1000, max_files=1,
+                                            # text='Upload custom gating parameters to merge into quantification',
+                                            # filetypes=['csv'], upload_id="upload-custom-gating",
+                                            # default_style={'minHeight': 2, 'lineHeight': 2})
                                             ]),
                                 ]),
                                 # TODO: add tab for marker correlation

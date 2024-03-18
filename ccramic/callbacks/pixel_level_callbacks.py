@@ -35,7 +35,8 @@ from ccramic.utils.pixel_level_utils import (
     upper_bound_for_range_slider,
     no_filter_chosen,
     channel_filter_matches,
-    ag_grid_cell_styling_conditions, marker_correlation_metrics)
+    ag_grid_cell_styling_conditions,
+    MarkerCorrelation, high_low_values_from_zoom_layout)
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.utils.session import validate_session_upload_config
 from ccramic.components.canvas import CanvasImage, CanvasLayout
@@ -63,13 +64,11 @@ from ccramic.io.session import (
 from pathlib import Path
 from plotly.graph_objs.layout import YAxis, XAxis
 import json
-import cv2
 from dash import dcc
 from dash.exceptions import PreventUpdate
 import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
-from scipy.ndimage import median_filter
 from natsort import natsorted
 from ccramic.io.readers import DashUploaderFileReader
 from ccramic.utils.db import (
@@ -105,8 +104,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_filenames_from_drag_and_drop(status: du.UploadStatus):
         uploader = DashUploaderFileReader(status)
         files = uploader.return_filenames()
-        if files is not None:
-            return files
+        if files is not None: return files
         raise PreventUpdate
 
     @du.callback(Output('param_blend_config', 'data', allow_duplicate=True),
@@ -115,8 +113,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_param_json_from_drag_and_drop(status: du.UploadStatus):
         uploader = DashUploaderFileReader(status)
         files = uploader.return_filenames()
-        if files is not None:
-            return json.load(open(files[0]))
+        if files is not None: return json.load(open(files[0]))
         raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
@@ -1944,10 +1941,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         bound_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
         if None not in (cur_graph, cur_graph_layout) and all([elem in cur_graph_layout for elem in bound_keys]):
             # only update if these keys are used for drag or pan to set custom coords
-            x_low = float(min(cur_graph_layout['xaxis.range[0]'], cur_graph_layout['xaxis.range[1]']))
-            x_high = float(max(cur_graph_layout['xaxis.range[0]'], cur_graph_layout['xaxis.range[1]']))
-            y_low = float(min(cur_graph_layout['yaxis.range[0]'], cur_graph_layout['yaxis.range[1]']))
-            y_high = float(max(cur_graph_layout['yaxis.range[0]'], cur_graph_layout['yaxis.range[1]']))
+            x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(cur_graph_layout)
             return html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}),"
                            f" Y: ({round(y_low, 2)}, {round(y_high, 2)})",
                            style={"color": "black", "white-space": "pre"}), \
@@ -2411,15 +2405,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('apply-mask', 'value'),
                        Input('mask-options', 'value'),
                        Input('blending_colours', 'data'),
+                       Input('annotation_canvas', 'relayoutData'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def show_marker_correlation(target, baseline, image_dict, roi_selection, mask_dict, apply_mask, mask_selection,
-                                blending_dict):
+                                blending_dict, bounds):
         """
         Display the marker correlation statistics for a target and baseline (if provided)
         """
-        if target and image_dict and roi_selection and mask_selection:
-            target_mask, target_baseline = marker_correlation_metrics(image_dict, roi_selection, target, baseline,
-            mask=mask_dict[mask_selection]["raw"] if (apply_mask and mask_selection) else None, blend_dict=blending_dict)
+        if target and image_dict and roi_selection and mask_selection and apply_mask and mask_dict:
+            target_mask, target_baseline = MarkerCorrelation(image_dict, roi_selection, target, baseline, mask=
+            mask_dict[mask_selection]["raw"], blend_dict=blending_dict, bounds=bounds).get_correlation_statistics()
             return marker_correlation_children(target_mask, target_baseline)
-        raise PreventUpdate
+        return []

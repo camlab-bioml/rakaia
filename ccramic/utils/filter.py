@@ -3,6 +3,7 @@ from typing import Union
 import numpy as np
 import cv2
 from scipy.ndimage import median_filter
+
 def apply_filter_to_channel(channel_array: Union[np.array, np.ndarray]=None, filter_chosen: Union[bool, list]=True,
                                 filter_name: str="median", filter_value: int=3, filter_sigma: Union[int, float]=1.0):
     """

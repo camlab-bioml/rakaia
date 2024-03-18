@@ -97,8 +97,7 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         or
         remove the current config from the database if it exists
         """
-        if ctx.triggered_id == "db-save-cur-config" and save_to_db > 0 and \
-                None not in (credentials, db_config_name, blend_dict):
+        if ctx.triggered_id == "db-save-cur-config" and save_to_db and None not in (credentials, db_config_name, blend_dict):
             connection = AtlasDatabaseConnection(username=credentials['username'], password=credentials['password'])
             connection.create_connection()
             connection.insert_blend_config(db_config_name, blend_dict, channel_selection, global_apply_filter,
