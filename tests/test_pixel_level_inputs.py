@@ -228,6 +228,12 @@ def test_window_viewport_settings():
 def test_generate_marker_correlation_information():
     children = marker_correlation_children(None, None)
     assert not children
-    children = marker_correlation_children(0.50, 1.00)
-    assert len(children) > 2
+    children = marker_correlation_children(0.50, 1.00, 1.00)
+    span_counts = 0
+    for child in children:
+        if isinstance(child, html.Span):
+            span_counts += 1
+    # assert one span for each of the values
+    assert span_counts == 3
+    assert len(children) > 4
     assert children

@@ -332,7 +332,8 @@ def set_canvas_viewport(size_slider_val: Union[float, int]=None,
         return {'width': f'{width}vh', 'height': f'{height}vh'}
 
 def marker_correlation_children(target_proportion_in_mask: Union[int, float]=None,
-                                target_proportion_relative: Union[int, float]=None):
+                                target_proportion_relative: Union[int, float]=None,
+                                baseline_proportion_in_mask: Union[int, float]=None):
     """
     Generate the HTML legend for the current parameters used for mask gating
     """
@@ -345,5 +346,9 @@ def marker_correlation_children(target_proportion_in_mask: Union[int, float]=Non
             children.append(html.Br())
             children.append(html.Span(f"Target overlap in mask relative to baseline: "
                                       f"{round(target_proportion_relative, 4)}\n"))
+        if baseline_proportion_in_mask:
+            children.append(html.Br())
+            children.append(html.Span(f"Baseline proportion in mask relative to image: "
+                                      f"{round(baseline_proportion_in_mask, 4)}\n"))
         return children
     return []

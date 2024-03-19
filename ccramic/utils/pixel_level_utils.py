@@ -530,7 +530,7 @@ class MarkerCorrelation:
     Output will generate a tuple of values:
         - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
         - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
-        marker expression at the baseline threshold, relative to the total marker expression inside the mask
+          marker expression at the baseline threshold, relative to the total marker expression inside the mask
     """
     def __init__(self, image_dict: dict, roi_selection: str, target_channel: Union[str, None],
                                baseline_channel: Union[str, None]=None, target_threshold: Union[float, int]=0,
@@ -539,6 +539,8 @@ class MarkerCorrelation:
 
         # Initialize the intermediate and final outputs to None
         # overlap between baseline and target in mask
+        self.baseline_proportion_in_mask = None
+
         self.marker_overlap_in_mask = None
         # boolean mask for where the target is greater than the threshold
         self.target_threshold_bool = None
@@ -549,14 +551,14 @@ class MarkerCorrelation:
         # the ratio of the target to the baseline inside the mask
         self.target_proportion_relative = None
 
+
         if image_dict is not None and roi_selection in image_dict and target_channel in \
                 image_dict[roi_selection] and mask is not None:
             self.image_dict = image_dict
             self.roi_selection = roi_selection
             self.target_threshold = target_threshold
             self.target_channel = target_channel
-            self.bounds = self.compute_channel_bounds_from_zoom(bounds,
-                                self.image_dict[self.roi_selection][self.target_channel])
+            self.bounds = self.compute_channel_bounds_from_zoom(bounds)
             self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
                                     range(int(self.bounds[0]), int(self.bounds[1]), 1))] if self.bounds else mask
             self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
@@ -567,10 +569,11 @@ class MarkerCorrelation:
             if baseline_channel and baseline_channel in image_dict[roi_selection]:
                 self.baseline_array, self.baseline_threshold = self.set_baseline_array_from_blend(image_dict,
                                     use_blend_params, blend_dict, baseline_channel, roi_selection, self.bounds)
+                self.set_baseline_proportion_in_mask()
                 self.compute_correlation_statistics()
 
     @staticmethod
-    def compute_channel_bounds_from_zoom(bounds, target_channel):
+    def compute_channel_bounds_from_zoom(bounds):
         """
         Compute the bounds for the channels based on a region zoom
         """
@@ -581,10 +584,10 @@ class MarkerCorrelation:
 
     def get_correlation_statistics(self):
         """
-        Return the proportion of the target channel that is inside the mask, and the
-        target overlap with the baseline channel inside the mask
+        Return the proportion of the target channel that is inside the mask, the
+        target overlap with the baseline channel inside the mask, and baseline proportion in mask
         """
-        return self.target_proportion_in_mask, self.target_proportion_relative
+        return self.target_proportion_in_mask, self.target_proportion_relative, self.baseline_proportion_in_mask
 
     def set_target_proportion_in_mask(self):
         """
@@ -596,6 +599,17 @@ class MarkerCorrelation:
         # compute proportion of target signal inside mask relative to whole image
         self.target_proportion_in_mask = float((np.sum(self.target_array[self.target_threshold_in_mask]) /
                                            np.sum(self.target_array[self.target_threshold_bool])))
+
+    def set_baseline_proportion_in_mask(self):
+        """
+        Set the baseline threshold of expression, the baseline threshold inside the mask,
+        and the baseline proportion inside the mask
+        """
+        baseline_threshold_bool = self.baseline_array > float(self.baseline_threshold)
+        baseline_threshold_in_mask = np.logical_and(baseline_threshold_bool, self.mask > 0)
+        # compute proportion of target signal inside mask relative to whole image
+        self.baseline_proportion_in_mask = float((np.sum(self.baseline_array[baseline_threshold_in_mask]) /
+                                           np.sum(self.baseline_array[baseline_threshold_bool])))
     def compute_correlation_statistics(self):
         """
         Compute the proportion of the target channel that is inside the mask, and the

@@ -2414,7 +2414,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Display the marker correlation statistics for a target and baseline (if provided)
         """
         if target and image_dict and roi_selection and mask_selection and apply_mask and mask_dict:
-            target_mask, target_baseline = MarkerCorrelation(image_dict, roi_selection, target, baseline, mask=
+            target_mask, prop, target_baseline = MarkerCorrelation(image_dict, roi_selection, target, baseline, mask=
             mask_dict[mask_selection]["raw"], blend_dict=blending_dict, bounds=bounds).get_correlation_statistics()
-            return marker_correlation_children(target_mask, target_baseline)
+            return marker_correlation_children(target_mask, prop, target_baseline)
         return []
