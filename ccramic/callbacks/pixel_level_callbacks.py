@@ -39,7 +39,7 @@ from ccramic.utils.pixel_level_utils import (
     MarkerCorrelation, high_low_values_from_zoom_layout)
 # from ccramic.utils.session import remove_ccramic_caches
 from ccramic.utils.session import validate_session_upload_config
-from ccramic.components.canvas import CanvasImage, CanvasLayout
+from ccramic.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 from ccramic.io.display import (
     RegionSummary,
     output_current_canvas_as_tiff,
@@ -994,9 +994,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         global_not_enabled = ctx.triggered_id in ["global-filter-type", "global-kernel-val-filter",
                                                   "global-sigma-val-filter"] and not global_apply_filter
         channel_order_same = ctx.triggered_id in ["channel-order"] and channel_order == currently_selected
-        if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and \
-                data_selection is not None and currently_selected and len(channel_order) > 0 and not global_not_enabled \
-                and not channel_order_same and data_selection in canvas_layers and canvas_layers[data_selection]:
+        # gating always triggers an update, so prevent this here
+        dont_update = ctx.triggered_id == "gating-cell-list" and gating_cell_id_list is None
+        if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and data_selection \
+            is not None and currently_selected and len(channel_order) > 0 and not global_not_enabled and not \
+                channel_order_same and data_selection in canvas_layers and canvas_layers[data_selection] and not dont_update:
             error_config = {"error": None} if error_config is None else error_config
                 # data_selection in canvas_layers:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
@@ -1030,7 +1032,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return fig, canvas_tiff, dash.no_update
             except (ValueError, AttributeError, KeyError, IndexError) as e:
                 error_config["error"] = str(e)
-                return dash.no_update, dash.no_update, error_config
+                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
         #     fig = cur_graph if cur_graph is not None else go.Figure()
@@ -2287,15 +2289,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('data-collection', 'value'),
                        State('data-collection', 'options'),
                        State('enable-roi-change-key', 'value'),
+                       State("region-annotation-modal", "is_open"),
                        prevent_initial_call=True)
     # @cache.memoize())
     def click_to_new_roi(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options,
-                         allow_arrow_change):
+                         allow_arrow_change, annotating_region):
         """
         Use the forward and backwards buttons to click to a new ROI
         Alternatively, use the directional arrow buttons from an event listener
         """
-        if None not in (cur_data_selection, cur_options) and allow_arrow_change:
+        if None not in (cur_data_selection, cur_options) and not (ctx.triggered_id ==
+                'keyboard-listener' and not allow_arrow_change) and not annotating_region:
             cur_index = cur_options.index(cur_data_selection)
             try:
                 prev_trigger = previous_roi_trigger(ctx.triggered_id, prev_roi, key_listener, n_events)

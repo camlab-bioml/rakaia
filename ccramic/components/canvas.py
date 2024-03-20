@@ -46,7 +46,7 @@ class CanvasImage:
         self.mask_toggle = mask_toggle
         self.add_mask_boundary = add_mask_boundary
         self.invert_annot = invert_annot
-        self.cur_graph = cur_graph
+        self.cur_graph = CanvasLayout(cur_graph).get_fig()
         self.pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         self.legend_text = legend_text
         self.toggle_scalebar = toggle_scalebar
@@ -494,7 +494,7 @@ class CanvasLayout:
         new_shapes = []
         for shape in self.cur_shapes:
             if 'label' in shape and 'texttemplate' not in shape['label']:
-                shape['label']['texttemplate'] = ''
+                shape['label'] = {}
             try:
                 if not is_bad_shape(shape):
                     new_shapes.append(shape)
@@ -571,3 +571,9 @@ class CanvasLayout:
         fig['layout']['shapes'] = shapes
         fig['layout']['annotations'] = annotations
         return fig.to_dict(), new_layout
+
+def reset_graph_with_malformed_template(graph: Union[go.Figure, dict]):
+    graph = graph.to_dict() if not isinstance(graph, dict) else graph
+    fig = go.Figure(CanvasLayout(graph).get_fig())
+    fig.update_layout(dragmode="zoom")
+    return fig

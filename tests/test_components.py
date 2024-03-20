@@ -1,5 +1,5 @@
 import numpy as np
-from ccramic.components.canvas import CanvasImage, CanvasLayout
+from ccramic.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd
@@ -300,3 +300,10 @@ def test_canvas_layout_editor(get_current_dir):
     del fig_malformed['layout']['yaxis']['domain']
     fig = CanvasLayout(fig_malformed).get_fig()
     assert fig['layout']['yaxis']['domain']
+
+def test_reset_graph_malformed():
+    image = np.full((600, 600, 3), 255).astype(np.uint8)
+    fig = go.Figure(px.imshow(image))
+    fig.update_layout(dragmode="pan")
+    reset_fig = reset_graph_with_malformed_template(fig).to_dict()
+    assert reset_fig['layout']['dragmode'] == 'zoom'

@@ -767,4 +767,4 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         mask_selection, intersection=(gating_type == 'intersection'))
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=
             app_config['serverside_overwrite']), gating_label_children(True, gating_dict, cur_gate_selection)
-        return [], []
+        return [] if gating_dict is not None else dash.no_update, []
