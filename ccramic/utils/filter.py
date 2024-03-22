@@ -83,3 +83,17 @@ def return_current_default_params_with_preset(filter_type: str="median", filter_
     color_return = dict(hex=color) if color is not None and color not in \
                                       ['#FFFFFF', '#ffffff'] else dash.no_update
     return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
+
+
+def set_blend_parameters_for_channel(blend_dict: dict, channel_selection:str=None,
+                                     filter_name: str=None, filter_value: Union[int, float]=3,
+                                     filter_sigma: Union[int, float]=1.0, clear: bool=False):
+    """
+    Set the channel-specific filter values (type, either median or gaussian, filter kernel value, and filter sigma
+    value) for a specific channel in the blend dictionary
+    """
+    if blend_dict and channel_selection and channel_selection in blend_dict:
+        blend_dict[channel_selection]['filter_type'] = filter_name if not clear else None
+        blend_dict[channel_selection]['filter_val'] = filter_value if not clear else None
+        blend_dict[channel_selection]['filter_sigma'] = filter_sigma if not clear else None
+    return blend_dict

@@ -121,7 +121,7 @@ def register_app_layout(config, cache_dest):
             dbc.Tab(label='Image annotation', tab_id='image-annotation',
                     active_label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=[
-                html.Div([dbc.Tabs(id='pixel-level-analysis',
+                html.Div([dbc.Tabs(id='main-tabs',
                 children=[dbc.Tab(# label_class_name="fa-regular fa-file-image",
                                   label="Image analysis",
                                     label_style={"color": DEFAULT_WIDGET_COLOUR},

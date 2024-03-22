@@ -29,13 +29,16 @@ class CanvasImage:
     """
     def __init__(self, canvas_layers: dict, data_selection: str, currently_selected: list,
                  mask_config: dict, mask_selection: str, mask_blending_level: int,
-                 overlay_grid: list, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
-                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                cluster_frame, cluster_type: str="mask", custom_scale_val: int=None,
-                 apply_gating: bool=False, gating_cell_id_list: list=None,
-                 annotation_color: str="white"):
+                 overlay_grid: list, mask_toggle: Union[bool, str], add_mask_boundary: Union[bool, str],
+                 invert_annot: Union[bool, str], cur_graph: Union[go.Figure, dict], pixel_ratio: Union[int, float],
+                 legend_text: str, toggle_scalebar: Union[bool, str, list], legend_size: Union[int, float],
+                 toggle_legend: Union[bool, str, list], add_cell_id_hover: Union[bool, str, list],
+                 show_each_channel_intensity: Union[bool, str, list], raw_data_dict: dict,
+                 aliases: dict, global_apply_filter: Union[bool, str, list]=False, global_filter_type: str="median",
+                 global_filter_val: Union[int, float]=3, global_filter_sigma: Union[int, float]=1.0,
+                 apply_cluster_on_mask: Union[bool, str, list]=False, cluster_assignments_dict: dict=None,
+                 cluster_frame: Union[pd.DataFrame, dict]=None, cluster_type: str="mask", custom_scale_val: int=None,
+                 apply_gating: bool=False, gating_cell_id_list: list=None, annotation_color: str="white"):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -103,7 +106,7 @@ class CanvasImage:
                     image = cv2.addWeighted(image.astype(np.uint8), 1,
                                             self.mask_config[self.mask_selection]["boundary"].astype(np.uint8), 1, 0)
 
-        if ' Overlay grid' in self.overlay_grid:
+        if self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     generate_greyscale_grid_array((image.shape[0],
                                     image.shape[1])).astype(np.uint8), 1, 0)
@@ -218,7 +221,7 @@ class CanvasImage:
         # TODO: combine both the mask ID and channel intensity into one hover if both are requested
 
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0 and \
-                ' Show mask ID on hover' in self.add_cell_id_hover:
+                self.add_cell_id_hover:
             try:
                 # fig.update(data=[{'customdata': None}])
                 fig.update(data=[{'customdata': self.mask_config[self.mask_selection]["hover"]}])
@@ -226,7 +229,7 @@ class CanvasImage:
             except KeyError:
                 new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
 
-        elif " Show channel intensities on hover" in self.show_each_channel_intensity:
+        elif self.show_each_channel_intensity:
             # fig.update(data=[{'customdata': None}])
             hover_stack = np.stack(tuple(self.raw_data_dict[self.data_selection][elem] for \
                                          elem in self.currently_selected),
@@ -509,7 +512,7 @@ class CanvasLayout:
         """
         Add an annotation circle to every mask object in a mask, or in a list of gated objects
         requires:
-        mask = a mask with raw object values starting at 1 in numpt int32 form
+        mask = a mask with raw object values starting at 1 in numpy int32 form
         cluster_frame = a dataframe with the columns `cell_id` and `cluster`
         cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
         data_selection = string representation of the current ROI
@@ -573,6 +576,10 @@ class CanvasLayout:
         return fig.to_dict(), new_layout
 
 def reset_graph_with_malformed_template(graph: Union[go.Figure, dict]):
+    """
+    Parse a current graph that may have malformed shapes (i.e. a shape with a blank texttemplate in the 'label'
+    slot), and return a cleaned graph dictionary object with the dragmode set to zoom
+    """
     graph = graph.to_dict() if not isinstance(graph, dict) else graph
     fig = go.Figure(CanvasLayout(graph).get_fig())
     fig.update_layout(dragmode="zoom")

@@ -551,9 +551,9 @@ class MarkerCorrelation:
         # the ratio of the target to the baseline inside the mask
         self.target_proportion_relative = None
 
-
         if image_dict is not None and roi_selection in image_dict and target_channel in \
                 image_dict[roi_selection] and mask is not None:
+            # TODO: add in validation parse for checking the ROI images to the mask dimensions
             self.image_dict = image_dict
             self.roi_selection = roi_selection
             self.target_threshold = target_threshold
@@ -561,16 +561,19 @@ class MarkerCorrelation:
             self.bounds = self.compute_channel_bounds_from_zoom(bounds)
             self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
                                     range(int(self.bounds[0]), int(self.bounds[1]), 1))] if self.bounds else mask
-            self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
+            try:
+                self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
                                             blend_dict, target_channel, roi_selection, self.bounds)
-            self.set_target_proportion_in_mask()
-            self.baseline_array = None
-            self.baseline_threshold = baseline_threshold
-            if baseline_channel and baseline_channel in image_dict[roi_selection]:
-                self.baseline_array, self.baseline_threshold = self.set_baseline_array_from_blend(image_dict,
+                self.set_target_proportion_in_mask()
+                self.baseline_array = None
+                self.baseline_threshold = baseline_threshold
+                if baseline_channel and baseline_channel in image_dict[roi_selection]:
+                    self.baseline_array, self.baseline_threshold = self.set_baseline_array_from_blend(image_dict,
                                     use_blend_params, blend_dict, baseline_channel, roi_selection, self.bounds)
-                self.set_baseline_proportion_in_mask()
-                self.compute_correlation_statistics()
+                    self.set_baseline_proportion_in_mask()
+                    self.compute_correlation_statistics()
+            except ValueError:
+                pass
 
     @staticmethod
     def compute_channel_bounds_from_zoom(bounds):

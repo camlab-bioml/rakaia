@@ -666,3 +666,8 @@ def test_marker_correlation_metrics(get_current_dir):
             blend_dict=blend_dict).get_correlation_statistics() == (None, None, None)
     assert MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=None,
                              blend_dict=blend_dict).get_correlation_statistics() == (None, None, None)
+
+    # mask that is not the same shape
+    mask_bad_shape = np.zeros((999, 999))
+    assert MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=mask_bad_shape,
+                             blend_dict=blend_dict).get_correlation_statistics() == (None, None, None)

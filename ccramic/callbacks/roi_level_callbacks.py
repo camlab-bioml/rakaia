@@ -24,7 +24,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('roi-query', 'data'),
                        Output('dataset-query-gallery', 'style'),
                        Output('dataset-query-gallery-list', 'data'),
-                       Output('pixel-level-analysis', 'active_tab', allow_duplicate=True),
+                       Output('main-tabs', 'active_tab', allow_duplicate=True),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
@@ -88,7 +88,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),
-        Output('pixel-level-analysis', 'active_tab', allow_duplicate=True),
+        Output('main-tabs', 'active_tab', allow_duplicate=True),
         Input({'type': 'data-query-gallery', "index": ALL}, "n_clicks"),
         State('data-collection', 'options'),
         State('data-collection', 'value'),
