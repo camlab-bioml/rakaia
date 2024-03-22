@@ -212,6 +212,7 @@ class RegionThumbnail:
                     mask_to_use = self.mask_dict[matched_mask]["boundary"]
             else:
                 mask_to_use = self.mask_dict[matched_mask]["boundary"]
+            mask_to_use = np.where(mask_to_use > 0, 255, 0)
             summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
                                            mask_to_use.astype(np.uint8), 1, 0).astype(np.uint8)
         self.roi_images[label] = summed_image

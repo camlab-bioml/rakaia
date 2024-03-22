@@ -102,8 +102,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-image')
     # @cache.memoize())
     def get_filenames_from_drag_and_drop(status: du.UploadStatus):
-        uploader = DashUploaderFileReader(status)
-        files = uploader.return_filenames()
+        files = DashUploaderFileReader(status).return_filenames()
         if files is not None: return files
         raise PreventUpdate
 
@@ -111,8 +110,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-param-json')
     # @cache.memoize())
     def get_param_json_from_drag_and_drop(status: du.UploadStatus):
-        uploader = DashUploaderFileReader(status)
-        files = uploader.return_filenames()
+        files = DashUploaderFileReader(status).return_filenames()
         if files is not None: return json.load(open(files[0]))
         raise PreventUpdate
 
@@ -1225,8 +1223,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         datasets to ensure that it matches the number of channels
         """
         metadata_config = {'uploads': []}
-        uploader = DashUploaderFileReader(status)
-        files = uploader.return_filenames()
+        files = DashUploaderFileReader(status).return_filenames()
         if files:
             for file in files:
                 metadata_config['uploads'].append(file)
@@ -1541,8 +1538,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         [State("area-stats-collapse", "is_open")])
     # @cache.memoize())
     def toggle_area_stats_collapse(n, is_open):
-        if n:
-            return not is_open
+        if n: return not is_open
         return is_open
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
@@ -1889,8 +1885,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('make-canvas-fullscreen', 'n_clicks'),
         [State("fullscreen-canvas", "is_open")])
     def toggle_fullscreen_modal(n1, is_open):
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(Output('annotation_canvas-fullscreen', 'figure'),
@@ -1935,8 +1930,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('show-dataset-info', 'n_clicks'),
         [State("dataset-preview", "is_open")])
     def toggle_dataset_info_modal(n1, is_open):
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(
@@ -2032,10 +2026,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('region-annotation', 'n_clicks'),
          Input('create-annotation', 'n_clicks'))
     def toggle_region_annotation_modal(clicks_add_annotation, clicks_submit_annotation):
-        if clicks_add_annotation and ctx.triggered_id == "region-annotation":
-            return True
-        elif ctx.triggered_id == "create-annotation" and clicks_submit_annotation:
-            return False
+        if clicks_add_annotation and ctx.triggered_id == "region-annotation": return True
+        elif ctx.triggered_id == "create-annotation" and clicks_submit_annotation: return False
         else:
             return False
 
@@ -2116,8 +2108,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input("inputs-offcanvas-button", "n_clicks"),
         State("inputs-offcanvas", "is_open"))
     def toggle_offcanvas_inputs(n1, is_open):
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(
@@ -2126,8 +2117,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State("blend-config-offcanvas", "is_open"),
     )
     def toggle_offcanvas_blend_options(n1, is_open):
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(
@@ -2136,8 +2126,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         [State("pixel-hist-collapse", "is_open")])
     # @cache.memoize())
     def toggle_pixel_hist_collapse(n, is_open):
-        if n:
-            return not is_open
+        if n: return not is_open
         return is_open
 
     # @dash_app.callback(Output('canvas-div-holder', 'children', allow_duplicate=True),
@@ -2159,8 +2148,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('show-annotation-table', 'n_clicks'),
         [State("annotation-preview", "is_open")])
     def toggle_annotation_table_modal(n1, is_open):
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(
@@ -2334,8 +2322,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Open the modal for general session variables
         """
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(Output('annotation_canvas', 'config', allow_duplicate=True),

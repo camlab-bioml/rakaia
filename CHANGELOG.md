@@ -14,11 +14,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tab for marker correlation: set a target and baseline marker with masking to get
 proportion of marker overlap between mask/image and target to baseline within mask objects
 (uses current channel blend parameters for filter and threshold) (compatible with zoom)
+- Button to autofill single mask upload names with the current ROI identifier
 
 ### Fixed
 - Update canvas shape filtering on freeform draw to clear errors caused by
 [plotly 4462](https://github.com/plotly/plotly.py/issues/4462)
 - Fix switch trigger to disable ROI switching on keyboard
+- Mask objects in ROI thumbnails are now all represented by the same intensity (255)
 
 ### Changed
 - Enforce ROI change can occur only on the canvas tab

@@ -1,5 +1,7 @@
 import dash
 import pandas as pd
+
+from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
 from ccramic.parsers.cell_level_parsers import (
     parse_cell_subtypes_from_restyledata,
     parse_and_validate_measurements_csv,
@@ -77,15 +79,10 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-umap-coordinates')
     # @cache.memoize())
     def get_umap_upload_from_drag_and_drop(status: du.UploadStatus):
-        uploader = DashUploaderFileReader(status)
-        files = uploader.return_filenames()
+        files = DashUploaderFileReader(status).return_filenames()
         if files:
-            frame = pd.read_csv(files[0])
-            if len(frame.columns) == 2:
-                frame.columns = ['UMAP1', 'UMAP2']
-                return SessionServerside(frame.to_dict(orient="records", ), key="umap_coordinates",
-                                         use_unique_key=app_config['serverside_overwrite'])
-            raise PreventUpdate
+            return SessionServerside(pd.read_csv(files[0], names=['UMAP1', 'UMAP2'], header=0).to_dict(orient="records"),
+                key="umap_coordinates", use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
 
     @dash_app.callback(Output('quantification-heatmap-full', 'figure'),
@@ -245,13 +242,12 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         else:
             try:
-                if n_clicks > 0:
-                    return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
+                return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
                             current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite']), \
                         dash.no_update, dash.no_update
-                raise PreventUpdate
             except ValueError:
                 raise PreventUpdate
+
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),
@@ -299,14 +295,20 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('input-mask-name', 'value'),
                        Input('mask-uploads', 'data'),
+                       Input('mask-name-autofill', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('dataset-delimiter', 'value'),
                        prevent_initial_call=True)
-    def input_mask_name_on_upload(mask_uploads):
+    def set_import_single_mask_upload(mask_uploads, autofill_mask_name, data_selection, delimiter):
         """
         Allow the user to change the mask upload name if only a single mask is uploaded
         If multiple are uploaded, use the file basename by default
+        Inputs are either triggered by the upload with the basename, or the autofill using the current ROI identifier
         """
-        if mask_uploads is not None and len(mask_uploads) > 0 and len(mask_uploads) == 1:
+        if ctx.triggered_id == 'mask-uploads' and mask_uploads is not None and len(mask_uploads) == 1:
             return list(mask_uploads.keys())[0]
+        elif ctx.triggered_id == 'mask-name-autofill' and data_selection and autofill_mask_name:
+            return str(set_roi_identifier_from_length(data_selection, delimiter=delimiter))
         raise PreventUpdate
 
     @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
@@ -324,8 +326,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Send an alert if the imported mask does not match the current ROI selection
         Works by validating the imported mask against the first channel of the current ROI selection
         """
-        return send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
-                                           mask_toggle)
+        return send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection, mask_toggle)
 
     @dash_app.callback(
         Output("mask-name-modal", "is_open"),
@@ -334,10 +335,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-uploads', 'data'))
     def toggle_mask_name_input_modal(new_mask_name, mask_clicks, mask_uploads):
         # only show the modal if the mask uploads len is 1
-        if new_mask_name and ctx.triggered_id == "input-mask-name" and len(mask_uploads) == 1:
-            return True
-        # elif ctx.triggered_id == "set-mask-name" and mask_clicks > 0:
-        #     return False
+        if new_mask_name and ctx.triggered_id == "input-mask-name" and len(mask_uploads) == 1: return True
         return False
 
     @dash_app.callback(Output('mask-dict', 'data'),
@@ -354,11 +352,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
         if multi_upload or single_upload:
-            dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
+            mask_dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
                             cur_mask_dict, unique_key_serverside=app_config['serverside_overwrite'])
             # if any of the names are longer than 40 characters, increase the height to make them visible
             height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
-            return dict, options, height_update
+            return mask_dict, options, height_update
         raise PreventUpdate
 
     # @dash_app.callback(
@@ -504,12 +502,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Clear all the current ROI annotations
         """
-        if n_clicks > 0 and None not in (cur_annotation_dict, data_selection):
-            try:
-                cur_annotation_dict[data_selection] = {}
-                return SessionServerside(cur_annotation_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
-            except KeyError:
-                raise PreventUpdate
+        if None not in (cur_annotation_dict, data_selection) and data_selection in cur_annotation_dict:
+            cur_annotation_dict[data_selection] = {}
+            return SessionServerside(cur_annotation_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
 
     @dash_app.callback(
@@ -517,8 +512,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('show-quant-dist', 'n_clicks'),
         [State("show-quant-dist-table", "is_open")])
     def toggle_show_quant_dist_modal(n1, is_open):
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(Output('quant-dist-table', 'data'),
@@ -596,8 +590,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('umap-config-button', 'n_clicks'),
         [State("umap-config-modal", "is_open")])
     def toggle_show_umap_config_modal(n1, is_open):
-        if n1:
-            return not is_open
+        if n1: return not is_open
         return is_open
 
     @dash_app.callback(
@@ -607,11 +600,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State("quantification-roi-modal", "is_open"),
         State('channel-quantification-list', 'value'))
     def toggle_show_quantification_config_modal(n1, execute, is_open, channels_to_quantify):
-        if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify:
-            return False
+        if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False
         else:
-            if n1:
-                return not is_open
+            if n1: return not is_open
             return is_open
 
     @du.callback(Output('imported-annotations-csv', 'data'),
@@ -621,8 +612,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Import a CSV of point annotations to re-render on the canvas
         """
-        uploader = DashUploaderFileReader(status)
-        files = uploader.return_filenames()
+        files = DashUploaderFileReader(status).return_filenames()
         if files:
             frame = pd.read_csv(files[0])
             if validate_imported_csv_annotations(frame):
@@ -635,10 +625,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-cluster-annotations')
     # @cache.memoize())
     def get_filenames_from_cluster_drag_and_drop(status: du.UploadStatus):
-        uploader = DashUploaderFileReader(status)
-        files = uploader.return_filenames()
-        if files is not None:
-            return files
+        files = DashUploaderFileReader(status).return_filenames()
+        if files is not None: return files
         raise PreventUpdate
 
     @dash_app.callback(Output('imported-cluster-frame', 'data', allow_duplicate=True),
@@ -748,8 +736,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (gating_val, gate_selected):
             gating_dict = update_gating_dict_with_slider_values(gating_dict, gate_selected, gating_val)
-            return SessionServerside(gating_dict, key="gating_dict",
-                              use_unique_key=app_config['serverside_overwrite'])
+            return SessionServerside(gating_dict, key="gating_dict", use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
 
     @dash_app.callback(Output('gating-cell-list', 'data'),

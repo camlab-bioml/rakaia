@@ -205,6 +205,9 @@ def test_set_canvas_filename():
     assert canvas_config['toImageButtonOptions']['filename'] == "long_roi"
     canvas_config = update_canvas_filename(canvas_config, "exp0---slide0---roi_1")
     assert canvas_config['toImageButtonOptions']['filename'] == "exp0---slide0---roi_1"
+    # use the filename (experiment) by default if the roi name is not long enough
+    canvas_config = update_canvas_filename(canvas_config, "exp0---slide0---roi_1", delimiter='---')
+    assert canvas_config['toImageButtonOptions']['filename'] == "exp0"
     assert update_canvas_filename({"fake_dict": None}, "exp0+++slide0+++long_roi") == {"fake_dict": None}
 
 

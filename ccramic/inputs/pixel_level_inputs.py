@@ -272,15 +272,17 @@ def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False):
         x_axis_placement = 1 - x_axis_placement
     return x_axis_placement
 
-def set_roi_identifier_from_length(dataset_selection, length_threshold=5, delimiter: str="+++"):
+def set_roi_identifier_from_length(dataset_selection, length_threshold=5, delimiter: str="+++",
+                                   use_filename: bool=True):
     """
     Set the output name for a dataset based on the length of the ROI name
-    If the ROI name is below a certain length, output the entire dataset identifier
+    If the ROI name is below a certain length, output the entire dataset identifier if not using the filename,
+    or use the experiment (filename_
     """
     try:
         exp, slide, roi = split_string_at_pattern(dataset_selection, delimiter)
         # set a length limit: if the roi name is long enough to be informative, set as the output
-        roi_name_use = roi if len(roi) > length_threshold else dataset_selection
+        roi_name_use = roi if len(roi) > length_threshold else (dataset_selection if not use_filename else exp)
         return roi_name_use
     except (KeyError, IndexError, ValueError):
         return dataset_selection
