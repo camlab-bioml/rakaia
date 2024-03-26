@@ -4,6 +4,20 @@ from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import pandas as pd
 from dash import html
 
+def mask_object_counter_preview(mask_dict: dict=None, mask_selection: str=None):
+    """
+    Generate a string preview of the number of objects in a current mask, used in the quantification modal
+    Returns a string that is compatible as an a html.B child, or an empty list of the required inputs do not exist
+    """
+    if mask_dict and mask_selection and mask_selection in mask_dict:
+        try:
+            ids = np.unique(mask_dict[mask_selection]['raw'])
+            return f"{len(ids[ids != 0])} mask objects"
+        except KeyError:
+            return []
+    return []
+
+
 def quantify_one_channel(image, mask):
     """
     Takes an array of one channel with the matching mask and creates a vector of the mean values per
@@ -20,7 +34,6 @@ def quantify_one_channel(image, mask):
         offset = 1 if min(cell_ids) == 1 else 0
         # Output expression matrix
         expr_mat = np.zeros((1, len(cell_ids)))
-
         for cell in cell_ids:
             is_cell = mask == cell
             # IMP: only apply the offset in the positions, not for the actual cell id
@@ -136,7 +149,7 @@ def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_sel
     the gating modifier dropdown
     """
     current_gate_dict = {gate_selected: {}} if current_gate_dict is None else current_gate_dict
-    if gate_selected not in current_gate_dict: current_gate_dict[gate_selected] = \
+    if gate_selected and gate_selected not in current_gate_dict: current_gate_dict[gate_selected] = \
         {'lower_bound': None, 'upper_bound': None}
     # if current_gate_dict[gate_selected]['lower_bound'] != float(min(gating_vals)) and \
     #         current_gate_dict[gate_selected]['upper_bound'] != float(max(gating_vals)):

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-03-22
+## [0.14.0] - 2024-03-26
 
 ### Added
 
@@ -15,12 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 proportion of marker overlap between mask/image and target to baseline within mask objects
 (uses current channel blend parameters for filter and threshold) (compatible with zoom)
 - Button to autofill single mask upload names with the current ROI identifier
+- Mask object counter in the quantification modal when a mask is enabled
 
 ### Fixed
 - Update canvas shape filtering on freeform draw to clear errors caused by
 [plotly 4462](https://github.com/plotly/plotly.py/issues/4462)
 - Fix switch trigger to disable ROI switching on keyboard
 - Mask objects in ROI thumbnails are now all represented by the same intensity (255)
+- Do not reset channels to quantify on ROI changes
 
 ### Changed
 - Enforce ROI change can occur only on the canvas tab

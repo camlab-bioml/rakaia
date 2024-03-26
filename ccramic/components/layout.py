@@ -904,8 +904,11 @@ def register_app_layout(config, cache_dest):
                                         style={"display": "flex"}),
                                 html.H6(children=[], id="cluster-assignments"),
                                 dbc.Modal(id="quantification-roi-modal", children=dbc.ModalBody([
-                                dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute",
-                                           style={"background-color": DEFAULT_WIDGET_COLOUR}),
+                                html.Div([dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute",
+                                           style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
+                                html.B(id="mask-object-counter", style={"margin-left": '7.5px', 'margin-top': '7.5px'}),
+                                dbc.Tooltip(TOOLTIPS['quantify-channels'], target="mask-object-counter")],
+                                         style={"display": "flex", "justifyContent": "center"}),
                                 html.Br(),
                                 dcc.Checklist(id="quant-toggle-list", value=[' select/deselect all'],
                                 options=[' select/deselect all'], style={"accent-color": DEFAULT_WIDGET_COLOUR}),

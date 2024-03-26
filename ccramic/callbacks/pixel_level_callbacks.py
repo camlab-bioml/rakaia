@@ -385,12 +385,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def create_channel_options_for_quantification_correlation(channel_options,
                                     aliases, cur_selection, toggle_channels_quant):
         """
-        Create the dropdown options for the channels for quantification and marker corelation
+        Create the dropdown options for the channels for quantification and marker correlation
         If channels are already selected, keep them and just update the labels
         """
         channel_list_options = [{'label': value, 'value': key} for key, value in aliases.items()] if aliases else []
-        channel_list_selected = list(aliases.keys()) if (aliases and not cur_selection) else cur_selection
-        channel_list_selected = channel_list_selected if toggle_channels_quant else []
+        channel_list_selected = list(aliases.keys()) if ctx.triggered_id == 'alias-dict' else cur_selection
+        if ctx.triggered_id == 'quant-toggle-list':
+            channel_list_selected = [elem['value'] for elem in channel_list_options] if toggle_channels_quant else []
         return channel_list_options, channel_list_selected, channel_list_options, channel_list_options
 
     @dash_app.callback(Output('images_in_blend', 'options'),

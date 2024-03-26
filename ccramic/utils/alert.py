@@ -82,7 +82,10 @@ class ToolTips(BaseModel):
                       "annot-reimport": "Re-import the current ROI annotations into the quantification "
                                             "results. Annotations must be re-added each time the quantification "
                                             "results are re-generated, or if annotations were generated "
-                                            "without quantification results."}
+                                            "without quantification results.",
+                      "quantify-channels": "Warning: the time required for quantification will grow linearly as "
+                                           "both the number of channels, and number of mask objects increases. "
+                                           "Improve performance by reducing the number of channels quantified."}
 
 
 class PanelMismatchError(Exception):

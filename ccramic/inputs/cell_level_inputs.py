@@ -69,8 +69,8 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     array_measure = np.array(measurements)
     zmax = 1 if np.max(array_measure) <= 1 else np.max(array_measure)
     fig = go.Figure(px.imshow(array_measure, x=measurements.columns, y=measurements.index,
-                    labels=dict(x="Channel", y="Cells", color="Expression Mean"),
-                    title=f"Channel expression per cell ({len(measurements)} cells) {subset_str}",
+                              labels=dict(x="Channel", y="Cells", color="Expression Mean"),
+                              title=f"Channel expression per cell ({len(measurements)} cells) {subset_str}",
                               zmax=zmax))
     fig.update_xaxes(tickangle=90)
     fig.update_layout(xaxis = dict(tickmode = 'linear'))

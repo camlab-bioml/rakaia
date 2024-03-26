@@ -47,7 +47,7 @@ from ccramic.utils.cluster import assign_colours_to_cluster_annotations, cluster
 from ccramic.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
-    gating_label_children)
+    gating_label_children, mask_object_counter_preview)
 
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -595,15 +595,21 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output("quantification-roi-modal", "is_open"),
+        Output('mask-object-counter', 'children'),
         Input('quantify-cur-roi-button', 'n_clicks'),
         Input('quantify-cur-roi-execute', 'n_clicks'),
         State("quantification-roi-modal", "is_open"),
-        State('channel-quantification-list', 'value'))
-    def toggle_show_quantification_config_modal(n1, execute, is_open, channels_to_quantify):
-        if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False
+        State('channel-quantification-list', 'value'),
+        State('mask-dict', 'data'),
+        Input('mask-options', 'value'))
+    def toggle_show_quantification_config_modal(n1, execute, is_open, channels_to_quantify, mask_dict, mask_selection):
+        # TODO: add preview for number of objects in the mask if it exists
+        preview = mask_object_counter_preview(mask_dict, mask_selection)
+        if ctx.triggered_id == "mask-options": return dash.no_update, preview
+        if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False, preview
         else:
-            if n1: return not is_open
-            return is_open
+            if n1: return not is_open, preview
+            return is_open, preview
 
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')
