@@ -131,8 +131,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
                     # also return the current count of the umap category selected to update the distribution table
-                # only store the cell id lists if zoom subsetting is used
-                if umap_layout is not None and all([key in umap_layout.keys() for key in zoom_keys]):
+                if umap_layout is not None:
+                    # TODO: decide if cell ids should be pulled only when zooming, or at the default zoom out
+                    # and all([key in umap_layout.keys() for key in zoom_keys]):
                     # merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
                     # merged = pd.merge(pd.DataFrame(frame), pd.DataFrame(quantification_dict),
                     #          left_index=True, right_index=True).reset_index(drop=True)

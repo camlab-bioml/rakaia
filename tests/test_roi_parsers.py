@@ -45,8 +45,12 @@ def test_query_parser_tiff(get_current_dir):
     session_config = {"uploads": [str(mcd)]}
     parse = FileParser(session_config['uploads']).image_dict
     blend_dict = create_new_blending_dict(parse)
+    mask_dict = {'for_recolour_mask': {'raw': np.zeros((600, 600)), 'boundary': np.zeros((600, 600, 3))}}
+    query_selection = {'names': ['for_recolour']}
     roi_query = RegionThumbnail(session_config, blend_dict, ['channel_1'], 1,
-                                dataset_options=list(parse.keys())).get_image_dict()
+                                dataset_options=list(parse.keys()),
+                                mask_dict=mask_dict,
+                                predefined_indices=query_selection).get_image_dict()
     assert 'for_recolour+++slide0+++acq0' in roi_query.keys()
     assert len(roi_query) == 1
 
@@ -91,9 +95,9 @@ def test_roi_query_parser_predefined(get_current_dir):
     assert len(roi_query) == 1
     assert dataset_selection in roi_query.keys()
 
-    mask_roi_dict = {"PAP_1": {"boundary": np.full((100, 100, 3), 7), "raw": np.full((100, 100), 7)},
-                     "HIER_2": {"boundary": np.full((100, 100, 3), 0)},
-                     "roi_3": {"boundary": np.zeros((100, 100, 3))}}
+    mask_roi_dict = {"PAP_1_mask": {"boundary": np.full((100, 100, 3), 7), "raw": np.full((100, 100), 7)},
+                     "HIER_2_mask": {"boundary": np.full((100, 100, 3), 0)},
+                     "roi_3_mask": {"boundary": np.zeros((100, 100, 3))}}
 
     defined_names = {'names': ['PAP_1']}
     query_cell_id_lists = {'PAP_1': [7]}

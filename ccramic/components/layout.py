@@ -212,6 +212,7 @@ def register_app_layout(config, cache_dest):
                                         html.Div([dbc.Button("Autofill with ROI name", id="mask-name-autofill",
                                         className="me-1", size="sm", color='dark', outline=True,
                                         style={"height": "50%", "margin-top": "3px", "margin-right": "10px"}),
+                                        dbc.Tooltip(TOOLTIPS['mask-name-autofill'], target="mask-name-autofill"),
                                         dbc.Button("Set mask import", id="set-mask-name", className="me-1",
                                         style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-left": "10px"})],
                                         style={"display": "flex", "justifyContent": "center"}),

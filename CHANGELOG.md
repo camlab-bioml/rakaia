@@ -23,6 +23,7 @@ proportion of marker overlap between mask/image and target to baseline within ma
 - Fix switch trigger to disable ROI switching on keyboard
 - Mask objects in ROI thumbnails are now all represented by the same intensity (255)
 - Do not reset channels to quantify on ROI changes
+- ROI querying with tiff files from UMAP
 
 ### Changed
 - Enforce ROI change can occur only on the canvas tab

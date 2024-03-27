@@ -129,11 +129,15 @@ class RegionThumbnail:
             # break
 
     def additive_thumbnail_from_tiff(self, tiff_filepath):
-        # TODO allow tiffs to be generated in the ROI gallery
         # set the channel label by parsing through the dataset options to find a partial match of filename
         basename = str(Path(tiff_filepath).stem)
         label = self.parse_thumbnail_label_from_filepath(basename)
-        if label not in self.rois_exclude:
+        matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
+        # if queried from the UMAP plot, restrict to only those with a match in the query selection
+        if self.query_selection and 'names' in self.query_selection:
+            query_list = self.query_selection['names']
+            label = label if match_mask_name_to_quantification_sheet_roi(matched_mask, query_list) else None
+        if label and label not in self.rois_exclude:
             with TiffFile(tiff_filepath) as tif:
                 acq_image = []
                 channel_index = 1

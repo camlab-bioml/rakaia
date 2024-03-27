@@ -85,7 +85,9 @@ class ToolTips(BaseModel):
                                             "without quantification results.",
                       "quantify-channels": "Warning: the time required for quantification will grow linearly as "
                                            "both the number of channels, and number of mask objects increases. "
-                                           "Improve performance by reducing the number of channels quantified."}
+                                           "Improve performance by reducing the number of channels quantified.",
+                      "mask-name-autofill": "Matching the mask name to the corresponding ROI name will link the "
+                                            "quantification results to region annotations and ROI gating."}
 
 
 class PanelMismatchError(Exception):

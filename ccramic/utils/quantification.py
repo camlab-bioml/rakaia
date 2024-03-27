@@ -88,19 +88,23 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
             # set the channel label if the aliases exists with a different name
             channel_name = aliases[channel] if aliases is not None and channel in aliases.keys() else channel
             channel_frame[channel_name] = column
-    roi_name_sample = roi_name
+    description_name = roi_name
+    sample_name = mask_name
     if dataset_options is not None:
         for dataset in dataset_options:
             exp, slide, roi = split_string_at_pattern(dataset, pattern=delimiter)
             if roi == roi_name:
                 index = dataset_options.index(dataset) + 1
-                roi_name_sample = f"{exp}_{index}"
+                # TODO: figure out best naming strategy for ROI names for different input names
+                if len(description_name) <= 5:
+                    description_name = mask_name
+                    sample_name = f"{exp}_{index}"
     # TODO: change the order of the identifying columns here, and set the description to the mask used for the quant
     # to ensure matching
     # TODO: figure out what the ROI designation should be
-    channel_frame['description'] = mask_name
+    channel_frame['description'] = description_name
     channel_frame['cell_id'] = pd.Series(range(1, (len(channel_frame.index) + 1)), dtype='int64')
-    channel_frame['sample'] = roi_name_sample
+    channel_frame['sample'] = sample_name
     x, y, area = quantify_roi_xy_coordinates_area(mask)
     channel_frame['x'] = pd.Series(x.flatten())
     channel_frame['y'] = pd.Series(y.flatten())

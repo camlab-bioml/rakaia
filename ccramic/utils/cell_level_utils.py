@@ -361,7 +361,11 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
     elif 'sample' in quantification_frame.columns:
         try:
             index = dataset_options.index(data_selection) + 1
+            # TODO: decide if we should use the dataset index with the experiment name or not
+            # this is the default format coming out of the pipeline, but it doesn't always link the mask, ROI, and
+            # quant sheet properly
             sample_name = f"{exp}_{index}"
+            # sample_name = exp
             return sample_name, 'sample'
         except IndexError:
             return None, None

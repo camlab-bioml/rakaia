@@ -287,7 +287,7 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
     return indices_query, freq_counts
 
 
-def match_mask_name_with_roi(data_selection, mask_options, roi_options, delimiter: str="+++"):
+def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_options: list, delimiter: str="+++"):
     """
     Attempt to match a mask name to the currently selected ROI.
     Heuristics order:
@@ -295,6 +295,8 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options, delimite
     2. If the data selection ROI name is in the list of mask options, return it
     3. If any of the mask names have indices in them, return the ROI name at that index
     4. If None of those exist, return None
+    mask options : list of masks in the current session
+    roi options: list of dropdown ROI options in the current session
     """
     mask_return = None
     if mask_options is not None and data_selection in mask_options:
@@ -302,17 +304,17 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options, delimite
     else:
         # first, check to see if the pattern matches based on the pipeline mask name output
         if mask_options is not None and roi_options is not None:
-            data_index = roi_options.index(data_selection)
-            for mask in mask_options:
-                try:
+            try:
+                data_index = roi_options.index(data_selection)
+                for mask in mask_options:
                     # mask naming fro the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
                     # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
                     split_1 = mask.split("_ac_IA_mask")[0]
                     index = int(split_1.split("_")[-1].replace("a", "")) - 1
                     if index == data_index:
                         mask_return = mask
-                except (TypeError, IndexError, ValueError):
-                    pass
+            except (TypeError, IndexError, ValueError):
+                pass
         if mask_return is None and delimiter in data_selection:
             exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
             if mask_options is not None and exp in mask_options:
@@ -329,11 +331,14 @@ def match_mask_name_with_roi(data_selection, mask_options, roi_options, delimite
     return mask_return
 
 
-def match_mask_name_to_quantification_sheet_roi(mask_selection, cell_id_list: Union[list, None],
+def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_list: Union[list, None],
                                                 sample_col_id="sample"):
     """
     Match a mask name to a sample ID in the quantification sheet, either in the `description` or `sample` table
     Example: query_s0_a2_ac_IA_mask will match to query_2 in the quantification sheet
+    mask_selection: string representation of the current mask selection
+    cell_id_list: list of ROIs that correspond to a subset of mask object ids in the subset. Could include 0 or more
+    ROI string representations
     """
     sam_id = None
     if cell_id_list is not None and mask_selection in cell_id_list:
