@@ -89,15 +89,15 @@ def main(sysargs = sys.argv[1:]):
                   'cache_dest': args.cache_dest}
 
     app = init_app(cli_config=CLI_CONFIG)
+    #   https://stackoverflow.com/questions/64107108/what-is-the-issue-with-binding-to-all-interfaces-and-what-are-the-alternatives
+    HOST = '127.0.0.1' if CLI_CONFIG['is_dev_mode'] else '0.0.0.0'
     if args.auto_open:
         Timer(1, open_browser).start()
 
     if CLI_CONFIG['is_dev_mode']:
-        app.run(host='0.0.0.0', debug=args.is_dev_mode, threaded=args.threading, port=args.port)
+        app.run(host=HOST, debug=args.is_dev_mode, threaded=args.threading, port=args.port)
     else:
-        # TODO: establish criteria for deploying in production using waitress server
-        # https://stackoverflow.com/questions/14814201/can-i-serve-multiple-clients-using-just-flask-app-run-as-standalone
-        serve(app, host='0.0.0.0', port=args.port)
+        serve(app, host=HOST, port=args.port)
 
 if __name__ == "__main__":
     main()

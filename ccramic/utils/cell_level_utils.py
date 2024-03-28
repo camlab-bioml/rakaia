@@ -102,25 +102,24 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
     """
     try:
         umap_frame.columns = ['UMAP1', 'UMAP2']
-        if not all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
-                                                          'yaxis.range[0]', 'yaxis.range[1]']]): raise AssertionError
         if len(measurements) != len(umap_frame):
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
         #     umap_frame.reset_index()
         #     measurements.reset_index()
-        query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
+        if all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']]):
+            query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                          f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                          f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
                          f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
 
-        list_indices = query.index.tolist()
+            list_indices = query.index.tolist()
 
-        if annotation_column not in measurements.columns:
-            measurements[annotation_column] = "None"
+            if annotation_column not in measurements.columns:
+                measurements[annotation_column] = "None"
 
-        measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
+            measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
                                                    annotation_value, measurements[annotation_column])
-
     except KeyError:
         pass
     return measurements

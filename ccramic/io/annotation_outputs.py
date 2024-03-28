@@ -18,7 +18,6 @@ import pandas as pd
 from dash.exceptions import PreventUpdate
 import ast
 
-
 class AnnotationRegionWriter:
     """
     Represents an export of annotations that are not points to a CSV file.

@@ -120,13 +120,13 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     subtypes, keep = None, None
             else:
                 subtypes, keep = None, None
-
             try:
                 fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
                         umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
                         subtypes, channels_to_display, normalize=normalize_heatmap, subset_val=subset_heatmap)
             except (BadRequest, IndexError):
                 raise PreventUpdate
+            indices_query, freq_counts_cat, cell_id_dict = None, None, None
             if frame is not None:
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
@@ -142,20 +142,12 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     #           join="inner").reset_index(drop=True)
                     merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
                     cell_id_dict = generate_dict_of_roi_cell_ids(merged)
-                else:
-                    cell_id_dict = None
-            else:
-                indices_query = None
-                freq_counts_cat = None
-                cell_id_dict = None
             # if the heatmap channel options are already set, do not update
-            cols_return = list(frame.columns)
-            if ctx.triggered_id == "quantification-dict":
+            cols_selected = dash.no_update
+            if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
                 cols_selected = list(frame.columns)
-            else:
-                cols_selected = list(frame.columns) if not heatmap_channel_options else dash.no_update
             return fig, keep, indices_query, freq_counts_cat, SessionServerside(cell_id_dict,
-                key="cell_id_list", use_unique_key=app_config['serverside_overwrite']), cols_return, cols_selected
+                key="cell_id_list", use_unique_key=app_config['serverside_overwrite']), list(frame.columns), cols_selected
         raise PreventUpdate
 
     # @dash_app.callback(Output('quantification-bar-full', 'figure'),
@@ -253,19 +245,21 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
-                       Input('quantification-dict', 'data'),
+                       State('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
+                       Input('quantify-cur-roi-execute', 'n_clicks'),
                        prevent_initial_call=True)
-    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
-        if ctx.triggered_id == "umap-projection-options" and channel_overlay is None:
-            return dash.no_update, {'display': 'None'}
-        else:
+    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant):
+        blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame(quantification_dict)) or
+                                             ctx.triggered_id == 'quantify-cur-roi-execute') else dash.no_update
+        if ctx.triggered_id != 'quantify-cur-roi-execute':
+            if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
             try:
                 umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
-                display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else {'display': 'None'}
+                display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
-            except BadRequest:
-                return dash.no_update, {'display': 'None'}
+            except BadRequest: return dash.no_update, blank_umap
+        return dash.no_update, blank_umap
 
     @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
                        Input('create-annotation-umap', 'n_clicks'),

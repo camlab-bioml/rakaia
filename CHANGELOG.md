@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-03-26
+## [0.14.0] - 2024-03-28
 
 ### Added
 
@@ -24,6 +24,7 @@ proportion of marker overlap between mask/image and target to baseline within ma
 - Mask objects in ROI thumbnails are now all represented by the same intensity (255)
 - Do not reset channels to quantify on ROI changes
 - ROI querying with tiff files from UMAP
+- proper blanking of the UMAP plot when the quantification results are updated in-browser
 
 ### Changed
 - Enforce ROI change can occur only on the canvas tab

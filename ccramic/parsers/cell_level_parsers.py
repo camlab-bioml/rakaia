@@ -114,8 +114,7 @@ def get_quantification_filepaths_from_drag_and_drop(status):
     raise PreventUpdate
 
 
-def parse_and_validate_measurements_csv(session_dict, error_config=None,
-                                        use_percentile=False):
+def parse_and_validate_measurements_csv(session_dict, error_config=None, use_percentile=False):
     """
     Validate the measurements CSV and return a clean version
     Use percentile filtering for removing hot pixel cells
@@ -206,7 +205,9 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
 def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation, existing_cats=None):
     """
     Parse the selected cell subtypes from the UMAP plot as selected by the legend
-    if a subset is not found, return None
+    if a subset is not found, return None for both elements of the tuple
+    Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
+    and a list of the indices of those subtypes relative to the list of subtypes for a specific category
     """
     # Example 1: user selected only the third legend item to view
     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
@@ -265,6 +266,8 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
 def parse_roi_query_indices_from_quantification_subset(quantification_dict, subset_frame, umap_col_selection=None):
     """
     Parse the ROIs included in a view of a subset quantification sheet
+    Returns a tuple: a dictionary of subtype keys, and a dictionary of frequency counts for those keys
+    from the quantification results
     """
     # get the merged frames to pull the sample names in the subset
     # IMP: use cbind concat instead of merge as the values might be different depending on if normalization was used
