@@ -74,7 +74,8 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
                               invert=False, proportion=0.1, scale_color: str="white"):
     """
-    add a scalebar value to a canvas figure based on the dimensions of the current image
+    Add a scalebar value to a canvas figure based on the dimensions of the current image
+    The y coordinate is always fixed at 0.06 to make it readily identifiable when parsing the annotation dictionary
     """
     if scale_value is None:
         scale_val = int(float(proportion * image_shape[1]) * float(pixel_ratio))

@@ -446,7 +446,7 @@ def apply_filter_to_array(image, global_apply_filter, global_filter_type, global
     as this function is meant to be used in the application
     """
     global_filter_applied = (isinstance(global_apply_filter, bool) and global_apply_filter) or (
-        isinstance(global_apply_filter, list) and global_apply_filter)
+        isinstance(global_apply_filter, list) and len(global_apply_filter) > 0)
     if global_filter_applied and None not in (global_filter_type, global_filter_val) and \
             int(global_filter_val) % 2 != 0:
         if global_filter_type not in ['gaussian', 'median']:

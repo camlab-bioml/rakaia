@@ -22,7 +22,6 @@ class QuantificationColumns(BaseModel):
 class QuantificationFormatError(Exception):
     pass
 
-
 def set_columns_to_drop(measurements_csv=None):
     if measurements_csv is None:
         return QuantificationColumns().defaults

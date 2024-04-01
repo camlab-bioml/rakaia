@@ -130,9 +130,14 @@ def register_app_layout(config, cache_dest):
                 children=[
                     dbc.Offcanvas(
                         id="inputs-offcanvas",
-                        title="Configure inputs for ccramic",
+                        title=html.Div(["Configure inputs for ccramic",
+                            # dcc.Input(type = 'number', value=35, id='data-import-tab-size', debounce=True,
+                            # style={"width": "10%", "justifyContent": "right", "height": "25%"})
+                                        ],
+                            style={"display": "flex", "justifyContent": "left"}),
                         is_open=True,
-                        children=[dbc.Tabs(id='data-config',
+                        children=[
+                                dbc.Tabs(id='data-config',
                                 children=[dbc.Tab(id='file-data-config', label='File import',
                                                   label_style={"color": DEFAULT_WIDGET_COLOUR},
                                 children=[
@@ -359,8 +364,8 @@ def register_app_layout(config, cache_dest):
                                         className="mb-3", color=None, n_clicks=0, outline=False,
                                         style={"margin-top": "10px"}, size='s'),
                                 ])],
-                                style={"margin-top": "-15px"})],
-                    style={"width": "35%", "padding": "5px", "margin-bottom": "0px"}, scrollable=True),
+                                style={"margin-top": "-15px", "padding": "0px"})],
+                    style={"width": "37.5%", "padding": "3.5px", "margin-bottom": "0px"}, scrollable=True),
                         # style={'width': '100%', 'height': '100%', "margin-top": "5px"}
                         #          )], style={"width": "33%", "padding": "5px", "margin-bottom": "0px"},
                     # scrollable=True),

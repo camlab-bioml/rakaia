@@ -8,14 +8,14 @@ from PIL import Image
 
 def test_basic_canvas_image():
 
-    canvas_layers = {"roi_1": {"channel_1": np.full((100, 100, 3), 10),
-                               "channel_2": np.full((100, 100, 3), 20), "channel_3": np.full((100, 100, 3), 30)}}
+    canvas_layers = {"roi_1": {"channel_1": np.full((100, 100, 3), 1),
+                               "channel_2": np.full((100, 100, 3), 2), "channel_3": np.full((100, 100, 3), 3)}}
     currently_selected = ["channel_1", "channel_2", "channel_3"]
     data_selection = "roi_1"
     mask_config = {"roi_1": {"array": np.full((100, 100, 3), 1), "boundary": np.zeros((100, 100, 3)),
-                             "raw": np.full((100, 100), 0)}}
+                             "raw": np.full((100, 100), 255)}}
     mask_selection = "roi_1"
-    mask_blending_level = 40
+    mask_blending_level = 100
     overlay_grid = []
     mask_toggle = True
     add_mask_boundary = True
@@ -49,6 +49,7 @@ def test_basic_canvas_image():
                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
                          cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
+    assert list(canvas.get_image()[44, 44]) == [6, 6, 6]
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, dict)
@@ -68,11 +69,10 @@ def test_basic_canvas_image():
                          global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                          cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val,
                          use_gating, gating_cell_id_list)
+    assert list(canvas.get_image()[44, 44]) == [255, 255, 255]
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.generate_canvas()
     assert isinstance(canvas_fig, dict)
-
-
 
 
     # overlay_grid = [' overlay grid']
@@ -166,7 +166,8 @@ def test_basic_canvas_image():
     apply_cluster_on_mask = True
     mask_config = {"roi_1": {"array": np.full((100, 100, 3), 1), "boundary": np.zeros((100, 100, 3)),
                              "raw": np.full((100, 100), 1).astype(np.float32)}}
-    overlay_grid = [' Overlay grid']
+    overlay_grid = True
+    mask_blending_level = 35
     canvas_8 = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
@@ -177,6 +178,20 @@ def test_basic_canvas_image():
                            use_gating, gating_cell_id_list)
     canvas_fig_8 = canvas_8.generate_canvas()
     assert isinstance(canvas_fig_8, dict)
+
+    # generate with malformed existing canvas, so generate from scratch
+    cur_graph = {"data": {}, "layout": {"uirevision": True,
+                "shapes": [{'type': "rect"}], "annotations": [{"fake_key": "fake_value"}]}}
+    canvas_9 = CanvasImage(canvas_layers, data_selection, currently_selected,
+                           mask_config, mask_selection, mask_blending_level,
+                           overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                           legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                           show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                           global_filter_val, global_filter_sigma, apply_cluster_on_mask,
+                           cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val,
+                           use_gating, gating_cell_id_list)
+    canvas_fig_9 = canvas_9.generate_canvas()
+    assert isinstance(canvas_fig_9, dict)
 
 
 def test_canvas_layout_editor(get_current_dir):
@@ -289,12 +304,15 @@ def test_canvas_layout_editor(get_current_dir):
     assert '<span style="color: white">23μm</span><br>' in fig['layout']['annotations'][0]['text']
 
     window_dict = {'y_low': 100, 'y_high': 150, 'x_low': 100, 'x_high': 150}
-    fig = go.Figure(px.imshow(image))
+    # fig = go.Figure(px.imshow(image))
     fig, window_layout = CanvasLayout(fig).update_coordinate_window(window_dict, 250, 250)
     assert window_layout == {'xaxis.range[0]': 225.0, 'xaxis.range[1]': 275.0,
                              'yaxis.range[0]': 275.0, 'yaxis.range[1]': 225.0}
     assert fig['layout']['xaxis']['range'] == [225.0, 275.0]
     assert fig['layout']['yaxis']['range'] == [275.0, 225.0]
+
+    fig = CanvasLayout(fig).use_custom_scalebar_value(None, 1)
+    assert '<span style="color: white">6μm</span><br>' in fig['layout']['annotations'][0]['text']
 
     fig_malformed = go.Figure(px.imshow(image)).to_dict()
     del fig_malformed['layout']['yaxis']['domain']

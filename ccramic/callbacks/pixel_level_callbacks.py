@@ -809,8 +809,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         If caching is enabled, then the blended arrays that form the image will be retained for quicker
         toggling
         """
-        if data_selection: return None
-        raise PreventUpdate
+        # TODO: decide if we want to cache here
+        return None if data_selection else dash.no_update
 
     @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
                        Input('preset-options', 'value'),
@@ -2387,3 +2387,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             mask_dict[mask_selection]["raw"], blend_dict=blending_dict, bounds=bounds).get_correlation_statistics()
             return marker_correlation_children(target_mask, prop, target_baseline)
         return [] if (target or mask_dict or apply_mask) else dash.no_update
+
+    # @dash_app.callback(Output('inputs-offcanvas', 'style'),
+    #                    Input('data-import-tab-size', 'value'),
+    #                    State('inputs-offcanvas', 'style'),
+    #                    prevent_initial_call=True)
+    # # @cache.memoize())
+    # def adjust_data_import_tab_size(offcanvas_size, current_style):
+    #     current_style['width'] = f"{offcanvas_size}%"
+    #     return current_style
