@@ -200,7 +200,7 @@ def register_app_layout(config, cache_dest):
                                         dcc.Dropdown(id='data-collection', multi=False, options=[],
                                                      style={'width': '100%'}),
                                         html.Br(),
-                                        dbc.Button("Refresh selection", id="data-selection-refresh", className="me-1",
+                                        dbc.Button("Refresh canvas", id="data-selection-refresh", className="me-1",
                                         size="sm", color='dark', outline=True, style={"float": "left",
                                                 "margin-right": "12.5px", "height": "50%"}),
                                         dbc.Tooltip(TOOLTIPS['roi-refresh'], target="data-selection-refresh"),

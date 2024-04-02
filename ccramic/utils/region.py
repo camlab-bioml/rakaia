@@ -58,10 +58,14 @@ class RectangleRegion(ChannelRegion):
             try:
                 if not all([elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)]):
                     raise AssertionError
-                x_range_low = math.ceil(int(self.coordinate_dict[self.required_keys[0]]))
-                x_range_high = math.ceil(int(self.coordinate_dict[self.required_keys[1]]))
-                y_range_low = math.ceil(int(self.coordinate_dict[self.required_keys[2]]))
-                y_range_high = math.ceil(int(self.coordinate_dict[self.required_keys[3]]))
+                x_range_low = min(math.ceil(int(self.coordinate_dict[self.required_keys[0]])),
+                                  math.ceil(int(self.coordinate_dict[self.required_keys[1]])))
+                x_range_high = max(math.ceil(int(self.coordinate_dict[self.required_keys[0]])),
+                                  math.ceil(int(self.coordinate_dict[self.required_keys[1]])))
+                y_range_low = min(math.ceil(int(self.coordinate_dict[self.required_keys[2]])),
+                                  math.ceil(int(self.coordinate_dict[self.required_keys[3]])))
+                y_range_high = max(math.ceil(int(self.coordinate_dict[self.required_keys[2]])),
+                                  math.ceil(int(self.coordinate_dict[self.required_keys[3]])))
                 if not x_range_high >= x_range_low: raise AssertionError
                 if not y_range_high >= y_range_low: raise AssertionError
 

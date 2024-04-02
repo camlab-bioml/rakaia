@@ -54,7 +54,8 @@ class RegionSummary:
         aliases = []
         region = []
         region_index = 1
-        shapes_keep = [shape for shape in self.graph_layout['shapes'] if shape['type'] not in ['line']]
+        shapes_keep = [shape for shape in self.graph_layout['shapes'] if 'type' in shape and \
+                       shape['type'] not in ['line'] and 'editable' in shape and shape['editable']]
         for shape in shapes_keep:
             try:
                 # option 1: if the shape is drawn with a rectangle

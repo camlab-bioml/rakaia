@@ -159,8 +159,9 @@ def test_generate_channel_statistics_dataframe_errors():
                                  {'editable': True, 'label': {'text': ''}, 'xref': 'x', 'yref': 'y',
                                   'layer': 'above', 'opacity': 1,
                                   'line': {'color': 'white', 'width': 4, 'dash': 'solid'},
-                                  'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd', 'type':
-                                      'rect', 'x0': 397.8532934131737, 'y0': 262.6736526946108,
+                                  'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd',
+                                  # type key is missing here
+                                  'x0': 397.8532934131737, 'y0': 262.6736526946108,
                                   'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
 
     stats = pd.DataFrame(

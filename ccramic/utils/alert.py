@@ -75,8 +75,8 @@ class ToolTips(BaseModel):
                       "local-dialog": "Browse the local file system using a dialog. "
                                       "IMPORTANT: may not be compatible with the specific OS.",
                       "delete-selection": "Remove the current data collection. (IMPORTANT): cannot be undone.",
-                      "roi-refresh": "Refresh the current dataset selection. "
-                                    "Can be used if the ROI loading has become corrupted",
+                      "roi-refresh": "Refresh the current dataset selection and canvas figure. "
+                                    "Can be used if the ROI loading or canvas has become corrupted/malformed.",
                       "channel-mod": "Select a channel in the current blend to \nchange colour, "
                                                            "pixel intensity, or apply a filter.",
                       "annot-reimport": "Re-import the current ROI annotations into the quantification "

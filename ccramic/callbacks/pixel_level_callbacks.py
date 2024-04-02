@@ -326,7 +326,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         dim_return = (first_image.shape[0], first_image.shape[1])
                         # if the new dimensions match, do not update the canvas child to preserve the ui revision state
                         if cur_dimensions is not None and (first_image.shape[0] == cur_dimensions[0]) and \
-                                (first_image.shape[1] == cur_dimensions[1]):
+                                (first_image.shape[1] == cur_dimensions[1]) and ctx.triggered_id != "data-selection-refresh":
                            canvas_return = dash.no_update
                         else:
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,

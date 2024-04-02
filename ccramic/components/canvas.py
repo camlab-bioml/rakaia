@@ -317,7 +317,8 @@ class CanvasLayout:
         try:
             figure['layout']['yaxis']['domain'] = [0, 1]
             figure['layout']['xaxis']['domain'] = [0, 1]
-        except KeyError: pass
+        except KeyError:
+            pass
         self.figure = figure
         # TODO: add condition checking whether the annotations or shapes are held in tuples (do not allow)
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \

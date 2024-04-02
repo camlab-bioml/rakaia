@@ -12,6 +12,7 @@ from ccramic.components.canvas import CanvasLayout
 from dash.exceptions import PreventUpdate
 from ccramic.utils.alert import AlertMessage
 from ccramic.utils.shapes import is_bad_shape
+import plotly.graph_objs as go
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
                                     mask_config, mask_toggle, mask_selection, sample_name=None, id_column='sample',
@@ -118,9 +119,9 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
             cur_canvas['layout']['shapes'] = new_shapes
             # cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             # cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
-            return cur_canvas, dash.no_update
+            return go.Figure(cur_canvas), dash.no_update
         else:
-            raise PreventUpdate
+            return go.Figure(cur_canvas)
     elif 'shapes' in canvas_layout or ('layout' in cur_canvas and \
                                        'shapes' in cur_canvas['layout'] and len(
                 cur_canvas['layout']['shapes']) > 0):
@@ -128,7 +129,7 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
             error_config = {"error": None}
         error_config["error"] = AlertMessage().warnings["invalid_annotation_shapes"]
         # cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
-        return cur_canvas, error_config
+        return dash.no_update, error_config
     else:
         raise PreventUpdate
 
