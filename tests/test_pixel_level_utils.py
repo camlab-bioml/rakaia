@@ -596,7 +596,8 @@ def test_ag_grid_cell_styling():
                   "channel_3": {"color": "#CCFFE5"}}
     aliases = {"channel_1": "ch1", "channel_2": "ch2", "channel_3": "ch3"}
     cell_styling = ag_grid_cell_styling_conditions(blend_dict, list(blend_dict.keys()) + ["channel_4"], "roi_1", aliases)
-    assert cell_styling == [{'condition': "params.value == 'ch2'", 'style': {'color': '#E22424'}},
+    assert cell_styling == [{'condition': "params.value == 'ch1'", 'style': {'color': 'black'}},
+                            {'condition': "params.value == 'ch2'", 'style': {'color': '#E22424'}},
                             {'condition': "params.value == 'ch3'", 'style': {'color': '#CCFFE5'}}]
 
 def test_extract_zoom_bounds():

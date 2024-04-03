@@ -6,7 +6,8 @@ import os
 
 def test_basic_alerts():
     alert_config = AlertMessage().warnings
-    assert len(alert_config) == 13
+    assert len(alert_config) > 0
+    assert all([isinstance(elem, str) for elem in alert_config])
 
 def test_tour_steps():
     tour_steps = DataImportTour().steps

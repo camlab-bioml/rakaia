@@ -64,7 +64,10 @@ class AlertMessage(BaseModel):
                                                 "Please review the required inputs.",
                       "possible-disk-storage-error": "The imported data could not be read/cached. \n"
                                                      "Check that there is sufficient disk storage to conduct analysis"
-                                                     " (typically 2x the size of the imported files)."}
+                                                     " (typically 2x the size of the imported files).",
+                      "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
+                                         "delimiter does not have any overlapping characters with any of the filenames, "
+                                         "or ROI names. "}
 
 
 class ToolTips(BaseModel):
@@ -100,6 +103,9 @@ class DataImportError(Exception):
     """
     Raise when imported data cannot be read fully into the session, likely due to a disk storage error
     """
+    pass
+
+class LazyLoadError(Exception):
     pass
 
 def file_import_message(imported_files: list):

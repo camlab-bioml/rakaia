@@ -496,11 +496,14 @@ def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_
     if blend_dict is not None and current_blend is not None and data_selection is not None:
         for key in current_blend:
             try:
-                if key in blend_dict.keys() and blend_dict[key]['color'] != '#FFFFFF':
+                if key in blend_dict.keys():
+                    # use the colour unless its white, then use black so the label is visible
+                    col_use = blend_dict[key]['color'] if blend_dict[key]['color'] not in \
+                                                          ['#FFFFFF', '#ffffff'] else 'black'
                     label = channel_aliases[key] if channel_aliases is not None and \
                                                     key in channel_aliases.keys() else key
                     cell_styling_conditions.append({"condition": f"params.value == '{label}'",
-                                                    "style": {"color": f"{blend_dict[key]['color']}"}})
+                                                    "style": {"color": f"{col_use}"}})
             except KeyError:
                 pass
     return cell_styling_conditions

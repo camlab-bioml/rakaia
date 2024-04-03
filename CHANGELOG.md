@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-04-02
+## [0.14.0] - 2024-04-03
 
 ### Added
 
@@ -16,6 +16,7 @@ proportion of marker overlap between mask/image and target to baseline within ma
 (uses current channel blend parameters for filter and threshold) (compatible with zoom)
 - Button to autofill single mask upload names with the current ROI identifier
 - Mask object counter in the quantification modal when a mask is enabled
+- Exception thrown when lazy loading doesn't work for the current ROI, possible due to the string delimiter
 
 ### Fixed
 - Update canvas shape filtering on freeform draw to clear errors caused by
@@ -31,6 +32,8 @@ proportion of marker overlap between mask/image and target to baseline within ma
 - Enforce ROI change can occur only on the canvas tab
 - Dataset refresh button now changed to rebuild the canvas from scratch, to allow
 removal of phantom shape described in [plotly 2741](https://github.com/plotly/dash/issues/2741)
+- Better visibility for channels set to white in the dash ag grid (label set to black)
+- minimize canvas compression level to speed up image generation
 
 
 ## [0.13.0] - 2024-03-12

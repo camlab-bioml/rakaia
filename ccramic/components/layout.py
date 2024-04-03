@@ -131,8 +131,6 @@ def register_app_layout(config, cache_dest):
                     dbc.Offcanvas(
                         id="inputs-offcanvas",
                         title=html.Div(["Configure inputs for ccramic",
-                            # dcc.Input(type = 'number', value=35, id='data-import-tab-size', debounce=True,
-                            # style={"width": "10%", "justifyContent": "right", "height": "25%"})
                                         ],
                             style={"display": "flex", "justifyContent": "left"}),
                         is_open=True,
@@ -294,9 +292,14 @@ def register_app_layout(config, cache_dest):
                                                                       style={"display": "flex"}),
                                                    id="btn-download-roi-h5py", className="mx-auto", color=None,
                                                    n_clicks=0, style={"margin-top": "10px"}),
+                                        # TODO: include components to adjust the sidetab size in app
+                                        # html.Br(),
+                                        # html.Br(),
+                                        # html.H6("Set side-tab width"),
+                                        # dcc.Slider(20, 70, 0.5, value=37.5, id='data-import-tab-size', marks=None,
+                                        #            tooltip={"placement": "top", "always_visible": False})
                                     ],
                                         style={'width': '100%', 'height': '100%', "margin-top": "5px"})
-
                                 ]),
                                 dbc.Tab(id='db-config', label='mongoDB',
                                         label_style={"color": DEFAULT_WIDGET_COLOUR},

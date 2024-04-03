@@ -105,10 +105,11 @@ class CanvasImage:
                 image = self.overlay_mask_outline_on_mask_image(image)
 
         image = self.overlay_grid_on_additive_image(image)
-        # TODO: decide if grid lines should be included in the class image for export to tiff
         self.image = image
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
-                                binary_compression_level=5)
+                                # TODO: decide if compression level should be toggleable
+                                # currently set to lowest possible compression level for speed
+                                binary_compression_level=1)
 
     def overlay_grid_on_additive_image(self, image: Union[np.array, np.ndarray]):
         if self.overlay_grid:

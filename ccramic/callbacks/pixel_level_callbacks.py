@@ -38,7 +38,7 @@ from ccramic.utils.pixel_level_utils import (
     ag_grid_cell_styling_conditions,
     MarkerCorrelation, high_low_values_from_zoom_layout)
 # from ccramic.utils.session import remove_ccramic_caches
-from ccramic.utils.session import validate_session_upload_config
+from ccramic.utils.session import validate_session_upload_config, channel_dropdown_selection
 from ccramic.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 from ccramic.io.display import (
     RegionSummary,
@@ -74,7 +74,7 @@ from ccramic.io.readers import DashUploaderFileReader
 from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
-from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError
+from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError, LazyLoadError
 import uuid
 from ccramic.utils.region import (
     RegionAnnotation,
@@ -312,12 +312,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             roi_name = str(roi_name) + f" ({str(exp)})" if "acq" in str(roi_name) else str(roi_name)
             if ' sort (A-z)' in sort_channels:
                 channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
-            else:
-                channels_return = names
+            else: channels_return = names
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
                 try:
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
                     session_config=session_config, array_store_type=app_config['array_store_type'], delimiter=delimiter)
+                    if all([elem is None for elem in image_dict[data_selection].values()]):
+                        raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if data_selection in image_dict.keys() and all([image_dict[data_selection][elem] is not None for \
                         elem in image_dict[data_selection].keys()]):
@@ -347,17 +348,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         channels_selected = list(currently_selected_channels)
                     else:
                         channels_selected = []
-                    return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], channels_selected, \
-                        SessionServerside(image_dict, key="upload_dict", use_unique_key=app_config['serverside_overwrite']), \
+                    return channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
+                        image_dict, key="upload_dict", use_unique_key=app_config['serverside_overwrite']), \
                         canvas_return, f"Current ROI: {roi_name}", dim_return
                 except AssertionError:
                     return [], [], SessionServerside(image_dict, key="upload_dict", use_unique_key=
                     app_config['serverside_overwrite']), canvas_return, f"Current ROI: {roi_name}", dim_return
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
-                return [{'label': names[i], 'value': i} for i in channels_return.keys() if len(i) > 0 and \
-                        i not in ['', ' ', None]], dash.no_update, dash.no_update, dash.no_update, dash.no_update, \
-                    dash.no_update
+                return channel_dropdown_selection(channels_return, names), dash.no_update, dash.no_update, \
+                    dash.no_update, dash.no_update, dash.no_update
             raise PreventUpdate
         raise PreventUpdate
 
@@ -533,7 +532,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
-        use_preset_condition = None not in (preset_selection, preset_dict)
         if add_to_layer is not None and current_blend_dict is not None:
             channel_modify = dash.no_update
             if param_dict is None or len(param_dict) < 1:
@@ -559,25 +557,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict[elem]['color'] = '#FFFFFF'
                     if autofill_channel_colours:
                         current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
-                    if use_preset_condition:
+                    if None not in (preset_selection, preset_dict):
                         current_blend_dict[elem] = apply_preset_to_blend_dict(
                             current_blend_dict[elem], preset_dict[preset_selection])
                 # if the selected channel is in the current blend, check if a preset is used to override
-                elif elem in current_blend_dict.keys() and use_preset_condition:
+                elif elem in current_blend_dict.keys() and None not in (preset_selection, preset_dict):
                     # do not override the colour of the current channel
                     current_blend_dict[elem] = apply_preset_to_blend_dict(
                         current_blend_dict[elem], preset_dict[preset_selection])
                 else:
                     if autofill_channel_colours:
                         current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
-                    # create a nested dict with the image and all of the filters being used for it
-                    # if the same blend parameters have been transferred from another ROI, apply them
-                    # set a default upper bound for the channel if the value is None
-                    # if current_blend_dict[elem]['x_upper_bound'] is None:
-                    #     current_blend_dict[elem]['x_upper_bound'] = \
-                    #     get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem])
-                    # if current_blend_dict[elem]['x_lower_bound'] is None:
-                    #     current_blend_dict[elem]['x_lower_bound'] = 0
                     current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
                         current_blend_dict, elem, uploaded_w_data, data_selection)
                     # TODO: evaluate whether there should be a conditional here if the elem is already
@@ -1529,8 +1519,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 to_return = pd.DataFrame(in_blend, columns=["Channel"]).to_dict(orient="records")
                 return to_return, {"sortable": False, "filter": False,
                                    "cellStyle": {"styleConditions": cell_styling_conditions}}
-            else:
-                return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), {"sortable": False, "filter": False}
+            return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), {"sortable": False, "filter": False}
         return pd.DataFrame({}, columns=["Channel"]).to_dict(orient="records"), {"sortable": False, "filter": False}
 
     @dash_app.callback(
@@ -2394,5 +2383,5 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #                    prevent_initial_call=True)
     # # @cache.memoize())
     # def adjust_data_import_tab_size(offcanvas_size, current_style):
-    #     current_style['width'] = f"{offcanvas_size}%"
-    #     return current_style
+    #     if offcanvas_size and current_style and 'width' in current_style: current_style['width'] = f"{offcanvas_size}%"
+    #     return current_style if offcanvas_size else dash.no_update

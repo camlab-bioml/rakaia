@@ -125,7 +125,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
                         convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
                     image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
         default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-        fig = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True, binary_compression_level=5)
+        fig = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True, binary_compression_level=1)
         image_shape = image.shape
         if show_canvas_legend:
             x_axis_placement = 0.00001 * image_shape[1]
