@@ -291,11 +291,12 @@ class CanvasImage:
     @staticmethod
     def set_default_canvas_layout(fig: go.Figure):
         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                          newshape=dict(line=dict(color="white")),
                           xaxis=XAxis(showticklabels=False, domain=[0, 1]),
-                          yaxis=YAxis(showticklabels=False),
+                          yaxis=YAxis(showticklabels=False, domain=[0, 1]),
                           margin=dict(
-                              l=10,
-                              r=0,
+                              l=1.5,
+                              r=1.5,
                               b=25,
                               t=35,
                               pad=0))

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-04-03
+## [0.14.0] - 2024-04-04
 
 ### Added
 
@@ -17,6 +17,8 @@ proportion of marker overlap between mask/image and target to baseline within ma
 - Button to autofill single mask upload names with the current ROI identifier
 - Mask object counter in the quantification modal when a mask is enabled
 - Exception thrown when lazy loading doesn't work for the current ROI, possible due to the string delimiter
+- Generalize the mongoDB database access by exposing the connection string as an input: Allows custom
+configuration of mongoDB instances
 
 ### Fixed
 - Update canvas shape filtering on freeform draw to clear errors caused by

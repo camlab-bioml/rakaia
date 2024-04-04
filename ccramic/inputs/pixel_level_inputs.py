@@ -41,7 +41,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         # "drawcircle",
                         "drawrect",
                         "eraseshape"],
-                        # TODO: add in dimension specds for the width and height on the download
+                        # TODO: add in dimension specs for the width and height on the download
                         # https://plotly.com/python/configuration-options/
                         'toImageButtonOptions': {'format': 'png', 'filename': filename, 'scale': 1},
                             # disable scrollable zoom for now to control the scale bar
@@ -52,11 +52,18 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                newshape = dict(line=dict(color="white")),
                                               xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False))})
+                                              yaxis=go.YAxis(showticklabels=False),
+                                               margin=dict(
+                                                   l=1.5,
+                                                   r=1.5,
+                                                   b=25,
+                                                   t=35,
+                                                   pad=0)
+                                               )})
 
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
-def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False,
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=8000000, hovertext=False, enable_zoom=False,
                                                    wrap=True, filename: str="canvas", delimiter: str="+++"):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
@@ -64,7 +71,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     if hovertext is used (slows down the canvas considerably)
     """
     # conditions for wrapping the canvas
-    large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
+    large_image = image is not None and (int(image.shape[0] * image.shape[1]) > size_threshold)
     if (large_image or hovertext) and wrap:
         return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename,
                         delimiter=delimiter), type="default", fullscreen=False, color=SessionTheme().widget_colour)

@@ -306,6 +306,10 @@ def register_app_layout(config, cache_dest):
                                 children=[
                                 html.Br(),
                                 dbc.Form([
+                                html.Div([dbc.Label("Connection string", html_for="db-connection-string"),
+                                dbc.Input(type="text", id="db-connection-string", value="ccramic-db.uzqznla.mongodb.net",
+                                style={"width": "75%"}, persistence=config['persistence'],
+                                persistence_type='local')], className="mb-3"),
                                 html.Div([dbc.Label("Username", html_for="db-username"),
                                 dbc.Input(type="text", id="db-username", placeholder="Enter username",
                                 style={"width": "75%"}, persistence=config['persistence'],
@@ -315,7 +319,7 @@ def register_app_layout(config, cache_dest):
                                 dbc.Input(type="password", id="db-password", placeholder="Enter password",
                                           style={"width": "75%"}, persistence=config['persistence'],
                                           persistence_type='local'),
-                                dbc.FormText("Enter your credentials for the mongoDB instance", color="secondary"),
+                                dbc.FormText("Enter your credentials for a mongoDB Atlas connection", color="secondary"),
                                 ], className="mb-3")
                                 ]),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-arrow-right-to-bracket",
@@ -392,11 +396,9 @@ def register_app_layout(config, cache_dest):
                                      style={"margin-top": "10px"})],
                                          width=6, style={"display": "inline-block"}),
                         dbc.Col([html.H6("Canvas size"),
-                                           dcc.Slider(50, 150, 5, value=100,
-                                                      id='annotation-canvas-size',
-                                   marks={50: 'small', 100: 'default',
-                                          150: 'large'})],width=4, style={"display": "inline-block",
-                                        "margin-top": "15px"})]),
+                                           dcc.Slider(50, 150, 2.5, value=100, id='annotation-canvas-size',
+                        marks={50: 'small', 100: 'default', 150: 'large'})], width=4,
+                        style={"display": "inline-block", "margin-top": "15px"})]),
                         dbc.Row([dbc.Col(width=2),
                         dbc.Col([html.Div([], style={"margin-top": "15px", "width": "100%",
                                                         "float": "left", "display": "inline-block"})], width=6)],
@@ -497,7 +499,7 @@ def register_app_layout(config, cache_dest):
                                 config={'displaylogo': False},
                                 ), type="default", fullscreen=False, color=DEFAULT_WIDGET_COLOUR)])]),
                                 id="pixel-hist-collapse", is_open=False), style={"minHeight": "100px"}),
-                                 html.Div([
+                                html.Div([
                                 dcc.RangeSlider(0, 100, 1, value=[None, None],
                                 marks=dict([(i, str(i)) for i in range(0, 100, 25)]),
                                 id='pixel-intensity-slider', allowCross=False,
