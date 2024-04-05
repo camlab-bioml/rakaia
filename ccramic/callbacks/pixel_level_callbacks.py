@@ -276,7 +276,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def reset_canvas_on_new_upload(uploaded, cur_fig):
         if None not in (uploaded, cur_fig) and 'data' in cur_fig:
             fig = go.Figure()
-            fig['layout']['uirevision'] = True
+            # fig['layout']['uirevision'] = True
             return fig
         raise PreventUpdate
 
@@ -327,20 +327,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         dim_return = (first_image.shape[0], first_image.shape[1])
                         # if the new dimensions match, do not update the canvas child to preserve the ui revision state
                         if cur_dimensions is not None and (first_image.shape[0] == cur_dimensions[0]) and \
-                                (first_image.shape[1] == cur_dimensions[1]) and ctx.triggered_id != "data-selection-refresh":
+                        (first_image.shape[1] == cur_dimensions[1]) and ctx.triggered_id not in ["data-selection-refresh"]:
                            canvas_return = dash.no_update
                         else:
-                            canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image,
-                            enable_zoom=enable_zoom, wrap=app_config['use_loading'], filename=data_selection,
-                                        delimiter=delimiter)]
+                            canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=
+                            enable_zoom, wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                     else:
                         canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
                                         wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                 # If there is an error on the dataset update, by default return a new fresh canvas
                 except (IndexError, AssertionError, KeyError):
-                    canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None,
-                                    enable_zoom=enable_zoom, wrap=app_config['use_loading'],
-                                    filename=data_selection, delimiter=delimiter)]
+                    canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
+                    wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                 try:
                     # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
                     if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
@@ -867,8 +865,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             any(elem in ['rect', 'path', 'circle'] for elem in shape.keys()))]
                 if len(other_shapes) > 0:
                     for shape in cur_canvas['layout']['shapes']:
-                        if 'label' in shape and 'texttemplate' in shape['label']:
-                            shape['label'].pop('texttemplate')
+                        if 'label' in shape and 'texttemplate' in shape['label']: shape['label'] = {}
                     canvas_return = cur_canvas
             return canvas_return, match_mask_name_with_roi(new_selection, mask_options, dataset_options, delimiter)
         raise PreventUpdate
@@ -1906,8 +1903,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # only update if these keys are used for drag or pan to set custom coords
             x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(cur_graph_layout)
             return html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}),"
-                           f" Y: ({round(y_low, 2)}, {round(y_high, 2)})",
-                           style={"color": "black", "white-space": "pre"}), \
+            f" Y: ({round(y_low, 2)}, {round(y_high, 2)})", style={"color": "black", "white-space": "pre"}), \
                 {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
         # if the zoom is reset to the default, clear the bound window
         elif cur_graph_layout in [{'xaxis.autorange': True, 'yaxis.autorange': True}, {'autosize': True}]:
@@ -1933,11 +1929,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (active_selection, dataset_options) and len(active_selection) > 0:
             try:
                 # if the selection is the current one, do nothing
-                to_return = dataset_options[active_selection[0]] if \
+                return dataset_options[active_selection[0]] if \
                     dataset_options[active_selection[0]] != cur_selection else dash.no_update
-                return to_return
-            except KeyError:
-                raise PreventUpdate
+            except KeyError: raise PreventUpdate
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1947,10 +1941,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         prevent_initial_call=True)
     def update_selected_preview_row_on_roi_selection(data_selection, dataset_options):
         if None not in (dataset_options, data_selection):
-            try:
-                return [dataset_options.index(data_selection)]
-            except KeyError:
-                raise PreventUpdate
+            try: return [dataset_options.index(data_selection)]
+            except KeyError: raise PreventUpdate
         raise PreventUpdate
 
 
@@ -1967,8 +1959,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if alert_dict is not None and len(alert_dict) > 0 and "error" in alert_dict.keys() and \
                 alert_dict["error"] is not None and show_messages:
-            children = [html.H6("Message: \n"), html.H6(alert_dict["error"])]
-            return True, children
+            return True, [html.H6("Message: \n"), html.H6(alert_dict["error"])]
         return False, None
 
     @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
@@ -1982,10 +1973,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Will arise if more labels are provided than there are channels, which will create blank key entries
         in the metadata list and alias dictionary
         """
-        bad_entries = ['', ' ']
-        if any([elem in bad_entries for elem in gene_aliases.keys()]) or \
-            any([elem['Channel Name'] in bad_entries or elem['Channel Label'] in bad_entries for \
-                 elem in metadata_editable]):
+        if any([elem in ['', ' '] for elem in gene_aliases.keys()]) or any([elem['Channel Name'] in \
+            ['', ' '] or elem['Channel Label'] in ['', ' '] for elem in metadata_editable]):
             error_config = {"error": None} if error_config is None else error_config
             error_config["error"] = ALERT.warnings["metadata_format_error"]
             return error_config
@@ -2001,14 +1990,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Enable the region annotation button to be selectable when the canvas is either zoomed in on, or
         a shape is being added/edited. These represent a region selection that can be annotated
         """
-        if None not in (cur_graph_layout, data_selection, current_blend) and len(cur_graph_layout) > 0 and \
-                len(current_blend) > 0:
+        if None not in (cur_graph_layout, data_selection, current_blend) and len(current_blend) > 0:
             zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
             if all([elem in cur_graph_layout for elem in zoom_keys]) or 'shapes' in cur_graph_layout and \
-                    len(cur_graph_layout['shapes']) > 0:
-                return False
-            else:
-                return True
+                    len(cur_graph_layout['shapes']) > 0: return False
+            return True
         return True
 
     @dash_app.callback(
@@ -2018,8 +2004,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def toggle_region_annotation_modal(clicks_add_annotation, clicks_submit_annotation):
         if clicks_add_annotation and ctx.triggered_id == "region-annotation": return True
         elif ctx.triggered_id == "create-annotation" and clicks_submit_annotation: return False
-        else:
-            return False
+        return False
 
     @dash_app.callback(
         Output("annotations-dict", "data"),

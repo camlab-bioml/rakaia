@@ -117,11 +117,16 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
                 except KeyError:
                     pass
             cur_canvas['layout']['shapes'] = new_shapes
+            # IMP: to avoid the phantom shape set by https://github.com/plotly/dash/issues/2741
+            # set the uirevision status to something different from what it was, BUT must still be truthy
+            cur_canvas['layout']['uirevision'] = True if cur_canvas['layout']['uirevision'] not in [True] else "clear"
+            fig = go.Figure(cur_canvas)
+            fig.update_layout(dragmode="zoom")
             # cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
             # cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
-            return go.Figure(cur_canvas), dash.no_update
+            return fig, dash.no_update
         else:
-            return go.Figure(cur_canvas)
+            return go.Figure(cur_canvas), dash.no_update
     elif 'shapes' in canvas_layout or ('layout' in cur_canvas and \
                                        'shapes' in cur_canvas['layout'] and len(
                 cur_canvas['layout']['shapes']) > 0):

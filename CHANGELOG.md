@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-04-04
+## [0.14.0] - 2024-04-05
 
 ### Added
 
@@ -32,8 +32,8 @@ configuration of mongoDB instances
 
 ### Changed
 - Enforce ROI change can occur only on the canvas tab
-- Dataset refresh button now changed to rebuild the canvas from scratch, to allow
-removal of phantom shape described in [plotly 2741](https://github.com/plotly/dash/issues/2741)
+- Edit the uirevision on shape clearing to resolve [plotly 2741](https://github.com/plotly/dash/issues/2741):
+modify the uirevision variable while maintaining truthy value
 - Better visibility for channels set to white in the dash ag grid (label set to black)
 - minimize canvas compression level to speed up image generation
 

@@ -473,6 +473,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output('annotation_canvas', 'figure', allow_duplicate=True),
         Output('session_alert_config', 'data', allow_duplicate=True),
+        # Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
         Input("clear-region-annotation-shapes", "n_clicks"),
         State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),

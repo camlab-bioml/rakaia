@@ -74,6 +74,11 @@ class CanvasImage:
         self.apply_gating = apply_gating
         self.gating_cell_id_list = gating_cell_id_list
         self.annotation_color = annotation_color
+        self.uirevision_status = True
+        # try to get the uirevision status from the current graph if it exists: two possible truthy values
+        # are toggled when shapes are cleared
+        if self.cur_graph and 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout']:
+            self.uirevision_status = self.cur_graph['layout']['uirevision']
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
@@ -143,13 +148,14 @@ class CanvasImage:
         hover_template_exists = 'data' in self.cur_graph and 'customdata' in self.cur_graph['data'] and \
                                 self.cur_graph['data']['customdata'] is not None
         if self.current_canvas_exists(hover_template_exists):
+            # self.uirevision_status = self.cur_graph['layout']['uirevision']
             try:
                 fig = self.transfer_canvas_data_to_existing_canvas()
                 # del cur_graph
             # key error could happen if the canvas is reset with no layers, so rebuild from scratch
             except (KeyError, TypeError, ValueError):
                 fig = self.canvas
-                fig['layout']['uirevision'] = True
+                fig['layout']['uirevision'] = self.uirevision_status
 
                 if self.toggle_scalebar:
                     fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
@@ -164,7 +170,7 @@ class CanvasImage:
             fig = self.canvas
             # del cur_graph
             # if making the fig for the first time, set the uirevision
-            fig['layout']['uirevision'] = True
+            fig['layout']['uirevision'] = self.uirevision_status
 
             if self.toggle_scalebar:
                 fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
