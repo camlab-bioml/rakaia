@@ -929,6 +929,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-delimiter', 'value'),
                        State('scalebar-color', 'value'),
                        State('session_alert_config', 'data'),
+                       Input('cluster-label-selection', 'value'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def render_canvas_from_layer_mask_hover_change(canvas_layers, currently_selected,
@@ -943,7 +944,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                 global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
                                                 cluster_frame, cluster_type, download_canvas_tiff, custom_scale_val,
                                                 cluster_assignments_in_legend, apply_gating, gating_cell_id_list,
-                                                delimiter, scale_color, error_config):
+                                                delimiter, scale_color, error_config, clust_selected):
 
         """
         Update the canvas from either an underlying change to the source image, or a change to the hover template
@@ -968,14 +969,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
-                        cluster_assignments_in_legend, cluster_assignments_dict, data_selection)
+                        cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected)
             try:
                 canvas = CanvasImage(canvas_layers, data_selection, currently_selected, mask_config, mask_selection,
                 mask_blending_level, overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover, show_each_channel_intensity,
                 raw_data_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_frame, cluster_type, custom_scale_val,
-                apply_gating, gating_cell_id_list, scale_color)
+                apply_gating, gating_cell_id_list, scale_color, clust_selected)
                 fig = canvas.generate_canvas()
                 if cluster_type == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig)
@@ -983,7 +984,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 elif apply_cluster_on_mask:
                     fig = CanvasLayout(fig)
                     fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"], pd.DataFrame(
-                cluster_frame[data_selection]), cluster_assignments_dict, data_selection, 2, apply_gating, gating_cell_id_list)
+                cluster_frame[data_selection]), cluster_assignments_dict, data_selection, 2, apply_gating, gating_cell_id_list, clust_selected)
                 # set if the image is to be downloaded or not
                 dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 canvas_tiff = dash.no_update
@@ -1141,13 +1142,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('cluster-annotations-legend', 'value'),
                        State('cluster-colour-assignments-dict', 'data'),
                        Input('scalebar-color', 'value'),
+                       State('cluster-label-selection', 'value'),
                        prevent_initial_call=True)
     def render_canvas_from_toggle_show_annotations(toggle_legend, toggle_scalebar,
                                                    cur_canvas, cur_layout, currently_selected,
                                                    data_selection, blend_colour_dict, aliases, image_dict,
                                                    channel_order, legend_size, pixel_ratio, invert_annot,
                                                    legend_orientation, custom_scale_val, cluster_assignments_in_legend,
-                                                   cluster_assignments_dict, scalebar_col):
+                                                   cluster_assignments_dict, scalebar_col, clust_selected):
         """
         re-render the canvas if the user requests to remove the annotations (scalebar and legend) or
         updates the scalebar length with a custom value
@@ -1161,7 +1163,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend", "channel-order"]:
                 legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
-                cluster_assignments_in_legend, cluster_assignments_dict, data_selection) if toggle_legend else ''
+                cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected) if toggle_legend else ''
                 canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
                 return CanvasLayout(canvas).clear_improper_shapes()
             elif ctx.triggered_id in ["toggle-canvas-scalebar", "scalebar-color"]:

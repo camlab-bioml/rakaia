@@ -1,4 +1,6 @@
 import collections
+
+import pandas as pd
 import pytest
 import dash_extensions
 from ccramic.utils.cell_level_utils import *
@@ -312,6 +314,10 @@ def test_apply_cluster_annotations_with_gating(get_current_dir):
                                                               use_gating_subset=True, gating_subset_list=gating_list)
     # assert that a position where the cell is not gated, is blank
     assert np.array_equal(with_annotations[532, 457], np.array([0, 0, 0]))
+    fake_frame = pd.DataFrame({"missing_key": [1, 2, 3, 4, 5],
+                               "cluster": ["immune"] * 5})
+    assert generate_mask_with_cluster_annotations(mask, cluster_assignments, fake_frame,
+        use_gating_subset=True, gating_subset_list=gating_list) is None
 
 
 def test_remove_latest_annotation():

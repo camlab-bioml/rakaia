@@ -288,6 +288,14 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask, clusters, colors, "roi_1")
     assert len(fig['layout']['shapes']) > 1000
 
+    # with cluster subsetting
+    fig = go.Figure(px.imshow(image))
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
+    fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask, clusters, colors, "roi_1",
+                                                               cluster_selection_subset=["Type_1"])
+    # fewer shapes with just one cluster category used
+    assert 400 < len(fig['layout']['shapes']) < 1000
+
     fig = go.Figure(px.imshow(image))
     fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask, clusters, colors, "roi_1", 2,
                                             use_gating=True, gating_cell_id_list=list(range(101, 106, 1)))

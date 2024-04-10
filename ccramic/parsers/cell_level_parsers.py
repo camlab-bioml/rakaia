@@ -462,3 +462,12 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
     else:
         cell_ids = []
     return cell_ids
+
+def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: str=None, cluster_frame:
+                                    Union[pd.DataFrame, dict]=None):
+    cur_cluster_dict = {} if cur_cluster_dict is None else cur_cluster_dict
+    cluster_frame = pd.DataFrame(cluster_frame)
+    # TODO: for now, use set column names, but expand in the future
+    if all([elem in list(cluster_frame.columns) for elem in ['cell_id', 'cluster']]):
+        cur_cluster_dict[roi_selection] = cluster_frame
+    return cur_cluster_dict

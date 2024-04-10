@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-04-05
+## [0.14.0] - 2024-04-10
 
 ### Added
 
@@ -19,6 +19,7 @@ proportion of marker overlap between mask/image and target to baseline within ma
 - Exception thrown when lazy loading doesn't work for the current ROI, possible due to the string delimiter
 - Generalize the mongoDB database access by exposing the connection string as an input: Allows custom
 configuration of mongoDB instances
+- Option to select specific cluster categories for mask projection
 
 ### Fixed
 - Update canvas shape filtering on freeform draw to clear errors caused by
@@ -36,6 +37,7 @@ configuration of mongoDB instances
 modify the uirevision variable while maintaining truthy value
 - Better visibility for channels set to white in the dash ag grid (label set to black)
 - minimize canvas compression level to speed up image generation
+- More lenient cluster sheet import (now only verifies required column names)
 
 
 ## [0.13.0] - 2024-03-12

@@ -38,7 +38,8 @@ class CanvasImage:
                  global_filter_val: Union[int, float]=3, global_filter_sigma: Union[int, float]=1.0,
                  apply_cluster_on_mask: Union[bool, str, list]=False, cluster_assignments_dict: dict=None,
                  cluster_frame: Union[pd.DataFrame, dict]=None, cluster_type: str="mask", custom_scale_val: int=None,
-                 apply_gating: bool=False, gating_cell_id_list: list=None, annotation_color: str="white"):
+                 apply_gating: bool=False, gating_cell_id_list: list=None, annotation_color: str="white",
+                 cluster_assignment_selection: Union[list, None]=None):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -79,6 +80,7 @@ class CanvasImage:
         # are toggled when shapes are cleared
         if self.cur_graph and 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout']:
             self.uirevision_status = self.cur_graph['layout']['uirevision']
+        self.cluster_selection = cluster_assignment_selection
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
@@ -97,10 +99,11 @@ class CanvasImage:
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
                                 self.cluster_frame[self.data_selection],
                                 self.cluster_assignments_dict[self.data_selection], use_gating_subset=self.apply_gating,
-                                                                        gating_subset_list=self.gating_cell_id_list)
+                                gating_subset_list=self.gating_cell_id_list,
+                                cluster_option_subset=cluster_assignment_selection)
                     annot_mask = annot_mask if annot_mask is not None else \
                         np.where(self.mask_config[self.mask_selection]["array"].astype(np.uint8) > 0, 255, 0)
-                    image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask, mask_level, 0)
+                    image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask.astype(np.uint8), mask_level, 0)
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
                     mask = self.mask_config[self.mask_selection]["array"].astype(np.uint8)
@@ -547,7 +550,6 @@ class CanvasLayout:
         return fig.to_dict()
 
     def clear_improper_shapes(self):
-
         new_shapes = []
         for shape in self.cur_shapes:
             if 'label' in shape and 'texttemplate' not in shape['label']:
@@ -562,7 +564,7 @@ class CanvasLayout:
 
     def add_cluster_annotations_as_circles(self, mask, cluster_frame, cluster_assignments,
                                            data_selection, circle_size=2, use_gating: bool=False,
-                                           gating_cell_id_list: list=None):
+                                           gating_cell_id_list: list=None, cluster_selection_subset: list=None):
         """
         Add an annotation circle to every mask object in a mask, or in a list of gated objects
         requires:
@@ -575,6 +577,8 @@ class CanvasLayout:
         cluster_frame = pd.DataFrame(cluster_frame)
         cluster_frame = cluster_frame.astype(str)
         ids_use = gating_cell_id_list if (gating_cell_id_list is not None and use_gating) else np.unique(mask)
+        clusters_to_use = cluster_selection_subset if cluster_selection_subset is not None else \
+            cluster_frame['cluster'].unique().tolist()
         for mask_id in ids_use:
             # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
             subset = np.where(mask == int(mask_id), int(mask_id), 0)
@@ -582,7 +586,7 @@ class CanvasLayout:
             for region in region_props:
                 center = region.centroid
             annotation = pd.Series(cluster_frame[cluster_frame['cell_id'] == str(mask_id)]['cluster']).to_list()
-            if annotation:
+            if annotation and str(annotation[0]) in clusters_to_use:
                 annotation = str(annotation[0])
                 # boundary[int(center[0]), int(center[1])] = mask_id
                 shapes.append(

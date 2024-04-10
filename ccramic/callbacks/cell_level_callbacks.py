@@ -11,7 +11,7 @@ from ccramic.parsers.cell_level_parsers import (
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    object_id_list_from_gating)
+    object_id_list_from_gating, cluster_annotation_frame_import)
 from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
@@ -631,43 +631,52 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if files is not None: return files
         raise PreventUpdate
 
-    @dash_app.callback(Output('imported-cluster-frame', 'data', allow_duplicate=True),
+    @dash_app.callback(
+                 Output('imported-cluster-frame', 'data', allow_duplicate=True),
                  Input('uploads_cluster', 'data'),
                  State('imported-cluster-frame', 'data'),
                  State('data-collection', 'value'))
     # @cache.memoize())
     def get_cluster_assignment_upload_from_drag_and_drop(uploads, cur_clusters, data_selection):
-        cluster_frames = {} if cur_clusters is None else cur_clusters
         if uploads:
-            frame = pd.read_csv(uploads[0])
-            # TODO: for now, use set column names, but expand in the future
-            if len(frame.columns) == 2 and all([elem in list(frame.columns) for elem in ['cell_id', 'cluster']]):
-                cluster_frames[data_selection] = frame
-                return SessionServerside(cluster_frames, key="cluster_assignments",
-                        use_unique_key=app_config['serverside_overwrite'])
-            raise PreventUpdate
+            return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
+            pd.read_csv(uploads[0])), key="cluster_assignments", use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
 
     @dash_app.callback(
                 Output('cluster-colour-assignments-dict', 'data'),
                 Output('cluster-label-list', 'options'),
+                Output('cluster-label-selection', 'options'),
+                Output('cluster-label-selection', 'value'),
                 Input('imported-cluster-frame', 'data'),
                 State('data-collection', 'value'),
                 State('cluster-colour-assignments-dict', 'data'))
     # @cache.memoize())
     def generate_cluster_colour_assignment(cluster_frame, data_selection, cur_cluster_dict):
         if None not in (cluster_frame, data_selection):
-            return assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
+            default_colors, options = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
+            return default_colors, options, options, options
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output('cluster-label-selection', 'value', allow_duplicate=True),
+        Input('toggle-clust-selection', 'value'),
+        State('cluster-label-selection', 'options'))
+    # @cache.memoize())
+    def generate_cluster_colour_assignment(toggle_clust_selection, clust_options):
+        return clust_options if toggle_clust_selection else []
 
     @dash_app.callback(Input('data-collection', 'value'),
                        State('cluster-colour-assignments-dict', 'data'),
-                       Output('cluster-label-list', 'options', allow_duplicate=True))
+                       Output('cluster-label-list', 'options', allow_duplicate=True),
+                       Output('cluster-label-selection', 'options', allow_duplicate=True),
+                       Output('cluster-label-selection', 'value', allow_duplicate=True))
     # @cache.memoize())
     def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame):
         if None not in (data_selection, cluster_frame) and data_selection in cluster_frame.keys():
-            return list(cluster_frame[data_selection].keys())
-        return []
+            return list(cluster_frame[data_selection].keys()), list(cluster_frame[data_selection].keys()), \
+                list(cluster_frame[data_selection].keys())
+        return [], [], None
 
     @dash_app.callback(Output('cluster-assignments', 'children', allow_duplicate=True),
                        Input('cluster-colour-assignments-dict', 'data'),
@@ -695,6 +704,15 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return clust_dict
             except KeyError: raise PreventUpdate
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output('cluster-label-collapse', 'is_open'),
+        [Input('toggle-cluster-labels', 'n_clicks')],
+        [State('cluster-label-collapse', 'is_open')])
+    # @cache.memoize())
+    def toggle_pixel_hist_collapse(n, is_open):
+        if n: return not is_open
+        return is_open
 
     @dash_app.callback(Output('gating-cur-mod', 'options'),
                        Output('gating-dict', 'data'),

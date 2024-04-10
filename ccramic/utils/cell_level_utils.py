@@ -372,7 +372,8 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
                                            cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True,
-                                           use_gating_subset: bool = False, gating_subset_list: list=None):
+                                           use_gating_subset: bool = False, gating_subset_list: list=None,
+                                           cluster_option_subset=None):
     """
     Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
     remain as greyscale values
@@ -386,7 +387,10 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
         mask_bool = np.isin(mask_array, gating_subset_list)
         mask_array[~mask_bool] = 0
     try:
-        for cell_type in cluster_frame[cluster_col].unique().tolist():
+        # set the cluster assignments to use either from the subset, or the default of all
+        clusters_to_use = [str(select) for select in cluster_option_subset] if cluster_option_subset is not None else \
+            cluster_frame[cluster_col].unique().tolist()
+        for cell_type in clusters_to_use:
             cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
             # make sure that the cells are integers so that they match the array values of the mask
             cell_list = [int(i) for i in cell_list]
@@ -400,7 +404,9 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
             mask_array[already_cells] = 0
             # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
             # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
-            return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
+            mask_to_add = np.array(Image.fromarray(mask_array).convert('RGB'))
+            mask_to_add = np.where(mask_to_add > 0, 255, 0).astype(empty.dtype)
+            return (empty + mask_to_add).clip(0, 255).astype(np.uint8)
         else:
             return empty.astype(np.uint8)
     except KeyError:
