@@ -364,3 +364,14 @@ def marker_correlation_children(target_proportion_in_mask: Union[int, float]=Non
                                       f"{round(baseline_proportion_in_mask, 4)}\n"))
         return children
     return []
+
+def reset_pixel_histogram(to_dict: bool=False):
+    """
+    Return a blank histogram figure object with the specified margins associated with the offcanvas sidebar
+    """
+    fig = go.Figure()
+    fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                      xaxis=XAxis(showticklabels=False),
+                      yaxis=YAxis(showticklabels=False),
+                      margin=dict(l=5, r=5, b=15, t=20, pad=0))
+    return fig.to_dict() if to_dict else fig

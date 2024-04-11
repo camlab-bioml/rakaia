@@ -327,6 +327,13 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig_malformed).get_fig()
     assert fig['layout']['yaxis']['domain']
 
+    fig = go.Figure(px.imshow(image))
+    fig = CanvasLayout(fig).add_click_point_circle(50, 50, 4)
+    assert len(fig['layout']['shapes']) == 1
+    assert fig['layout']['shapes'][0]['type'] == 'circle'
+    assert fig['layout']['shapes'][0]['x0'] == fig['layout']['shapes'][0]['y0'] == (50 - 4)
+
+
 def test_reset_graph_malformed():
     image = np.full((600, 600, 3), 255).astype(np.uint8)
     fig = go.Figure(px.imshow(image))

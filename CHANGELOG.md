@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-04-10
+## [0.14.0] - 2024-04-11
 
 ### Added
 
@@ -30,6 +30,7 @@ configuration of mongoDB instances
 - Proper ROI querying with tiff files from UMAP
 - Proper blanking of the UMAP plot when the quantification results are updated in-browser
 - Freeform rectangle coordinates now parsed from either left or right dragging
+- Fixed bug where annotating from UMAP overwrites the annotation hash instead of the quantification sheet
 
 ### Changed
 - Enforce ROI change can occur only on the canvas tab
@@ -38,7 +39,7 @@ modify the uirevision variable while maintaining truthy value
 - Better visibility for channels set to white in the dash ag grid (label set to black)
 - minimize canvas compression level to speed up image generation
 - More lenient cluster sheet import (now only verifies required column names)
-
+- Wrap gallery tiles in loading screen
 
 ## [0.13.0] - 2024-03-12
 

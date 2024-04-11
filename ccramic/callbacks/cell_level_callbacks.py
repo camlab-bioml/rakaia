@@ -1,6 +1,5 @@
 import dash
 import pandas as pd
-
 from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
 from ccramic.parsers.cell_level_parsers import (
     parse_cell_subtypes_from_restyledata,
@@ -277,10 +276,9 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation > 0:
             return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
-                            pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col,
-                annot_value).to_dict(orient='records'), key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
+                pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col, annot_value).to_dict(
+                orient='records'), key="quantification_dict", use_unique_key=app_config['serverside_overwrite'])
         raise PreventUpdate
-
 
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')

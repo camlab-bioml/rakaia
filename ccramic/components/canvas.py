@@ -633,6 +633,15 @@ class CanvasLayout:
         fig['layout']['annotations'] = annotations
         return fig.to_dict(), new_layout
 
+    def add_click_point_circle(self, x_coord: int=None, y_coord: int=None, circle_size: Union[float, int]=None):
+        self.cur_shapes.append({'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
+                                'x0': (x_coord - int(circle_size)), 'x1': (x_coord + int(circle_size)),
+                                'xref': 'x', 'y0': (y_coord - int(circle_size)),
+                                'y1': (y_coord + int(circle_size)), 'yref': 'y'})
+        self.figure['layout']['shapes'] = self.cur_shapes
+        return self.figure
+
+
 def reset_graph_with_malformed_template(graph: Union[go.Figure, dict]):
     """
     Parse a current graph that may have malformed shapes (i.e. a shape with a blank texttemplate in the 'label'

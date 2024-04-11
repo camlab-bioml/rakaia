@@ -402,8 +402,6 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
         if retain_cells:
             already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
             mask_array[already_cells] = 0
-            # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
-            # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
             mask_to_add = np.array(Image.fromarray(mask_array).convert('RGB'))
             mask_to_add = np.where(mask_to_add > 0, 255, 0).astype(empty.dtype)
             return (empty + mask_to_add).clip(0, 255).astype(np.uint8)

@@ -15,7 +15,8 @@ from ccramic.inputs.pixel_level_inputs import (
     generate_canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
     set_canvas_viewport,
-    marker_correlation_children)
+    marker_correlation_children,
+    reset_pixel_histogram)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -240,3 +241,8 @@ def test_generate_marker_correlation_information():
     assert span_counts == 3
     assert len(children) > 4
     assert children
+
+def test_blank_reset_histogram():
+    blank_hist = reset_pixel_histogram(True)
+    assert blank_hist['layout']['margin'] == {'b': 15, 'l': 5, 'pad': 0, 'r': 5, 't': 20}
+    assert not blank_hist['layout']['xaxis']['showticklabels']
