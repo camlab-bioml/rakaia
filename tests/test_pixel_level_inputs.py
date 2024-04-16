@@ -229,6 +229,9 @@ def test_window_viewport_settings():
     assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}) == \
            {'width': '30.0vh', 'height': '30.0vh'}
 
+    assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}, (1000, 2000)) == \
+           {'width': '60.0vh', 'height': '30.0vh'}
+
 def test_generate_marker_correlation_information():
     children = marker_correlation_children(None, None)
     assert not children
@@ -239,8 +242,8 @@ def test_generate_marker_correlation_information():
             span_counts += 1
     # assert one span for each of the values
     assert span_counts == 3
-    assert len(children) > 4
     assert children
+    assert len(children) > 4
 
 def test_blank_reset_histogram():
     blank_hist = reset_pixel_histogram(True)

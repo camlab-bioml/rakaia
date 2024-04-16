@@ -1390,14 +1390,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('annotation_canvas', 'figure'),
         # State('annotation_canvas', 'relayoutData'),
         State('data-collection', 'value'),
-        State('uploaded_dict', 'data'),
-        Input('image_layers', 'value'),
+        # State('uploaded_dict', 'data'),
+        # State('image_layers', 'value'),
         State('annotation_canvas', 'style'),
+        Input('cur_roi_dimensions', 'data'),
         prevent_initial_call=True)
-    def update_canvas_size(value, current_canvas, data_selection,
-                           image_dict, add_layer, cur_sizing):
-        if None not in (add_layer, value, data_selection, image_dict):
-            return set_canvas_viewport(value, image_dict, data_selection, current_canvas, cur_sizing)
+    def update_canvas_size(value, current_canvas, data_selection, cur_sizing, cur_dimensions):
+        if None not in (value, data_selection, cur_dimensions):
+            return set_canvas_viewport(value, None, data_selection, current_canvas, cur_sizing, cur_dimensions)
         return {'width': f'{value}vh', 'height': f'{value}vh'}
 
     @dash_app.callback(

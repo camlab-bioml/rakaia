@@ -40,6 +40,7 @@ modify the uirevision variable while maintaining truthy value
 - minimize canvas compression level to speed up image generation
 - More lenient cluster sheet import (now only verifies required column names)
 - Wrap gallery tiles in loading screen
+- Do not read ROI image for adjusting canvas size/dimensions
 
 ## [0.13.0] - 2024-03-12
 
