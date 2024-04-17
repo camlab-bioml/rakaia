@@ -2312,11 +2312,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def open_tour_guide(activate_tour):
         """
-        Toggle the ability to use scroll zoom on the annotation canvas using the input from the
-        session configuration modal. Default value is not enabled
+        Toggle open the import tour if requested
         """
-        if activate_tour: return True
-        return False
+        return True if activate_tour else False
 
     @dash_app.callback(Output('marker-cor-display', 'children'),
                        Input('target-channel-cor', 'value'),
@@ -2335,11 +2333,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Display the marker correlation statistics for a target and baseline (if provided)
         """
-        if target and image_dict and roi_selection and mask_selection and apply_mask and mask_dict:
-            target_mask, prop, target_baseline = MarkerCorrelation(image_dict, roi_selection, target, baseline, mask=
-            mask_dict[mask_selection]["raw"], blend_dict=blending_dict, bounds=bounds).get_correlation_statistics()
-            return marker_correlation_children(target_mask, prop, target_baseline)
-        return [] if (target or mask_dict or apply_mask) else dash.no_update
+        if target and image_dict and roi_selection:
+            mask = mask_dict[mask_selection]["raw"] if (mask_dict and mask_selection and apply_mask) else None
+            target_mask, prop, target_baseline, pearson = MarkerCorrelation(image_dict, roi_selection, target, baseline,
+            mask=mask, blend_dict=blending_dict, bounds=bounds).get_correlation_statistics()
+            return marker_correlation_children(target_mask, prop, target_baseline, pearson)
+        return []
 
     # @dash_app.callback(Output('inputs-offcanvas', 'style'),
     #                    Input('data-import-tab-size', 'value'),

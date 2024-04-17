@@ -349,15 +349,23 @@ def set_canvas_viewport(size_slider_val: Union[float, int]=None,
 
 def marker_correlation_children(target_proportion_in_mask: Union[int, float]=None,
                                 target_proportion_relative: Union[int, float]=None,
-                                baseline_proportion_in_mask: Union[int, float]=None):
+                                baseline_proportion_in_mask: Union[int, float]=None,
+                                pearson_correlation: Union[int, float]=None):
     """
     Generate the HTML legend for the current parameters used for mask gating
     """
+    children = []
+    if pearson_correlation or target_proportion_in_mask:
+        children.append(html.B("Marker correlation: \n",
+                style={"color": "black"}))
+    if pearson_correlation:
+        children.append(html.Br())
+        children.append(html.Span(f"Pearson correlation: "
+                                  f"{round(pearson_correlation, 4)}\n"))
     if target_proportion_in_mask:
-        children = [html.B("Marker correlation: \n",
-                           style={"color": "black"}), html.Br(), html.Br(),
-                    html.Span(f"Target proportion in mask relative to image: "
-                              f"{round(target_proportion_in_mask, 4)}\n")]
+        children.append(html.Br())
+        children.append(html.Span(f"Target proportion in mask relative to image: "
+                              f"{round(target_proportion_in_mask, 4)}\n"))
         if target_proportion_relative:
             children.append(html.Br())
             children.append(html.Span(f"Target overlap in mask relative to baseline: "
@@ -366,8 +374,7 @@ def marker_correlation_children(target_proportion_in_mask: Union[int, float]=Non
             children.append(html.Br())
             children.append(html.Span(f"Baseline proportion in mask relative to image: "
                                       f"{round(baseline_proportion_in_mask, 4)}\n"))
-        return children
-    return []
+    return children
 
 def reset_pixel_histogram(to_dict: bool=False):
     """

@@ -621,7 +621,7 @@ def test_marker_correlation_metrics(get_current_dir):
      'filter_type': 'median', 'filter_val': 3, 'filter_sigma': 1},
                   "baseline": {'color': '#BE4115', 'x_lower_bound': 0, 'x_upper_bound': None,
      'filter_type': None, 'filter_val': 3, 'filter_sigma': 1}}
-    proportion_target, overlap, proportion_baseline = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
+    proportion_target, overlap, proportion_baseline, pearson = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
                                         mask=mask, blend_dict=blend_dict).get_correlation_statistics()
     # assert that all the proportion is inside the mask, but there is no overlap with the baseline
     assert float(proportion_target) == 1.0
@@ -630,7 +630,7 @@ def test_marker_correlation_metrics(get_current_dir):
     assert proportion_baseline == 1.0
 
     # repeat above with bounds
-    proportion_target, overlap, proportion_baseline = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
+    proportion_target, overlap, proportion_baseline, pearson = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
                             mask=mask,
         blend_dict=None, bounds={'xaxis.range[0]': 10, 'xaxis.range[1]': 100,
                                        'yaxis.range[1]': 110, 'yaxis.range[0]': 0}).get_correlation_statistics()
@@ -643,7 +643,7 @@ def test_marker_correlation_metrics(get_current_dir):
                              'filter_type': None, 'filter_val': 3, 'filter_sigma': 1},
                   "baseline": {'color': '#BE4115', 'x_lower_bound': 0, 'x_upper_bound': None,
                                'filter_type': None, 'filter_val': 3, 'filter_sigma': 1}}
-    proportion_target, overlap, proportion_baseline = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
+    proportion_target, overlap, proportion_baseline, pearson = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
                                         mask=mask, blend_dict=blend_dict).get_correlation_statistics()
     assert proportion_target == overlap == proportion_baseline == 1.0
 
@@ -652,23 +652,31 @@ def test_marker_correlation_metrics(get_current_dir):
                              'filter_type': 'gaussian', 'filter_val': 5, 'filter_sigma': 1},
                   "baseline": {'color': '#BE4115', 'x_lower_bound': 0, 'x_upper_bound': None,
                                'filter_type': None, 'filter_val': 3, 'filter_sigma': 1}}
-    proportion_target, overlap, proportion_baseline = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
+    proportion_target, overlap, proportion_baseline, pearson = MarkerCorrelation(image_dict, "roi_1", "target", "baseline",
                                         mask=mask, blend_dict=blend_dict).get_correlation_statistics()
 
     assert 0.88 < proportion_target < overlap == proportion_baseline == 1.0
 
     # no baseline
-    proportion_target, overlap, proportion_baseline = MarkerCorrelation(image_dict, "roi_1", "target", None, mask=mask,
+    proportion_target, overlap, proportion_baseline, pearson = MarkerCorrelation(image_dict, "roi_1", "target", None, mask=mask,
                                             blend_dict=blend_dict).get_correlation_statistics()
     assert overlap is None
     assert proportion_baseline is None
 
+    # if there is no target, all is None
     assert MarkerCorrelation(image_dict, "roi_1", None, "baseline", mask=mask,
-            blend_dict=blend_dict).get_correlation_statistics() == (None, None, None)
-    assert MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=None,
-                             blend_dict=blend_dict).get_correlation_statistics() == (None, None, None)
+            blend_dict=blend_dict).get_correlation_statistics() == (None, None, None, None)
 
-    # mask that is not the same shape
+    # mask that is not the same shape, so there is correlation but nothing else
+    assert MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=None,
+                             blend_dict=blend_dict).get_correlation_statistics() == (None, None, None, 0.9633646555333382)
+
+    blend_dict = {"target": {'color': '#BE4115', 'x_lower_bound': 10, 'x_upper_bound': None,
+                             'filter_type': 'gaussian', 'filter_val': 5, 'filter_sigma': 1},
+                  "baseline": {'color': '#BE4115', 'x_lower_bound': 10, 'x_upper_bound': None,
+                               'filter_type': None, 'filter_val': 3, 'filter_sigma': 1}}
+
+    # assert that the correlation changes when the bounds change
     mask_bad_shape = np.zeros((999, 999))
     assert MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=mask_bad_shape,
-                             blend_dict=blend_dict).get_correlation_statistics() == (None, None, None)
+        blend_dict=blend_dict).get_correlation_statistics() == (None, None, None, 0.9633635692902502)

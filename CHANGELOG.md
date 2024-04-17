@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-04-11
+## [0.14.0] - 2024-04-17
 
 ### Added
 
 - Tab for marker correlation: set a target and baseline marker with masking to get
-proportion of marker overlap between mask/image and target to baseline within mask objects
+proportion of marker overlap between mask/image and target to baseline within mask objects + Pearson pixel correlation
 (uses current channel blend parameters for filter and threshold) (compatible with zoom)
 - Button to autofill single mask upload names with the current ROI identifier
 - Mask object counter in the quantification modal when a mask is enabled
