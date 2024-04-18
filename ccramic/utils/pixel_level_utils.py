@@ -570,12 +570,15 @@ class MarkerCorrelation:
             self.baseline_array = None
             self.baseline_threshold = baseline_threshold
             if self.bounds and self.mask is not None:
-                self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
+                try:
+                    self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
                                     range(int(self.bounds[0]), int(self.bounds[1]), 1))]
+                except IndexError:
+                    self.mask = None
             try:
                 self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
                                                         blend_dict, target_channel, roi_selection, self.bounds)
-                if self.mask is not None:
+                if self.mask is not None and self.target_array is not None:
                     self.set_target_proportion_in_mask()
             except (ValueError, KeyError):
                 pass
@@ -584,7 +587,7 @@ class MarkerCorrelation:
                     self.baseline_array, self.baseline_threshold = self.set_baseline_array_from_blend(image_dict,
                                         use_blend_params, blend_dict, baseline_channel, roi_selection, self.bounds)
                     self.compute_basic_pearson_correlation()
-                    if self.mask is not None:
+                    if self.mask is not None and self.baseline_array is not None:
                         self.set_baseline_proportion_in_mask()
                         self.compute_correlation_statistics()
             except (ValueError, KeyError):
@@ -644,7 +647,8 @@ class MarkerCorrelation:
                     np.sum(self.target_array[self.target_threshold_in_mask])
 
     def compute_basic_pearson_correlation(self):
-        self.basic_correlation = float(scipy.stats.pearsonr(
+        if self.target_array is not None and self.baseline_array is not None:
+            self.basic_correlation = float(scipy.stats.pearsonr(
             self.target_array.flatten(), self.baseline_array.flatten())[0])
 
     @staticmethod
@@ -664,9 +668,12 @@ class MarkerCorrelation:
         else:
             target_array = image_dict[roi_selection][target_channel]
             target_threshold = 0
-        target_array = target_array[np.ix_(range(int(bounds[2]), int(bounds[3]), 1),
+        try:
+            target_array = target_array[np.ix_(range(int(bounds[2]), int(bounds[3]), 1),
                           range(int(bounds[0]), int(bounds[1]), 1))] if bounds else target_array
-        target_array = np.where(target_array < target_threshold, 0, target_array)
+            target_array = np.where(target_array < target_threshold, 0, target_array)
+        except IndexError:
+            target_array = None
         return target_array, target_threshold
 
     @staticmethod
@@ -686,7 +693,10 @@ class MarkerCorrelation:
         else:
             baseline_array = image_dict[roi_selection][baseline_channel]
             baseline_threshold = 0
-        baseline_array = baseline_array[np.ix_(range(int(bounds[2]), int(bounds[3]), 1),
+        try:
+            baseline_array = baseline_array[np.ix_(range(int(bounds[2]), int(bounds[3]), 1),
                           range(int(bounds[0]), int(bounds[1]), 1))] if bounds else baseline_array
-        baseline_array = np.where(baseline_array < baseline_threshold, 0, baseline_array)
+            baseline_array = np.where(baseline_array < baseline_threshold, 0, baseline_array)
+        except IndexError:
+            baseline_array = None
         return baseline_array, baseline_threshold

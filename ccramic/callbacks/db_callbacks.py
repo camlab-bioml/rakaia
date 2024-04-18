@@ -61,12 +61,11 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("db-config-preview", "is_open"),
         Input('view-db-config-list', 'n_clicks'),
         [State("db-config-preview", "is_open")])
-    def toggle_db_config_preview_table(n1, is_open):
+    def toggle_db_config_preview_table(n, is_open):
         """
         Toggle open the dataframe containing the preview of imported configs from mongoDB
         """
-        if n1: return not is_open
-        return is_open
+        return not is_open if n else is_open
 
     @dash_app.callback(Output('db-config-name', 'value'),
                        Input('db-config-options', 'value'),
