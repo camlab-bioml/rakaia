@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.14.0] - 2024-04-17
+## [0.14.0] - 2024-04-18
 
 ### Added
 
@@ -20,6 +20,7 @@ proportion of marker overlap between mask/image and target to baseline within ma
 - Generalize the mongoDB database access by exposing the connection string as an input: Allows custom
 configuration of mongoDB instances
 - Option to select specific cluster categories for mask projection
+- Checklist toggle to bulk annotate all current canvas shapes (without, defaults to most recent)
 
 ### Fixed
 - Update canvas shape filtering on freeform draw to clear errors caused by
@@ -31,6 +32,7 @@ configuration of mongoDB instances
 - Proper blanking of the UMAP plot when the quantification results are updated in-browser
 - Freeform rectangle coordinates now parsed from either left or right dragging
 - Fixed bug where annotating from UMAP overwrites the annotation hash instead of the quantification sheet
+- PDF writer now includes all annotations in loop
 
 ### Changed
 - Enforce ROI change can occur only on the canvas tab

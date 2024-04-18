@@ -610,7 +610,6 @@ def test_extract_zoom_bounds():
     x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(bounds, cast_type=int)
     assert x_low == 597
 
-
 def test_marker_correlation_metrics(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff"))).astype(np.float32)
 

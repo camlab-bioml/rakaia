@@ -707,7 +707,6 @@ def register_app_layout(config, cache_dest):
                                             # default_style={'minHeight': 2, 'lineHeight': 2})
                                             ]),
                                 ]),
-                                # TODO: add tab for marker correlation
                                 dbc.Tab(label='Marker correlation', label_style={"color": DEFAULT_WIDGET_COLOUR},
                                             children=[
                                 html.Br(),
@@ -870,6 +869,10 @@ def register_app_layout(config, cache_dest):
                                     "height": "100%"})
                                 ], width=4)]),
                                 dbc.Row(dbc.Col(html.Div([], style={"display": "flex"}))),
+                                html.Br(),
+                                dcc.Checklist(id="bulk-annotate-shapes", value=[],
+                                    options=[' annotate all current shapes'],
+                                    style={"accent-color": DEFAULT_WIDGET_COLOUR}),
                                 dbc.Button("Create annotation", id="create-annotation",
                                 className="me-1", style={"margin-top": "10px",
                                 "background-color": DEFAULT_WIDGET_COLOUR})]),

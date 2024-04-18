@@ -2007,11 +2007,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('apply-gating', 'value'),
         State('quant-annotation-col-gating', 'value'),
         State('gating-annotation-assignment', 'value'),
-        State('gating-cell-list', 'data'))
+        State('gating-cell-list', 'data'),
+        State('bulk-annotate-shapes', 'value'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
                                canvas_layout, annotations_dict, data_selection, cur_layers, mask_toggle,
         mask_selection, mask_blending_level, add_mask_boundary, annot_col, add_annot_gating, apply_gating,
-                               gating_annot_col, gating_annot_type, gating_cell_id_list):
+                               gating_annot_col, gating_annot_type, gating_cell_id_list, bulk_annot):
         annotations_dict = check_for_valid_annotation_hash(annotations_dict, data_selection)
         # Option 1: if triggered from gating
         if ctx.triggered_id == "gating-annotation-create" and add_annot_gating and apply_gating and None not in \
@@ -2035,10 +2036,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # Option 2: if a shape is drawn on the canvas
             elif 'shapes' in canvas_layout and isinstance(canvas_layout, dict) and len(canvas_layout['shapes']) > 0:
                 # only get the shapes that are a rect or path, the others are canvas annotations
-                # set using only the most recent shape to be added to avoid duplication
-                for shape in [canvas_layout['shapes'][-1]]:
-                    if shape['type'] == 'path':
-                        annotation_list[shape['path']] = 'path'
+                # Set which shapes to use based on the checklist either all or the most recent
+                shapes_use = canvas_layout['shapes'] if bulk_annot else [canvas_layout['shapes'][-1]]
+                for shape in shapes_use:
+                    if shape['type'] == 'path': annotation_list[shape['path']] = 'path'
                     elif shape['type'] == "rect":
                         key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}
                         annotation_list[tuple(sorted(key.items()))] = "rect"

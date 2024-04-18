@@ -92,7 +92,7 @@ class AnnotationPDFWriter:
                         # for channel in channel_list:
                         #     plt.figtext(0.01, y_offset, channel, size=14)
                         #     y_offset -= 0.05
-                pdf.savefig()
+                        pdf.savefig()
             return self.filepath
         return None
 
