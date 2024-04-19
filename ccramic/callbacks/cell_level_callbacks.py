@@ -505,9 +505,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("show-quant-dist-table", "is_open"),
         Input('show-quant-dist', 'n_clicks'),
         [State("show-quant-dist-table", "is_open")])
-    def toggle_show_quant_dist_modal(n1, is_open):
-        if n1: return not is_open
-        return is_open
+    def toggle_show_quant_dist_modal(n, is_open):
+        return not is_open if n else is_open
 
     @dash_app.callback(Output('quant-dist-table', 'data'),
                        Output('quant-dist-table', 'columns'),
@@ -583,9 +582,8 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("umap-config-modal", "is_open"),
         Input('umap-config-button', 'n_clicks'),
         [State("umap-config-modal", "is_open")])
-    def toggle_show_umap_config_modal(n1, is_open):
-        if n1: return not is_open
-        return is_open
+    def toggle_show_umap_config_modal(n, is_open):
+        return not is_open if n else is_open
 
     @dash_app.callback(
         Output("quantification-roi-modal", "is_open"),
@@ -596,14 +594,13 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('channel-quantification-list', 'value'),
         State('mask-dict', 'data'),
         Input('mask-options', 'value'))
-    def toggle_show_quantification_config_modal(n1, execute, is_open, channels_to_quantify, mask_dict, mask_selection):
+    def toggle_show_quantification_config_modal(n, execute, is_open, channels_to_quantify, mask_dict, mask_selection):
         # TODO: add preview for number of objects in the mask if it exists
         preview = mask_object_counter_preview(mask_dict, mask_selection)
         if ctx.triggered_id == "mask-options": return dash.no_update, preview
         if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False, preview
         else:
-            if n1: return not is_open, preview
-            return is_open, preview
+            return not is_open if n else is_open, preview
 
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')
@@ -709,8 +706,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         [State('cluster-label-collapse', 'is_open')])
     # @cache.memoize())
     def toggle_pixel_hist_collapse(n, is_open):
-        if n: return not is_open
-        return is_open
+        return not is_open if n else is_open
 
     @dash_app.callback(Output('gating-cur-mod', 'options'),
                        Output('gating-dict', 'data'),

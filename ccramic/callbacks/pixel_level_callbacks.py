@@ -54,7 +54,7 @@ from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     adjust_option_height_from_list_length)
-from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json
+from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json, parse_local_path_imports
 from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -127,26 +127,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if path and clicks > 0:
             session_config = validate_session_upload_config(cur_session)
             error_config = {"error": None} if error_config is None else error_config
-            if import_type == "filepath":
-                if os.path.isfile(path):
-                    session_config['uploads'].append(path)
-                    error_config["error"] = None
-                    return session_config, dash.no_update
-                else:
-                    error_config["error"] = ALERT.warnings["invalid_filepath"]
-                    return dash.no_update, error_config
-            elif import_type == "directory":
-                if os.path.isdir(path):
-                    # valid_files = []
-                    extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5"]
-                    for extension in extensions:
-                        session_config['uploads'].extend(Path(path).glob(extension))
-                    session_config['uploads'] = [str(elem) for elem in session_config['uploads']]
-                    return session_config, dash.no_update
-                else:
-                    error_config["error"] = ALERT.warnings["invalid_directory"]
-                    return dash.no_update, error_config
-            raise PreventUpdate
+            return parse_local_path_imports(path, import_type, session_config, error_config)
         raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
@@ -276,9 +257,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def reset_canvas_on_new_upload(uploaded, cur_fig):
         if None not in (uploaded, cur_fig) and 'data' in cur_fig:
-            fig = go.Figure()
+            # fig = go.Figure()
             # fig['layout']['uirevision'] = True
-            return fig
+            return go.Figure()
         raise PreventUpdate
 
 
@@ -856,15 +837,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
         if new_selection is not None:
-            # canvas_return = dash.no_update
-            # if 'shapes' in cur_canvas['layout'] and len(cur_canvas['layout']['shapes']) > 0:
-            #     other_shapes = [shape for shape in cur_canvas['layout']['shapes'] if \
-            #                 shape is not None and 'type' in shape and (shape['type'] in ['path', 'rect', 'circle'] or \
-            #                 any(elem in ['rect', 'path', 'circle'] for elem in shape.keys()))]
-            #     if len(other_shapes) > 0:
-            #         for shape in cur_canvas['layout']['shapes']:
-            #             if 'label' in shape and 'texttemplate' in shape['label']: shape['label'] = {}
-            #         canvas_return = cur_canvas
             return CanvasLayout(cur_canvas).get_fig(), match_mask_name_with_roi(new_selection, mask_options, dataset_options, delimiter)
         raise PreventUpdate
 
@@ -1098,26 +1070,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #             return fig
     #         else:
     #             raise PreventUpdate
-    #     else:
-    #         raise PreventUpdate
-
-
-    # @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
-    #                    State('annotation_canvas', 'figure'),
-    #                    State('annotation_canvas', 'relayoutData'),
-    #                    Input('custom-scale-val', 'value'),
-    #                    Input('pixel-size-ratio', 'value'),
-    #                    prevent_initial_call=True)
-    # # @cache.memoize())
-    # def render_canvas_from_scalebar_change(cur_graph, cur_graph_layout, custom_scale_val, pixel_ratio):
-    #     # do not update the canvas if the pixel ratio is changed to None
-    #     pixel_ratio_none = ctx.triggered_id == 'pixel-size-ratio' and pixel_ratio is None
-    #     if cur_graph is not None and cur_graph_layout not in [{'dragmode': 'pan'}] and not pixel_ratio_none:
-    #         try:
-    #             fig = CanvasLayout(cur_graph).use_custom_scalebar_value(custom_scale_val, pixel_ratio)
-    #         except (KeyError, AssertionError):
-    #             fig = dash.no_update
-    #         return fig
     #     else:
     #         raise PreventUpdate
 
@@ -1521,8 +1473,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         [State("area-stats-collapse", "is_open")])
     # @cache.memoize())
     def toggle_area_stats_collapse(n, is_open):
-        if n: return not is_open
-        return is_open
+        return not is_open if n else is_open
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
                        Output('pixel-intensity-slider', 'value', allow_duplicate=True),
@@ -1858,9 +1809,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("fullscreen-canvas", "is_open"),
         Input('make-canvas-fullscreen', 'n_clicks'),
         [State("fullscreen-canvas", "is_open")])
-    def toggle_fullscreen_modal(n1, is_open):
-        if n1: return not is_open
-        return is_open
+    def toggle_fullscreen_modal(n, is_open):
+        return not is_open if n else is_open
 
     @dash_app.callback(Output('annotation_canvas-fullscreen', 'figure'),
                        Output('annotation_canvas-fullscreen', 'relayoutData'),
@@ -1898,9 +1848,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("dataset-preview", "is_open"),
         Input('show-dataset-info', 'n_clicks'),
         [State("dataset-preview", "is_open")])
-    def toggle_dataset_info_modal(n1, is_open):
-        if n1: return not is_open
-        return is_open
+    def toggle_dataset_info_modal(n, is_open):
+        return not is_open if n else is_open
 
     @dash_app.callback(
         Output("data-collection", "value", allow_duplicate=True),
@@ -2065,18 +2014,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("inputs-offcanvas", "is_open"),
         Input("inputs-offcanvas-button", "n_clicks"),
         State("inputs-offcanvas", "is_open"))
-    def toggle_offcanvas_inputs(n1, is_open):
-        if n1: return not is_open
-        return is_open
+    def toggle_offcanvas_inputs(n, is_open):
+        return not is_open if n else is_open
 
     @dash_app.callback(
         Output("blend-config-offcanvas", "is_open"),
         Input("blend-offcanvas-button", "n_clicks"),
         State("blend-config-offcanvas", "is_open"),
     )
-    def toggle_offcanvas_blend_options(n1, is_open):
-        if n1: return not is_open
-        return is_open
+    def toggle_offcanvas_blend_options(n, is_open):
+        return not is_open if n else is_open
 
     @dash_app.callback(
         Output("pixel-hist-collapse", "is_open", allow_duplicate=True),
@@ -2084,30 +2031,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         [State("pixel-hist-collapse", "is_open")])
     # @cache.memoize())
     def toggle_pixel_hist_collapse(n, is_open):
-        if n: return not is_open
-        return is_open
-
-    # @dash_app.callback(Output('canvas-div-holder', 'children', allow_duplicate=True),
-    #                    Input('channel-intensity-hover', 'value'),
-    #                    Input('add-cell-id-mask-hover', 'value'),
-    #                    prevent_initial_call=True)
-    # def wrap_canvas_when_using_hovertext(show_channel_intensity_hover, show_mask_hover):
-    #     """
-    #     Wrap the canvas in a loading screen if hover text is used, as it severely slows down the speed of callbacks
-    #     """
-    #     if ' Show mask ID on hover' in show_mask_hover or \
-    #             " Show channel intensities on hover" in show_channel_intensity_hover:
-    #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=True)]
-    #     else:
-    #         return [wrap_canvas_in_loading_screen_for_large_images(image=None, hovertext=False)]
+        return not is_open if n else is_open
 
     @dash_app.callback(
         Output("annotation-preview", "is_open"),
         Input('show-annotation-table', 'n_clicks'),
         [State("annotation-preview", "is_open")])
-    def toggle_annotation_table_modal(n1, is_open):
-        if n1: return not is_open
-        return is_open
+    def toggle_annotation_table_modal(n, is_open):
+        return not is_open if n else is_open
 
     @dash_app.callback(
         Output("quant-annotation-col", "options"),
@@ -2210,16 +2141,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('enable-roi-change-key', 'value'),
                        State('region-annotation-modal', 'is_open'),
                        State('main-tabs', 'active_tab'),
+                       State('tour_component', 'isOpen'),
                        prevent_initial_call=True)
     # @cache.memoize())
     def click_to_new_roi(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options,
-                         allow_arrow_change, annotating_region, active_tab):
+                         allow_arrow_change, annotating_region, active_tab, open_tour):
         """
         Use the forward and backwards buttons to click to a new ROI
         Alternatively, use the directional arrow buttons from an event listener
         """
         if None not in (cur_data_selection, cur_options) and not (ctx.triggered_id == 'keyboard-listener' and
-            not allow_arrow_change) and not annotating_region and active_tab == 'pixel-analysis':
+            not allow_arrow_change) and not annotating_region and active_tab == 'pixel-analysis' and not open_tour:
             cur_index = cur_options.index(cur_data_selection)
             try:
                 prev_trigger = previous_roi_trigger(ctx.triggered_id, prev_roi, key_listener, n_events)
@@ -2273,12 +2205,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("session-config-modal", "is_open"),
         Input('session-config-modal-button', 'n_clicks'),
         [State("session-config-modal", "is_open")])
-    def toggle_general_config_modal(n1, is_open):
+    def toggle_general_config_modal(n, is_open):
         """
         Open the modal for general session variables
         """
-        if n1: return not is_open
-        return is_open
+        return not is_open if n else is_open
 
     @dash_app.callback(Output('annotation_canvas', 'config', allow_duplicate=True),
                        Input('enable-canvas-scroll-zoom', 'value'),
@@ -2293,19 +2224,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         cur_config = cur_config.copy()
         cur_config['scrollZoom'] = enable_zoom
         return cur_config
-
-    # @dash_app.callback(
-    #     Output('app_dest', 'href'),
-    #     Input('refresh-app', 'n_clicks'))
-    # def refresh_and_clear_app(refresh):
-    #     """
-    #     Open the modal for general session variables
-    #     """
-    #     if refresh:
-    #         remove_ccramic_caches('/tmp/')
-    #         return '/ccramic/'
-    #     else:
-    #         return '/ccramic/'
 
     @dash_app.callback(Output('tour_component', 'isOpen'),
                        Input('dash-import-tour', 'n_clicks'),

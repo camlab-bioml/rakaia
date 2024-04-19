@@ -1,5 +1,10 @@
-from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json
+import pytest
+
+from ccramic.callbacks.pixel_level_wrappers import (
+    parse_global_filter_values_from_json,
+    parse_local_path_imports)
 import dash
+import os
 
 def test_parse_global_filters():
     config_dict = {"config": {"filter": {"global_apply_filter": False,
@@ -28,3 +33,18 @@ def test_parse_global_filters():
 
     globals = parse_global_filter_values_from_json(config_dict['config'])
     assert all([isinstance(elem, dash._callback.NoUpdate) for elem in globals])
+
+def test_import_paths_from_local(get_current_dir):
+    mcd_file = os.path.join(get_current_dir, 'query.mcd')
+    imports, error = parse_local_path_imports(mcd_file, "filepath", {'uploads': []}, {"error": None})
+    assert imports['uploads']
+    assert 'query.mcd' in imports['uploads'][0]
+    imports, error = parse_local_path_imports(get_current_dir, "directory", {'uploads': []}, {"error": None})
+    assert imports['uploads']
+    imports, error = parse_local_path_imports(get_current_dir, "filepath", {'uploads': []}, {"error": None})
+    assert error['error']
+    imports, error = parse_local_path_imports(mcd_file, "directory", {'uploads': []}, {"error": None})
+    assert error['error']
+    assert isinstance(imports, dash._callback.NoUpdate)
+    with pytest.raises(dash.exceptions.PreventUpdate):
+        parse_local_path_imports(mcd_file, "no_type", {'uploads': []}, {"error": None})
