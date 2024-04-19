@@ -7,7 +7,7 @@ from threading import Timer
 import os
 from waitress import serve
 
-def argparser():
+def cli_parser():
     parser = argparse.ArgumentParser(add_help=False,
                                      description="ccramic: Cell-type Classification (using) Rapid Analysis (of) Multiplexed "
                                                  "Imaging (mass) Cytometry using Flask and Dash.",
@@ -18,11 +18,11 @@ def argparser():
             If a different port is used, replace 5000 with the provided port number.''')
 
     parser.add_argument('-v', "--version", action="version",
-                        help="Show the current ccramic version then exit.",
+                        help="Show the current ccramic version then exit. Does not execute the application.",
                         version=f"This is ccramic: v{__version__}")
 
     parser.add_argument('-h', "--help", action="help",
-                        help="Show the help output and exit.",
+                        help="Show the help/options menu and exit. Does not execute the application.",
                         dest="help")
     parser.add_argument('-a', "--auto-open", action="store_true",
                         help="automatically open the browser when the dash is called. Default: False",
@@ -71,7 +71,7 @@ def argparser():
 
 def main(sysargs = sys.argv[1:]):
 
-    parser = argparser()
+    parser = cli_parser()
     args = parser.parse_args(sysargs)
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
@@ -89,15 +89,15 @@ def main(sysargs = sys.argv[1:]):
                   'cache_dest': args.cache_dest}
 
     app = init_app(cli_config=CLI_CONFIG)
+    #   https://stackoverflow.com/questions/64107108/what-is-the-issue-with-binding-to-all-interfaces-and-what-are-the-alternatives
+    HOST = '127.0.0.1' if CLI_CONFIG['is_dev_mode'] else '0.0.0.0'
     if args.auto_open:
         Timer(1, open_browser).start()
 
     if CLI_CONFIG['is_dev_mode']:
-        app.run(host='0.0.0.0', debug=args.is_dev_mode, threaded=args.threading, port=args.port)
+        app.run(host=HOST, debug=args.is_dev_mode, threaded=args.threading, port=args.port)
     else:
-        # TODO: establish criteria for deploying in production using waitress server
-        # https://stackoverflow.com/questions/14814201/can-i-serve-multiple-clients-using-just-flask-app-run-as-standalone
-        serve(app, host='0.0.0.0', port=args.port)
+        serve(app, host=HOST, port=args.port)
 
 if __name__ == "__main__":
     main()

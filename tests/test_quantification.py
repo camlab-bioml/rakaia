@@ -7,7 +7,8 @@ from ccramic.utils.quantification import (
     concat_quantification_frames_multi_roi,
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
-    gating_label_children)
+    gating_label_children,
+    mask_object_counter_preview)
 
 def test_quantification_one_channel(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
@@ -80,10 +81,10 @@ def test_quantification_multiple_rois(get_current_dir):
 
     merged = concat_quantification_frames_multi_roi(None, roi_2_quant, "set1+++slide0+++roi_2")
     assert len(merged) == len(roi_1_quant)
-    assert 'roi_2' in merged['sample'].tolist()
+    assert 'roi_2' in merged['description'].tolist()
     merged = concat_quantification_frames_multi_roi(roi_1_quant, None, "set1+++slide0+++roi_2")
     assert len(merged) == len(roi_1_quant)
-    assert 'roi_1' in merged['sample'].tolist()
+    assert 'roi_1' in merged['description'].tolist()
 
 
 def test_populate_internal_gating_dict():
@@ -110,3 +111,14 @@ def test_gating_label_children():
     children = gating_label_children(True, gating_dict, current_gate)
     assert len(children) == 7
     assert not gating_label_children(False, gating_dict, current_gate)
+
+
+def test_generate_mask_counter_preview():
+    mask_dict = {"mask_1": {"raw": np.zeros((1000, 1000))}}
+    mask_dict['mask_1']['raw'][1, 1] = 2
+    mask_dict['mask_1']['raw'][2, 2] = 3
+    preview = mask_object_counter_preview(mask_dict, "mask_1")
+    assert preview == '2 mask objects'
+    assert not mask_object_counter_preview(None, "mask_1")
+    mask_dict = {"mask_1": {"boundary": np.zeros((1000, 1000))}}
+    assert not mask_object_counter_preview(mask_dict, "mask_1")

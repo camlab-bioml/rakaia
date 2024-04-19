@@ -5,7 +5,7 @@ from ccramic.utils.filter import (
     return_current_channel_blend_params,
     return_current_or_default_channel_color,
     return_current_default_params_with_preset,
-    apply_filter_to_channel)
+    apply_filter_to_channel, set_blend_parameters_for_channel)
 import dash
 import numpy as np
 
@@ -60,3 +60,11 @@ def test_filter_parsers_with_preset():
     assert filter_val_return == 5
     assert filter_sigma_return == 0.8
     assert color_return == {'hex': '#FF0000'}
+
+def test_setting_blend_dictionary():
+    blend_dict = {"channel_1": {"color": '#FFFFFF', "filter_type": "median", "filter_val": 3,  "filter_sigma": 1.0}}
+    blend_dict = set_blend_parameters_for_channel(blend_dict, 'channel_1', "gaussian", 5, 0.6)
+    assert all([elem is not None for elem in blend_dict['channel_1'].values()])
+    assert blend_dict['channel_1']['filter_type'] == 'gaussian'
+    blend_dict = set_blend_parameters_for_channel(blend_dict, 'channel_1', "gaussian", 5, 0.6, clear=True)
+    assert all([elem is None for elem in blend_dict['channel_1'].values() if elem != '#FFFFFF'])

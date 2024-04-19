@@ -1,5 +1,7 @@
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
+from plotly.graph_objs import XAxis, YAxis
+
 from ccramic.utils.region import RectangleRegion, FreeFormRegion, AnnotationPreviewGenerator
 import os
 from tifffile import imwrite
@@ -54,7 +56,8 @@ class RegionSummary:
         aliases = []
         region = []
         region_index = 1
-        shapes_keep = [shape for shape in self.graph_layout['shapes'] if shape['type'] not in ['line']]
+        shapes_keep = [shape for shape in self.graph_layout['shapes'] if 'type' in shape and \
+                       shape['type'] not in ['line'] and 'editable' in shape and shape['editable']]
         for shape in shapes_keep:
             try:
                 # option 1: if the shape is drawn with a rectangle
@@ -211,7 +214,13 @@ class FullScreenCanvas:
         if 'layout' in self.canvas.keys() and 'shapes' in self.canvas['layout'].keys():
             self.canvas['layout']['shapes'] = []
 
-    def get_canvas(self):
+    def get_canvas(self, as_fig: bool=False):
+        if as_fig:
+            fig = go.Figure(self.canvas)
+            fig.update_layout(dragmode='pan')
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                              yaxis=YAxis(showticklabels=False), margin=dict(l=0, r=0, b=0, t=0, pad=0))
+            return fig
         return self.canvas
 
     def get_canvas_layout(self):

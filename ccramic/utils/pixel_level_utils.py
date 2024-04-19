@@ -1,10 +1,12 @@
 import dash
 import numpy as np
 import pandas as pd
+import scipy.stats
 from PIL import Image
 from PIL import ImageColor
 import plotly.graph_objects as go
 import plotly.express as px
+from pydantic import BaseModel
 from skimage import draw
 from scipy import ndimage
 from scipy.ndimage import median_filter
@@ -57,7 +59,6 @@ def generate_default_swatches(config):
             return DEFAULTS
     except KeyError:
         return DEFAULTS
-
 
 def recolour_greyscale(array, colour):
     """
@@ -232,8 +233,11 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
                                    np.array([max_hist]).astype(cast_type)])
     except ValueError:
         pass
-    return go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist]), \
-        float(np.max(array))
+
+    fig = go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist])
+    fig.update_layout(showlegend=False, yaxis={'title': None},
+                                      xaxis={'title': None}, margin=dict(pad=0))
+    return fig, float(np.max(array))
 
 def upper_bound_for_range_slider(array):
     """
@@ -445,12 +449,12 @@ def apply_filter_to_array(image, global_apply_filter, global_filter_type, global
     Note: incorrect values applied to the array will not return an error, but will return the original array,
     as this function is meant to be used in the application
     """
-    if global_filter_type not in ['gaussian', 'median']:
-        raise TypeError("The global filter type should be either gaussian or median.")
     global_filter_applied = (isinstance(global_apply_filter, bool) and global_apply_filter) or (
-        isinstance(global_apply_filter, list) and global_apply_filter)
+        isinstance(global_apply_filter, list) and len(global_apply_filter) > 0)
     if global_filter_applied and None not in (global_filter_type, global_filter_val) and \
             int(global_filter_val) % 2 != 0:
+        if global_filter_type not in ['gaussian', 'median']:
+            raise TypeError("The global filter type should be either gaussian or median.")
         if global_filter_type == "median" and int(global_filter_val) >= 1:
             try:
                 image = cv2.medianBlur(image, int(global_filter_val))
@@ -496,11 +500,203 @@ def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_
     if blend_dict is not None and current_blend is not None and data_selection is not None:
         for key in current_blend:
             try:
-                if key in blend_dict.keys() and blend_dict[key]['color'] != '#FFFFFF':
+                if key in blend_dict.keys():
+                    # use the colour unless its white, then use black so the label is visible
+                    col_use = blend_dict[key]['color'] if blend_dict[key]['color'] not in \
+                                                          ['#FFFFFF', '#ffffff'] else 'black'
                     label = channel_aliases[key] if channel_aliases is not None and \
                                                     key in channel_aliases.keys() else key
                     cell_styling_conditions.append({"condition": f"params.value == '{label}'",
-                                                    "style": {"color": f"{blend_dict[key]['color']}"}})
+                                                    "style": {"color": f"{col_use}"}})
             except KeyError:
                 pass
     return cell_styling_conditions
+
+def high_low_values_from_zoom_layout(zoom_layout, cast_type=float):
+    x_low = float(min(zoom_layout['xaxis.range[0]'], zoom_layout['xaxis.range[1]']))
+    x_high = float(max(zoom_layout['xaxis.range[0]'], zoom_layout['xaxis.range[1]']))
+    y_low = float(min(zoom_layout['yaxis.range[0]'], zoom_layout['yaxis.range[1]']))
+    y_high = float(max(zoom_layout['yaxis.range[0]'], zoom_layout['yaxis.range[1]']))
+    if cast_type == int:
+        return int(x_low), int(x_high), int(y_low), int(y_high)
+    return x_low, x_high, y_low, y_high
+
+class RectangularKeys(BaseModel):
+    """
+    Defines the possible keys for different rectangular regions on the canvas
+    Options vary depending on if zoom is used, or a rectangular shape is drawn fresh
+    or edited
+    """
+    keys: dict = {"zoom": ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]'),
+                  "rect": ('x0', 'x1', 'y0', 'y1'),
+                  "rect_redrawn": ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')}
+
+class MarkerCorrelation:
+    """
+    Generate marker correlation metrics for a target marker compared to a baseline marker expression
+    Output will generate a tuple of values:
+        - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
+        - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
+          marker expression at the baseline threshold, relative to the total marker expression inside the mask
+    """
+    def __init__(self, image_dict: dict, roi_selection: str, target_channel: Union[str, None],
+                               baseline_channel: Union[str, None]=None, target_threshold: Union[float, int]=0,
+                               baseline_threshold: Union[float, int]=0, mask: Union[np.array, np.ndarray, None]=None,
+                               blend_dict: dict=None, use_blend_params: bool=True, bounds: Union[str, dict]=None):
+
+        self.basic_correlation = None
+        # Initialize the intermediate and final outputs to None
+        # overlap between baseline and target in mask
+        self.baseline_proportion_in_mask = None
+
+        self.marker_overlap_in_mask = None
+        # boolean mask for where the target is greater than the threshold
+        self.target_threshold_bool = None
+        # boolean mask for the filter above, but inside the mask
+        self.target_threshold_in_mask = None
+        # the proportion of the boolean above compared to the threshold in the entire image
+        self.target_proportion_in_mask = None
+        # the ratio of the target to the baseline inside the mask
+        self.target_proportion_relative = None
+
+        if image_dict is not None and roi_selection in image_dict and target_channel in image_dict[roi_selection]:
+            # TODO: add in validation parse for checking the ROI images to the mask dimensions
+            self.image_dict = image_dict
+            self.roi_selection = roi_selection
+            self.target_threshold = target_threshold
+            self.target_channel = target_channel
+            self.bounds = self.compute_channel_bounds_from_zoom(bounds)
+            self.mask = mask
+            self.baseline_array = None
+            self.baseline_threshold = baseline_threshold
+            if self.bounds and self.mask is not None:
+                try:
+                    self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
+                                    range(int(self.bounds[0]), int(self.bounds[1]), 1))]
+                except IndexError:
+                    self.mask = None
+            try:
+                self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
+                                                        blend_dict, target_channel, roi_selection, self.bounds)
+                if self.mask is not None and self.target_array is not None:
+                    self.set_target_proportion_in_mask()
+            except (ValueError, KeyError):
+                pass
+            try:
+                if baseline_channel and baseline_channel in image_dict[roi_selection]:
+                    self.baseline_array, self.baseline_threshold = self.set_baseline_array_from_blend(image_dict,
+                                        use_blend_params, blend_dict, baseline_channel, roi_selection, self.bounds)
+                    self.compute_basic_pearson_correlation()
+                    if self.mask is not None and self.baseline_array is not None:
+                        self.set_baseline_proportion_in_mask()
+                        self.compute_correlation_statistics()
+            except (ValueError, KeyError):
+                pass
+
+    @staticmethod
+    def compute_channel_bounds_from_zoom(bounds):
+        """
+        Compute the bounds for the channels based on a region zoom
+        """
+        keys_required = RectangularKeys().keys["zoom"]
+        if bounds and isinstance(bounds, dict) and all([elem in keys_required for elem in bounds.keys()]):
+            return high_low_values_from_zoom_layout(bounds, cast_type=int)
+        return None
+
+    def get_correlation_statistics(self):
+        """
+        Return the proportion of the target channel that is inside the mask, the
+        target overlap with the baseline channel inside the mask, and baseline proportion in mask
+        """
+        return self.target_proportion_in_mask, self.target_proportion_relative, self.baseline_proportion_in_mask, \
+            self.basic_correlation
+
+    def set_target_proportion_in_mask(self):
+        """
+        Set the target threshold of expression, the target threshold inside the mask,
+        and the target proportion inside the mask
+        """
+        self.target_threshold_bool = self.target_array > float(self.target_threshold)
+        self.target_threshold_in_mask = np.logical_and(self.target_threshold_bool, self.mask > 0)
+        # compute proportion of target signal inside mask relative to whole image
+        self.target_proportion_in_mask = float((np.sum(self.target_array[self.target_threshold_in_mask]) /
+                                           np.sum(self.target_array[self.target_threshold_bool])))
+
+    def set_baseline_proportion_in_mask(self):
+        """
+        Set the baseline threshold of expression, the baseline threshold inside the mask,
+        and the baseline proportion inside the mask
+        """
+        baseline_threshold_bool = self.baseline_array > float(self.baseline_threshold)
+        baseline_threshold_in_mask = np.logical_and(baseline_threshold_bool, self.mask > 0)
+        # compute proportion of target signal inside mask relative to whole image
+        self.baseline_proportion_in_mask = float((np.sum(self.baseline_array[baseline_threshold_in_mask]) /
+                                           np.sum(self.baseline_array[baseline_threshold_bool])))
+    def compute_correlation_statistics(self):
+        """
+        Compute the proportion of the target channel that is inside the mask, and the
+        target overlap with the baseline channel inside the mask
+        """
+        self.marker_overlap_in_mask = np.logical_and(self.target_threshold_in_mask,
+                                                self.baseline_array > float(self.baseline_threshold))
+        # target_image = self.image_dict[self.roi_selection][self.target_channel]
+        # target_image = target_image[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
+        #                   range(int(self.bounds[0]), int(self.bounds[1]), 1))] if \
+        #     self.bounds else target_image
+        self.target_proportion_relative = np.sum(self.target_array[self.marker_overlap_in_mask]) / \
+                    np.sum(self.target_array[self.target_threshold_in_mask])
+
+    def compute_basic_pearson_correlation(self):
+        if self.target_array is not None and self.baseline_array is not None:
+            self.basic_correlation = float(scipy.stats.pearsonr(
+            self.target_array.flatten(), self.baseline_array.flatten())[0])
+
+    @staticmethod
+    def set_target_array_from_blend(image_dict, use_blend_params, blend_dict, target_channel, roi_selection,
+                                    bounds):
+        """
+        Configure the target array based on the current blend parameters. The target channel will receive the filter
+        and lower threshold values that are set by the user, if they exist
+        """
+        if use_blend_params and blend_dict and target_channel in blend_dict:
+            target_threshold = blend_dict[target_channel]['x_lower_bound'] if \
+                blend_dict[target_channel]['x_lower_bound'] else 0
+            target_array = apply_filter_to_array(image_dict[roi_selection][target_channel],
+                                                 blend_dict[target_channel]['filter_type'] is not None,
+                            blend_dict[target_channel]['filter_type'], blend_dict[target_channel]['filter_val'],
+                            blend_dict[target_channel]['filter_sigma'])
+        else:
+            target_array = image_dict[roi_selection][target_channel]
+            target_threshold = 0
+        try:
+            target_array = target_array[np.ix_(range(int(bounds[2]), int(bounds[3]), 1),
+                          range(int(bounds[0]), int(bounds[1]), 1))] if bounds else target_array
+            target_array = np.where(target_array < target_threshold, 0, target_array)
+        except IndexError:
+            target_array = None
+        return target_array, target_threshold
+
+    @staticmethod
+    def set_baseline_array_from_blend(image_dict, use_blend_params, blend_dict, baseline_channel, roi_selection, bounds):
+        """
+        Configure the baseline array based on the current blend parameters. The baseline channel will receive the filter
+        and lower threshold values that are set by the user, if they exist
+        """
+        if use_blend_params and blend_dict and baseline_channel in blend_dict:
+            baseline_threshold = blend_dict[baseline_channel]['x_lower_bound'] if \
+                blend_dict[baseline_channel]['x_lower_bound'] else 0
+            baseline_array = apply_filter_to_array(image_dict[roi_selection][baseline_channel],
+                                                   blend_dict[baseline_channel]['filter_type'] is not None,
+                                                   blend_dict[baseline_channel]['filter_type'],
+                                                   blend_dict[baseline_channel]['filter_val'],
+                                                   blend_dict[baseline_channel]['filter_sigma'])
+        else:
+            baseline_array = image_dict[roi_selection][baseline_channel]
+            baseline_threshold = 0
+        try:
+            baseline_array = baseline_array[np.ix_(range(int(bounds[2]), int(bounds[3]), 1),
+                          range(int(bounds[0]), int(bounds[1]), 1))] if bounds else baseline_array
+            baseline_array = np.where(baseline_array < baseline_threshold, 0, baseline_array)
+        except IndexError:
+            baseline_array = None
+        return baseline_array, baseline_threshold

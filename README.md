@@ -160,12 +160,12 @@ Conversely, without app installation:
 python ccramic/wsgi.py
 ```
 
-ccramic can also support being run in debug mode, which will apply source code changes to active sessions while the
-application is running (NOte that changes to the source code will trigger an application page refresh). This can be
-enabled using the `-d` CLI option:
+By default, ccramic will run in debug mode from the command line, which
+will apply source code changes on the fly. To disable this feature
+of to use a production-level server from waitress, enable production mode:
 
 ```commandline
-ccramic -d
+ccramic -pr
 ```
 
 ## Troubleshooting

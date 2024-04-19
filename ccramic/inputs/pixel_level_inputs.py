@@ -41,7 +41,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         # "drawcircle",
                         "drawrect",
                         "eraseshape"],
-                        # TODO: add in dimension specds for the width and height on the download
+                        # TODO: add in dimension specs for the width and height on the download
                         # https://plotly.com/python/configuration-options/
                         'toImageButtonOptions': {'format': 'png', 'filename': filename, 'scale': 1},
                             # disable scrollable zoom for now to control the scale bar
@@ -52,11 +52,18 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                newshape = dict(line=dict(color="white")),
                                               xaxis=go.XAxis(showticklabels=False),
-                                              yaxis=go.YAxis(showticklabels=False))})
+                                              yaxis=go.YAxis(showticklabels=False),
+                                               margin=dict(
+                                                   l=1.5,
+                                                   r=1.5,
+                                                   b=25,
+                                                   t=35,
+                                                   pad=0)
+                                               )})
 
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
-def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=3000, hovertext=False, enable_zoom=False,
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=8000000, hovertext=False, enable_zoom=False,
                                                    wrap=True, filename: str="canvas", delimiter: str="+++"):
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
@@ -64,7 +71,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
     if hovertext is used (slows down the canvas considerably)
     """
     # conditions for wrapping the canvas
-    large_image = image is not None and (image.shape[0] > size_threshold or image.shape[1] > size_threshold)
+    large_image = image is not None and (int(image.shape[0] * image.shape[1]) > size_threshold)
     if (large_image or hovertext) and wrap:
         return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename,
                         delimiter=delimiter), type="default", fullscreen=False, color=SessionTheme().widget_colour)
@@ -74,7 +81,8 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=30
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
                               invert=False, proportion=0.1, scale_color: str="white"):
     """
-    add a scalebar value to a canvas figure based on the dimensions of the current image
+    Add a scalebar value to a canvas figure based on the dimensions of the current image
+    The y coordinate is always fixed at 0.06 to make it readily identifiable when parsing the annotation dictionary
     """
     if scale_value is None:
         scale_val = int(float(proportion * image_shape[1]) * float(pixel_ratio))
@@ -124,7 +132,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
                         convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
                     image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
         default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
-        fig = px.imshow(Image.fromarray(image.astype(np.uint8)))
+        fig = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True, binary_compression_level=1)
         image_shape = image.shape
         if show_canvas_legend:
             x_axis_placement = 0.00001 * image_shape[1]
@@ -230,7 +238,7 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
 
 def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
                                 use_cluster_annotations=False, cluster_colour_dict: dict=None,
-                                data_selection: str=None):
+                                data_selection: str=None, cluster_selection_subset: list=None):
     """
     Generate the string annotation text for a canvas based on the channels and selected colour of the channel
     """
@@ -250,8 +258,10 @@ def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legen
                 aliases_used.append(label)
     elif use_cluster_annotations and cluster_colour_dict:
         try:
+            clusters_to_use = [str(select) for select in cluster_selection_subset] if \
+                cluster_selection_subset is not None else list(cluster_colour_dict[data_selection].keys())
             # these will automatically be unique
-            for clust in list(cluster_colour_dict[data_selection].keys()):
+            for clust in clusters_to_use:
                 legend_text = legend_text + f'<span style="color:' \
                                         f'{cluster_colour_dict[data_selection][clust]}"' \
                                         f'>{clust}{gap}</span>{line_break}'
@@ -272,15 +282,17 @@ def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False):
         x_axis_placement = 1 - x_axis_placement
     return x_axis_placement
 
-def set_roi_identifier_from_length(dataset_selection, length_threshold=5, delimiter: str="+++"):
+def set_roi_identifier_from_length(dataset_selection, length_threshold=5, delimiter: str="+++",
+                                   use_filename: bool=True):
     """
     Set the output name for a dataset based on the length of the ROI name
-    If the ROI name is below a certain length, output the entire dataset identifier
+    If the ROI name is below a certain length, output the entire dataset identifier if not using the filename,
+    or use the experiment (filename_
     """
     try:
         exp, slide, roi = split_string_at_pattern(dataset_selection, delimiter)
         # set a length limit: if the roi name is long enough to be informative, set as the output
-        roi_name_use = roi if len(roi) > length_threshold else dataset_selection
+        roi_name_use = roi if len(roi) > length_threshold else (dataset_selection if not use_filename else exp)
         return roi_name_use
     except (KeyError, IndexError, ValueError):
         return dataset_selection
@@ -300,15 +312,19 @@ def update_canvas_filename(canvas_config: dict, roi_name: str=None, delimiter: s
 
 def set_canvas_viewport(size_slider_val: Union[float, int]=None,
                         image_dict: dict=None, data_selection: str=None,
-                        current_canvas: Union[go.Figure, dict]=None, cur_canvas_layout: dict=None):
+                        current_canvas: Union[go.Figure, dict]=None, cur_canvas_layout: dict=None,
+                        cur_dimensions: Union[tuple, list]=None):
     """
     Set the canvas viewport based on the canvas size range slider, as well as the aspect ratio of
     the ROI dimensions
     returns a hash for the width and height in vh: {'width': f'{value}vh', 'height': f'{value}vh'}
     """
     try:
-        first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
-        aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
+        if cur_dimensions is None:
+            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+            aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
+        else:
+            aspect_ratio = int(cur_dimensions[1]) / int(cur_dimensions[0])
     except (KeyError, AttributeError, IndexError):
         if current_canvas is not None and 'layout' in current_canvas and \
                 'range' in current_canvas['layout']['xaxis'] and \
@@ -330,3 +346,43 @@ def set_canvas_viewport(size_slider_val: Union[float, int]=None,
             raise PreventUpdate
     except KeyError:
         return {'width': f'{width}vh', 'height': f'{height}vh'}
+
+def marker_correlation_children(target_proportion_in_mask: Union[int, float]=None,
+                                target_proportion_relative: Union[int, float]=None,
+                                baseline_proportion_in_mask: Union[int, float]=None,
+                                pearson_correlation: Union[int, float]=None):
+    """
+    Generate the HTML legend for the current parameters used for mask gating
+    """
+    children = []
+    if pearson_correlation or target_proportion_in_mask:
+        children.append(html.B("Marker correlation: \n",
+                style={"color": "black"}))
+    if pearson_correlation:
+        children.append(html.Br())
+        children.append(html.Span(f"Pearson correlation: "
+                                  f"{round(pearson_correlation, 4)}\n"))
+    if target_proportion_in_mask:
+        children.append(html.Br())
+        children.append(html.Span(f"Target proportion in mask relative to image: "
+                              f"{round(target_proportion_in_mask, 4)}\n"))
+        if target_proportion_relative:
+            children.append(html.Br())
+            children.append(html.Span(f"Target overlap in mask relative to baseline: "
+                                      f"{round(target_proportion_relative, 4)}\n"))
+        if baseline_proportion_in_mask:
+            children.append(html.Br())
+            children.append(html.Span(f"Baseline proportion in mask relative to image: "
+                                      f"{round(baseline_proportion_in_mask, 4)}\n"))
+    return children
+
+def reset_pixel_histogram(to_dict: bool=False):
+    """
+    Return a blank histogram figure object with the specified margins associated with the offcanvas sidebar
+    """
+    fig = go.Figure()
+    fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                      xaxis=XAxis(showticklabels=False),
+                      yaxis=YAxis(showticklabels=False),
+                      margin=dict(l=5, r=5, b=15, t=20, pad=0))
+    return fig.to_dict() if to_dict else fig

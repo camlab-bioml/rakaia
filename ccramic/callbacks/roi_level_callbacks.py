@@ -1,9 +1,8 @@
 import dash
 import pandas as pd
-
-from ccramic.callbacks.cell_level_wrappers import reset_annotation_import
 from ccramic.parsers.roi_parsers import RegionThumbnail
 from ccramic.io.gallery_outputs import generate_roi_query_gallery_children
+from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
 from ccramic.utils.quantification import (
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi)
@@ -24,7 +23,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('roi-query', 'data'),
                        Output('dataset-query-gallery', 'style'),
                        Output('dataset-query-gallery-list', 'data'),
-                       Output('pixel-level-analysis', 'active_tab', allow_duplicate=True),
+                       Output('main-tabs', 'active_tab', allow_duplicate=True),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
@@ -88,7 +87,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),
-        Output('pixel-level-analysis', 'active_tab', allow_duplicate=True),
+        Output('main-tabs', 'active_tab', allow_duplicate=True),
         Input({'type': 'data-query-gallery', "index": ALL}, "n_clicks"),
         State('data-collection', 'options'),
         State('data-collection', 'value'),
@@ -133,8 +132,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         error_config = {"error": None} if error_config is None else error_config
         if execute > 0 and None not in (image_dict, data_selection, mask_selection, channels_to_quantify) and \
                 apply_mask and len(channels_to_quantify) > 0:
-            first_image = list(image_dict[data_selection].keys())[0]
-            first_image = image_dict[data_selection][first_image]
+            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 new_quant = quantify_multiple_channels_per_roi(image_dict, mask_dict[mask_selection]['raw'],
                             data_selection, channels_to_quantify, aliases, dataset_options, delimiter, mask_selection)

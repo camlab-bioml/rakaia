@@ -14,7 +14,9 @@ from ccramic.inputs.pixel_level_inputs import (
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
-    set_canvas_viewport)
+    set_canvas_viewport,
+    marker_correlation_children,
+    reset_pixel_histogram)
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -204,6 +206,9 @@ def test_set_canvas_filename():
     assert canvas_config['toImageButtonOptions']['filename'] == "long_roi"
     canvas_config = update_canvas_filename(canvas_config, "exp0---slide0---roi_1")
     assert canvas_config['toImageButtonOptions']['filename'] == "exp0---slide0---roi_1"
+    # use the filename (experiment) by default if the roi name is not long enough
+    canvas_config = update_canvas_filename(canvas_config, "exp0---slide0---roi_1", delimiter='---')
+    assert canvas_config['toImageButtonOptions']['filename'] == "exp0"
     assert update_canvas_filename({"fake_dict": None}, "exp0+++slide0+++long_roi") == {"fake_dict": None}
 
 
@@ -223,3 +228,25 @@ def test_window_viewport_settings():
 
     assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}) == \
            {'width': '30.0vh', 'height': '30.0vh'}
+
+    assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}, (1000, 2000)) == \
+           {'width': '60.0vh', 'height': '30.0vh'}
+
+def test_generate_marker_correlation_information():
+    children = marker_correlation_children(None, None, None, None)
+    assert not children
+    children = marker_correlation_children(0.50, 1.00, 1.00, 0.5)
+    span_counts = 0
+    for child in children:
+        if isinstance(child, html.Span):
+            span_counts += 1
+    # assert one span for each of the values
+    assert span_counts == 4
+    assert children
+    assert len(children) > 5
+
+
+def test_blank_reset_histogram():
+    blank_hist = reset_pixel_histogram(True)
+    assert blank_hist['layout']['margin'] == {'b': 15, 'l': 5, 'pad': 0, 'r': 5, 't': 20}
+    assert not blank_hist['layout']['xaxis']['showticklabels']

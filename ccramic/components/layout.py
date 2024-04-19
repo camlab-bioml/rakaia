@@ -17,7 +17,6 @@ import dash_tour_component
 from ccramic.utils.alert import DataImportTour, ToolTips
 from ccramic.io.session import SessionTheme, TabText
 
-
 def register_app_layout(config, cache_dest):
 
     # set the default colours for the swatches from the config input
@@ -121,7 +120,7 @@ def register_app_layout(config, cache_dest):
             dbc.Tab(label='Image annotation', tab_id='image-annotation',
                     active_label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=[
-                html.Div([dbc.Tabs(id='pixel-level-analysis',
+                html.Div([dbc.Tabs(id='main-tabs',
                 children=[dbc.Tab(# label_class_name="fa-regular fa-file-image",
                                   label="Image analysis",
                                     label_style={"color": DEFAULT_WIDGET_COLOUR},
@@ -130,9 +129,12 @@ def register_app_layout(config, cache_dest):
                 children=[
                     dbc.Offcanvas(
                         id="inputs-offcanvas",
-                        title="Configure inputs for ccramic",
+                        title=html.Div(["Configure inputs for ccramic",
+                                        ],
+                            style={"display": "flex", "justifyContent": "left"}),
                         is_open=True,
-                        children=[dbc.Tabs(id='data-config',
+                        children=[
+                                dbc.Tabs(id='data-config',
                                 children=[dbc.Tab(id='file-data-config', label='File import',
                                                   label_style={"color": DEFAULT_WIDGET_COLOUR},
                                 children=[
@@ -195,7 +197,7 @@ def register_app_layout(config, cache_dest):
                                         dcc.Dropdown(id='data-collection', multi=False, options=[],
                                                      style={'width': '100%'}),
                                         html.Br(),
-                                        dbc.Button("Refresh selection", id="data-selection-refresh", className="me-1",
+                                        dbc.Button("Refresh canvas", id="data-selection-refresh", className="me-1",
                                         size="sm", color='dark', outline=True, style={"float": "left",
                                                 "margin-right": "12.5px", "height": "50%"}),
                                         dbc.Tooltip(TOOLTIPS['roi-refresh'], target="data-selection-refresh"),
@@ -206,12 +208,17 @@ def register_app_layout(config, cache_dest):
                                             [html.H6("Set the label for the imported mask"),
                                              html.Div([dcc.Input(id="input-mask-name", type="text", value=None,
                                                                  style={"width": "65%", "margin-right": "10px",
-                                                                        "height": "50%"}),
-                                                       ],
+                                                                        "height": "50%"})],
                                                       style={"display": "flex"}),
                                         html.Br(),
-                                             dbc.Button("Set mask import", id="set-mask-name", className="me-1",
-                                                        style={"background-color": DEFAULT_WIDGET_COLOUR})]),
+                                        html.Div([dbc.Button("Autofill with ROI name", id="mask-name-autofill",
+                                        className="me-1", size="sm", color='dark', outline=True,
+                                        style={"height": "50%", "margin-top": "3px", "margin-right": "10px"}),
+                                        dbc.Tooltip(TOOLTIPS['mask-name-autofill'], target="mask-name-autofill"),
+                                        dbc.Button("Set mask import", id="set-mask-name", className="me-1",
+                                        style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-left": "10px"})],
+                                        style={"display": "flex", "justifyContent": "center"}),
+                                        html.Br()]),
                                             id="mask-name-modal", size='l',
                                             style={"margin-left": "10px", "margin-top": "15px"}),
                                         du.Upload(id='upload-mask', max_file_size=30000,
@@ -224,7 +231,7 @@ def register_app_layout(config, cache_dest):
                                         html.H5("Import quantification results"),
                                         du.Upload(id='upload-quantification', max_file_size=5000,
                                                   filetypes=['h5ad', 'h5', 'csv'],
-                                                  text='Import cell quantification results in CSV format using drag and drop',
+                                                  text='Import quantification results in CSV format using drag and drop',
                                                   max_files=1, upload_id="upload-quantification",
                                                   default_style={"margin-top": "20px", "height": "10%"}),
                                         html.Br(),
@@ -284,15 +291,24 @@ def register_app_layout(config, cache_dest):
                                                                       style={"display": "flex"}),
                                                    id="btn-download-roi-h5py", className="mx-auto", color=None,
                                                    n_clicks=0, style={"margin-top": "10px"}),
+                                        # TODO: include components to adjust the sidetab size in app
+                                        # html.Br(),
+                                        # html.Br(),
+                                        # html.H6("Set side-tab width"),
+                                        # dcc.Slider(20, 70, 0.5, value=37.5, id='data-import-tab-size', marks=None,
+                                        #            tooltip={"placement": "top", "always_visible": False})
                                     ],
                                         style={'width': '100%', 'height': '100%', "margin-top": "5px"})
-
                                 ]),
                                 dbc.Tab(id='db-config', label='mongoDB',
                                         label_style={"color": DEFAULT_WIDGET_COLOUR},
                                 children=[
                                 html.Br(),
                                 dbc.Form([
+                                html.Div([dbc.Label("Connection string", html_for="db-connection-string"),
+                                dbc.Input(type="text", id="db-connection-string", value="ccramic-db.uzqznla.mongodb.net",
+                                style={"width": "75%"}, persistence=config['persistence'],
+                                persistence_type='local')], className="mb-3"),
                                 html.Div([dbc.Label("Username", html_for="db-username"),
                                 dbc.Input(type="text", id="db-username", placeholder="Enter username",
                                 style={"width": "75%"}, persistence=config['persistence'],
@@ -302,7 +318,7 @@ def register_app_layout(config, cache_dest):
                                 dbc.Input(type="password", id="db-password", placeholder="Enter password",
                                           style={"width": "75%"}, persistence=config['persistence'],
                                           persistence_type='local'),
-                                dbc.FormText("Enter your credentials for the mongoDB instance", color="secondary"),
+                                dbc.FormText("Enter your credentials for a mongoDB Atlas connection", color="secondary"),
                                 ], className="mb-3")
                                 ]),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-arrow-right-to-bracket",
@@ -354,8 +370,8 @@ def register_app_layout(config, cache_dest):
                                         className="mb-3", color=None, n_clicks=0, outline=False,
                                         style={"margin-top": "10px"}, size='s'),
                                 ])],
-                                style={"margin-top": "-15px"})],
-                    style={"width": "35%", "padding": "5px", "margin-bottom": "0px"}, scrollable=True),
+                                style={"margin-top": "-15px", "padding": "0px"})],
+                    style={"width": "37.5%", "padding": "3.5px", "margin-bottom": "0px"}, scrollable=True),
                         # style={'width': '100%', 'height': '100%', "margin-top": "5px"}
                         #          )], style={"width": "33%", "padding": "5px", "margin-bottom": "0px"},
                     # scrollable=True),
@@ -379,11 +395,9 @@ def register_app_layout(config, cache_dest):
                                      style={"margin-top": "10px"})],
                                          width=6, style={"display": "inline-block"}),
                         dbc.Col([html.H6("Canvas size"),
-                                           dcc.Slider(50, 150, 5, value=100,
-                                                      id='annotation-canvas-size',
-                                   marks={50: 'small', 100: 'default',
-                                          150: 'large'})],width=4, style={"display": "inline-block",
-                                        "margin-top": "15px"})]),
+                                           dcc.Slider(50, 150, 2.5, value=100, id='annotation-canvas-size',
+                        marks={50: 'small', 100: 'default', 150: 'large'})], width=4,
+                        style={"display": "inline-block", "margin-top": "15px"})]),
                         dbc.Row([dbc.Col(width=2),
                         dbc.Col([html.Div([], style={"margin-top": "15px", "width": "100%",
                                                         "float": "left", "display": "inline-block"})], width=6)],
@@ -484,7 +498,7 @@ def register_app_layout(config, cache_dest):
                                 config={'displaylogo': False},
                                 ), type="default", fullscreen=False, color=DEFAULT_WIDGET_COLOUR)])]),
                                 id="pixel-hist-collapse", is_open=False), style={"minHeight": "100px"}),
-                                 html.Div([
+                                html.Div([
                                 dcc.RangeSlider(0, 100, 1, value=[None, None],
                                 marks=dict([(i, str(i)) for i in range(0, 100, 25)]),
                                 id='pixel-intensity-slider', allowCross=False,
@@ -596,7 +610,7 @@ def register_app_layout(config, cache_dest):
                                         html.Div([dcc.Dropdown([1, 3, 5, 7, 9], 3, id='global-kernel-val-filter',
                                                                style={"width": "75%"}),
                                                   dcc.Input(id="global-sigma-val-filter", type="number", value=1,
-                                                            style={"width": "60%"},
+                                                            style={"width": "60%"}, debounce=True,
                                                             disabled=True, min=0, max=9, step=0.1)],
                                                  style={"display": "flex", "margin": "20px"}),
                                         # dbc.Button("Reset all channels to default", id="set-default-rangeslider-all",
@@ -622,13 +636,12 @@ def register_app_layout(config, cache_dest):
                                                                              labelPosition='bottom',
                                                                              color=DEFAULT_WIDGET_COLOUR,
                                                                              style={"margin-left": "60px"}),
-                                                            html.Abbr(dcc.Checklist(options=[' add boundary'],
+                                                            dcc.Checklist(options=[' add boundary'],
                                                                                     value=[' add boundary'],
                                                                                     id="add-mask-boundary",
                                                                                     style={"margin-left": "35px",
                                                                                            "margin-top": "10px",
                                                                                            "accent-color": DEFAULT_WIDGET_COLOUR}),
-                                                                      title="Use this feature only if the cell boundary was not derived on import"),
                                                             dcc.Checklist(options=[' Show mask ID on hover'],
                                                                           value=[], id="add-cell-id-mask-hover",
                                                                           style={"margin-left": "35px",
@@ -671,7 +684,7 @@ def register_app_layout(config, cache_dest):
                                                 html.H6(children=[], id="gating-param-display", style={"width": "60%"}),
                                                 ], style={"display": "flex", "width": "100%", "justifyContent": "center"}),
                                             html.Br(),
-                                            html.H6("Annotate gated cells", style={"width": "75%"}),
+                                            html.H6("Annotate gated objects", style={"width": "75%"}),
                                             html.Div([dcc.Dropdown(id='quant-annotation-col-gating',
                                             multi=False, options=['ccramic_cell_annotation'],
                                             value="ccramic_cell_annotation", style={"width": "80%"}),
@@ -684,9 +697,28 @@ def register_app_layout(config, cache_dest):
                                             html.Div("Create gating annotation")], style={"display": "flex"}),
                                             id="gating-annotation-create", className="mx-auto", color=None, n_clicks=0,
                                             style={"margin-top": "10px"}),
+                                            html.Br(),
+                                            # TODO: add feature to merge custom gating from external sources
+                                            # into quantification
+                                            # html.Br(),
+                                            # du.Upload(id='upload-custom-gating', max_file_size=1000, max_files=1,
+                                            # text='Upload custom gating parameters to merge into quantification',
+                                            # filetypes=['csv'], upload_id="upload-custom-gating",
+                                            # default_style={'minHeight': 2, 'lineHeight': 2})
                                             ]),
                                 ]),
-                                ], style={"margin-top": "10px"}),
+                                dbc.Tab(label='Marker correlation', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                            children=[
+                                html.Br(),
+                                html.H6("Select target channel"),
+                                dcc.Dropdown(options=[], value=None, id='target-channel-cor', multi=False),
+                                html.Br(),
+                                html.H6("Select baseline channel"),
+                                dcc.Dropdown(options=[], value=None, id='baseline-channel-cor', multi=False),
+                                html.Br(),
+                                html.H6(children=[], id="marker-cor-display")],
+                                style={"margin-top": "10px"}),
+                                ]),
                                 ]),
                                 dbc.Tab(label="Region/presets",
                                 label_style={"color": DEFAULT_WIDGET_COLOUR},
@@ -746,7 +778,7 @@ def register_app_layout(config, cache_dest):
                                                 id="click-annotation-add-circle", style={"margin-top": "12px",
                                                 "accent-color": DEFAULT_WIDGET_COLOUR}),
                                 dcc.Input(id="click-annotation-assignment", type="text", value=None,
-                                          placeholder="Add a cell type for click",
+                                          placeholder="Add an annotation on click",
                                     style={"width": "65%", "margin-left": "1px"})],
                                          style={"display": "flex"}),
                                 dcc.Checklist(options=[' Overlay grid'], value=[],
@@ -812,7 +844,7 @@ def register_app_layout(config, cache_dest):
                                 dcc.Download(id="download-region-csv"),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dbc.Row([dbc.Col([html.H6("Create a region annotation")], width=8),
-                                          dbc.Col([html.H6("Annotate with cell type")], width=4)]),
+                                          dbc.Col([html.H6("Add object annotation")], width=4)]),
                                  dbc.Row([dbc.Col([html.Div([dcc.Input(id="new-annotation-col", type="text",
                                 value="", placeholder="Create annotation column",
                                 style={"width": "50%", "margin-right": "10px", "height": "50%"}),
@@ -832,13 +864,15 @@ def register_app_layout(config, cache_dest):
                                           style={"width": "65%", "margin-right": "10px", "height": "50%"})],
                                 style={"display": "flex"})], width=8),
                                 dbc.Col([
-                                # dcc.Dropdown(id='region-annotation-cell-types',
-                                # multi=False, options=[], placeholder="Select a cell type")
                                 dcc.Input(id="region-annotation-cell-types", type="text",
-                                value="", placeholder="New cell type", style={"width": "65%", "margin-right": "10px",
+                                value="", placeholder="New annotation type", style={"width": "65%", "margin-right": "10px",
                                     "height": "100%"})
                                 ], width=4)]),
                                 dbc.Row(dbc.Col(html.Div([], style={"display": "flex"}))),
+                                html.Br(),
+                                dcc.Checklist(id="bulk-annotate-shapes", value=[],
+                                    options=[' annotate all current shapes'],
+                                    style={"accent-color": DEFAULT_WIDGET_COLOUR}),
                                 dbc.Button("Create annotation", id="create-annotation",
                                 className="me-1", style={"margin-top": "10px",
                                 "background-color": DEFAULT_WIDGET_COLOUR})]),
@@ -875,13 +909,26 @@ def register_app_layout(config, cache_dest):
                                 html.Div([dcc.Dropdown(id='cluster-label-list', multi=False, options=[],
                                 style={'width': '60%',
                                 'margin-right': '-30', 'margin-left': '15px', 'margin-top': '10px'}),
-                                daq.ColorPicker(id="cluster-color-picker", label="Current channel color",
+                                daq.ColorPicker(id="cluster-color-picker", label="Current cluster color",
                                                           value=dict(hex="#00ABFC", rgb=None), size=150)],
                                         style={"display": "flex"}),
-                                html.H6(children=[], id="cluster-assignments"),
+                                dcc.Checklist(id="toggle-clust-selection", value=[' select/deselect all'],
+                                options=[' select/deselect all'], style={"accent-color": DEFAULT_WIDGET_COLOUR}),
+                                dcc.Dropdown(id='cluster-label-selection', multi=True, options=[],
+                                style={'width': '100%', 'margin-left': '5px', 'margin-top': '15px'}),
+                                html.Br(),
+                                dbc.Button("Show cluster labels", id="toggle-cluster-labels",
+                                style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
+                                dbc.Collapse(html.Div([
+                                html.Br(),
+                                html.H6(children=[], id="cluster-assignments")]),
+                                             is_open=False, id='cluster-label-collapse'),
                                 dbc.Modal(id="quantification-roi-modal", children=dbc.ModalBody([
-                                dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute",
-                                           style={"background-color": DEFAULT_WIDGET_COLOUR}),
+                                html.Div([dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute",
+                                           style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
+                                html.B(id="mask-object-counter", style={"margin-left": '7.5px', 'margin-top': '7.5px'}),
+                                dbc.Tooltip(TOOLTIPS['quantify-channels'], target="mask-object-counter")],
+                                         style={"display": "flex", "justifyContent": "center"}),
                                 html.Br(),
                                 dcc.Checklist(id="quant-toggle-list", value=[' select/deselect all'],
                                 options=[' select/deselect all'], style={"accent-color": DEFAULT_WIDGET_COLOUR}),
@@ -932,7 +979,7 @@ def register_app_layout(config, cache_dest):
 
             dbc.Tab(label="Channel gallery", tab_id='gallery-tab', id='gallery-tab',
                     label_style={"color": DEFAULT_WIDGET_COLOUR},
-                        children=[
+                        children=[dcc.Loading([
                             html.Br(),
                             html.H6(TabText().channel_tiles),
                             html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
@@ -956,7 +1003,7 @@ def register_app_layout(config, cache_dest):
                                            style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
                         dbc.Row(id="image-gallery-row")], style={"margin-top": "15px"}),
-                                  ]),
+                        ], type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR)]),
             dbc.Tab(label="Panel metadata", tab_id='metadata-tab', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=
                         [html.Div([dbc.Row([
@@ -979,7 +1026,7 @@ def register_app_layout(config, cache_dest):
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                html.Div([html.B("Cell-level marker expression", style={"margin-bottom": "10px"}),
+                                html.Div([html.B("Object-level marker expression", style={"margin-bottom": "10px"}),
                                 daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap', labelPosition='bottom',
                                     color=DEFAULT_WIDGET_COLOUR, value=True),
                                 dcc.Input(type="number", placeholder="Subset heatmap", id="subset-heatmap",
@@ -1043,7 +1090,7 @@ def register_app_layout(config, cache_dest):
                                         id="dynamic-update-barplot", style={"margin-top": "12px",
                                             "accent-color": DEFAULT_WIDGET_COLOUR}),
                                         html.Br(),
-                                        html.H6("Add annotation to cells"),
+                                        html.H6("Add annotation to UMAP"),
                                         dcc.Input(id="annotation-col-quantification", type="text",
                                         value="", placeholder="New annotation category",
                                         style={"width": "55%", "margin-right": "10px", "height": "100%",
@@ -1055,7 +1102,7 @@ def register_app_layout(config, cache_dest):
                                         multi=False, options=['ccramic_cell_annotation'],
                                             value="ccramic_cell_annotation", style={"width": "75%"}),
                                         dcc.Input(id="annotation-cell-types-quantification", type="text",
-                                        value="", placeholder="New cell type",
+                                        value="", placeholder="New annotation type",
                                         style={"width": "55%", "margin-right": "10px", "height": "100%",
                                                "margin-top": "5px"}),
                                         dbc.Button("Annotate UMAP", id="create-annotation-umap",
@@ -1096,7 +1143,7 @@ def register_app_layout(config, cache_dest):
                                     html.Br(),
                                     html.Br()
                                       ])]),
-                        dbc.Modal(children=dbc.ModalBody([html.H6("Select the cell type annotation column"),
+                        dbc.Modal(children=dbc.ModalBody([html.H6("Select the object type annotation column"),
                         dcc.Dropdown(id='cell-type-col-designation',
                             multi=False, options=[], style={'width': '100%'})]),
                         id="quantification-config-modal", size='l', style={"margin-left": "10px",

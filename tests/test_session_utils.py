@@ -5,7 +5,8 @@ import pytest
 from ccramic.utils.session import (
     remove_ccramic_caches,
     non_truthy_to_prevent_update,
-    validate_session_upload_config)
+    validate_session_upload_config,
+    channel_dropdown_selection)
 import tempfile
 from dash.exceptions import PreventUpdate
 
@@ -40,3 +41,13 @@ def test_validate_session_uploads():
     assert validate_session_upload_config({"fake_key": "fake_val"}) == {'uploads': []}
     upload_dict = {'uploads': ['file_1.mcd']}
     assert validate_session_upload_config(upload_dict) == upload_dict
+
+def test_generate_channel_dropdowns():
+    names = {'ArAr80': 'Gas_1', 'Y89': 'Gas_2', 'In113': 'Histone'}
+    channels = {'ArAr80': '80ArAr', 'Y89': 'Gas', 'In113': 'Histone_126((2979))In113'}
+    options = channel_dropdown_selection(channels, names)
+    assert options == [{'label': 'Gas_1', 'value': 'ArAr80'},
+                       {'label': 'Gas_2', 'value': 'Y89'},
+                       {'label': 'Histone', 'value': 'In113'}]
+    assert not channel_dropdown_selection(None, names)
+    assert not channel_dropdown_selection({}, {})

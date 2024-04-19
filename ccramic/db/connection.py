@@ -2,6 +2,7 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from ccramic.utils.db import format_blend_config_document_for_insert
 from pymongo.collection import Collection
+from pymongo.errors import ConfigurationError
 
 class AtlasDatabaseConnection:
     """
@@ -11,12 +12,13 @@ class AtlasDatabaseConnection:
     The client should have the following configurations: a database corresponding to the `database_name` i.e. `ccramic`,
     and inside the database, a collection corresponding to the `blend_collection_name` i.e. `blend_config`
     """
-    def __init__(self, username: str = None, password: str = None, database_name: str = "ccramic",
+    def __init__(self, connection_string: str="ccramic-db.uzqznla.mongodb.net",
+                 username: str = None, password: str = None, database_name: str = "ccramic",
                  blend_collection_name: str = "blend_config", existing_client: MongoClient=None):
         self.username = username
         self.password = password
-        self.connection_string = f"mongodb+srv://{self.username}:{self.password}@ccramic-db" \
-        f".uzqznla.mongodb.net/?retryWrites=true&w=majority"
+        self.connection_string = f"mongodb+srv://{self.username}:{self.password}@" \
+                                 f"{connection_string}/?retryWrites=true&w=majority"
         self.database_name = database_name
         self.blend_collection_name = blend_collection_name
         self.client = None
@@ -33,9 +35,9 @@ class AtlasDatabaseConnection:
             self.blend_collection = self.database[self.blend_collection_name] if not \
                 new_collection else new_collection
             self.client.admin.command('ping')
-            return True, "Connection to ccramic-db successful"
-        except Exception as e:
-            return False, f"Connection to ccramic-db failed: \n {e}"
+            return True, f"Connection to database: {self.database.name} successful"
+        except (AttributeError, ConfigurationError, Exception) as e:
+            return False, f"Connection to database: {self.database.name} failed: \n {e}"
 
     def blend_configs_by_user(self, user_key="user", id_key="name"):
         """

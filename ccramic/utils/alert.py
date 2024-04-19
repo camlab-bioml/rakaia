@@ -64,7 +64,10 @@ class AlertMessage(BaseModel):
                                                 "Please review the required inputs.",
                       "possible-disk-storage-error": "The imported data could not be read/cached. \n"
                                                      "Check that there is sufficient disk storage to conduct analysis"
-                                                     " (typically 2x the size of the imported files)."}
+                                                     " (typically 2x the size of the imported files).",
+                      "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
+                                         "delimiter does not have any overlapping characters with any of the filenames, "
+                                         "or ROI names. "}
 
 
 class ToolTips(BaseModel):
@@ -75,14 +78,19 @@ class ToolTips(BaseModel):
                       "local-dialog": "Browse the local file system using a dialog. "
                                       "IMPORTANT: may not be compatible with the specific OS.",
                       "delete-selection": "Remove the current data collection. (IMPORTANT): cannot be undone.",
-                      "roi-refresh": "Refresh the current dataset selection. "
-                                    "Can be used if the ROI loading has become corrupted",
+                      "roi-refresh": "Refresh the current dataset selection and canvas figure. "
+                                    "Can be used if the ROI loading or canvas has become corrupted/malformed.",
                       "channel-mod": "Select a channel in the current blend to \nchange colour, "
                                                            "pixel intensity, or apply a filter.",
                       "annot-reimport": "Re-import the current ROI annotations into the quantification "
                                             "results. Annotations must be re-added each time the quantification "
                                             "results are re-generated, or if annotations were generated "
-                                            "without quantification results."}
+                                            "without quantification results.",
+                      "quantify-channels": "Warning: the time required for quantification will grow linearly as "
+                                           "both the number of channels, and number of mask objects increases. "
+                                           "Improve performance by reducing the number of channels quantified.",
+                      "mask-name-autofill": "Matching the mask name to the corresponding ROI name will link the "
+                                            "quantification results to region annotations and ROI gating."}
 
 
 class PanelMismatchError(Exception):
@@ -95,6 +103,9 @@ class DataImportError(Exception):
     """
     Raise when imported data cannot be read fully into the session, likely due to a disk storage error
     """
+    pass
+
+class LazyLoadError(Exception):
     pass
 
 def file_import_message(imported_files: list):

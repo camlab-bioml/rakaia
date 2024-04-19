@@ -22,7 +22,6 @@ class QuantificationColumns(BaseModel):
 class QuantificationFormatError(Exception):
     pass
 
-
 def set_columns_to_drop(measurements_csv=None):
     if measurements_csv is None:
         return QuantificationColumns().defaults
@@ -102,25 +101,24 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
     """
     try:
         umap_frame.columns = ['UMAP1', 'UMAP2']
-        if not all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
-                                                          'yaxis.range[0]', 'yaxis.range[1]']]): raise AssertionError
         if len(measurements) != len(umap_frame):
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
         #     umap_frame.reset_index()
         #     measurements.reset_index()
-        query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
+        if all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']]):
+            query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                          f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                          f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
                          f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
 
-        list_indices = query.index.tolist()
+            list_indices = query.index.tolist()
 
-        if annotation_column not in measurements.columns:
-            measurements[annotation_column] = "None"
+            if annotation_column not in measurements.columns:
+                measurements[annotation_column] = "None"
 
-        measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
+            measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
                                                    annotation_value, measurements[annotation_column])
-
     except KeyError:
         pass
     return measurements
@@ -319,7 +317,6 @@ def subset_measurements_by_point(measurements, x, y):
     except pd.errors.UndefinedVariableError:
         return None
 
-
 def validate_mask_shape_matches_image(mask, image):
     return (mask.shape[0] == image.shape[0]) and (mask.shape[1] == image.shape[1])
 
@@ -362,7 +359,11 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
     elif 'sample' in quantification_frame.columns:
         try:
             index = dataset_options.index(data_selection) + 1
+            # TODO: decide if we should use the dataset index with the experiment name or not
+            # this is the default format coming out of the pipeline, but it doesn't always link the mask, ROI, and
+            # quant sheet properly
             sample_name = f"{exp}_{index}"
+            # sample_name = exp
             return sample_name, 'sample'
         except IndexError:
             return None, None
@@ -371,7 +372,8 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
                                            cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True,
-                                           use_gating_subset: bool = False, gating_subset_list: list=None):
+                                           use_gating_subset: bool = False, gating_subset_list: list=None,
+                                           cluster_option_subset=None):
     """
     Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
     remain as greyscale values
@@ -385,7 +387,10 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
         mask_bool = np.isin(mask_array, gating_subset_list)
         mask_array[~mask_bool] = 0
     try:
-        for cell_type in cluster_frame[cluster_col].unique().tolist():
+        # set the cluster assignments to use either from the subset, or the default of all
+        clusters_to_use = [str(select) for select in cluster_option_subset] if cluster_option_subset is not None else \
+            cluster_frame[cluster_col].unique().tolist()
+        for cell_type in clusters_to_use:
             cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
             # make sure that the cells are integers so that they match the array values of the mask
             cell_list = [int(i) for i in cell_list]
@@ -397,9 +402,9 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
         if retain_cells:
             already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
             mask_array[already_cells] = 0
-            # mask_array = np.where(mask_array > 0, 255, 0).astype(np.uint8)
-            # px.imshow(Image.fromarray(mask_array).convert('RGB')).show()
-            return (empty + np.array(Image.fromarray(mask_array).convert('RGB'))).clip(0, 255).astype(np.uint8)
+            mask_to_add = np.array(Image.fromarray(mask_array).convert('RGB'))
+            mask_to_add = np.where(mask_to_add > 0, 255, 0).astype(empty.dtype)
+            return (empty + mask_to_add).clip(0, 255).astype(np.uint8)
         else:
             return empty.astype(np.uint8)
     except KeyError:

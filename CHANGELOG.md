@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.14.0] - 2024-04-18
+
+### Added
+
+- Tab for marker correlation: set a target and baseline marker with masking to get
+proportion of marker overlap between mask/image and target to baseline within mask objects + Pearson pixel correlation
+(uses current channel blend parameters for filter and threshold) (compatible with zoom)
+- Button to autofill single mask upload names with the current ROI identifier
+- Mask object counter in the quantification modal when a mask is enabled
+- Exception thrown when lazy loading doesn't work for the current ROI, possible due to the string delimiter
+- Generalize the mongoDB database access by exposing the connection string as an input: Allows custom
+configuration of mongoDB instances
+- Option to select specific cluster categories for mask projection
+- Checklist toggle to bulk annotate all current canvas shapes (without, defaults to most recent)
+
+### Fixed
+- Update canvas shape filtering on freeform draw to clear errors caused by
+[plotly 4462](https://github.com/plotly/plotly.py/issues/4462)
+- Fix switch trigger to disable ROI switching on keyboard
+- Mask objects in ROI thumbnails are now all represented by the same intensity (255)
+- Do not reset channels to quantify on ROI changes
+- Proper ROI querying with tiff files from UMAP
+- Proper blanking of the UMAP plot when the quantification results are updated in-browser
+- Freeform rectangle coordinates now parsed from either left or right dragging
+- Fixed bug where annotating from UMAP overwrites the annotation hash instead of the quantification sheet
+- PDF writer now includes all annotations in loop
+
+### Changed
+- Enforce ROI change can occur only on the canvas tab
+- Edit the uirevision on shape clearing to resolve [plotly 2741](https://github.com/plotly/dash/issues/2741):
+modify the uirevision variable while maintaining truthy value
+- Better visibility for channels set to white in the dash ag grid (label set to black)
+- minimize canvas compression level to speed up image generation
+- More lenient cluster sheet import (now only verifies required column names)
+- Wrap gallery tiles in loading screen
+- Do not read ROI image for adjusting canvas size/dimensions
+
 ## [0.13.0] - 2024-03-12
 
 ### Added

@@ -1,11 +1,11 @@
 import h5py
 from pathlib import Path
-
 import numpy as np
 from tifffile import TiffFile
 from ccramic.utils.pixel_level_utils import (
     split_string_at_pattern,
-    set_array_storage_type_from_config, get_default_channel_upper_bound_by_percentile)
+    set_array_storage_type_from_config,
+    get_default_channel_upper_bound_by_percentile)
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 from ccramic.utils.alert import PanelMismatchError

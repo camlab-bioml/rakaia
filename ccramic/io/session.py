@@ -33,7 +33,6 @@ class TabText(BaseModel):
                           "Each thumbnail enables the specific ROI to be loaded into the main canvas."
 
 
-
 class SessionServerside(Serverside):
     """
     This class defines the string identification for Serverside objects depending on the session invocation

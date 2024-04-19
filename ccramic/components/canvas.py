@@ -29,13 +29,17 @@ class CanvasImage:
     """
     def __init__(self, canvas_layers: dict, data_selection: str, currently_selected: list,
                  mask_config: dict, mask_selection: str, mask_blending_level: int,
-                 overlay_grid: list, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
-                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
-                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
-                 global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
-                cluster_frame, cluster_type: str="mask", custom_scale_val: int=None,
-                 apply_gating: bool=False, gating_cell_id_list: list=None,
-                 annotation_color: str="white"):
+                 overlay_grid: Union[list, bool], mask_toggle: Union[bool, str], add_mask_boundary: Union[bool, str],
+                 invert_annot: Union[bool, str], cur_graph: Union[go.Figure, dict], pixel_ratio: Union[int, float, None],
+                 legend_text: str, toggle_scalebar: Union[bool, str, list], legend_size: Union[int, float],
+                 toggle_legend: Union[bool, str, list], add_cell_id_hover: Union[bool, str, list],
+                 show_each_channel_intensity: Union[bool, str, list], raw_data_dict: dict,
+                 aliases: dict, global_apply_filter: Union[bool, str, list]=False, global_filter_type: str="median",
+                 global_filter_val: Union[int, float]=3, global_filter_sigma: Union[int, float]=1.0,
+                 apply_cluster_on_mask: Union[bool, str, list]=False, cluster_assignments_dict: dict=None,
+                 cluster_frame: Union[pd.DataFrame, dict]=None, cluster_type: str="mask", custom_scale_val: int=None,
+                 apply_gating: bool=False, gating_cell_id_list: list=None, annotation_color: str="white",
+                 cluster_assignment_selection: Union[list, None]=None):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -46,7 +50,10 @@ class CanvasImage:
         self.mask_toggle = mask_toggle
         self.add_mask_boundary = add_mask_boundary
         self.invert_annot = invert_annot
-        self.cur_graph = cur_graph
+        try:
+            self.cur_graph = CanvasLayout(cur_graph).get_fig()
+        except (KeyError, TypeError):
+            self.cur_graph = cur_graph
         self.pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         self.legend_text = legend_text
         self.toggle_scalebar = toggle_scalebar
@@ -68,6 +75,12 @@ class CanvasImage:
         self.apply_gating = apply_gating
         self.gating_cell_id_list = gating_cell_id_list
         self.annotation_color = annotation_color
+        self.uirevision_status = True
+        # try to get the uirevision status from the current graph if it exists: two possible truthy values
+        # are toggled when shapes are cleared
+        if self.cur_graph and 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout']:
+            self.uirevision_status = self.cur_graph['layout']['uirevision']
+        self.cluster_selection = cluster_assignment_selection
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
@@ -86,32 +99,47 @@ class CanvasImage:
                     annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
                                 self.cluster_frame[self.data_selection],
                                 self.cluster_assignments_dict[self.data_selection], use_gating_subset=self.apply_gating,
-                                                                        gating_subset_list=self.gating_cell_id_list)
+                                gating_subset_list=self.gating_cell_id_list,
+                                cluster_option_subset=cluster_assignment_selection)
                     annot_mask = annot_mask if annot_mask is not None else \
                         np.where(self.mask_config[self.mask_selection]["array"].astype(np.uint8) > 0, 255, 0)
-                    image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask, mask_level, 0)
+                    image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask.astype(np.uint8), mask_level, 0)
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
                     mask = self.mask_config[self.mask_selection]["array"].astype(np.uint8)
-                    if self.apply_gating:
-                        mask = subset_mask_outline_using_cell_id_list(self.mask_config[self.mask_selection]["raw"],
-                            self.mask_config[self.mask_selection]["raw"], self.gating_cell_id_list).astype(np.uint8)
+                    mask = self.apply_gating_to_canvas_mask_image(mask)
                     mask = np.where(mask > 0, 255, 0)
                     image = cv2.addWeighted(image.astype(np.uint8), 1, mask.astype(np.uint8), mask_level, 0)
-                if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
-                    # add the border of the mask after converting back to greyscale to derive the conversion
-                    image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                            self.mask_config[self.mask_selection]["boundary"].astype(np.uint8), 1, 0)
+                image = self.overlay_mask_outline_on_mask_image(image)
 
-        if ' Overlay grid' in self.overlay_grid:
+        image = self.overlay_grid_on_additive_image(image)
+        self.image = image
+        self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
+                                # TODO: decide if compression level should be toggleable
+                                # currently set to lowest possible compression level for speed
+                                binary_compression_level=1)
+
+    def overlay_grid_on_additive_image(self, image: Union[np.array, np.ndarray]):
+        if self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     generate_greyscale_grid_array((image.shape[0],
                                     image.shape[1])).astype(np.uint8), 1, 0)
-        # TODO: decide if grid lines should be included in the class image for export to tiff
-        self.image = image
-        self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
-                                binary_compression_level=5)
-        # fig.update(data=[{'customdata':)
+        return image
+
+    def apply_gating_to_canvas_mask_image(self, mask: Union[np.array, np.ndarray]):
+        if self.apply_gating:
+            mask = subset_mask_outline_using_cell_id_list(self.mask_config[self.mask_selection]["raw"],
+                                                          self.mask_config[self.mask_selection]["raw"],
+                                                          self.gating_cell_id_list).astype(np.uint8)
+        return mask
+
+    def overlay_mask_outline_on_mask_image(self, image: Union[np.array, np.ndarray]):
+        if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
+            # add the border of the mask after converting back to greyscale to derive the conversion
+            image = cv2.addWeighted(image.astype(np.uint8), 1,
+                                    self.mask_config[self.mask_selection]["boundary"].astype(np.uint8), 1, 0)
+        return image
+
     def generate_canvas(self) -> Union[go.Figure, dict]:
         x_axis_placement = set_x_axis_placement_of_scalebar(self.image.shape[1], self.invert_annot)
         # if the current graph already has an image, take the existing layout and apply it to the new figure
@@ -122,26 +150,15 @@ class CanvasImage:
         # legend is y = 0.05
         hover_template_exists = 'data' in self.cur_graph and 'customdata' in self.cur_graph['data'] and \
                                 self.cur_graph['data']['customdata'] is not None
-        if 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout'] and \
-                self.cur_graph['layout']['uirevision'] and not hover_template_exists:
+        if self.current_canvas_exists(hover_template_exists):
+            # self.uirevision_status = self.cur_graph['layout']['uirevision']
             try:
-                # fig['layout'] = cur_graph['layout']
-                self.cur_graph['data'] = self.canvas['data']
-                # if taking the old layout, remove the current legend and remake with the new layers
-                # imp: do not remove the current scale bar value if its there
-                if 'annotations' in self.cur_graph['layout'] and len(self.cur_graph['layout']['annotations']) > 0:
-                    self.cur_graph['layout']['annotations'] = [annotation for annotation in \
-                                                          self.cur_graph['layout']['annotations'] if \
-                                                          annotation['y'] == 0.06 and self.toggle_scalebar]
-                if 'shapes' in self.cur_graph['layout'] and len(self.cur_graph['layout']['shapes']):
-                    self.cur_graph['layout']['shapes'] = [shape for shape in self.cur_graph['layout']['shapes'] if \
-                                                     shape['type'] != 'line']
-                fig = self.cur_graph
+                fig = self.transfer_canvas_data_to_existing_canvas()
                 # del cur_graph
             # key error could happen if the canvas is reset with no layers, so rebuild from scratch
-            except (KeyError, TypeError):
+            except (KeyError, TypeError, ValueError):
                 fig = self.canvas
-                fig['layout']['uirevision'] = True
+                fig['layout']['uirevision'] = self.uirevision_status
 
                 if self.toggle_scalebar:
                     fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
@@ -150,22 +167,13 @@ class CanvasImage:
                                                     scale_color=self.annotation_color)
 
                 fig = go.Figure(fig)
-                fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                                  xaxis=XAxis(showticklabels=False, domain=[0, 1]),
-                                  yaxis=YAxis(showticklabels=False),
-                                  margin=dict(
-                                      l=10,
-                                      r=0,
-                                      b=25,
-                                      t=35,
-                                      pad=0
-                                  ))
+                fig = self.set_default_canvas_layout(fig)
                 fig.update_layout(hovermode="x")
         else:
             fig = self.canvas
             # del cur_graph
             # if making the fig for the first time, set the uirevision
-            fig['layout']['uirevision'] = True
+            fig['layout']['uirevision'] = self.uirevision_status
 
             if self.toggle_scalebar:
                 fig = add_scale_value_to_figure(fig, self.get_shape(), font_size=self.legend_size,
@@ -174,16 +182,7 @@ class CanvasImage:
                                                 scale_color=self.annotation_color)
 
             fig = go.Figure(fig)
-            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                              xaxis=XAxis(showticklabels=False),
-                              yaxis=YAxis(showticklabels=False),
-                              margin=dict(
-                                  l=10,
-                                  r=0,
-                                  b=25,
-                                  t=35,
-                                  pad=0
-                              ))
+            fig = self.set_default_canvas_layout(fig)
             fig.update_layout(hovermode="x")
 
         fig = go.Figure(fig)
@@ -192,6 +191,51 @@ class CanvasImage:
         # set how far in from the lefthand corner the scale bar and colour legends should be
         # higher values mean closer to the centre
         # fig = canvas_layers[image_type][currently_selected[0]]
+        fig = self.add_canvas_legend_text(fig, x_axis_placement)
+
+        # set the x-axis scale placement based on the size of the image
+        # for adding a scale bar
+        fig = self.add_canvas_scalebar(fig, x_axis_placement)
+
+        fig = self.add_canvas_hover_template(fig)
+        return fig.to_dict()
+
+    def get_shape(self):
+        return self.image.shape
+
+    def get_image(self):
+        return self.image
+
+    def current_canvas_exists(self, hover_template_exists: bool=False):
+        """
+        Return if the current canvas passed is a real canvas object
+        """
+        return 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout'] and \
+                self.cur_graph['layout']['uirevision'] and not hover_template_exists
+
+    def transfer_canvas_data_to_existing_canvas(self):
+        """
+        Transfer the newly created canvas image to the imported canvas if it has existing parameters such as
+        uirevision
+        """
+        # fig['layout'] = cur_graph['layout']
+        self.cur_graph['data'] = self.canvas['data']
+        # if taking the old layout, remove the current legend and remake with the new layers
+        # imp: do not remove the current scale bar value if its there
+        if 'annotations' in self.cur_graph['layout'] and len(self.cur_graph['layout']['annotations']) > 0:
+            self.cur_graph['layout']['annotations'] = [annotation for annotation in \
+                                                       self.cur_graph['layout']['annotations'] if \
+                                                       annotation['y'] == 0.06 and self.toggle_scalebar]
+        if 'shapes' in self.cur_graph['layout'] and len(self.cur_graph['layout']['shapes']):
+            self.cur_graph['layout']['shapes'] = [shape for shape in self.cur_graph['layout']['shapes'] if \
+                                                  shape['type'] != 'line']
+        return self.cur_graph
+
+    def add_canvas_legend_text(self, fig: go.Figure, x_axis_placement: Union[int, float]):
+        """
+        Add canvas legend text using a specified text size and x axis placement
+        The y coordinate is always fixed at 0.05 to make it readily identifiable when parsing the shape dictionary
+        """
         if self.legend_text != '' and self.toggle_legend:
             fig.add_annotation(text=self.legend_text, font={"size": self.legend_size + 1}, xref='paper',
                                yref='paper',
@@ -201,24 +245,14 @@ class CanvasImage:
                                # yanchor='bottom',
                                bgcolor="black",
                                showarrow=False)
+        return fig
 
-        # set the x-axis scale placement based on the size of the image
-        # for adding a scale bar
-        if self.toggle_scalebar:
-            # set the x0 and x1 depending on if the bar is inverted or not
-            x_0 = x_axis_placement if not self.invert_annot else (x_axis_placement - self.proportion)
-            x_1 = (x_axis_placement + self.proportion) if not self.invert_annot else x_axis_placement
-            fig.add_shape(type="line",
-                          xref="paper", yref="paper",
-                          x0=x_0, y0=0.05, x1=x_1,
-                          y1=0.05, line=dict(color=self.annotation_color, width=2))
-
-        # set the custom hovertext if is is requested
+    def add_canvas_hover_template(self, fig: go.Figure):
         # the masking mask ID get priority over the channel intensity hover
         # TODO: combine both the mask ID and channel intensity into one hover if both are requested
 
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0 and \
-                ' Show mask ID on hover' in self.add_cell_id_hover:
+                self.add_cell_id_hover:
             try:
                 # fig.update(data=[{'customdata': None}])
                 fig.update(data=[{'customdata': self.mask_config[self.mask_selection]["hover"]}])
@@ -226,7 +260,7 @@ class CanvasImage:
             except KeyError:
                 new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
 
-        elif " Show channel intensities on hover" in self.show_each_channel_intensity:
+        elif self.show_each_channel_intensity:
             # fig.update(data=[{'customdata': None}])
             hover_stack = np.stack(tuple(self.raw_data_dict[self.data_selection][elem] for \
                                          elem in self.currently_selected),
@@ -245,13 +279,37 @@ class CanvasImage:
             fig.update(data=[{'customdata': None}])
             new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
         fig.update_traces(hovertemplate=new_hover)
-        return fig.to_dict()
+        return fig
 
-    def get_shape(self):
-        return self.image.shape
 
-    def get_image(self):
-        return self.image
+    def add_canvas_scalebar(self, fig: go.Figure, x_axis_placement: Union[int, float]):
+        """
+        Add a canvas scalebar with a set bar width of 2 and a number size set by the user
+        The y coordinate is always fixed at 0.05 to make it readily identifiable when parsing the shape dictionary
+        """
+        if self.toggle_scalebar:
+            # set the x0 and x1 depending on if the bar is inverted or not
+            x_0 = x_axis_placement if not self.invert_annot else (x_axis_placement - self.proportion)
+            x_1 = (x_axis_placement + self.proportion) if not self.invert_annot else x_axis_placement
+            fig.add_shape(type="line",
+                          xref="paper", yref="paper",
+                          x0=x_0, y0=0.05, x1=x_1,
+                          y1=0.05, line=dict(color=self.annotation_color, width=2))
+        return fig
+
+    @staticmethod
+    def set_default_canvas_layout(fig: go.Figure):
+        fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                          newshape=dict(line=dict(color="white")),
+                          xaxis=XAxis(showticklabels=False, domain=[0, 1]),
+                          yaxis=YAxis(showticklabels=False, domain=[0, 1]),
+                          margin=dict(
+                              l=1.5,
+                              r=1.5,
+                              b=25,
+                              t=35,
+                              pad=0))
+        return fig
 
 
 class CanvasLayout:
@@ -270,7 +328,8 @@ class CanvasLayout:
         try:
             figure['layout']['yaxis']['domain'] = [0, 1]
             figure['layout']['xaxis']['domain'] = [0, 1]
-        except KeyError: pass
+        except KeyError:
+            pass
         self.figure = figure
         # TODO: add condition checking whether the annotations or shapes are held in tuples (do not allow)
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
@@ -480,6 +539,7 @@ class CanvasLayout:
                                         (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
                 else:
                     custom_scale_val = int(float(custom_scale_val) * float(pixel_ratio))
+                custom_scale_val = custom_scale_val + 1 if custom_scale_val == 0 else custom_scale_val
                 scale_annot = str(custom_scale_val) + "μm"
                 scale_text = f'<span style="color: white">{str(scale_annot)}</span><br>'
                 # get the index of the list element corresponding to this text annotation
@@ -490,11 +550,10 @@ class CanvasLayout:
         return fig.to_dict()
 
     def clear_improper_shapes(self):
-
         new_shapes = []
         for shape in self.cur_shapes:
             if 'label' in shape and 'texttemplate' not in shape['label']:
-                shape['label']['texttemplate'] = ''
+                shape['label'] = {}
             try:
                 if not is_bad_shape(shape):
                     new_shapes.append(shape)
@@ -505,11 +564,11 @@ class CanvasLayout:
 
     def add_cluster_annotations_as_circles(self, mask, cluster_frame, cluster_assignments,
                                            data_selection, circle_size=2, use_gating: bool=False,
-                                           gating_cell_id_list: list=None):
+                                           gating_cell_id_list: list=None, cluster_selection_subset: list=None):
         """
         Add an annotation circle to every mask object in a mask, or in a list of gated objects
         requires:
-        mask = a mask with raw object values starting at 1 in numpt int32 form
+        mask = a mask with raw object values starting at 1 in numpy int32 form
         cluster_frame = a dataframe with the columns `cell_id` and `cluster`
         cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
         data_selection = string representation of the current ROI
@@ -518,6 +577,8 @@ class CanvasLayout:
         cluster_frame = pd.DataFrame(cluster_frame)
         cluster_frame = cluster_frame.astype(str)
         ids_use = gating_cell_id_list if (gating_cell_id_list is not None and use_gating) else np.unique(mask)
+        clusters_to_use = cluster_selection_subset if cluster_selection_subset is not None else \
+            cluster_frame['cluster'].unique().tolist()
         for mask_id in ids_use:
             # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
             subset = np.where(mask == int(mask_id), int(mask_id), 0)
@@ -525,7 +586,7 @@ class CanvasLayout:
             for region in region_props:
                 center = region.centroid
             annotation = pd.Series(cluster_frame[cluster_frame['cell_id'] == str(mask_id)]['cluster']).to_list()
-            if annotation:
+            if annotation and str(annotation[0]) in clusters_to_use:
                 annotation = str(annotation[0])
                 # boundary[int(center[0]), int(center[1])] = mask_id
                 shapes.append(
@@ -571,3 +632,22 @@ class CanvasLayout:
         fig['layout']['shapes'] = shapes
         fig['layout']['annotations'] = annotations
         return fig.to_dict(), new_layout
+
+    def add_click_point_circle(self, x_coord: int=None, y_coord: int=None, circle_size: Union[float, int]=None):
+        self.cur_shapes.append({'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
+                                'x0': (x_coord - int(circle_size)), 'x1': (x_coord + int(circle_size)),
+                                'xref': 'x', 'y0': (y_coord - int(circle_size)),
+                                'y1': (y_coord + int(circle_size)), 'yref': 'y'})
+        self.figure['layout']['shapes'] = self.cur_shapes
+        return self.figure
+
+
+def reset_graph_with_malformed_template(graph: Union[go.Figure, dict]):
+    """
+    Parse a current graph that may have malformed shapes (i.e. a shape with a blank texttemplate in the 'label'
+    slot), and return a cleaned graph dictionary object with the dragmode set to zoom
+    """
+    graph = graph.to_dict() if not isinstance(graph, dict) else graph
+    fig = go.Figure(CanvasLayout(graph).get_fig())
+    fig.update_layout(dragmode="zoom")
+    return fig

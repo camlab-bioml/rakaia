@@ -29,3 +29,14 @@ def validate_session_upload_config(cur_session_config: dict=None):
     """
     return cur_session_config if cur_session_config is not None and 'uploads' in cur_session_config and \
             len(cur_session_config['uploads']) > 0 else {'uploads': []}
+
+def channel_dropdown_selection(channels: dict=None, channel_names: dict=None):
+    """
+    Generate the list of channel dropdown options for a particular session
+    Each element of the list is a dictionary with a label and value for the channel
+    names are the editable display name for the channel, and values are the internal keys that do not change
+    """
+    if channels and channel_names:
+        return [{'label': channel_names[i], 'value': i} for i in channels.keys() if len(i) > 0 and \
+                i not in ['', ' ', None] and i in channel_names.keys()]
+    return []
