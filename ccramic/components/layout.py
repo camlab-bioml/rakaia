@@ -32,7 +32,8 @@ def register_app_layout(config, cache_dest):
                   id="alert-modal", size='xl'),
         # this modal is for the fullscreen view and does not belong in a nested tab
         dbc.Modal(children=[dbc.ModalHeader(),
-            dbc.ModalBody([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
+            dbc.ModalBody
+            ([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
                                                                            fullscreen_mode=True)])],
             id="fullscreen-canvas", fullscreen=True, size='xl',
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
@@ -116,7 +117,12 @@ def register_app_layout(config, cache_dest):
                         style={"margin-left": "10px", "margin-top": "15px"}),
                 html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
             style={"margin-bottom": "15px"}),
-            html.H6(id="current-roi-ha", style={"float": "right"}),
+            # html.H6(id="current-roi-ha", style={"float": "right"}),
+            html.Div([dcc.Dropdown(id='data-collection', multi=False, options=[],
+                placeholder='Select a dataset/ROI', style={'justifyContent': 'right'}),
+                dbc.Tooltip(None, target="data-collection", id='data-collection-tooltip')],
+            style={'width': '40%', 'justifyContent': 'right', 'float': 'right', 'display': 'inline-block',
+                   'padding': '0px'}),
             dbc.Tab(label='Image annotation', tab_id='image-annotation',
                     active_label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=[
@@ -190,13 +196,11 @@ def register_app_layout(config, cache_dest):
                                         dbc.Tooltip(TOOLTIPS['delete-selection'], target="remove-collection")],
                                         style={"width": "100%"}),
                                         html.Br(),
-                                        html.Br(),
-                                        html.H5("Choose data collection/ROI", style={'width': '65%'}),
+                                        # html.H5("Choose data collection/ROI", style={'width': '65%'}),
                                         # TODO: set dropdown height based on length
                                         # https://community.plotly.com/t/long-dropdown-values-overlap/14843
-                                        dcc.Dropdown(id='data-collection', multi=False, options=[],
-                                                     style={'width': '100%'}),
-                                        html.Br(),
+                                        # dcc.Dropdown(id='data-collection', multi=False, options=[],
+                                        #              style={'width': '100%'}),
                                         dbc.Button("Refresh canvas", id="data-selection-refresh", className="me-1",
                                         size="sm", color='dark', outline=True, style={"float": "left",
                                                 "margin-right": "12.5px", "height": "50%"}),
@@ -378,7 +382,7 @@ def register_app_layout(config, cache_dest):
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([dbc.Col(html.Div([dbc.Button(
                         children=html.Span([html.I(className="fa-solid fa-solid fa-solid fa-file-export",
-                        style={"display": "inline-block"}),html.Div("Show import panel")],
+                        style={"display": "inline-block"}),html.Div("Show input panel")],
                         style={"margin-top": "-5px", "margin-bottom": "10px"}),
                                    id="inputs-offcanvas-button",
                                    color=None, n_clicks=0,
@@ -457,7 +461,7 @@ def register_app_layout(config, cache_dest):
                                  style={"display": "flex", "justifyContent": "center"},
                                  id="canvas-div-holder"),
                     # html.Div(id='blend-color-legend', style={'whiteSpace': 'pre-line'}),
-                    ]),width=9),
+                    ], style={"margin-top": "5px"}), width=9),
                         dbc.Col([
                             html.Div(
                                 [html.Div([html.H5("Channel modification",
@@ -525,13 +529,13 @@ def register_app_layout(config, cache_dest):
                                            min=0, max=9, step=1, debounce=True),
                                  dcc.Input(id="sigma-val-filter", type="number", value=1, style={"width": "50%"},
                                            disabled=True, min=0, max=9, step=0.1, debounce=True)],
-                                style={"display": "inline-block", "margin": "20px"}),
+                                style={"display": "inline-block", "margin": "20px", "margin-top": "-10px"}),
                                  html.Br(),
                                  dbc.Button(
                                      children=html.Span([html.I(className="fa-solid fa-gears",
                                                                 style={"display": "inline-block",
                                                                        "margin-right": "3px"}),
-                                                         html.Div("Advanced canvas options"),
+                                                         html.Div("Canvas/region settings"),
                                                          ]),
                                      id="blend-offcanvas-button", className="mx-auto",
                                      color=None, n_clicks=0, style={"display": "flex", "width": "auto",
@@ -948,7 +952,7 @@ def register_app_layout(config, cache_dest):
                                      id="set-sort",
                                      color=None, n_clicks=0, className="mx-auto",
                                      style={"display": "flex", "width": "auto", "align-items": "center",
-                                                   "float": "center", "justify-content": "center"}),
+                                    "float": "center", "justify-content": "center", "margin-top": "-10px"}),
                                      dag.AgGrid(
                                      id='blend-options-ag-grid',
                                      rowData=[],

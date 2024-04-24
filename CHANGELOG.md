@@ -7,10 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-04-19
+## [0.15.0] - 2024-04-24
+
+### Added
+
+- warning message for ROI query when images or quant results are missing
 
 ### Fixed
+
 - missing callback output for opening in-browser quantification modal
+
+### Changed
+
+- ROI selection menu moved to main canvas to facilitate more consistent use
+- mask boundaries using `skimage` now use the innermost pixels as opposed to outer
+
 
 ## [0.14.0] - 2024-04-18
 

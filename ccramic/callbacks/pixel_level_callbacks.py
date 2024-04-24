@@ -53,7 +53,7 @@ from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
 from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
-    adjust_option_height_from_list_length)
+    adjust_option_height_from_list_length, set_roi_tooltip_based_on_length)
 from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json, parse_local_path_imports
 from ccramic.io.session import (
     write_blend_config_to_json,
@@ -267,7 +267,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('image_layers', 'value', allow_duplicate=True),
                        Output('uploaded_dict', 'data', allow_duplicate=True),
                        Output('canvas-div-holder', 'children'),
-                       Output('current-roi-ha', 'children'),
+                       Output('data-collection-tooltip', 'children'),
                        Output('cur_roi_dimensions', 'data'),
                        State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
@@ -291,7 +291,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # set the default canvas to return without a load screen
         if image_dict and data_selection and names:
             exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
-            roi_name = str(roi_name) + f" ({str(exp)})" if "acq" in str(roi_name) else str(roi_name)
             if ' sort (A-z)' in sort_channels:
                 channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
             else: channels_return = names
@@ -330,10 +329,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         channels_selected = []
                     return channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
                         image_dict, key="upload_dict", use_unique_key=app_config['serverside_overwrite']), \
-                        canvas_return, f"Current ROI: {roi_name}", dim_return
+                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return
                 except AssertionError:
                     return [], [], SessionServerside(image_dict, key="upload_dict", use_unique_key=
-                    app_config['serverside_overwrite']), canvas_return, f"Current ROI: {roi_name}", dim_return
+                    app_config['serverside_overwrite']), canvas_return, set_roi_tooltip_based_on_length(
+                        data_selection, delimiter), dim_return
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return channel_dropdown_selection(channels_return, names), dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update

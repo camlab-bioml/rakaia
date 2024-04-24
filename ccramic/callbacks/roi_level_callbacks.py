@@ -24,6 +24,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('dataset-query-gallery', 'style'),
                        Output('dataset-query-gallery-list', 'data'),
                        Output('main-tabs', 'active_tab', allow_duplicate=True),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
@@ -43,12 +44,13 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State("global-kernel-val-filter", 'value'),
                        State("global-sigma-val-filter", 'value'),
                        State('dataset-delimiter', 'value'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
     def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
                                     existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
                                     dataset_options, query_cell_id_lists, global_apply_filter,
-                                    global_filter_type, global_filter_val, global_filter_sigma, delimiter):
+                                    global_filter_type, global_filter_val, global_filter_sigma, delimiter, error_config):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -80,10 +82,12 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 roi_list = list(set(rois_exclude + roi_list))
             roi_list.append(data_selection)
             row_children = row_children + new_row_children
-            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query"
+            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update
         else:
-            raise PreventUpdate
-
+            # TODO: add warning message if query does not happen
+            error_config = {"error": None} if error_config is None else error_config
+            error_config["error"] = AlertMessage().warnings["invalid_query"]
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
 
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),

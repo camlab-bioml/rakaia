@@ -64,7 +64,7 @@ def get_min_max_values_from_rect_box(coord_dict):
     return x_min, x_max, y_min, y_max
 
 def convert_mask_to_cell_boundary(mask):
-    boundaries = find_boundaries(mask, mode='outer', connectivity=1)
+    boundaries = find_boundaries(mask, mode='inner', connectivity=1)
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
 
 
