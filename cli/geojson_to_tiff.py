@@ -14,7 +14,7 @@ def cli_parser():
             description="Convert a geojson tiff into a greyscale tiff mask array. Requires the user to set the "
                         "output dimensions of the tiff. Certain annotations can be ignored as holes/blank in the "
                         "final output mask.",
-            usage='python geojson_to_tiff.py -i input.geojson -o output.tiff -x 1500 -y 1200 -ht "Lumen"')
+            usage='Example:\n python geojson_to_tiff.py -i input.geojson -o output.tiff -x 1500 -y 1200 -ht "Lumen"')
     parser.add_argument('-i', "--input", action="store",
                         help="Path input to a geoJSON file",
                         dest="input", type=str, required=True)
@@ -32,7 +32,7 @@ def cli_parser():
                         dest="outfile", default="geojson.tiff", type=str)
     parser.add_argument('-ht', "--hole-types", action="store",
                         help="A list of comma separated annotations to treat as holes (i.e. 0 in the final mask)",
-                        dest="hole_types", default="geojson.tiff", type=str)
+                        dest="hole_types", default="", type=str)
 
 
     return parser
@@ -44,7 +44,7 @@ def main(sysargs = sys.argv[1:]):
     parser = cli_parser()
     args = parser.parse_args(sysargs)
     out_shape = (args.height, args.width)
-    list_of_hole_types = args.hole_types.split(',')
+    list_of_hole_types = args.hole_types.split(',') if args.hole_types else []
     merged_mask = np.zeros(out_shape, dtype=np.float32)
     georead = geopandas.read_file(Path(args.input))
     feature_index = 1

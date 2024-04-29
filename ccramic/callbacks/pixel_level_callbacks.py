@@ -202,7 +202,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             session_dict['unique_images'] = fileparser.unique_image_names
             columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
             data = pd.DataFrame(fileparser.dataset_information_frame).to_dict(orient='records')
-            blend_return = fileparser.blend_config if current_blend is None or len(current_blend) == 0 else dash.no_update
+            blend_return = fileparser.blend_config if (current_blend is None or len(current_blend) == 0) else dash.no_update
             return SessionServerside(fileparser.image_dict, key="upload_dict",
                 use_unique_key=app_config['serverside_overwrite']), session_dict, blend_return, columns, data, error_config
         raise PreventUpdate
@@ -531,10 +531,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                 if elem not in current_blend_dict.keys():
-                    current_blend_dict[elem] = {'color': None, 'x_lower_bound': 0, 'x_upper_bound':
+                    current_blend_dict[elem] = {'color': '#FFFFFF', 'x_lower_bound': 0, 'x_upper_bound':
                         get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem]),
                             'filter_type': None, 'filter_val': None, 'filter_sigma': None}
-                    current_blend_dict[elem]['color'] = '#FFFFFF'
                     if autofill_channel_colours:
                         current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     if None not in (preset_selection, preset_dict):
@@ -1374,7 +1373,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
-                       Output('blending_colours', 'data', allow_duplicate=True),
                        # Input('image-analysis', 'value'),
                        Input('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
@@ -1415,7 +1413,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # maintain the original order of channels that is dictated by the metadata
                 # decide if channel view or ROI view is selected
                 # channel view
-                blend_return = dash.no_update
                 if view_by_channel and channel_selected is not None:
                     # views = get_all_images_by_channel_name(gallery_data, channel_selected)
                     views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 10000,
@@ -1436,7 +1433,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery)
                 else:
                     row_children = []
-                return row_children, blend_return
+                return row_children
             raise PreventUpdate
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError):
             raise PreventUpdate
