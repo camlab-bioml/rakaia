@@ -11,7 +11,7 @@ from dash import ALL
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
-from ccramic.utils.alert import AlertMessage
+from ccramic.utils.alert import AlertMessage, add_warning_to_error_config
 from ccramic.io.session import SessionServerside
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -85,8 +85,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update
         else:
             # TODO: add warning message if query does not happen
-            error_config = {"error": None} if error_config is None else error_config
-            error_config["error"] = AlertMessage().warnings["invalid_query"]
+            error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_query"])
             return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
 
     @dash_app.callback(
@@ -133,7 +132,6 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         obtained as the UMAP projections will no longer align with the quantification frame and must be re-run
         If the quantification is successful, close the modal
         """
-        error_config = {"error": None} if error_config is None else error_config
         if execute > 0 and None not in (image_dict, data_selection, mask_selection, channels_to_quantify) and \
                 apply_mask and len(channels_to_quantify) > 0:
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
@@ -145,8 +143,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",
                         use_unique_key=app_config['serverside_overwrite']), dash.no_update, {'display': 'None'}, None
             else:
-                error_config["error"] = AlertMessage().warnings["invalid_dimensions"]
+                error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_dimensions"])
                 return dash.no_update, error_config, dash.no_update, dash.no_update
         else:
-            error_config["error"] = AlertMessage().warnings["quantification_missing"]
+            error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["quantification_missing"])
             return dash.no_update, error_config, dash.no_update, dash.no_update

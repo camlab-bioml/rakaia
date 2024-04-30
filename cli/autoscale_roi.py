@@ -78,9 +78,9 @@ def main(sysargs = sys.argv[1:]):
                                 channel_scales[channel_name].append(
                                     get_default_channel_upper_bound_by_percentile(channel_array, args.percentile))
                                 aliases[channel_name] = channel_label
-    json_template = {"channels": {}, "config": {"blend": [], "filter": {"global_apply_filter":
-            False, "global_filter_type": 'median',
-            "global_filter_val": 3, "global_filter_sigma": 1}}, "cluster": None, "gating": None}
+    json_template = {"channels": {}, "config": {"blend": [], "filter": {"global_apply_filter":[],
+                    "global_filter_type": 'median', "global_filter_val": 3, "global_filter_sigma": 1}},
+                    "cluster": None, "gating": None}
     for channel, autoscale in channel_scales.items():
         # TODO: include different modes for selecting the appropriate upper bound
         json_template["channels"][channel] = {"color": "#FFFFFF", "x_lower_bound": None,

@@ -573,12 +573,17 @@ class CanvasLayout:
         cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
         data_selection = string representation of the current ROI
         """
-        shapes = self.cur_shapes if self.cur_shapes else []
+        shapes = []
+        if self.cur_shapes:
+            # make sure to clear the existing circles first
+            shapes = [shape for shape in self.cur_shapes if self.cur_shapes and not ('editable' in shape and
+                    not shape['editable'] and 'type' in shape and shape['type'] == 'circle')]
         cluster_frame = pd.DataFrame(cluster_frame)
         cluster_frame = cluster_frame.astype(str)
         ids_use = gating_cell_id_list if (gating_cell_id_list is not None and use_gating) else np.unique(mask)
         clusters_to_use = cluster_selection_subset if cluster_selection_subset is not None else \
             cluster_frame['cluster'].unique().tolist()
+        clusters_to_use = [str(clust) for clust in clusters_to_use]
         for mask_id in ids_use:
             # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
             subset = np.where(mask == int(mask_id), int(mask_id), 0)

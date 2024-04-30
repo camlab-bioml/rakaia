@@ -74,7 +74,8 @@ from ccramic.io.readers import DashUploaderFileReader
 from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
-from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError, LazyLoadError
+from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError, LazyLoadError, \
+    add_warning_to_error_config
 import uuid
 from ccramic.utils.region import (
     RegionAnnotation,
@@ -191,13 +192,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         The image dictionary template is used to populate the actual images using lazy load
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-            error_config = {"error": None} if error_config is None else error_config
             files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
             message, unique_suffixes = file_import_message(files)
             if len(unique_suffixes) > 1:
-                error_config["error"] = ALERT.warnings["multiple_filetypes"] + message
+                error_config = add_warning_to_error_config(error_config, ALERT.warnings["multiple_filetypes"] + message)
             else:
-                error_config["error"] = message
+                error_config = add_warning_to_error_config(error_config, message)
             fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
             session_dict['unique_images'] = fileparser.unique_image_names
             columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
@@ -435,6 +435,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('db-config-name', 'value', allow_duplicate=True),
                        Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
                        Output('gating-dict', 'data', allow_duplicate=True),
+                       Output('images_in_blend', 'value', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
             add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
@@ -444,7 +445,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         they will be modified on future selection
         Requires that the channel modification menu be empty to make sure that parameters are updated properly
         """
-        error_config = {"error": None} if error_config is None else error_config
         if ctx.triggered_id == "db-config-options" and db_config_selection is not None:
             # TODO: decide if the alias key needs to be removed from the blend dict imported from mongoDB
             new_blend_dict = match_db_config_to_request_str(db_config_list, db_config_selection)
@@ -467,7 +467,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
                     all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                     current_blend_dict[elem]['color'])).astype(np.uint8)
-                error_config["error"] = ALERT.warnings["json_update_success"]
+                error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_update_success"])
                 channel_list_return = dash.no_update
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
                         current_blend_dict.keys() for elem in new_blend_dict['config']['blend']]):
@@ -479,16 +479,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 gate_return = new_blend_dict['gating'] if 'gating' in new_blend_dict.keys() else dash.no_update
                 return SessionServerside(all_layers, key="layer_dict", use_unique_key=app_config['serverside_overwrite']), \
                     current_blend_dict, error_config, channel_list_return, global_apply_filter, global_filter_type, \
-                    global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update, clust_return, gate_return
+                    global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update, clust_return, gate_return, None
             # IMP: if the update does not occur, clear the database selection and auto filled config name
             else:
-                error_config["error"] = ALERT.warnings["json_update_error"]
+                error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_update_error"])
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update, dash.no_update
         elif data_selection is None:
-            error_config["error"] = ALERT.warnings["json_requires_roi"]
+            error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_requires_roi"])
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Input('image_layers', 'value'),
@@ -558,7 +558,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
-
             return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
                 use_unique_key=app_config['serverside_overwrite']), param_dict, channel_modify
         raise PreventUpdate
@@ -651,9 +650,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     array = apply_preset_to_array(uploaded_w_data[data_selection][layer], current_blend_dict[layer])
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array, current_blend_dict[layer]['color']))
-
                     return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                                                                 use_unique_key=app_config['serverside_overwrite'])
+                                                use_unique_key=app_config['serverside_overwrite'])
             except TypeError:
                 raise PreventUpdate
         raise PreventUpdate
@@ -759,7 +757,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                         current_blend_dict[layer]['color'])).astype(np.uint8)
-
                     return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
                                                 use_unique_key=app_config['serverside_overwrite'])
             raise PreventUpdate
@@ -933,7 +930,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and data_selection \
             is not None and currently_selected and len(channel_order) > 0 and not global_not_enabled and not \
             channel_order_same and data_selection in canvas_layers and canvas_layers[data_selection] and not dont_update:
-            error_config = {"error": None} if error_config is None else error_config
 
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
@@ -963,7 +959,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         dest_dir=dest_path, use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
                 return fig, canvas_tiff, dash.no_update
             except (ValueError, AttributeError, KeyError, IndexError) as e:
-                error_config["error"] = str(e)
+                error_config = add_warning_to_error_config(error_config, str(e))
                 return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config
         #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
         # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
@@ -1059,7 +1055,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #     if all([elem in layout for elem in zoom_keys]) and canvas is not None and 'layout' in canvas:
     #         if canvas['layout']['xaxis']['range'][0] != layout['xaxis.range[0]'] and \
     #                 canvas['layout']['xaxis']['range'][1] != layout['xaxis.range[1]']:
-    #             print("fixing")
     #             fig = go.Figure(canvas)
     #             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
     #                               yaxis=YAxis(showticklabels=False,
@@ -1181,18 +1176,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def populate_datatable_columns(metadata_config, uploaded, error_config, cur_metadata):
         if metadata_config is not None and len(metadata_config['uploads']) > 0:
-            error_config = {"error": None} if error_config is None else error_config
             metadata_read = pd.read_csv(metadata_config['uploads'][0])
             metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
-            if metadata_validated is not None and 'ccramic Label' not in metadata_validated.keys():
+            if metadata_validated is not None:
                 # make sure that the internal keys from channel names stay the same
                 metadata_validated['Channel Name'] = pd.DataFrame(cur_metadata)['Channel Name']
-                metadata_validated['ccramic Label'] = metadata_validated["Channel Label"]
+                if 'ccramic Label' not in metadata_validated.keys():
+                    metadata_validated['ccramic Label'] = metadata_validated["Channel Label"]
                 return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                         p in metadata_validated.keys()], \
                     pd.DataFrame(metadata_validated).to_dict(orient='records'), dash.no_update
             else:
-                error_config["error"] = ALERT.warnings["custom_metadata_error"]
+                error_config = add_warning_to_error_config(error_config, ALERT.warnings["custom_metadata_error"])
                 return dash.no_update, dash.no_update, error_config
         raise PreventUpdate
 
@@ -1252,8 +1247,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                         use_roi_name=True, roi_name=dataset_selection, delimiter=delimiter))
                 error_config = dash.no_update
             except (ValueError, KeyError) as e:
-                error_config = {"error": None} if error_config is None else error_config
-                error_config["error"] = str(e)
+                error_config = add_warning_to_error_config(error_config, str(e))
                 html_path = dash.no_update
             return html_path, error_config
         raise PreventUpdate
@@ -1528,7 +1522,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       State('blending_colours', 'data'),
+                       Input('blending_colours', 'data'),
                        Input("pixel-hist-collapse", "is_open"),
                        State('pixel-intensity-slider', 'value'),
                        Input('custom-slider-max', 'value'),
@@ -1585,19 +1579,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 vals_return = dash.no_update
                 if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
                         current_blend_dict[selected_channel]['x_upper_bound'] is not None:
-                    if float(current_blend_dict[selected_channel]['x_lower_bound']) != float(cur_slider_values[0]) or \
-                        float(current_blend_dict[selected_channel]['x_upper_bound']) != float(cur_slider_values[1]):
+                    if (cur_slider_values[0] is None or cur_slider_values[1] is None) or (
+                    float(current_blend_dict[selected_channel]['x_lower_bound']) != float(cur_slider_values[0])
+                    or float(current_blend_dict[selected_channel]['x_upper_bound']) != float(cur_slider_values[1])):
                         lower_bound = float(current_blend_dict[selected_channel]['x_lower_bound'])
                         upper_bound = float(current_blend_dict[selected_channel]['x_upper_bound'])
                         vals_return = [lower_bound, upper_bound]
                 else:
                     lower_bound = 0
-                    upper_bound = get_default_channel_upper_bound_by_percentile(
-                        uploaded[data_selection][selected_channel])
+                    upper_bound = get_default_channel_upper_bound_by_percentile(uploaded[data_selection][selected_channel])
                     current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
                     vals_return = [lower_bound, upper_bound]
+                hist_max = hist_max if not custom_max else dash.no_update
+                tick_markers = tick_markers if not custom_max else dash.no_update
                 return dash.no_update, hist_max, vals_return, tick_markers, blend_return, step_size
             elif ctx.triggered_id == "pixel-hist-collapse":
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
@@ -1674,11 +1670,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('filter-type', 'value'),
                        State('kernel-val-filter', 'value'),
                        State('sigma-val-filter', 'value'),
-                       State("annotation-color-picker", 'value'))
+                       State("annotation-color-picker", 'value'),
+                       State('autofill-channel-colors', 'value'))
     # @cache.memoize())
     def update_channel_filter_inputs(selected_channel, uploaded, data_selection, current_blend_dict,
                                      preset_selection, preset_dict, session_vars, cur_bool_filter, cur_filter_type,
-                                     cur_filter_val, cur_filter_sigma, cur_colour):
+                                     cur_filter_val, cur_filter_sigma, cur_colour, col_autofill):
         """
         Update the input widgets wth the correct channel configs when the channel is changed, or a preset is used,
         or if the blend dict is updated
@@ -1696,7 +1693,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             filter_type_return = return_current_or_default_filter_param(cur_filter_type, filter_type)
             filter_val_return = return_current_or_default_filter_param(cur_filter_val, filter_val)
             filter_sigma_return = return_current_or_default_filter_param(cur_filter_sigma, filter_sigma)
-            color_return = return_current_or_default_channel_color(cur_colour, color)
+            color_return = return_current_or_default_channel_color(cur_colour, color, col_autofill)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
@@ -1886,8 +1883,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         If the alert dict is populated with a warning, show the warning in the modal. Otherwise, do not populate and
         don't show the modal
         """
-        if alert_dict is not None and len(alert_dict) > 0 and "error" in alert_dict.keys() and \
-                alert_dict["error"] is not None and show_messages:
+        if alert_dict and "error" in alert_dict.keys() and alert_dict["error"] is not None and show_messages:
             return True, [html.H6("Message: \n"), html.H6(alert_dict["error"])]
         return False, None
 
@@ -1904,8 +1900,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if any([elem in ['', ' '] for elem in gene_aliases.keys()]) or any([elem['Channel Name'] in \
             ['', ' '] or elem['Channel Label'] in ['', ' '] for elem in metadata_editable]):
-            error_config = {"error": None} if error_config is None else error_config
-            error_config["error"] = ALERT.warnings["metadata_format_error"]
+            error_config = add_warning_to_error_config(error_config, ALERT.warnings["metadata_format_error"])
             return error_config
         raise PreventUpdate
 

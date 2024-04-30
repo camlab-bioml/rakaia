@@ -7,21 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-04-24
+## [0.15.0] - 2024-04-30
 
 ### Added
 
-- warning message for ROI query when images or quant results are missing
+- warning message for ROI query when images or quant results are missing. #101
+- CLI script for autoscaling ROIs from mcd
 
 ### Fixed
 
 - missing callback output for opening in-browser quantification modal
+- fully refresh channel selection on JSON/db update
+- Proper color updates to the blend hash when using autofill #102
+- Re-import exported custom metadata works as expected
+- proper str casting for cluster annotations as circles
 
 ### Changed
 
-- ROI selection menu moved to main canvas to facilitate more consistent use
+- ROI selection menu moved to main canvas to facilitate more consistent use. #97
 - mask boundaries using `skimage` now use the innermost pixels as opposed to outer
-
 
 ## [0.14.0] - 2024-04-18
 

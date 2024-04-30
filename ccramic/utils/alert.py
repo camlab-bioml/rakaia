@@ -1,5 +1,6 @@
 import pathlib
 from pydantic import BaseModel
+from typing import Union
 
 class DataImportTour(BaseModel):
     """
@@ -126,3 +127,9 @@ def file_import_message(imported_files: list):
             unique_suffixes.append(suffix)
     message = message + "\n Select a region (ROI) from the data collection dropdown to begin analysis."
     return message, unique_suffixes
+
+
+def add_warning_to_error_config(error_config: Union[dict, None], alert: Union[str, None]):
+    error_config = {"error": None} if (error_config is None or "error" not in error_config) else error_config
+    error_config["error"] = alert if alert else ""
+    return error_config

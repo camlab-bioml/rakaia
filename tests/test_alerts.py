@@ -1,7 +1,8 @@
 from ccramic.utils.alert import (
     AlertMessage, file_import_message,
     DataImportTour,
-    ToolTips)
+    ToolTips,
+    add_warning_to_error_config)
 import os
 
 def test_basic_alerts():
@@ -29,3 +30,10 @@ def test_file_import_warning(get_current_dir):
 def test_tooltips():
     assert isinstance(ToolTips().tooltips, dict)
     assert "delimiter" in ToolTips().tooltips.keys()
+
+def test_parse_add_error_config():
+    warning = add_warning_to_error_config(None, "this is a warning")
+    assert warning == {'error': 'this is a warning'}
+    warning_2 = add_warning_to_error_config(warning, "another warning")
+    assert warning_2 == {'error': 'another warning'}
+    assert add_warning_to_error_config(warning_2, None) == {'error': ''}
