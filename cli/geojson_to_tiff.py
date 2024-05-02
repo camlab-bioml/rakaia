@@ -34,7 +34,6 @@ def cli_parser():
                         help="A list of comma separated annotations to treat as holes (i.e. 0 in the final mask)",
                         dest="hole_types", default="", type=str)
 
-
     return parser
 
 def main(sysargs = sys.argv[1:]):

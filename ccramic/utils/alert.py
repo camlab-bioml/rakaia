@@ -69,11 +69,15 @@ class AlertMessage(BaseModel):
                       "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
                                          "delimiter does not have any overlapping characters with any of the filenames, "
                                          "or ROI names. ",
-                      "invalid_query": "Error when querying from quantification results. Ensure that: \n"
-                                       "\n-quantification results are loaded"
-                                       "\n-the corresponding images for quantified ROIs are loaded, and an image "
+                      "invalid_query": "Error when generating ROI query. Ensure that: \n\n"
+                                       "1. If querying a random subset, that images have been imported and "
+                                       "the current canvas contains at least one marker. \n\n"
+                                       "2. If querying from the quantification/UMAP tab: "
+                                       "\n"
+                                       "\t\n -quantification results are loaded"
+                                       "\t\n -the corresponding images for quantified ROIs are loaded, and an image "
                                        "has been generated in the main canvas"
-                                       "\n-ROI naming in the quantification sheet matches the ROI names in the session."}
+                                       "\t\n -ROI naming in the quantification sheet matches the ROI names in the session."}
 
 
 class ToolTips(BaseModel):

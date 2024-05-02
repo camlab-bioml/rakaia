@@ -5,7 +5,7 @@ output of auto-scaled intensity values on the upper bound
 from ccramic.utils.pixel_level_utils import (
     get_default_channel_upper_bound_by_percentile)
 from readimc import MCDFile
-from ccramic.utils.alert import PanelMismatchError
+from ccramic.parsers.pixel_level_parsers import FileParser
 import sys
 import argparse
 import json
@@ -39,7 +39,10 @@ def cli_parser():
     parser.add_argument('-ex', "--keywords-exclude", action="store",
                         help="Pass a string of comma separated keywords to identify ROIs to exclude.",
                         dest="exclude", default="", type=str)
-
+    parser.add_argument('-s', "--size", action="store",
+                        help="Integer dimension threshold. ROIs with an x or y dimension below this value are not "
+                             "considered. Default is 100 pixels",
+                        dest="size_limit", default=100, type=int)
 
     return parser
 
@@ -50,7 +53,6 @@ def autoscale_upper_bound_from_mode(vals: list, mode="min"):
         return mean(vals)
     return min(vals)
 
-
 def main(sysargs = sys.argv[1:]):
     warnings.filterwarnings("ignore")
     parser = cli_parser()
@@ -58,26 +60,26 @@ def main(sysargs = sys.argv[1:]):
     keywords_exclude = args.exclude.split(',') if args.exclude else []
     channel_scales = {}
     aliases = {}
-    for file in args.input:
-        if file.endswith('.mcd'):
-            with MCDFile(file) as mcd_file:
-                for slide in mcd_file.slides:
-                    for acq in slide.acquisitions:
-                        if not any([ignore in acq.description for ignore in keywords_exclude]):
-                            img = mcd_file.read_acquisition(acq, strict=False)
-                            if args.verbose:
-                                print(f"Parsing ROI: {acq.description}")
-                            if channel_scales and len(channel_scales.keys()) != len(acq.channel_names):
-                                raise PanelMismatchError(f'One or more ROIs read from {args.input} contains different '
-                                                         f'panel lengths. This is currently not supported by ccramic or its'
-                                                         f' associated parsers.')
-                            for channel_name, channel_array, channel_label in zip(acq.channel_names, img,
-                                                                                  acq.channel_labels):
-                                if channel_name not in channel_scales:
-                                    channel_scales[channel_name] = []
-                                channel_scales[channel_name].append(
-                                    get_default_channel_upper_bound_by_percentile(channel_array, args.percentile))
-                                aliases[channel_name] = channel_label
+    # if the files pass the initial fileparser, then can proceed
+    preflight = FileParser(args.input)
+    if preflight.panel_length is not None:
+        for file in args.input:
+            if file.endswith('.mcd'):
+                with MCDFile(file) as mcd_file:
+                    for slide in mcd_file.slides:
+                        for acq in slide.acquisitions:
+                            if not any([ignore in acq.description for ignore in keywords_exclude]) and \
+                                    (acq.height_px > args.size_limit and acq.width_px > args.size_limit):
+                                img = mcd_file.read_acquisition(acq, strict=False)
+                                if args.verbose:
+                                    print('\033[32m' + f"Parsing ROI: {acq.description}")
+                                for channel_name, channel_array, channel_label in zip(acq.channel_names, img,
+                                                                                      acq.channel_labels):
+                                    if channel_name not in channel_scales:
+                                        channel_scales[channel_name] = []
+                                    channel_scales[channel_name].append(
+                                        get_default_channel_upper_bound_by_percentile(channel_array, args.percentile))
+                                    aliases[channel_name] = channel_label
     json_template = {"channels": {}, "config": {"blend": [], "filter": {"global_apply_filter":[],
                     "global_filter_type": 'median', "global_filter_val": 3, "global_filter_sigma": 1}},
                     "cluster": None, "gating": None}

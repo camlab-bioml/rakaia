@@ -4,11 +4,11 @@ import numpy as np
 from ccramic.parsers.pixel_level_parsers import (
     FileParser,
     create_new_blending_dict)
+import random
 
 def test_roi_query_parser(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")
     session_config = {"uploads": [str(mcd)]}
-    dataset_selection = "PAP"
     channels = ["Ir191", "Ir193"]
     blend_dict = {"ArAr80": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None,
                              "filter_val": None},
@@ -23,10 +23,13 @@ def test_roi_query_parser(get_current_dir):
                   "Ir193": {"color": "#FF0000", "x_lower_bound": 0, "x_upper_bound": 1, "filter_type": None, "filter_val": None},
                   "Pb208": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None}}
 
-    roi_query = RegionThumbnail(session_config, blend_dict, channels, 4,
-                                                     [dataset_selection]).get_image_dict()
-    assert len(roi_query) == 4
-    assert dataset_selection not in roi_query.keys()
+    dataset_exclude = "query+++slide0+++PAP_1"
+    random.seed(1)
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+                                                     [dataset_exclude]).get_image_dict()
+    # assert that the number of queries is 1 less than the total because the current one is excluded
+    assert len(roi_query) == 3
+    assert dataset_exclude not in roi_query.keys()
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 20, []).get_image_dict()
     assert len(roi_query) == 6
 
@@ -85,7 +88,7 @@ def test_roi_query_parser_predefined(get_current_dir):
 
     defined_indices = {'indices': [0, 1]}
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 4, [],
-                                                     predefined_indices=defined_indices).get_image_dict()
+                predefined_indices=defined_indices, dimension_limit=200).get_image_dict()
     assert len(roi_query) == 2
     assert dataset_selection in roi_query.keys()
 

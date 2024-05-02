@@ -14,6 +14,7 @@ import random
 import numpy as np
 import cv2
 from tifffile import TiffFile
+from typing import Union
 
 
 class RegionThumbnail:
@@ -25,7 +26,8 @@ class RegionThumbnail:
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
                         global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False):
+                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
+                        dimension_limit: Union[int, float, None]=None):
         self.session_config = session_config
         try:
             self.file_list = [file for file in self.session_config['uploads']]
@@ -46,6 +48,8 @@ class RegionThumbnail:
         self.delimiter = delimiter
         self.query_selection = None
         self.use_greyscale = use_greyscale
+        # do not use the dimension limit if querying from the quantification
+        self.dim_limit = dimension_limit if (dimension_limit and not self.predefined_indices) else 0
 
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
@@ -61,7 +65,7 @@ class RegionThumbnail:
                     self.additive_thumbnail_from_tiff(file_path)
                 elif str(file_path).endswith('.txt'):
                     self.additive_thumbnail_from_txt(file_path)
-                if len(self.roi_images) == self.num_queries:
+                if len(self.roi_images) >= self.num_queries:
                     break
 
     def additive_thumbnail_from_mcd(self, file_path):
@@ -78,7 +82,7 @@ class RegionThumbnail:
                     else:
                         self.query_selection = random.sample(range(0,
                                                 len(slide_inside.acquisitions)), self.num_queries)
-                if isinstance(self.query_selection, dict):
+                elif isinstance(self.query_selection, dict):
                     if 'indices' in self.query_selection:
                         self.num_queries = len(self.query_selection['indices'])
                         self.query_selection = [i for i in self.query_selection['indices'] if \
@@ -94,7 +98,8 @@ class RegionThumbnail:
                     try:
                         acq = slide_inside.acquisitions[query]
                         if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
-                           f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude:
+                           f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude and \
+                                (acq.height_px >= self.dim_limit and acq.width_px >= self.dim_limit):
                             channel_names = acq.channel_names
                             channel_index = 0
                             img = mcd_file.read_acquisition(acq)
@@ -115,15 +120,28 @@ class RegionThumbnail:
                                     f"{str(acq.description)}_{str(acq.id)}"
                             self.process_additive_image(acq_image, label)
                         else:
-                            self.num_queries += 1
+                            additional_query = None
+                            # use the look counter to make sure that once all of the indices are searched,
+                            # it will just return what has been made nad not search indefinitely
+                            look_counter = 0
+                            while (additional_query is None or additional_query in self.query_selection) and \
+                                    look_counter < len(slide_inside.acquisitions):
+                                additional_query = random.sample(range(0,
+                                                    len(slide_inside.acquisitions)), 1)
+                                additional_query = additional_query[0] if isinstance(additional_query, list) else \
+                                    additional_query
+                                look_counter += 1
+                                if additional_query not in self.query_selection:
+                                    self.query_selection.append(additional_query)
+                                    self.num_queries += 1
+                                    break
                     except OSError:
                         pass
-                    if len(self.roi_images) == self.num_queries:
+                    if len(self.roi_images) >= self.num_queries:
                         break
                 else:
                     slide_index += 1
                     continue
-                break
             # else:
             #     continue
             # break
@@ -139,20 +157,22 @@ class RegionThumbnail:
             label = label if match_mask_name_to_quantification_sheet_roi(matched_mask, query_list) else None
         if label and label not in self.rois_exclude:
             with TiffFile(tiff_filepath) as tif:
-                acq_image = []
-                channel_index = 1
-                for page in tif.pages:
-                    channel_name = str(f"channel_{channel_index}")
-                    if channel_name in self.currently_selected_channels and \
-                            channel_name in self.blend_dict.keys():
-                        with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
-                                                            self.blend_dict[channel_name])
-                        colour_use = self.blend_dict[channel_name]['color'] if not \
-                            self.use_greyscale else '#FFFFFF'
-                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
-                        acq_image.append(recoloured)
-                    channel_index += 1
-                self.process_additive_image(acq_image, label)
+                # add conditional to check if the tiff dimensions meet the threshold
+                if tif.pages[0].shape[0] >= self.dim_limit and tif.pages[0].shape[1] >= self.dim_limit:
+                    acq_image = []
+                    channel_index = 1
+                    for page in tif.pages:
+                        channel_name = str(f"channel_{channel_index}")
+                        if channel_name in self.currently_selected_channels and \
+                                channel_name in self.blend_dict.keys():
+                            with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
+                                                                self.blend_dict[channel_name])
+                            colour_use = self.blend_dict[channel_name]['color'] if not \
+                                self.use_greyscale else '#FFFFFF'
+                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
+                            acq_image.append(recoloured)
+                        channel_index += 1
+                    self.process_additive_image(acq_image, label)
 
     def additive_thumbnail_from_txt(self, txt_filepath):
         basename = str(Path(txt_filepath).stem)
@@ -163,18 +183,22 @@ class RegionThumbnail:
                 txt_channel_names = acq_text_read.channel_names
                 acq_image = []
                 acq_read = acq_text_read.read_acquisition()
-                for image in acq_read:
-                    channel_name = txt_channel_names[image_index - 1]
-                    if channel_name in self.currently_selected_channels and \
-                            channel_name in self.blend_dict.keys():
-                        with_preset = apply_preset_to_array(image,
-                                                            self.blend_dict[channel_name])
-                        colour_use = self.blend_dict[channel_name]['color'] if not \
-                            self.use_greyscale else '#FFFFFF'
-                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
-                        acq_image.append(recoloured)
-                    image_index += 1
-                self.process_additive_image(acq_image, label)
+                # IMP: txt files contain the channel number as the first dimension, not the last
+                acq_dims = (acq_read.shape[1], acq_read.shape[2]) if len(acq_read.shape) >= 3 else \
+                    (acq_read.shape[0], acq_read.shape[1])
+                if acq_dims[0] >= self.dim_limit and acq_dims[1] >= self.dim_limit:
+                    for image in acq_read:
+                        channel_name = txt_channel_names[image_index - 1]
+                        if channel_name in self.currently_selected_channels and \
+                                channel_name in self.blend_dict.keys():
+                            with_preset = apply_preset_to_array(image,
+                                                                self.blend_dict[channel_name])
+                            colour_use = self.blend_dict[channel_name]['color'] if not \
+                                self.use_greyscale else '#FFFFFF'
+                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
+                            acq_image.append(recoloured)
+                        image_index += 1
+                    self.process_additive_image(acq_image, label)
 
     def parse_thumbnail_label_from_filepath(self, file_basename):
         """

@@ -120,7 +120,7 @@ class FileParser:
             if len(self.image_dict['metadata']) > 0:
                 if not (all(len(value) == len(tif.pages) for value in list(self.image_dict['metadata'].values()))) or \
                         (self.panel_length is not None and self.panel_length != len(tif.pages)):
-                    raise PanelMismatchError("One or more ROIs imported from tiff appear to have"
+                    raise PanelMismatchError("One or more ROIs parsed from tiff appear to have"
                             " different panel lengths. This is currently not supported by ccramic.")
             # file_name, file_extension = os.path.splitext(tiff_path)
             # set different image labels based on the basename of the file (ome.tiff vs .tiff)
@@ -194,7 +194,7 @@ class FileParser:
                         # there are slight spelling errors between mcds with the same panel
                         if len(acq.channel_labels) != len(channel_labels) or \
                            (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
-                            raise PanelMismatchError("One or more ROIs imported from .mcd appear to have"
+                            raise PanelMismatchError("One or more ROIs parsed from .mcd appear to have"
                             " different panel lengths. This is currently not supported by ccramic.")
                     channel_index = 0
                     for channel in acq.channel_names:
@@ -248,7 +248,7 @@ class FileParser:
                 if not len(self.metadata_channels) == len(txt_channel_names) or \
                         not len(self.metadata_labels) == len(txt_channel_labels) or \
                         (self.panel_length is not None and self.panel_length != len(txt_channel_names)):
-                    raise PanelMismatchError("One or more ROIs imported from .txt appear to have"
+                    raise PanelMismatchError("One or more ROIs parsed from .txt appear to have"
                             " different panel lengths. This is currently not supported by ccramic.")
             basename = str(Path(txt_filepath).stem)
             roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \

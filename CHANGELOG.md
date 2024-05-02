@@ -7,12 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-04-30
+## [0.15.0] - 2024-05-02
 
 ### Added
 
 - warning message for ROI query when images or quant results are missing. #101
 - CLI script for autoscaling ROIs from mcd
+- lower size limit for ROIs in gallery query with recursive searching to
+match the query number
 
 ### Fixed
 
