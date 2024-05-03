@@ -45,14 +45,15 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State("global-sigma-val-filter", 'value'),
                        State('dataset-delimiter', 'value'),
                        State('session_alert_config', 'data'),
-                       State('dataset-query-dim-limit', 'value'),
+                       State('dataset-query-dim-min', 'value'),
+                       State('dataset-query-dim-max', 'value'),
                        prevent_initial_call=True)
     def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
                                     existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
                                     dataset_options, query_cell_id_lists, global_apply_filter,
                                     global_filter_type, global_filter_val, global_filter_sigma, delimiter, error_config,
-                                    dim_limit):
+                                    dim_min, dim_max):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -76,8 +77,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 rois_exclude = [data_selection]
                 row_children = []
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries),
-                    rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,
-                    global_filter_type, global_filter_val, global_filter_sigma, delimiter, False, dim_limit).get_image_dict()
+            rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,
+            global_filter_type, global_filter_val, global_filter_sigma, delimiter, False, dim_min, dim_max).get_image_dict()
             new_row_children, roi_list = generate_roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load":

@@ -27,7 +27,8 @@ class RegionThumbnail:
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
                         global_apply_filter=False, global_filter_type="median", global_filter_val=3,
                         global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
-                        dimension_limit: Union[int, float, None]=None):
+                        dimension_min: Union[int, float, None]=None,
+                        dimension_max: Union[int, float, None]=None):
         self.session_config = session_config
         try:
             self.file_list = [file for file in self.session_config['uploads']]
@@ -49,7 +50,8 @@ class RegionThumbnail:
         self.query_selection = None
         self.use_greyscale = use_greyscale
         # do not use the dimension limit if querying from the quantification
-        self.dim_limit = dimension_limit if (dimension_limit and not self.predefined_indices) else 0
+        self.dim_min = dimension_min if (dimension_min and not self.predefined_indices) else 0
+        self.dim_max = dimension_max if (dimension_max and not self.predefined_indices) else 1e6
 
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
@@ -99,10 +101,11 @@ class RegionThumbnail:
                         acq = slide_inside.acquisitions[query]
                         if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
                            f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude and \
-                                (acq.height_px >= self.dim_limit and acq.width_px >= self.dim_limit):
+                                (acq.height_px >= self.dim_min and acq.width_px >= self.dim_min) and \
+                                (acq.height_px <= self.dim_max and acq.width_px <= self.dim_max):
                             channel_names = acq.channel_names
                             channel_index = 0
-                            img = mcd_file.read_acquisition(acq)
+                            img = mcd_file.read_acquisition(acq, strict=False)
                             acq_image = []
                             for channel in img:
                                 # if the channel is in the current blend, use it
@@ -158,7 +161,8 @@ class RegionThumbnail:
         if label and label not in self.rois_exclude:
             with TiffFile(tiff_filepath) as tif:
                 # add conditional to check if the tiff dimensions meet the threshold
-                if tif.pages[0].shape[0] >= self.dim_limit and tif.pages[0].shape[1] >= self.dim_limit:
+                if (tif.pages[0].shape[0] >= self.dim_min and tif.pages[0].shape[1] >= self.dim_min) and \
+                        (tif.pages[0].shape[0] <= self.dim_max and tif.pages[0].shape[1] <= self.dim_max):
                     acq_image = []
                     channel_index = 1
                     for page in tif.pages:
@@ -186,7 +190,8 @@ class RegionThumbnail:
                 # IMP: txt files contain the channel number as the first dimension, not the last
                 acq_dims = (acq_read.shape[1], acq_read.shape[2]) if len(acq_read.shape) >= 3 else \
                     (acq_read.shape[0], acq_read.shape[1])
-                if acq_dims[0] >= self.dim_limit and acq_dims[1] >= self.dim_limit:
+                if (acq_dims[0] >= self.dim_min and acq_dims[1] >= self.dim_min) and \
+                        (acq_dims[0] <= self.dim_max and acq_dims[1] <= self.dim_max):
                     for image in acq_read:
                         channel_name = txt_channel_names[image_index - 1]
                         if channel_name in self.currently_selected_channels and \

@@ -1178,8 +1178,11 @@ def register_app_layout(config, cache_dest):
                              style={"display": "flex", "margin-top": "15px"}),
                 ]),
                 dbc.Col(width=3, children=[html.H6("Set dimension threshold", style={"margin-top": "15px"}),
-                html.Div([dcc.Input(id="dataset-query-dim-limit", type="number",
-                    placeholder="Height/width minimum for ROI query", value=None, style={"height": "25%"})],
+                html.Div([dcc.Input(id="dataset-query-dim-min", type="number",
+                    placeholder="Dim. min for query", value=None, style={"height": "25%", "width": "50%",
+                                                                         "margin-right": "5px"}),
+                    dcc.Input(id="dataset-query-dim-max", type="number", placeholder="Dim. max for query", value=None,
+                    style={"height": "25%", "width": "50%", "margin-left": "5px"})],
                     style={"display": "flex", "margin-top": "15px"})],
                 style={"margin-left": "75px"})]),
                 html.Div(id="dataset-query-gallery", children=[

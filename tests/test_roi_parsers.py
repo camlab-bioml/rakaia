@@ -88,7 +88,7 @@ def test_roi_query_parser_predefined(get_current_dir):
 
     defined_indices = {'indices': [0, 1]}
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 4, [],
-                predefined_indices=defined_indices, dimension_limit=200).get_image_dict()
+                predefined_indices=defined_indices, dimension_min=200).get_image_dict()
     assert len(roi_query) == 2
     assert dataset_selection in roi_query.keys()
 
