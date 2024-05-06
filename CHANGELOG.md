@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-05-03
+## [0.15.0] - 2024-05-06
 
 ### Added
 
@@ -28,6 +28,7 @@ searching to match the query number
 
 - ROI selection menu moved to main canvas to facilitate more consistent use. #97
 - mask boundaries using `skimage` now use the innermost pixels as opposed to outer
+- Better legend and scalebar x-axis range placement for varying ROI dimensions
 
 ## [0.14.0] - 2024-04-18
 

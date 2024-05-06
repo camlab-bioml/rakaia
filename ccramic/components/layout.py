@@ -542,7 +542,7 @@ def register_app_layout(config, cache_dest):
                                                                     "align-items": "center",
                                                    "float": "center", "justify-content": "center"}),
                                  html.Br(),
-                                 dbc.Offcanvas(id="blend-config-offcanvas", title="Advanced settings: canvas & region",
+                                 dbc.Offcanvas(id="blend-config-offcanvas", title="Additional settings: canvas & region",
                                                placement="end", style={"width": "32%"}, backdrop=False, scrollable=True,
                                                is_open=False, children=[
                                 dbc.Tabs(id='config-tabs',

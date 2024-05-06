@@ -1398,9 +1398,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         try:
             # condition 1: if the data collection is changed, update with new images
             # condition 2: if any other mods are made, ensure that the active tab is the gallery tab
-            new_collection = gallery_data is not None and ctx.triggered_id in ["data-collection", "uploaded_dict", "alias-dict"]
+            new_collection = gallery_data is not None and ctx.triggered_id in \
+                    ["data-collection", "uploaded_dict", "alias-dict", "unique-channel-list"]
             gallery_mod_in_tab = gallery_data is not None and ctx.triggered_id not in \
-                          ["data-collection", "uploaded_dict", "annotation_canvas"] and active_tab == 'gallery-tab'
+            ["data-collection", "uploaded_dict", "annotation_canvas", "alias-dict", "unique-channel-list"] and active_tab == 'gallery-tab'
             use_zoom = gallery_data is not None and ctx.triggered_id == 'annotation_canvas'
             zoom_not_needed = ctx.triggered_id == 'annotation_canvas' and not toggle_gallery_zoom
             if (new_collection or gallery_mod_in_tab or use_zoom) and not zoom_not_needed:
