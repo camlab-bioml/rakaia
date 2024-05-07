@@ -522,8 +522,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
                     columns={"index": "Value", 0: "Count"})
             else:
-                frame = pd.DataFrame(zip(list(subset_cur_cat.keys()),
-                                         list(subset_cur_cat.values())), columns=["Value", "Counts"])
+                frame = pd.DataFrame(zip(list(subset_cur_cat.keys()), list(subset_cur_cat.values())), columns=["Value", "Counts"])
             # frame.reset_index().rename(columns={"index": "Value", 0: "Count"})
             columns = [{'id': p, 'name': p, 'editable': False} for p in list(frame.columns)]
             return frame.to_dict(orient="records"), columns, dash.no_update
@@ -599,8 +598,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         preview = mask_object_counter_preview(mask_dict, mask_selection)
         if ctx.triggered_id == "mask-options": return dash.no_update, preview
         if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False, preview
-        else:
-            return not is_open if n else is_open, preview
+        return not is_open if n else is_open, preview
 
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')

@@ -19,7 +19,6 @@ from ccramic.parsers.pixel_level_parsers import (
     check_blend_dictionary_for_blank_bounds_by_channel)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
-    split_string_at_pattern,
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array,
     recolour_greyscale,
@@ -37,7 +36,6 @@ from ccramic.utils.pixel_level_utils import (
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
     MarkerCorrelation, high_low_values_from_zoom_layout)
-# from ccramic.utils.session import remove_ccramic_caches
 from ccramic.utils.session import validate_session_upload_config, channel_dropdown_selection
 from ccramic.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 from ccramic.io.display import (
@@ -62,7 +60,6 @@ from ccramic.io.session import (
     create_download_dir,
     SessionServerside)
 from pathlib import Path
-from plotly.graph_objs.layout import YAxis, XAxis
 import json
 from dash import dcc
 from dash.exceptions import PreventUpdate
@@ -290,7 +287,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # set the default canvas to return without a load screen
         if image_dict and data_selection and names:
-            exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
             if ' sort (A-z)' in sort_channels:
                 channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
             else: channels_return = names
@@ -519,8 +515,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if data_selection is not None:
                 if current_blend_dict is not None and "current_roi" in param_dict.keys() and \
                         data_selection != param_dict["current_roi"]:
-                    # current_blend_dict = copy_values_within_nested_dict(current_blend_dict, param_dict["current_roi"],
-                    #                                                     data_selection)
                     param_dict["current_roi"] = data_selection
                     if cur_image_in_mod_menu is not None and cur_image_in_mod_menu in current_blend_dict.keys():
                         channel_modify = cur_image_in_mod_menu
@@ -611,8 +605,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                     array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
                     current_blend_dict[layer]['color'] = colour['hex']
-                    all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
-                                                        colour['hex'])).astype(np.uint8)
+                    all_layers[data_selection][layer] = np.array(recolour_greyscale(array, colour['hex'])).astype(np.uint8)
                     return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
                                                 use_unique_key=app_config['serverside_overwrite'])
                 raise PreventUpdate
@@ -683,7 +676,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             all_layers[data_selection][layer] = np.array(recolour_greyscale(array, current_blend_dict[layer]['color']))
             return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
                                     use_unique_key=app_config['serverside_overwrite'])
-
         raise PreventUpdate
 
     @dash_app.callback(State('images_in_blend', 'value'),
@@ -1010,8 +1002,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
         """
-        # bad_update = cur_graph_layout in [{"autosize": True}]
-
         # update the scale bar with and without zooming
         if None not in (cur_graph, cur_graph_layout, data_selection):
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
@@ -1020,16 +1010,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 try:
                     image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
                     proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
-                    # if ctx.triggered_id == 'annotation_canvas':
                     cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout,
                                                             pixel_ratio, proportion, scale_col)
-                    # if ctx.triggered_id == "custom-scale-val":
                     pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                     x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
                     cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
                                             pixel_ratio, image_shape, legend_size, proportion, scale_col)
-                    # elif ctx.triggered_id == 'pixel-size-ratio':
-                    #     cur_graph = CanvasLayout(cur_graph).use_custom_scalebar_value(custom_scale_val, pixel_ratio, proportion)
+
                     return cur_graph, cur_graph_layout
                 except (ValueError, KeyError, AssertionError):
                     raise PreventUpdate
@@ -1362,12 +1349,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if graph is not None and graph_layout is not None and data_selection is not None and nclicks and stats_table_open:
             return RegionSummary(graph_layout, upload, layers, data_selection, aliases_dict).get_summary_frame()
         elif stats_table_open:
-            return pd.DataFrame(
-                {'Channel': [], 'Mean': [], 'Max': [], 'Min': [], 'Total': []}).to_dict(orient='records')
+            return pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [], 'Min': [], 'Total': []}).to_dict(orient='records')
         raise PreventUpdate
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
-                       # Input('image-analysis', 'value'),
                        Input('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
                        Input('annotation_canvas', 'relayoutData'),
@@ -1380,7 +1365,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('preset-button', 'n_clicks'),
                        State('blending_colours', 'data'),
                        Input('default-scaling-gallery', 'value'),
-                       State('main-tabs', 'active_tab'),
                        State('session_config', 'data'),
                        State('dataset-delimiter', 'value'),
                        State('data-collection', 'options'),
@@ -1388,28 +1372,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize()
     def create_channel_tile_gallery_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                           preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          blend_colour_dict, toggle_scaling_gallery, active_tab, session_config, delimiter, options):
+                          blend_colour_dict, toggle_scaling_gallery, session_config, delimiter, options):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
-        IMPORTANT: do not return the blend dictionary here as it will override
-        the session blend dictionary on an ROI change
+        IMPORTANT: do not return the blend dictionary here as it will override the session blend on an ROI change
         """
         try:
-            # condition 1: if the data collection is changed, update with new images
-            # condition 2: if any other mods are made, ensure that the active tab is the gallery tab
-            new_collection = gallery_data is not None and ctx.triggered_id in \
-                    ["data-collection", "uploaded_dict", "alias-dict", "unique-channel-list"]
-            gallery_mod_in_tab = gallery_data is not None and ctx.triggered_id not in \
-            ["data-collection", "uploaded_dict", "annotation_canvas", "alias-dict", "unique-channel-list"] and active_tab == 'gallery-tab'
-            use_zoom = gallery_data is not None and ctx.triggered_id == 'annotation_canvas'
+            # do not update if the canvas triggers, but gallery zoom is not enabled
             zoom_not_needed = ctx.triggered_id == 'annotation_canvas' and not toggle_gallery_zoom
-            if (new_collection or gallery_mod_in_tab or use_zoom) and not zoom_not_needed:
+            data_there = data_selection in gallery_data.keys() and all([elem is not None for elem in gallery_data[data_selection].values()])
+            if data_there and not zoom_not_needed:
                 # maintain the original order of channels that is dictated by the metadata
                 # decide if channel view or ROI view is selected
-                # channel view
                 if view_by_channel and channel_selected is not None:
-                    # views = get_all_images_by_channel_name(gallery_data, channel_selected)
                     views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 10000,
                             delimiter=delimiter, use_greyscale=True, dataset_options=options).get_image_dict()
                     if toggle_scaling_gallery:
@@ -1478,10 +1454,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if currently_in_blend is not None:
             fig = reset_pixel_histogram()
-            if new_selection is not None:
-                return fig, [None, None]
-            else:
-                return fig, [None, None]
+            return fig, [None, None]
         raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
@@ -1698,8 +1671,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
-            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict,
-                                                                                               selected_channel)
+            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict, selected_channel)
             to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return = \
                 return_current_default_params_with_preset(filter_type, filter_val, filter_sigma, color)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
@@ -1733,9 +1705,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def generate_preset_options(selected_click, preset_name, current_preset_options, data_selection, layer,
                                 current_blend_dict, current_presets, cur_preset_chosen):
-        if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer,
-                                                                              current_blend_dict):
-
+        if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer, current_blend_dict):
 
             if preset_name not in current_preset_options:
                 current_preset_options.append(preset_name)
@@ -1743,11 +1713,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             current_presets = {} if current_presets is None else current_presets
 
             current_presets[preset_name] = current_blend_dict[layer]
-
-            if cur_preset_chosen in current_preset_options:
-                set_preset = cur_preset_chosen
-            else:
-                set_preset = None
+            set_preset = cur_preset_chosen if cur_preset_chosen in current_preset_options else None
 
             return current_preset_options, current_presets, set_preset
         raise PreventUpdate
@@ -1779,8 +1745,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
             except AttributeError:
                 raise DataImportError(ALERT.warnings["possible-disk-storage-error"])
-            except KeyError:
-                return []
+            except KeyError: return []
         return []
 
     @dash_app.callback(Output('static-session-var', 'data'),
@@ -1901,8 +1866,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if any([elem in ['', ' '] for elem in gene_aliases.keys()]) or any([elem['Channel Name'] in \
             ['', ' '] or elem['Channel Label'] in ['', ' '] for elem in metadata_editable]):
-            error_config = add_warning_to_error_config(error_config, ALERT.warnings["metadata_format_error"])
-            return error_config
+            return add_warning_to_error_config(error_config, ALERT.warnings["metadata_format_error"])
         raise PreventUpdate
 
     @dash_app.callback(Output('region-annotation', 'disabled'),
@@ -2214,8 +2178,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Toggle the ability to use scroll zoom on the annotation canvas using the input from the
         session configuration modal. Default value is not enabled
         """
-        cur_config = cur_config.copy()
-        cur_config['scrollZoom'] = enable_zoom
+        # cur_config = cur_config.copy()
+        if 'scrollZoom' in cur_config: cur_config['scrollZoom'] = enable_zoom
         return cur_config
 
     @dash_app.callback(Output('tour_component', 'isOpen'),
