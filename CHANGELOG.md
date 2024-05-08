@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-05-06
+## [0.15.0] - 2024-05-08
 
 ### Added
 
 - warning message for ROI query when images or quant results are missing. #101
 - CLI script for autoscaling ROIs from mcd
-- Min amd max dimension limits (optional) for ROIs in gallery query with improved recursive
-searching to match the query number
+- Min amd max dimension limits (optional) + keyword searching for ROIs in gallery
+query with improved recursive searching to match the query number
 
 ### Fixed
 

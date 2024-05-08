@@ -224,7 +224,7 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
     Note: the slider minimum is always set to 0
     """
     if float(max_value) <= 1.0:
-        return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 10), 2))
+        return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 25), 2))
     else:
         # set the default number of tick marks to 4
         # if the maximum value is less than 3, reduce the number of ticks accordingly

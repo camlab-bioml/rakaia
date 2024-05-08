@@ -33,10 +33,15 @@ def test_roi_query_parser(get_current_dir):
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 20, []).get_image_dict()
     assert len(roi_query) == 6
 
-    # # fake mcd returns None
-    # fake_mcd = os.path.join(get_current_dir, "fake.txt")
-    # session_config = {"uploads": [str(fake_mcd)]}
-    # assert RegionThumbnail(session_config, blend_dict, channels, 20, []).get_image_dict() is None
+    # with keyword
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+                                [dataset_exclude], roi_keyword="Xylene").get_image_dict()
+    assert all(["Xylene" in key for key in roi_query.keys()])
+    assert len(roi_query) == 1
+
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+                                [dataset_exclude], roi_keyword="Xylene,HIER").get_image_dict()
+    assert len(roi_query) == 2
 
     # assert a key error on an improperly configured session config
     bad_session_config = {"fake_key": [str(mcd)]}

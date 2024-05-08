@@ -135,8 +135,7 @@ def test_tick_marker_spacing_range_slider():
     assert set_range_slider_tick_markers(100)[0] == {0: '0', 33: '33', 66: '66', 100: '100'}
     low_range, small_step = set_range_slider_tick_markers(0.3)
     assert len(low_range) == 2
-    assert small_step == 0.03
-
+    assert small_step == 0.01
 
 def test_generate_legend_text_channels():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),

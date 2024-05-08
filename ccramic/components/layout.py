@@ -1184,7 +1184,13 @@ def register_app_layout(config, cache_dest):
                     dcc.Input(id="dataset-query-dim-max", type="number", placeholder="Dim. max for query", value=None,
                     style={"height": "25%", "width": "50%", "margin-left": "5px"})],
                     style={"display": "flex", "margin-top": "15px"})],
-                style={"margin-left": "75px"})]),
+                style={"margin-left": "75px"}),
+                dbc.Col(width=3, children=[html.H6("Add query keyword", style={"margin-top": "15px"}),
+                html.Div([dcc.Input(id="dataset-query-keyw", type="text",
+                    placeholder="ROI keyword", value=None, style={"height": "25%", "width": "75%",
+                    "margin-right": "5px"})],
+                style={"display": "flex", "margin-top": "15px"})], style={"margin-left": "75px"})
+                         ]),
                 html.Div(id="dataset-query-gallery", children=[
                     dbc.Row(id="dataset-query-gallery-row"),
                     html.Br(),
