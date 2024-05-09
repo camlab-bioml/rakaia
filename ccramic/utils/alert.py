@@ -8,11 +8,12 @@ class DataImportTour(BaseModel):
     """
     steps: list = [{'selector': '[id="upload-image"]',
                     'content': "Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
-                               " be used only for datasets < 2GB or if the app deployment is non-local (web-based)"},
+                               " be used only for datasets < 2GB or if the app deployment is public/shared, "
+                               "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
                 'content': "For large datasets (> 2GB) on local deployments, "
                            "copy and paste either a filepath or directory and "
-                               "read files directly by selecting Import local"},
+                               "read files directly by selecting Import local. Does not duplicate any data."},
                 {'selector': '[id="show-dataset-info"]',
                 'content': 'View a list of imported datasets and regions of interest (ROIs).'
                            ' Multiple ROIs, files, and/or filetypes can be imported into the same session, '

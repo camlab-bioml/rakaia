@@ -348,13 +348,13 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_lis
         sam_id = mask_selection
     else:
         # also look for partial match of the cell id list to the mark name
-        if cell_id_list is not None:
+        if cell_id_list:
             for roi_id in cell_id_list:
-                if roi_id in mask_selection:
+                if roi_id and mask_selection and roi_id in mask_selection:
                     sam_id = roi_id
         # if this pattern exists, try to match to the sample name by index
         # otherwise, try matching directly by name
-        if sam_id is None and "_ac_IA_mask" in mask_selection:
+        if sam_id is None and mask_selection and "_ac_IA_mask" in mask_selection:
             try:
                 split_1 = mask_selection.split("_ac_IA_mask")[0]
                 # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed

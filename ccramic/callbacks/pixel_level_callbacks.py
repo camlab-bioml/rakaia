@@ -253,7 +253,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     # @cache.memoize())
     def reset_canvas_on_new_upload(uploaded, cur_fig):
-        if None not in (uploaded, cur_fig) and 'data' in cur_fig:
+        if None not in (uploaded, cur_fig) and 'data' in cur_fig and cur_fig['data']:
             # fig = go.Figure()
             # fig['layout']['uirevision'] = True
             return go.Figure()

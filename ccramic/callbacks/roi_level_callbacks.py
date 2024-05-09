@@ -18,7 +18,6 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with ROI level and cross dataset queries
     """
-
     @dash_app.callback(Output('dataset-query-gallery-row', 'children'),
                        Output('roi-query', 'data'),
                        Output('dataset-query-gallery', 'style'),

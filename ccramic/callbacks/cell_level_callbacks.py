@@ -27,7 +27,7 @@ from ccramic.callbacks.cell_level_wrappers import (
     callback_remove_canvas_annotation_shapes, reset_annotation_import)
 from ccramic.io.annotation_outputs import AnnotationMaskWriter, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
-from ccramic.utils.pixel_level_utils import split_string_at_pattern, random_hex_colour_generator
+from ccramic.utils.pixel_level_utils import split_string_at_pattern
 from ccramic.io.readers import DashUploaderFileReader
 import os
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
@@ -232,13 +232,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if ctx.triggered_id == "quantification-dict":
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
-        else:
-            try:
-                return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
+        try:
+            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
                             current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite']), \
                         dash.no_update, dash.no_update
-            except ValueError:
-                raise PreventUpdate
+        except ValueError: raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Output('umap-div-holder', 'style', allow_duplicate=True),
