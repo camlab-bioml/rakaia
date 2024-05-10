@@ -1,6 +1,4 @@
 import collections
-
-import pandas as pd
 import pytest
 import dash_extensions
 from ccramic.utils.cell_level_utils import *
@@ -330,3 +328,13 @@ def test_remove_latest_annotation():
     assert not len(annotations_dict['roi_1'])
     assert remove_annotation_entry_by_indices(annotations_dict, None) == annotations_dict_original
     assert not remove_annotation_entry_by_indices(None, "roi_1")
+
+def test_quantification_distribution_table(get_current_dir):
+    measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    dist = pd.DataFrame(quantification_distribution_table(measurements, umap_variable="sample"))
+    assert 'Proportion' in dist.columns
+    assert dist['Proportion'].to_list() == [0.828, 0.172]
+    subset = {'test_1': 97, 'test_2': 8}
+    dist = pd.DataFrame(quantification_distribution_table(measurements, umap_variable="sample",
+                                                          subset_cur_cat=subset))
+    assert dist['Proportion'].to_list() == [0.924, 0.076]

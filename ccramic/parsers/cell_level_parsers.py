@@ -214,8 +214,10 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
     # Example 2: user selects all but the the second item to view
     # [{'visible': ['legendonly']}, [2]]
     # print(restyle_data)
+    # do not allow the restyledata to be empty from categorical
     if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0] and \
-        umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns):
+        umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns) and \
+            restyledata not in [[{'visible': ['legendonly']}, [0]]]:
         # get the total number of possible sub annotations and figure out which ones were selected
         quant_frame = pd.DataFrame(quantification_frame)
         tot_subtypes = list(quant_frame[umap_col_annotation].unique())

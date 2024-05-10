@@ -1,3 +1,4 @@
+from typing import Union
 import pandas as pd
 from ccramic.utils.pixel_level_utils import (
     path_to_mask,
@@ -426,3 +427,18 @@ def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selectio
             pass
         return annot_dict
     return annotations_dict
+
+def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFrame],
+                                      umap_variable: str, subset_cur_cat: Union[dict, None]=None,
+                                      counts_col: str="Counts", proportion_col: str="Proportion"):
+    """
+    Compute the proportion of frequency counts for a UMAP distribution
+    """
+    if subset_cur_cat is None:
+        frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
+            columns={str(umap_variable): "Value", 'count': "Counts"})
+    else:
+        frame = pd.DataFrame(zip(list(subset_cur_cat.keys()), list(subset_cur_cat.values())),
+                             columns=["Value", "Counts"])
+    frame[proportion_col] = frame[counts_col] / (frame[counts_col].abs().sum())
+    return frame.round(3).to_dict(orient="records")

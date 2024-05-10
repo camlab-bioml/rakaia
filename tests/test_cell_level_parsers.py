@@ -125,6 +125,8 @@ def test_parse_restyledata_from_legend_change():
     restyle_3 = [{'visible': ['legendonly']}, [3]]
     types_return_3 = parse_cell_subtypes_from_restyledata(restyle_3, test_frame, "category", [0, 1, 2, 3])
     assert types_return_3 == (['one', 'two', 'three'], [0, 1, 2])
+    assert parse_cell_subtypes_from_restyledata([{'visible': ['legendonly']}, [0]],
+                                                test_frame, "category", [0, 1, 2, 3]) == (None, None)
 
 def test_valid_parse_for_indices_for_query(get_current_dir):
     """

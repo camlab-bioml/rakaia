@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-05-09
+## [0.15.0] - 2024-05-10
 
 ### Added
 
@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - CLI script for autoscaling ROIs from mcd
 - Min amd max dimension limits (optional) + keyword searching for ROIs in gallery
 query with improved recursive searching to match the query number
+- Percentage distribution for UMAP categories
 
 ### Fixed
 
@@ -30,6 +31,7 @@ query with improved recursive searching to match the query number
 - mask boundaries using `skimage` now use the innermost pixels as opposed to outer
 - Better legend and scalebar x-axis range placement for varying ROI dimensions
 - Specify Ubuntu version 22.04 in Docker
+- UMAP channel overlay now uses `dash.Patch` for faster re-render (only numeric to numeric)
 
 ## [0.14.0] - 2024-04-18
 

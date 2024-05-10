@@ -15,10 +15,11 @@ from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
     identify_column_matching_roi_to_quantification,
-    validate_mask_shape_matches_image)
+    validate_mask_shape_matches_image,
+    quantification_distribution_table)
 from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
-    generate_umap_plot)
+    generate_umap_plot, umap_eligible_patch, patch_umap_figure)
 from ccramic.io.pdf import AnnotationPDFWriter
 from ccramic.io.annotation_outputs import AnnotationRegionWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
@@ -31,7 +32,7 @@ from ccramic.utils.pixel_level_utils import split_string_at_pattern
 from ccramic.io.readers import DashUploaderFileReader
 import os
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
-from dash import dcc
+from dash import dcc, Patch
 import matplotlib
 from werkzeug.exceptions import BadRequest
 import dash_uploader as du
@@ -252,8 +253,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id != 'quantify-cur-roi-execute':
             if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
             try:
-                umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
-                display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
+                if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay):
+                    return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
+                else:
+                    umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                    display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
             except BadRequest: return dash.no_update, blank_umap
         return dash.no_update, blank_umap
@@ -508,23 +512,16 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('quant-dist-table', 'data'),
                        Output('quant-dist-table', 'columns'),
-                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input("umap-projection-options", "value"),
                        Input('quantification-dict', 'data'),
                        Input('cur-umap-subset-category-counts', 'data'),
                        prevent_initial_call=True)
     def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
         # TODO: populate the frequency distribution table for a variable in the quantification results
+        columns = [{'id': p, 'name': p, 'editable': False} for p in ["Value", "Counts", "Proportion"]]
         if None not in (quantification_dict, umap_variable):
-            if subset_cur_cat is None:
-                frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
-                    columns={"index": "Value", 0: "Count"})
-            else:
-                frame = pd.DataFrame(zip(list(subset_cur_cat.keys()), list(subset_cur_cat.values())), columns=["Value", "Counts"])
-            # frame.reset_index().rename(columns={"index": "Value", 0: "Count"})
-            columns = [{'id': p, 'name': p, 'editable': False} for p in list(frame.columns)]
-            return frame.to_dict(orient="records"), columns, dash.no_update
-        raise PreventUpdate
+            return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), columns
+        return pd.DataFrame({}).to_dict(orient="records"), columns
 
     @dash_app.callback(
         Output("download-point-csv", "data"),
