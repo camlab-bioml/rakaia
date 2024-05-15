@@ -85,6 +85,10 @@ from ccramic.utils.filter import (
     return_current_or_default_channel_color,
     return_current_default_params_with_preset,
     apply_filter_to_channel, set_blend_parameters_for_channel)
+from ccramic.callbacks.triggers import (
+    no_canvas_mask,
+    global_filter_disabled,
+    channel_order_as_default, new_roi_same_dims, channel_already_added)
 import shortuuid
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -303,8 +307,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
                         # if the new dimensions match, do not update the canvas child to preserve the ui revision state
-                        if cur_dimensions is not None and (first_image.shape[0] == cur_dimensions[0]) and \
-                        (first_image.shape[1] == cur_dimensions[1]) and ctx.triggered_id not in ["data-selection-refresh"]:
+                        if new_roi_same_dims(ctx.triggered_id, cur_dimensions, first_image):
                            canvas_return = dash.no_update
                         else:
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=
@@ -700,9 +703,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
-            # do not update if the trigger is the channel options and the current selection hasn't changed
-            only_options_changed = ctx.triggered_id == "images_in_blend" and \
-                                   ctx.triggered[0]['value'] == session_vars["cur_channel"]
+            only_options_changed = channel_already_added(ctx.triggered_id, ctx.triggered, session_vars)
 
         if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers,
                         filter_sigma) and not only_options_changed:
@@ -733,17 +734,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                     if len(filter_chosen) > 0 and filter_name is not None:
                         array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
-
-                        # current_blend_dict[layer]['filter_type'] = filter_name
-                        # current_blend_dict[layer]['filter_val'] = filter_value
-                        # current_blend_dict[layer]['filter_sigma'] = filter_sigma
                         current_blend_dict = set_blend_parameters_for_channel(current_blend_dict, layer,
                                                             filter_name, filter_value, filter_sigma)
 
                     else:
-                        # current_blend_dict[layer]['filter_type'] = None
-                        # current_blend_dict[layer]['filter_val'] = None
-                        # current_blend_dict[layer]['filter_sigma'] = None
                         current_blend_dict = set_blend_parameters_for_channel(current_blend_dict, layer,
                                             filter_name, filter_value, filter_sigma, clear=True)
 
@@ -914,14 +908,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # TODO: decide if an error should prompt a recursive try on the canvas by re-sending the data selection
         # do not update if the trigger is a global filter and the filter is not applied
-        global_not_enabled = ctx.triggered_id in ["global-filter-type", "global-kernel-val-filter",
-                                                  "global-sigma-val-filter"] and not global_apply_filter
-        channel_order_same = ctx.triggered_id in ["channel-order"] and channel_order == currently_selected
+        global_not_enabled = global_filter_disabled(ctx.triggered_id, global_apply_filter)
+        channel_order_same = channel_order_as_default(ctx.triggered_id, channel_order, currently_selected)
         # gating always triggers an update, so prevent this here
         dont_update = ctx.triggered_id == "gating-cell-list" and gating_cell_id_list is None
+        empty_mask = no_canvas_mask(ctx.triggered_id, mask_selection, mask_toggle)
         if canvas_layers is not None and currently_selected is not None and blend_colour_dict is not None and data_selection \
             is not None and currently_selected and len(channel_order) > 0 and not global_not_enabled and not \
-            channel_order_same and data_selection in canvas_layers and canvas_layers[data_selection] and not dont_update:
+            channel_order_same and data_selection in canvas_layers and canvas_layers[data_selection] and not dont_update and not empty_mask:
 
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
@@ -1086,7 +1080,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         updates the scalebar length with a custom value
         """
         # do not trigger update if the channel order is maintained
-        chan_same = ctx.triggered_id in ["channel-order"] and channel_order == currently_selected
+        chan_same = channel_order_as_default(ctx.triggered_id, channel_order, currently_selected)
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict) and not chan_same:
             pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
             image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
@@ -1656,9 +1650,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
-            # do not update if the trigger is the channel options and the current selection hasn't changed
-            only_options_changed = ctx.triggered_id == "images_in_blend" and \
-                                   ctx.triggered[0]['value'] == session_vars["cur_channel"]
+            only_options_changed = channel_already_added(ctx.triggered_id, ctx.triggered, session_vars)
 
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:

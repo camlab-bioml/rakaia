@@ -92,7 +92,7 @@ class ToolTips(BaseModel):
                       "roi-refresh": "Refresh the current dataset selection and canvas figure. "
                                     "Can be used if the ROI loading or canvas has become corrupted/malformed.",
                       "channel-mod": "Select a channel in the current blend to \nchange colour, "
-                                                           "pixel intensity, or apply a filter.",
+                                    "pixel intensity, or apply a filter. Click for more information.",
                       "annot-reimport": "Re-import the current ROI annotations into the quantification "
                                             "results. Annotations must be re-added each time the quantification "
                                             "results are re-generated, or if annotations were generated "

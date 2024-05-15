@@ -394,6 +394,8 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
             cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
             # make sure that the cells are integers so that they match the array values of the mask
             cell_list = [int(i) for i in cell_list]
+            # TODO: try to speed up for very large images with either many cells or many cluster categories
+            # time complexity is O(num_clusters)
             annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
             annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
             annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
