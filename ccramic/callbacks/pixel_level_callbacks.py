@@ -16,7 +16,7 @@ from ccramic.parsers.pixel_level_parsers import (
     populate_image_dict_from_lazy_load,
     create_new_blending_dict,
     populate_alias_dict_from_editable_metadata,
-    check_blend_dictionary_for_blank_bounds_by_channel)
+    check_blend_dictionary_for_blank_bounds_by_channel, check_empty_missing_layer_dict)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
     get_default_channel_upper_bound_by_percentile,
@@ -58,7 +58,7 @@ from ccramic.io.session import (
     write_session_data_to_h5py,
     subset_mask_for_data_export,
     create_download_dir,
-    SessionServerside)
+    SessionServerside, panel_length_match, all_roi_match)
 from pathlib import Path
 import json
 from dash import dcc
@@ -72,7 +72,7 @@ from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
 from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError, LazyLoadError, \
-    add_warning_to_error_config
+    add_warning_to_error_config, PanelMismatchError
 import uuid
 from ccramic.utils.region import (
     RegionAnnotation,
@@ -100,6 +100,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
     ALERT = AlertMessage()
     ZOOM_KEYS = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+    OVERWRITE = app_config['serverside_overwrite']
 
     @du.callback(Output('uploads', 'data'),
                  id='upload-image')
@@ -199,13 +200,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 error_config = add_warning_to_error_config(error_config, ALERT.warnings["multiple_filetypes"] + message)
             else:
                 error_config = add_warning_to_error_config(error_config, message)
-            fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
-            session_dict['unique_images'] = fileparser.unique_image_names
-            columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
-            data = pd.DataFrame(fileparser.dataset_information_frame).to_dict(orient='records')
-            blend_return = fileparser.blend_config if (current_blend is None or len(current_blend) == 0) else dash.no_update
+            try:
+                fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
+                session_dict['unique_images'] = fileparser.unique_image_names
+                columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
+                data = pd.DataFrame(fileparser.dataset_information_frame).to_dict(orient='records')
+                blend_return = fileparser.blend_config if (current_blend is None or len(current_blend) == 0) else dash.no_update
+            except (PanelMismatchError, TypeError, OSError) as e:
+                error_config = add_warning_to_error_config(error_config, str(e))
+                return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
             return SessionServerside(fileparser.image_dict, key="upload_dict",
-                use_unique_key=app_config['serverside_overwrite']), session_dict, blend_return, columns, data, error_config
+                use_unique_key=OVERWRITE), session_dict, blend_return, columns, data, error_config
         raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'options'),
@@ -258,8 +263,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     # @cache.memoize())
     def reset_canvas_on_new_upload(uploaded, cur_fig):
         if None not in (uploaded, cur_fig) and 'data' in cur_fig and cur_fig['data']:
-            # fig = go.Figure()
-            # fig['layout']['uirevision'] = True
             return go.Figure()
         raise PreventUpdate
 
@@ -327,12 +330,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         channels_selected = []
                     return channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
-                        image_dict, key="upload_dict", use_unique_key=app_config['serverside_overwrite']), \
+                        image_dict, key="upload_dict", use_unique_key=OVERWRITE), \
                         canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return
                 except AssertionError:
-                    return [], [], SessionServerside(image_dict, key="upload_dict", use_unique_key=
-                    app_config['serverside_overwrite']), canvas_return, set_roi_tooltip_based_on_length(
-                        data_selection, delimiter), dim_return
+                    return [], [], SessionServerside(image_dict, key="upload_dict", use_unique_key= OVERWRITE), \
+                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return channel_dropdown_selection(channels_return, names), dash.no_update, dash.no_update, \
                     dash.no_update, dash.no_update, dash.no_update
@@ -390,8 +392,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 channel_auto_fill = dash.no_update
                 if chosen_for_blend[-1] != cur_channel_mod: channel_auto_fill = chosen_for_blend[-1]
                 return [{'label': names[i], 'value': i} for i in chosen_for_blend], channel_auto_fill
-            except (AssertionError, IndexError):
-                raise PreventUpdate
+            except (AssertionError, IndexError): raise PreventUpdate
         raise PreventUpdate
 
     @dash_app.callback(Input('session_config', 'data'),
@@ -450,22 +451,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         metadata_return = extract_alias_labels_from_db_document(new_blend_dict, cur_metadata)
         metadata_return = metadata_return if len(metadata_return) > 0 else dash.no_update
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
-            # conditions where the blend dictionary is updated
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
             current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}
-            panels_equal = current_blend_dict is not None and len(current_blend_dict) == len(new_blend_dict['channels'])
-            match_all = current_blend_dict is None and all([len(uploaded_w_data[roi]) == \
-                        len(new_blend_dict['channels']) for roi in uploaded_w_data.keys() if delimiter in roi])
-            if panels_equal or match_all:
+            if panel_length_match(current_blend_dict, new_blend_dict) or all_roi_match(
+                    current_blend_dict, new_blend_dict, uploaded_w_data, delimiter):
                 current_blend_dict = new_blend_dict['channels'].copy()
-                if all_layers is None or data_selection not in all_layers.keys():
-                    all_layers = {data_selection: {}}
+                all_layers = check_empty_missing_layer_dict(all_layers, data_selection)
                 for elem in add_to_layer:
                     current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
                         current_blend_dict, elem, uploaded_w_data, data_selection)
                     array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
                     all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
-                                                    current_blend_dict[elem]['color'])).astype(np.uint8)
+                                                        current_blend_dict[elem]['color'])).astype(np.uint8)
                 error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_update_success"])
                 channel_list_return = dash.no_update
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and all([elem in \
@@ -476,7 +473,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 clust_return = {data_selection: new_blend_dict['cluster']} if \
                     'cluster' in new_blend_dict.keys() and new_blend_dict['cluster'] else dash.no_update
                 gate_return = new_blend_dict['gating'] if 'gating' in new_blend_dict.keys() else dash.no_update
-                return SessionServerside(all_layers, key="layer_dict", use_unique_key=app_config['serverside_overwrite']), \
+                return SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE), \
                     current_blend_dict, error_config, channel_list_return, global_apply_filter, global_filter_type, \
                     global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update, clust_return, gate_return, None
             # IMP: if the update does not occur, clear the database selection and auto filled config name
@@ -523,8 +520,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         channel_modify = cur_image_in_mod_menu
                 else:
                     param_dict["current_roi"] = data_selection
-            if all_layers is None or data_selection not in all_layers.keys():
-                all_layers = {data_selection: {}}
+            all_layers = check_empty_missing_layer_dict(all_layers, data_selection)
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
                 if elem not in current_blend_dict.keys():
@@ -555,8 +551,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                          current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                             current_blend_dict[elem]['color'])).astype(np.uint8)
-            return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                use_unique_key=app_config['serverside_overwrite']), param_dict, channel_modify
+            return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE), param_dict, channel_modify
         raise PreventUpdate
 
     @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
@@ -591,9 +586,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the blend dictionary and layer dictionary when a modification channel changes its colour
         """
-        if layer is not None and current_blend_dict is not None and data_selection is not None and \
-                current_blend_dict is not None:
-
+        if None not in (layer, current_blend_dict, data_selection):
             array = uploaded_w_data[data_selection][layer]
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
@@ -609,8 +602,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array, colour['hex'])).astype(np.uint8)
-                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                                                use_unique_key=app_config['serverside_overwrite'])
+                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE)
                 raise PreventUpdate
             raise PreventUpdate
         raise PreventUpdate
@@ -646,8 +638,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     array = apply_preset_to_array(uploaded_w_data[data_selection][layer], current_blend_dict[layer])
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array, current_blend_dict[layer]['color']))
-                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                                                use_unique_key=app_config['serverside_overwrite'])
+                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE)
             except TypeError:
                 raise PreventUpdate
         raise PreventUpdate
@@ -677,8 +668,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
             array = apply_preset_to_array(uploaded_w_data[data_selection][layer], preset_dict[preset_selection])
             all_layers[data_selection][layer] = np.array(recolour_greyscale(array, current_blend_dict[layer]['color']))
-            return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                                    use_unique_key=app_config['serverside_overwrite'])
+            return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(State('images_in_blend', 'value'),
@@ -743,8 +733,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                         current_blend_dict[layer]['color'])).astype(np.uint8)
-                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                                                use_unique_key=app_config['serverside_overwrite'])
+                    return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE)
             raise PreventUpdate
         raise PreventUpdate
 
@@ -1919,7 +1908,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 title=None, body=None, cell_type=gating_annot_type, imported=False, annotation_column=gating_annot_col,
                 type="gate", channels=cur_layers, use_mask=mask_toggle, mask_selection=mask_selection,
                 mask_blending_level=mask_blending_level, add_mask_boundary=add_mask_boundary, id=str(shortuuid.uuid())).dict()
-            return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
+            return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=OVERWRITE)
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and None not in \
                 (annotation_title, annotation_body, canvas_layout, data_selection, cur_layers):
@@ -1946,7 +1935,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 cell_type = annotation_cell_type, imported = False, annotation_column = annot_col, type = value,
                 channels = cur_layers, use_mask = mask_toggle, mask_selection = mask_selection,
                 mask_blending_level = mask_blending_level, add_mask_boundary = add_mask_boundary, id=str(shortuuid.uuid())).dict()
-            return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
+            return SessionServerside(annotations_dict, key="annotation_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation-table', 'data'),

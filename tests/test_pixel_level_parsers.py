@@ -8,7 +8,8 @@ from ccramic.parsers.pixel_level_parsers import (
     convert_between_dense_sparse_array,
     convert_rgb_to_greyscale,
     populate_alias_dict_from_editable_metadata,
-    check_blend_dictionary_for_blank_bounds_by_channel)
+    check_blend_dictionary_for_blank_bounds_by_channel,
+    check_empty_missing_layer_dict)
 from scipy.sparse import csc_matrix
 import numpy as np
 from ccramic.utils.alert import PanelMismatchError
@@ -158,3 +159,8 @@ def test_check_empty_blend_bounds():
     assert blend_dict == {'channel_1': {'x_lower_bound': 0, 'x_upper_bound': 7.0}}
     blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(blend_dict, "channel_1", channel_dict, "roi_1")
     assert blend_dict == {'channel_1': {'x_lower_bound': 0, 'x_upper_bound': 7.0}}
+
+def test_layer_dict_status():
+    assert check_empty_missing_layer_dict(None, "roi_1") == {'roi_1': {}}
+    assert check_empty_missing_layer_dict({'roi_1': {}}, "roi_2") == {'roi_2': {}}
+    assert check_empty_missing_layer_dict({'roi_2': {"channel_1": 1}}, "roi_2") == {'roi_2': {"channel_1": 1}}

@@ -91,6 +91,23 @@ class JSONSessionDocument:
     def get_document(self):
         return self.document
 
+def panel_length_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
+    """
+    Check that a new imported panel from db or JSON matches the length of the existing session
+    """
+    try:
+        return None not in (current_blend, new_blend) and len(current_blend) == len(new_blend['channels'])
+    except (KeyError, TypeError):
+        return False
+
+def all_roi_match(current_blend: Union[dict, None], new_blend: Union[dict, None], image_dict: Union[dict, None],
+                  delimiter: str="+++"):
+    try:
+        return current_blend is None and new_blend is not None and all([len(image_dict[roi]) == \
+                        len(new_blend['channels']) for roi in image_dict.keys() if delimiter in roi])
+    except (KeyError, TypeError):
+        return False
+
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
                                global_filter_type, global_filter_val, global_filter_sigma,
                                data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None,

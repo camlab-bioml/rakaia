@@ -131,7 +131,7 @@ def test_basic_cli_outputs_main():
 
 def test_basic_app_return():
     config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
-              'swatches': None, 'is_dev_mode': True, 'cache_dest': tempfile.gettempdir()}
+              'swatches': None, 'is_dev_mode': True, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True}
     app = init_app(config)
     assert isinstance(app, Flask)
     app_2 = Flask("ccramic")
@@ -142,7 +142,7 @@ def test_basic_callback_register():
     dash_app = DashProxy("fake_app")
     assert len(dash_app.callback_map) == 0
     du.configure_upload(dash_app, "/tmp/")
-    app_config = {'use_local_dialog': False, 'use_loading': False}
+    app_config = {'use_local_dialog': False, 'use_loading': False, 'serverside_overwrite': True}
     init_pixel_level_callbacks(dash_app, "/tmp/", "test_app", app_config)
     # assert init_pixel_level_callbacks(dash_app, "/tmp/", "test_app") is None
     assert isinstance(dash_app, dash_extensions.enrich.DashProxy)

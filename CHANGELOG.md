@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-05-10
+## [0.15.0] - 2024-05-16
 
 ### Added
 
@@ -32,6 +32,7 @@ query with improved recursive searching to match the query number
 - Better legend and scalebar x-axis range placement for varying ROI dimensions
 - Specify Ubuntu version 22.04 in Docker
 - UMAP channel overlay now uses `dash.Patch` for faster re-render (only numeric to numeric)
+- Move `PanelMismatchError` import warning into a modal alert
 
 ## [0.14.0] - 2024-04-18
 

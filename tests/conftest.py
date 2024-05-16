@@ -8,7 +8,6 @@ import tempfile
 def get_current_dir():
     return str(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
-
 @pytest.fixture(scope="module")
 def ccramic_flask_test_app():
     app = init_app(cli_config={'use_local_dialog': False, 'use_loading': True,

@@ -121,22 +121,15 @@ class FileParser:
                 if not (all(len(value) == len(tif.pages) for value in list(self.image_dict['metadata'].values()))) or \
                         (self.panel_length is not None and self.panel_length != len(tif.pages)):
                     raise PanelMismatchError("One or more ROIs parsed from tiff appear to have"
-                            " different panel lengths. This is currently not supported by ccramic.")
-            # file_name, file_extension = os.path.splitext(tiff_path)
-            # set different image labels based on the basename of the file (ome.tiff vs .tiff)
-            # if "ome" in upload:
-            #     basename = str(os.path.basename(tiff_path)).split(".ome" + file_extension)[0]
-            # else:
-            #     basename = str(os.path.basename(tiff_path)).split(file_extension)[0]
+                            " different panel lengths. This is currently not supported by ccramic. "
+                            "Refresh your current session to re-import compatible imaging files.")
             multi_channel_index = 1
             basename = str(Path(tiff_path).stem)
             roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq{str(self.acq_index)}" if \
                 internal_name is None else internal_name
-            # treat each tiff as a its own ROI and increment the acq index for each one
+            # treat each tiff as its own ROI and increment the acq index for each one
             self.image_dict[roi] = {}
             for page in tif.pages:
-                # identifier = str(basename) + str("_channel_" + f"{multi_channel_index}") if \
-                #     len(tif.pages) > 1 else str(basename)
                 identifier = str("channel_" + str(multi_channel_index))
                 # tiff files could be RGB, so convert to greyscale for compatibility
                 self.image_dict[roi][identifier] = None if self.lazy_load else convert_rgb_to_greyscale(
@@ -195,7 +188,8 @@ class FileParser:
                         if len(acq.channel_labels) != len(channel_labels) or \
                            (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
                             raise PanelMismatchError("One or more ROIs parsed from .mcd appear to have"
-                            " different panel lengths. This is currently not supported by ccramic.")
+                            " different panel lengths. This is currently not supported by ccramic. "
+                            "Refresh your current session to re-import compatible imaging files.")
                     channel_index = 0
                     for channel in acq.channel_names:
                         self.image_dict[roi][channel] = None if self.lazy_load else channel.astype(
@@ -249,7 +243,8 @@ class FileParser:
                         not len(self.metadata_labels) == len(txt_channel_labels) or \
                         (self.panel_length is not None and self.panel_length != len(txt_channel_names)):
                     raise PanelMismatchError("One or more ROIs parsed from .txt appear to have"
-                            " different panel lengths. This is currently not supported by ccramic.")
+                            " different panel lengths. This is currently not supported by ccramic. "
+                            "Refresh your current session to re-import compatible imaging files.")
             basename = str(Path(txt_filepath).stem)
             roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
                   f"{self.delimiter}{str(self.acq_index)}" if internal_name is None else internal_name
@@ -300,8 +295,9 @@ def create_new_blending_dict(uploaded):
             if panel_length is None:
                 panel_length = len(uploaded[roi].keys())
             if len(uploaded[roi].keys()) != panel_length:
-                raise PanelMismatchError("The imported file(s) appear to have different panels"
-                                         ". This is currently not supported by ccramic.")
+                raise PanelMismatchError("The imported file(s) appear to have different panel lengths. "
+                                         "This is currently not supported by ccramic. "
+                            "Refresh your current session to re-import compatible imaging files.")
     first_roi = [elem for elem in list(uploaded.keys()) if 'metadata' not in elem][0]
     for channel in uploaded[first_roi].keys():
         current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
@@ -383,3 +379,14 @@ def check_blend_dictionary_for_blank_bounds_by_channel(blend_dict: dict, channel
             get_default_channel_upper_bound_by_percentile(
                 channel_dict[data_selection][channel_selected])
     return blend_dict
+
+def check_empty_missing_layer_dict(current_layers: Union[dict, None], data_selection: str):
+    """
+    The layer hash holds the RGB channel arrays for each channel that is processed in an ROI.
+    Check if the current layer hash has a hash for the current ROI. If not, create an empty hash
+    with the new ROI. This enables the hash to be cleared each time the ROI is changed, to minimize
+    the amount of memory used for channel colour arrays
+    """
+    if current_layers is None or data_selection not in current_layers.keys():
+        current_layers = {data_selection: {}}
+    return current_layers

@@ -190,14 +190,14 @@ class CanvasImage:
 
         # set how far in from the lefthand corner the scale bar and colour legends should be
         # higher values mean closer to the centre
-        # fig = canvas_layers[image_type][currently_selected[0]]
         fig = self.add_canvas_legend_text(fig, x_axis_placement)
 
-        # set the x-axis scale placement based on the size of the image
-        # for adding a scale bar
+        # set the x-axis scale placement based on the size of the image for adding a scale bar
         fig = self.add_canvas_scalebar(fig, x_axis_placement)
 
         fig = self.add_canvas_hover_template(fig)
+        # to remove the hover template completely
+        # fig.update_traces(hovertemplate=None, hoverinfo='skip')
         return fig.to_dict()
 
     def get_shape(self):
@@ -274,7 +274,6 @@ class CanvasImage:
                 else:
                     hover_labels.append(label)
             new_hover = per_channel_intensity_hovertext(hover_labels)
-            # fig.update_traces(hovertemplate=new_hover)
         else:
             fig.update(data=[{'customdata': None}])
             new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
