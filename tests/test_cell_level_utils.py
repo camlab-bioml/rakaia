@@ -92,7 +92,7 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
     assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 1
     counts = measurements["ccramic_cell_annotation"].value_counts(normalize =True)
     assert len(dict(counts)) == 2
-    assert 'None' in dict(counts).keys()
+    assert 'Unassigned' in dict(counts).keys()
 
     bounds_2 = {'xaxis.range[0]': 241, 'xaxis.range[1]': 253, 'yaxis.range[0]': -1, 'yaxis.range[1]': 4}
 
@@ -102,7 +102,7 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
                                                         (measurements["y_max"] == 20)]) == ['new_cell_type']
     assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 2
     assert len(dict(counts)) == 2
-    assert 'None' in dict(counts).keys()
+    assert 'Unassigned' in dict(counts).keys()
     measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds_2,
                                                                     cell_type="new_cell_type_2")
     counts = measurements["ccramic_cell_annotation"].value_counts(normalize=True)
@@ -123,7 +123,7 @@ def test_basic_cell_annotation_col_pop_2(get_current_dir):
     assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 1
     counts = measurements["ccramic_cell_annotation"].value_counts(normalize =True)
     assert len(dict(counts)) == 2
-    assert 'None' in dict(counts).keys()
+    assert 'Unassigned' in dict(counts).keys()
 
 @skip_on(ValueError, "There shouldn't be a numpy truth value error on the array")
 def test_convert_basic_array_to_hovertemplate():
@@ -172,7 +172,7 @@ def test_basic_cell_annotation_col_pop_from_masking(get_current_dir):
                                     cell_type="new_cell_type", sample_name="Dilution_series_1_1")
     assert "ccramic_cell_annotation" in measurements.columns
     assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 2
-    assert list(measurements[measurements["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]
+    assert list(measurements[measurements["cell_id"] == 1]["ccramic_cell_annotation"]) == ['Unassigned']
     assert list(measurements[measurements["cell_id"] == 403]["ccramic_cell_annotation"]) == ["new_cell_type"]
 
 def test_basic_clickdata_cell_annotation(get_current_dir):
@@ -275,12 +275,11 @@ def test_annotation_column_from_umap_(get_current_dir):
     measurements = populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, layout,
                                                                              annotation_column="broad_class",
                                                                              annotation_value="test_cell_type")
-
     for index in range(len(measurements)):
         if index in indices_in:
             assert measurements["broad_class"].tolist()[index] == "test_cell_type"
         else:
-            assert measurements["broad_class"].tolist()[index] == "None"
+            assert measurements["broad_class"].tolist()[index] == 'Unassigned'
 
 
 def test_apply_cluster_annotations_to_mask(get_current_dir):

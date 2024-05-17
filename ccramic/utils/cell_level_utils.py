@@ -92,7 +92,8 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
 
 
 def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
-                                        annotation_column="ccramic_cell_annotation", annotation_value="None"):
+                                        annotation_column="ccramic_cell_annotation", annotation_value="Unassigned",
+                                        default_annotation_value="Unassigned"):
     """
     Populate a new column in the quantification frame with a column annotation with a value as subset using the
     interactive UMAP
@@ -115,7 +116,7 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
             list_indices = query.index.tolist()
 
             if annotation_column not in measurements.columns:
-                measurements[annotation_column] = "None"
+                measurements[annotation_column] = default_annotation_value
 
             measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
                                                    annotation_value, measurements[annotation_column])
@@ -168,7 +169,7 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
 
 def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=None,
                         annotation_column="ccramic_cell_annotation", values_dict=None, cell_type=None,
-                        box_type="zoom", remove: bool=False, default_val: str="None"):
+                        box_type="zoom", remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     by coordinate bounding box
@@ -207,7 +208,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
 
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
                         annotation_column="ccramic_cell_annotation",cell_identifier="cell_id", cell_type=None,
-                        sample_name=None, id_column='sample', remove: bool=False, default_val: str="None"):
+                        sample_name=None, id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
@@ -228,7 +229,7 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
                     annotation_column="ccramic_cell_annotation", cell_identifier="cell_id", values_dict=None,
                     cell_type=None, mask_toggle=True, mask_dict=None, mask_selection=None, sample=None,
-                    id_column='sample', remove: bool=False, default_val: str="None"):
+                    id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
@@ -282,7 +283,6 @@ def process_mask_array_for_hovertemplate(mask_array):
     mask_array[mask_array == '0.0'] = 'None'
     mask_array[mask_array == '0'] = 'None'
     return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))
-
 
 
 def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85):

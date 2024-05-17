@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.15.0] - 2024-05-16
+## [0.15.0] - 2024-05-17
 
 ### Added
 
@@ -25,6 +25,7 @@ query with improved recursive searching to match the query number
 - Re-import exported custom metadata works as expected
 - proper str casting for cluster annotations as circles
 - Upper bounds of 0 from JSON style imports are no longer reset to the default percentile
+- Change default CSV annotation value to `Unassigned` to avoid empty parsing by pandas on re-upload
 
 ### Changed
 
