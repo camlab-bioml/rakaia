@@ -18,6 +18,8 @@ class TabText(BaseModel):
     """
     Holds the html-compatible text explanations for different tabs
     """
+    dataset_preview: str = "ROIs that have been successfully imported are listed below. " \
+                           "Selecting a row will load the ROI into the main canvas and channel gallery."
     metadata: str = "Panel metadata consists of a list of biomarkers corresponding to one or more " \
                     "experiments. ccramic requires internal channel identifiers (stored under" \
                     " the channel name) that are used within ccramic sessions to identify individual biomarkers." \

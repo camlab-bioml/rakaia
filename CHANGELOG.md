@@ -24,6 +24,7 @@ query with improved recursive searching to match the query number
 - Proper color updates to the blend hash when using autofill #102
 - Re-import exported custom metadata works as expected
 - proper str casting for cluster annotations as circles
+- Upper bounds of 0 from JSON style imports are no longer reset to the default percentile
 
 ### Changed
 

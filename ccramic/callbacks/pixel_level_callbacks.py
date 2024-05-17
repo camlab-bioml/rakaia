@@ -72,7 +72,7 @@ from ccramic.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
 from ccramic.utils.alert import AlertMessage, file_import_message, DataImportError, LazyLoadError, \
-    add_warning_to_error_config, PanelMismatchError
+    add_warning_to_error_config
 import uuid
 from ccramic.utils.region import (
     RegionAnnotation,
@@ -206,7 +206,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
                 data = pd.DataFrame(fileparser.dataset_information_frame).to_dict(orient='records')
                 blend_return = fileparser.blend_config if (current_blend is None or len(current_blend) == 0) else dash.no_update
-            except (PanelMismatchError, TypeError, OSError) as e:
+            except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
                 return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
             return SessionServerside(fileparser.image_dict, key="upload_dict",

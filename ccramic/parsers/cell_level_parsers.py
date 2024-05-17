@@ -33,11 +33,8 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
                                                    rerun=True, unique_key_serverside=True):
     if quantification_dict is not None:
         data_frame = pd.DataFrame(quantification_dict)
-        cols = list(data_frame.columns)
         if current_umap is None or rerun:
-                # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
-            #  column-wise, by channel)
-            umap_obj = None
+            # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
             if drop_col:
                 data_frame = drop_columns_from_measurements_csv(data_frame)
             # TODO: evaluate the umap import speed (slow) possibly due to numba compilation:
@@ -49,7 +46,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
             except UnboundLocalError:
                 import umap
                 umap_obj = umap.UMAP()
-            if umap_obj is not None:
+            if umap_obj:
                 scaled = StandardScaler().fit_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
                 return SessionServerside(embedding, key="umap-embedding",

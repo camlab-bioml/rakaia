@@ -372,9 +372,9 @@ def check_blend_dictionary_for_blank_bounds_by_channel(blend_dict: dict, channel
     Check the current blend dictionary for the lower and upper bounds for a specific channel
     If the bounds are None, replace with the default values
     """
-    if not blend_dict[channel_selected]['x_lower_bound']:
+    if blend_dict[channel_selected]['x_lower_bound'] in [None, "None", "null"]:
         blend_dict[channel_selected]['x_lower_bound'] = 0
-    if not blend_dict[channel_selected]['x_upper_bound']:
+    if blend_dict[channel_selected]['x_upper_bound'] in [None, "None", "null"]:
         blend_dict[channel_selected]['x_upper_bound'] = \
             get_default_channel_upper_bound_by_percentile(
                 channel_dict[data_selection][channel_selected])

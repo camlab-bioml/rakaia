@@ -39,9 +39,9 @@ def register_app_layout(config, cache_dest):
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
                               "max-width": "none", "max-height": "none"}),
         # modal for the dataset information
-        dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='dataset-preview-table', columns=[], data=None,
-                                            editable=False, filter_action='native', row_selectable='single',
-                                                               column_selectable='single')]),
+        dbc.Modal(children=dbc.ModalBody([html.H6(TabText().dataset_preview),
+                dash_table.DataTable(id='dataset-preview-table', columns=[], data=None,
+                editable=False, filter_action='native', row_selectable='single', column_selectable='single')]),
                   id="dataset-preview", size='xl'),
         html.Header(
             className="navbar navbar-dark sticky-top bg-dark flex-md-nowrap p-0 shadow",
