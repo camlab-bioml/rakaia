@@ -87,7 +87,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     assert len(quantification_frame[
                    quantification_frame["ccramic_cell_annotation"] == "mature"]) == 2
     assert list(quantification_frame[
-                    quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]
+                    quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ['Unassigned']
     assert list(quantification_frame[
                     quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
 
@@ -99,7 +99,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     assert len(quantification_frame[
                    quantification_frame["ccramic_cell_annotation"] == "mature"]) == 2
     assert list(quantification_frame[
-                    quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ["None"]
+                    quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ['Unassigned']
     assert list(quantification_frame[
                     quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
 
@@ -126,7 +126,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     # annotate using gated cell method
     annotations_dict = {'roi_1': {
         gated_cell_tuple:
-            {'title': 'None', 'body': 'None',
+            {'title': 'Unassigned', 'body': 'Unassigned',
              'cell_type': 'mature', 'imported': False, 'type': 'gate',
              'annotation_column': 'gating_test'}
     }}
@@ -199,7 +199,7 @@ def test_basic_callback_remove_annotations_quantification_frame(get_current_dir)
                                     config=app_config, remove=True, indices_remove=[0])
     quantification_frame = pd.DataFrame(quantification_frame)
     assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
-                                                                (quantification_frame["y_max"] == 20)]) == ['None']
+                                                                (quantification_frame["y_max"] == 20)]) == ['Unassigned']
 
 def test_basic_callback_remove_annotations_quantification_frame_2(get_current_dir):
     """
@@ -229,7 +229,7 @@ def test_basic_callback_remove_annotations_quantification_frame_2(get_current_di
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'ccramic_cell_annotation' in quantification_frame.columns
     assert 'mature' in list(quantification_frame['ccramic_cell_annotation'])
-    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['None', 'first', 'mature']
+    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['Unassigned', 'first', 'mature']
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
                                     quantification_frame.to_dict(orient="records"), "roi_1", mask_dict, True,
@@ -238,7 +238,7 @@ def test_basic_callback_remove_annotations_quantification_frame_2(get_current_di
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'ccramic_cell_annotation' in quantification_frame.columns
     assert not 'mature' in list(quantification_frame['ccramic_cell_annotation'])
-    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['None', 'first']
+    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['Unassigned', 'first']
 
 def test_basic_callback_remove_annotations_quantification_frame_3(get_current_dir):
     """
@@ -254,7 +254,7 @@ def test_basic_callback_remove_annotations_quantification_frame_3(get_current_di
     # annotate using gated cell method
     annotations_dict = {'roi_1': {
         gated_cell_tuple:
-            {'title': 'None', 'body': 'None',
+            {'title': 'Unassigned', 'body': 'Unassigned',
              'cell_type': 'mature', 'imported': False, 'type': 'gate',
              'annotation_column': 'gating_test', 'mask_selection': 'mask', 'id': 'gating_1'}
     }}

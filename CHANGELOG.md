@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.15.0] - 2024-05-17
+
+### Added
+
+- warning message for ROI query when images or quant results are missing. #101
+- CLI script for autoscaling ROIs from mcd
+- Min amd max dimension limits (optional) + keyword searching for ROIs in gallery
+query with improved recursive searching to match the query number
+- Percentage distribution for UMAP categories
+
+### Fixed
+
+- missing callback output for opening in-browser quantification modal
+- fully refresh channel selection on JSON/db update
+- Proper color updates to the blend hash when using autofill #102
+- Re-import exported custom metadata works as expected
+- proper str casting for cluster annotations as circles
+- Upper bounds of 0 from JSON style imports are no longer reset to the default percentile
+- Change default CSV annotation value to `Unassigned` to avoid empty parsing by pandas on re-upload
+
+### Changed
+
+- ROI selection menu moved to main canvas to facilitate more consistent use. #97
+- mask boundaries using `skimage` now use the innermost pixels as opposed to outer
+- Better legend and scalebar x-axis range placement for varying ROI dimensions
+- Specify Ubuntu version 22.04 in Docker
+- UMAP channel overlay now uses `dash.Patch` for faster re-render (only numeric to numeric)
+- Move `PanelMismatchError` import warning into a modal alert
+
 ## [0.14.0] - 2024-04-18
 
 ### Added

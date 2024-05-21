@@ -1,5 +1,8 @@
+from typing import Union
+
 import dash
 import pandas as pd
+from dash import Patch
 
 from ccramic.parsers.cell_level_parsers import drop_columns_from_measurements_csv
 from ccramic.utils.cell_level_utils import subset_measurements_frame_from_umap_coordinates
@@ -81,11 +84,24 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
         quant_frame = pd.DataFrame(quantification_dict)
         df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
         try:
+            # if cur_umap_fig and 'data' in cur_umap_fig and 'layout' in cur_umap_fig:
+            #     try:
+            #         cur_umap_fig['layout']['coloraxis']['colorbar']['title']['text'] = channel_overlay
+            #         cur_umap_fig['data'][0]['marker']['color'] = quant_frame[channel_overlay]
+            #         cur_umap_fig['data'][0]['hovertemplate'] = 'UMAP1=%{x}<br>UMAP2=%{y}<br>' + \
+            #                                                channel_overlay + '=%{marker.color}<extra></extra>'
+            #         fig = cur_umap_fig
+            #     except KeyError:
+            #         if channel_overlay is not None:
+            #             df[channel_overlay] = quant_frame[channel_overlay]
+            #         fig = px.scatter(df, x="UMAP1", y="UMAP2", color=channel_overlay)
+            # else:
             if channel_overlay is not None:
                 df[channel_overlay] = quant_frame[channel_overlay]
             fig = px.scatter(df, x="UMAP1", y="UMAP2", color=channel_overlay)
         except KeyError:
             fig = px.scatter(df, x="UMAP1", y="UMAP2")
+            fig['data'][0]['showlegend'] = True
         if cur_umap_fig is None:
             fig['layout']['uirevision'] = True
         else:
@@ -94,6 +110,38 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
         return fig
     else:
         return dash.no_update
+
+def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict], quantification_dict: Union[pd.DataFrame, dict],
+                        channel_overlay: str):
+    """
+    Check if the current UMAP is available for a dash-style Patch for channel overlay
+    Must already have a channel overlay applied so that the only updates to the figure
+    are the color hovers over the channel intensities
+    IMPORTANT: this only works for numeric to numeric overlay. Numeric to categorical or categorical to numeric
+    requires a complete recreation of the figure because of the figure layout properties
+    """
+    if cur_umap_fig:
+        # numeric overlay does not have a legendgroup in the data slot
+        # if switching to a categorical variable, do not patch (recreate)
+        try:
+            return 'data' in cur_umap_fig and 'layout' in cur_umap_fig and len(cur_umap_fig['data']) > 0 and \
+                    not cur_umap_fig['data'][0]['legendgroup'] and \
+                    cur_umap_fig['data'][0]['hovertemplate'] != 'UMAP1=%{x}<br>UMAP2=%{y}<extra></extra>' and \
+            str(pd.DataFrame(quantification_dict)[channel_overlay].dtype) not in ["object"]
+        except KeyError:
+            return False
+    return False
+
+def patch_umap_figure(quantification_dict: Union[pd.DataFrame, dict], channel_overlay: str):
+    """
+    Patch an existing UMAP channel plot with a new overlay of channel expression
+    """
+    patched_figure = Patch()
+    # patched_figure['layout']['coloraxis']['colorbar']['title']['text'] = channel_overlay
+    patched_figure['data'][0]['marker']['color'] = pd.DataFrame(quantification_dict)[channel_overlay]
+    patched_figure['data'][0]['hovertemplate'] = 'UMAP1=%{x}<br>UMAP2=%{y}<br>' + \
+                                                 channel_overlay + '=%{marker.color}<extra></extra>'
+    return patched_figure
 
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
                                                umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,

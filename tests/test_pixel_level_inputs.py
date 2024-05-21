@@ -117,11 +117,11 @@ def test_invert_annotations_figure():
                                             add_mask_boundary=False, legend_text='')
 
     assert image['layout']['annotations'][0]['x'] == 0.1
-    assert image['layout']['shapes'][0]['x0'] == 0.05
+    assert image['layout']['shapes'][0]['x0'] == 0.065
 
     image = invert_annotations_figure(image)
     assert image['layout']['annotations'][0]['x'] == (1 - 0.1)
-    assert image['layout']['shapes'][0]['x0'] == (1 - 0.05)
+    assert image['layout']['shapes'][0]['x0'] == (1 - 0.065)
 
     image_2 = go.Figure()
     image_2 = invert_annotations_figure(image_2)
@@ -135,8 +135,7 @@ def test_tick_marker_spacing_range_slider():
     assert set_range_slider_tick_markers(100)[0] == {0: '0', 33: '33', 66: '66', 100: '100'}
     low_range, small_step = set_range_slider_tick_markers(0.3)
     assert len(low_range) == 2
-    assert small_step == 0.03
-
+    assert small_step == 0.01
 
 def test_generate_legend_text_channels():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
@@ -189,13 +188,13 @@ def test_generate_legend_text_clustering():
 def test_register_x_axis_placement_scalebar():
     image = np.zeros((1500, 1500))
     placement = set_x_axis_placement_of_scalebar(image.shape[1], False)
-    assert placement == 0.05
+    assert placement == 0.065
     invert = set_x_axis_placement_of_scalebar(image.shape[1], True)
-    assert invert == 0.95
+    assert invert == 0.935
 
-    large = np.zeros((5260, 5260))
+    large = np.zeros((3500, 3500))
     placement = set_x_axis_placement_of_scalebar(large.shape[1], False)
-    assert placement == 0.000025 * large.shape[1]
+    assert 0.1 < placement < 0.115
 
 def test_set_canvas_filename():
     canvas_config = {"modeBarButtonsToAdd": ["drawclosedpath", "drawrect", "eraseshape"],

@@ -1,4 +1,4 @@
-import numpy
+from typing import Union
 import pandas as pd
 from ccramic.utils.pixel_level_utils import (
     path_to_mask,
@@ -64,7 +64,7 @@ def get_min_max_values_from_rect_box(coord_dict):
     return x_min, x_max, y_min, y_max
 
 def convert_mask_to_cell_boundary(mask):
-    boundaries = find_boundaries(mask, mode='outer', connectivity=1)
+    boundaries = find_boundaries(mask, mode='inner', connectivity=1)
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
 
 
@@ -92,7 +92,8 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
 
 
 def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
-                                        annotation_column="ccramic_cell_annotation", annotation_value="None"):
+                                        annotation_column="ccramic_cell_annotation", annotation_value="Unassigned",
+                                        default_annotation_value="Unassigned"):
     """
     Populate a new column in the quantification frame with a column annotation with a value as subset using the
     interactive UMAP
@@ -115,7 +116,7 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
             list_indices = query.index.tolist()
 
             if annotation_column not in measurements.columns:
-                measurements[annotation_column] = "None"
+                measurements[annotation_column] = default_annotation_value
 
             measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
                                                    annotation_value, measurements[annotation_column])
@@ -168,7 +169,7 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
 
 def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=None,
                         annotation_column="ccramic_cell_annotation", values_dict=None, cell_type=None,
-                        box_type="zoom", remove: bool=False, default_val: str="None"):
+                        box_type="zoom", remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     by coordinate bounding box
@@ -207,7 +208,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
 
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
                         annotation_column="ccramic_cell_annotation",cell_identifier="cell_id", cell_type=None,
-                        sample_name=None, id_column='sample', remove: bool=False, default_val: str="None"):
+                        sample_name=None, id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     with a list of cell IDs
@@ -228,7 +229,7 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
                     annotation_column="ccramic_cell_annotation", cell_identifier="cell_id", values_dict=None,
                     cell_type=None, mask_toggle=True, mask_dict=None, mask_selection=None, sample=None,
-                    id_column='sample', remove: bool=False, default_val: str="None"):
+                    id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
@@ -249,7 +250,7 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
             # get the cell ID at that position to match
             mask_used = mask_dict[mask_selection]['raw']
             cell_id = mask_used[y, x].astype(int)
-            cell_id = int(cell_id[0]) if isinstance(cell_id, numpy.ndarray) else cell_id
+            cell_id = int(cell_id[0]) if isinstance(cell_id, np.ndarray) else cell_id
 
             measurements[annotation_column] = np.where((measurements[cell_identifier]== cell_id) &
                                                    (measurements[id_column] == sample), cell_type,
@@ -282,7 +283,6 @@ def process_mask_array_for_hovertemplate(mask_array):
     mask_array[mask_array == '0.0'] = 'None'
     mask_array[mask_array == '0'] = 'None'
     return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))
-
 
 
 def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85):
@@ -394,6 +394,8 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
             cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
             # make sure that the cells are integers so that they match the array values of the mask
             cell_list = [int(i) for i in cell_list]
+            # TODO: try to speed up for very large images with either many cells or many cluster categories
+            # time complexity is O(num_clusters)
             annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
             annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
             annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
@@ -427,3 +429,18 @@ def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selectio
             pass
         return annot_dict
     return annotations_dict
+
+def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFrame],
+                                      umap_variable: str, subset_cur_cat: Union[dict, None]=None,
+                                      counts_col: str="Counts", proportion_col: str="Proportion"):
+    """
+    Compute the proportion of frequency counts for a UMAP distribution
+    """
+    if subset_cur_cat is None:
+        frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
+            columns={str(umap_variable): "Value", 'count': "Counts"})
+    else:
+        frame = pd.DataFrame(zip(list(subset_cur_cat.keys()), list(subset_cur_cat.values())),
+                             columns=["Value", "Counts"])
+    frame[proportion_col] = frame[counts_col] / (frame[counts_col].abs().sum())
+    return frame.round(3).to_dict(orient="records")

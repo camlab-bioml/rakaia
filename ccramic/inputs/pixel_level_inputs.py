@@ -108,9 +108,9 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
 def get_additive_image_with_masking(currently_selected, data_selection, canvas_layers, mask_config,
                                     mask_toggle, mask_selection, show_canvas_legend,
                                     mask_blending_level, add_mask_boundary, legend_text, annotation_size=12,
-                                    proportion=0.1):
+                                    proportion=0.1, invert_annotations: bool=False):
     """
-    Generate an additiive image from one or more channel arrays. Optionally, project a mask on top of the additive image
+    Generate an additive image from one or more channel arrays. Optionally, project a mask on top of the additive image
     using a specified blend ratio with cv2
     """
     try:
@@ -135,9 +135,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
         fig = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True, binary_compression_level=1)
         image_shape = image.shape
         if show_canvas_legend:
-            x_axis_placement = 0.00001 * image_shape[1]
-            # make sure the placement is min 0.05 and max 0.1
-            x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.1 else 0.05
+            x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annotations)
             # if the current graph already has an image, take the existing layout and apply it to the new figure
             # otherwise, set the uirevision for the first time
             fig = add_scale_value_to_figure(fig, image_shape, font_size=annotation_size)
@@ -226,7 +224,7 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
     Note: the slider minimum is always set to 0
     """
     if float(max_value) <= 1.0:
-        return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 10), 2))
+        return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 25), 2))
     else:
         # set the default number of tick marks to 4
         # if the maximum value is less than 3, reduce the number of ticks accordingly
@@ -270,14 +268,16 @@ def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legen
     return legend_text
 
 
-def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False):
+def set_x_axis_placement_of_scalebar(image_x_shape, invert_annot=False, large_size_threshold: Union[float, int]=3500):
     """
     Set the x-axis placement of the scalebar using a formula based on the image width
     `image_x_shape`: The dimension, in pixels, of the x-axis (width) of the image in the canvas
     """
-    x_axis_placement = 0.000025 * image_x_shape
-    # make sure the placement is min 0.05 and max 0.15
-    x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.15 else 0.05
+    x_axis_placement = 0.065
+    if image_x_shape >= large_size_threshold:
+        x_axis_placement = 0.00003125 * image_x_shape
+        # make sure the placement is min 0.05 and max 0.125
+        x_axis_placement = x_axis_placement if 0.05 <= x_axis_placement <= 0.125 else 0.065
     if invert_annot:
         x_axis_placement = 1 - x_axis_placement
     return x_axis_placement

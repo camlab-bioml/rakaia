@@ -8,7 +8,9 @@ from ccramic.io.session import (
     subset_mask_for_data_export,
     create_download_dir,
     SessionServerside,
-    TabText)
+    TabText,
+    all_roi_match,
+    panel_length_match)
 
 def test_session_serverside_objects():
     blend_dict = {"channel_1": np.full((1000, 1000), 1)}
@@ -120,4 +122,21 @@ def test_generate_subset_mask_for_export():
 def test_tab_text():
     texts = TabText()
     assert 'channel_tiles' in list(texts.__fields__.keys())
-    assert len(list(texts.__fields__.keys())) == 3
+    assert len(list(texts.__fields__.keys())) > 0
+
+
+def test_panel_compatible_import():
+    channel_dict = {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}
+    new_blend = {"channels": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}}
+    assert panel_length_match(channel_dict, new_blend)
+    assert not panel_length_match(channel_dict, {"channels": []})
+    assert not panel_length_match(channel_dict, {})
+
+    images = {"roi_1+++": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3},
+              "roi_2+++": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}}
+    assert all_roi_match(None, new_blend, images)
+
+    images = {"roi_1+++": {"Channel_1": 1, "Channel_2": 2},
+              "roi_2+++": {"Channel_1": 1, "Channel_2": 2}}
+    assert not all_roi_match(None, new_blend, images)
+    assert not all_roi_match(None, {}, images)

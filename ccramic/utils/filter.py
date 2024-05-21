@@ -59,15 +59,17 @@ def return_current_or_default_filter_param(current_filter_param: Union[str, int,
     return param_filter_return
 
 def return_current_or_default_channel_color(current_color: Union[str, dict]=None,
-                                           new_color: Union[str, dict]=None):
+                                           new_color: Union[str, dict]=None,
+                                           autofill_colors: bool=False):
     """
     Evaluate the state of the channel color, and prevent an update, or return the value for the selected channel
     """
     if new_color == current_color['hex']:
         color_return = dash.no_update
     else:
-        color_return = dict(hex=new_color) if new_color is not None and new_color not in \
-                                          ['#FFFFFF', '#ffffff'] else dash.no_update
+        color_return = dict(hex=new_color) if (new_color is not None and new_color not in \
+                                          ['#FFFFFF', '#ffffff'] and not autofill_colors) or \
+                                              (new_color is not None and autofill_colors) else dash.no_update
     return color_return
 
 

@@ -1,6 +1,10 @@
 from dash import dcc
 import dash
 from ccramic.io.session import SessionTheme
+from typing import Union
+
+from ccramic.utils.pixel_level_utils import split_string_at_pattern
+
 
 def wrap_child_in_loading(child, wrap=True, fullscreen=True, wrap_type="default"):
     """
@@ -43,9 +47,17 @@ def adjust_option_height_from_list_length(list_options, dropdown_type="image"):
     Return an option height for the dropdown menu based on the maximum length of the list
     Ensures that long strings in `dcc.Dropdown` menus are sufficiently spaced vertically for readability
     """
-    char_limits = {"image": 70, "mask": 40}
-    if any([len(elem) >= char_limits[dropdown_type] and ' ' in elem for elem in list_options]):
-        height_update = 120
+    char_limits = {"image": 50, "mask": 40}
+    if any([len(elem) >= char_limits[dropdown_type] for elem in list_options]):
+        height_update = 100
     else:
-        height_update = dash.no_update
+        height_update = 50
     return height_update
+
+def set_roi_tooltip_based_on_length(data_selection: str, delimiter: str="+++",
+                                    char_threshold: Union[int, float]=45):
+    if data_selection and len(data_selection) >= char_threshold:
+        exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
+        roi_name = str(roi_name) + f" ({str(exp)})" if "acq" in str(roi_name) else str(roi_name)
+        return f"Current ROI: {roi_name}"
+    return None

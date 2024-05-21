@@ -11,7 +11,7 @@ from ccramic.inputs.cell_level_inputs import (
     generate_umap_plot,
     generate_expression_bar_plot_from_interactive_subsetting,
     generate_channel_heatmap,
-    generate_heatmap_from_interactive_subsetting)
+    generate_heatmap_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure)
 from ccramic.parsers.cell_level_parsers import parse_and_validate_measurements_csv
 
 
@@ -62,6 +62,24 @@ def test_umap_plot(get_current_dir):
     assert isinstance(umap_plot_2, plotly.graph_objs._figure.Figure)
     assert umap_plot_2['layout']['uirevision']
 
+def test_identify_patchable_umap(get_current_dir):
+    umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
+    measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
+    umap_plot_1 = generate_umap_plot(umap_dict, "156Gd_FOXA1", measurements_dict, None)
+    assert not umap_eligible_patch(umap_plot_1.to_dict(), measurements_dict, "156Gd_FOXA1")
+    validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
+    umap_plot_2 = generate_umap_plot(umap_dict, "156Gd_FOXA1", validated_measurements, None)
+    assert umap_eligible_patch(umap_plot_2, validated_measurements, "156Gd_FOXA1")
+    # cannot use patch if categorical variable
+    umap_plot_3 = generate_umap_plot(umap_dict, "sample", validated_measurements, None)
+    assert not umap_eligible_patch(umap_plot_3, validated_measurements, "156Gd_FOXA1")
+    # malformed fig
+    assert not umap_eligible_patch({"data": [{"fake_key": "fake_val"}]}, validated_measurements, "156Gd_FOXA1")
+def test_generate_umap_patch(get_current_dir):
+    measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
+    validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
+    patch = patch_umap_figure(validated_measurements, "156Gd_FOXA1")
+    assert isinstance(patch, dash.Patch)
 
 def test_expression_plot_from_interactive_triggers(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}

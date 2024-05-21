@@ -1,5 +1,6 @@
 import pathlib
 from pydantic import BaseModel
+from typing import Union
 
 class DataImportTour(BaseModel):
     """
@@ -7,11 +8,12 @@ class DataImportTour(BaseModel):
     """
     steps: list = [{'selector': '[id="upload-image"]',
                     'content': "Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
-                               " be used only for datasets < 2GB or if the app deployment is non-local (web-based)"},
+                               " be used only for datasets < 2GB or if the app deployment is public/shared, "
+                               "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
                 'content': "For large datasets (> 2GB) on local deployments, "
                            "copy and paste either a filepath or directory and "
-                               "read files directly by selecting Import local"},
+                               "read files directly by selecting Import local. Does not duplicate any data."},
                 {'selector': '[id="show-dataset-info"]',
                 'content': 'View a list of imported datasets and regions of interest (ROIs).'
                            ' Multiple ROIs, files, and/or filetypes can be imported into the same session, '
@@ -67,7 +69,16 @@ class AlertMessage(BaseModel):
                                                      " (typically 2x the size of the imported files).",
                       "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
                                          "delimiter does not have any overlapping characters with any of the filenames, "
-                                         "or ROI names. "}
+                                         "or ROI names. ",
+                      "invalid_query": "Error when generating ROI query. Ensure that: \n\n"
+                                       "1. If querying a random subset, that images have been imported and "
+                                       "the current canvas contains at least one marker. \n\n"
+                                       "2. If querying from the quantification/UMAP tab: "
+                                       "\n"
+                                       "\t\n -quantification results are loaded"
+                                       "\t\n -the corresponding images for quantified ROIs are loaded, and an image "
+                                       "has been generated in the main canvas"
+                                       "\t\n -ROI naming in the quantification sheet matches the ROI names in the session."}
 
 
 class ToolTips(BaseModel):
@@ -81,7 +92,7 @@ class ToolTips(BaseModel):
                       "roi-refresh": "Refresh the current dataset selection and canvas figure. "
                                     "Can be used if the ROI loading or canvas has become corrupted/malformed.",
                       "channel-mod": "Select a channel in the current blend to \nchange colour, "
-                                                           "pixel intensity, or apply a filter.",
+                                    "pixel intensity, or apply a filter. Click for more information.",
                       "annot-reimport": "Re-import the current ROI annotations into the quantification "
                                             "results. Annotations must be re-added each time the quantification "
                                             "results are re-generated, or if annotations were generated "
@@ -121,3 +132,9 @@ def file_import_message(imported_files: list):
             unique_suffixes.append(suffix)
     message = message + "\n Select a region (ROI) from the data collection dropdown to begin analysis."
     return message, unique_suffixes
+
+
+def add_warning_to_error_config(error_config: Union[dict, None], alert: Union[str, None]):
+    error_config = {"error": None} if (error_config is None or "error" not in error_config) else error_config
+    error_config["error"] = alert if alert else ""
+    return error_config

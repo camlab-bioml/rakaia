@@ -33,11 +33,8 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
                                                    rerun=True, unique_key_serverside=True):
     if quantification_dict is not None:
         data_frame = pd.DataFrame(quantification_dict)
-        cols = list(data_frame.columns)
         if current_umap is None or rerun:
-                # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
-            #  column-wise, by channel)
-            umap_obj = None
+            # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
             if drop_col:
                 data_frame = drop_columns_from_measurements_csv(data_frame)
             # TODO: evaluate the umap import speed (slow) possibly due to numba compilation:
@@ -49,7 +46,7 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
             except UnboundLocalError:
                 import umap
                 umap_obj = umap.UMAP()
-            if umap_obj is not None:
+            if umap_obj:
                 scaled = StandardScaler().fit_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
                 return SessionServerside(embedding, key="umap-embedding",
@@ -214,8 +211,10 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
     # Example 2: user selects all but the the second item to view
     # [{'visible': ['legendonly']}, [2]]
     # print(restyle_data)
+    # do not allow the restyledata to be empty from categorical
     if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0] and \
-        umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns):
+        umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns) and \
+            restyledata not in [[{'visible': ['legendonly']}, [0]]]:
         # get the total number of possible sub annotations and figure out which ones were selected
         quant_frame = pd.DataFrame(quantification_frame)
         tot_subtypes = list(quant_frame[umap_col_annotation].unique())
@@ -348,13 +347,13 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_lis
         sam_id = mask_selection
     else:
         # also look for partial match of the cell id list to the mark name
-        if cell_id_list is not None:
+        if cell_id_list:
             for roi_id in cell_id_list:
-                if roi_id in mask_selection:
+                if roi_id and mask_selection and roi_id in mask_selection:
                     sam_id = roi_id
         # if this pattern exists, try to match to the sample name by index
         # otherwise, try matching directly by name
-        if sam_id is None and "_ac_IA_mask" in mask_selection:
+        if sam_id is None and mask_selection and "_ac_IA_mask" in mask_selection:
             try:
                 split_1 = mask_selection.split("_ac_IA_mask")[0]
                 # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed

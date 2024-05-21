@@ -6,7 +6,8 @@ from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     reset_graph_data,
-    adjust_option_height_from_list_length)
+    adjust_option_height_from_list_length,
+    set_roi_tooltip_based_on_length)
 
 def test_loader_children():
     child = dcc.Store(id="test_store")
@@ -41,6 +42,12 @@ def test_adjust_option_height_based_on_lengths():
 
     dropdown = ["this_is_a_super_long_mask_name that_is_intended_for_testing_purposes",
                 "this_is_a_super_long_mask_name that_is_intended_for_testing_purposes_v2"]
-    assert adjust_option_height_from_list_length(dropdown) == 120
+    assert adjust_option_height_from_list_length(dropdown) == 100
     dropdown_2 = ["this is short"]
-    assert adjust_option_height_from_list_length(dropdown_2) != 120
+    assert adjust_option_height_from_list_length(dropdown_2) != 100
+
+def test_set_roi_tooltip_by_length():
+    assert set_roi_tooltip_based_on_length("short+++slide0+++short") is None
+    assert set_roi_tooltip_based_on_length(
+        "longer---slide0---this_is_a_very_long_roi_name_for_testing_purposes", '---') == \
+           'Current ROI: this_is_a_very_long_roi_name_for_testing_purposes'

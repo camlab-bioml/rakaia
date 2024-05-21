@@ -190,14 +190,14 @@ class CanvasImage:
 
         # set how far in from the lefthand corner the scale bar and colour legends should be
         # higher values mean closer to the centre
-        # fig = canvas_layers[image_type][currently_selected[0]]
         fig = self.add_canvas_legend_text(fig, x_axis_placement)
 
-        # set the x-axis scale placement based on the size of the image
-        # for adding a scale bar
+        # set the x-axis scale placement based on the size of the image for adding a scale bar
         fig = self.add_canvas_scalebar(fig, x_axis_placement)
 
         fig = self.add_canvas_hover_template(fig)
+        # to remove the hover template completely
+        # fig.update_traces(hovertemplate=None, hoverinfo='skip')
         return fig.to_dict()
 
     def get_shape(self):
@@ -274,7 +274,6 @@ class CanvasImage:
                 else:
                     hover_labels.append(label)
             new_hover = per_channel_intensity_hovertext(hover_labels)
-            # fig.update_traces(hovertemplate=new_hover)
         else:
             fig.update(data=[{'customdata': None}])
             new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
@@ -573,12 +572,17 @@ class CanvasLayout:
         cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
         data_selection = string representation of the current ROI
         """
-        shapes = self.cur_shapes if self.cur_shapes else []
+        shapes = []
+        if self.cur_shapes:
+            # make sure to clear the existing circles first
+            shapes = [shape for shape in self.cur_shapes if self.cur_shapes and not ('editable' in shape and
+                    not shape['editable'] and 'type' in shape and shape['type'] == 'circle')]
         cluster_frame = pd.DataFrame(cluster_frame)
         cluster_frame = cluster_frame.astype(str)
         ids_use = gating_cell_id_list if (gating_cell_id_list is not None and use_gating) else np.unique(mask)
         clusters_to_use = cluster_selection_subset if cluster_selection_subset is not None else \
             cluster_frame['cluster'].unique().tolist()
+        clusters_to_use = [str(clust) for clust in clusters_to_use]
         for mask_id in ids_use:
             # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
             subset = np.where(mask == int(mask_id), int(mask_id), 0)

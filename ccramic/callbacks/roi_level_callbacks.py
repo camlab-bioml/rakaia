@@ -11,19 +11,19 @@ from dash import ALL
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
-from ccramic.utils.alert import AlertMessage
+from ccramic.utils.alert import AlertMessage, add_warning_to_error_config
 from ccramic.io.session import SessionServerside
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with ROI level and cross dataset queries
     """
-
     @dash_app.callback(Output('dataset-query-gallery-row', 'children'),
                        Output('roi-query', 'data'),
                        Output('dataset-query-gallery', 'style'),
                        Output('dataset-query-gallery-list', 'data'),
                        Output('main-tabs', 'active_tab', allow_duplicate=True),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
@@ -43,12 +43,17 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State("global-kernel-val-filter", 'value'),
                        State("global-sigma-val-filter", 'value'),
                        State('dataset-delimiter', 'value'),
+                       State('session_alert_config', 'data'),
+                       State('dataset-query-dim-min', 'value'),
+                       State('dataset-query-dim-max', 'value'),
+                       State('dataset-query-keyw', 'value'),
                        prevent_initial_call=True)
     def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
                                     existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
                                     dataset_options, query_cell_id_lists, global_apply_filter,
-                                    global_filter_type, global_filter_val, global_filter_sigma, delimiter):
+                                    global_filter_type, global_filter_val, global_filter_sigma, delimiter, error_config,
+                                    dim_min, dim_max, keyw):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -72,18 +77,18 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 rois_exclude = [data_selection]
                 row_children = []
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries),
-                    rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,
-                    global_filter_type, global_filter_val, global_filter_sigma, delimiter).get_image_dict()
+            rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,
+            global_filter_type, global_filter_val, global_filter_sigma, delimiter, False, dim_min, dim_max, keyw).get_image_dict()
             new_row_children, roi_list = generate_roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load":
                 roi_list = list(set(rois_exclude + roi_list))
             roi_list.append(data_selection)
             row_children = row_children + new_row_children
-            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query"
+            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update
         else:
-            raise PreventUpdate
-
+            error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_query"])
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
 
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),
@@ -129,7 +134,6 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         obtained as the UMAP projections will no longer align with the quantification frame and must be re-run
         If the quantification is successful, close the modal
         """
-        error_config = {"error": None} if error_config is None else error_config
         if execute > 0 and None not in (image_dict, data_selection, mask_selection, channels_to_quantify) and \
                 apply_mask and len(channels_to_quantify) > 0:
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
@@ -141,8 +145,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",
                         use_unique_key=app_config['serverside_overwrite']), dash.no_update, {'display': 'None'}, None
             else:
-                error_config["error"] = AlertMessage().warnings["invalid_dimensions"]
+                error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_dimensions"])
                 return dash.no_update, error_config, dash.no_update, dash.no_update
         else:
-            error_config["error"] = AlertMessage().warnings["quantification_missing"]
+            error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["quantification_missing"])
             return dash.no_update, error_config, dash.no_update, dash.no_update

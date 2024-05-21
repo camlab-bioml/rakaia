@@ -14,6 +14,7 @@ import random
 import numpy as np
 import cv2
 from tifffile import TiffFile
+from typing import Union
 
 
 class RegionThumbnail:
@@ -25,7 +26,10 @@ class RegionThumbnail:
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
                         global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False):
+                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
+                        dimension_min: Union[int, float, None]=None,
+                        dimension_max: Union[int, float, None]=None,
+                        roi_keyword: str=None):
         self.session_config = session_config
         try:
             self.file_list = [file for file in self.session_config['uploads']]
@@ -46,7 +50,13 @@ class RegionThumbnail:
         self.delimiter = delimiter
         self.query_selection = None
         self.use_greyscale = use_greyscale
-
+        # do not use the dimension limit if querying from the quantification
+        self.dim_min = dimension_min if (dimension_min and not self.predefined_indices) else 0
+        self.dim_max = dimension_max if (dimension_max and not self.predefined_indices) else 1e6
+        self.keyword = roi_keyword.split(",") if (roi_keyword and "," in roi_keyword) else \
+            ([roi_keyword] if roi_keyword else None)
+        if self.predefined_indices:
+            self.keyword = None
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
         self.roi_images = {}
@@ -55,14 +65,14 @@ class RegionThumbnail:
         if self.file_list is not None and len(self.file_list) > 0:
             self.queries_obtained = 0
             for file_path in self.file_list:
-                if str(file_path).endswith('.mcd'):
+                if len(self.roi_images) >= self.num_queries:
+                    break
+                elif str(file_path).endswith('.mcd'):
                     self.additive_thumbnail_from_mcd(file_path)
                 elif str(file_path).endswith('.tiff') or str(file_path).endswith('.tif'):
                     self.additive_thumbnail_from_tiff(file_path)
                 elif str(file_path).endswith('.txt'):
                     self.additive_thumbnail_from_txt(file_path)
-                if len(self.roi_images) == self.num_queries:
-                    break
 
     def additive_thumbnail_from_mcd(self, file_path):
         basename = str(Path(file_path).stem)
@@ -78,7 +88,7 @@ class RegionThumbnail:
                     else:
                         self.query_selection = random.sample(range(0,
                                                 len(slide_inside.acquisitions)), self.num_queries)
-                if isinstance(self.query_selection, dict):
+                elif isinstance(self.query_selection, dict):
                     if 'indices' in self.query_selection:
                         self.num_queries = len(self.query_selection['indices'])
                         self.query_selection = [i for i in self.query_selection['indices'] if \
@@ -93,11 +103,15 @@ class RegionThumbnail:
                 for query in self.query_selection:
                     try:
                         acq = slide_inside.acquisitions[query]
-                        if f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
-                           f"{str(acq.description)}_{str(acq.id)}" not in self.rois_exclude:
+                        roi_identifier = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
+                           f"{str(acq.description)}_{str(acq.id)}"
+                        if self.roi_keyword_in_roi_identifier(roi_identifier) and roi_identifier \
+                                not in self.rois_exclude and \
+                                (acq.height_px >= self.dim_min and acq.width_px >= self.dim_min) and \
+                                (acq.height_px <= self.dim_max and acq.width_px <= self.dim_max):
                             channel_names = acq.channel_names
                             channel_index = 0
-                            img = mcd_file.read_acquisition(acq)
+                            img = mcd_file.read_acquisition(acq, strict=False)
                             acq_image = []
                             for channel in img:
                                 # if the channel is in the current blend, use it
@@ -115,15 +129,28 @@ class RegionThumbnail:
                                     f"{str(acq.description)}_{str(acq.id)}"
                             self.process_additive_image(acq_image, label)
                         else:
-                            self.num_queries += 1
+                            additional_query = None
+                            # use the look counter to make sure that once all of the indices are searched,
+                            # it will just return what has been made nad not search indefinitely
+                            look_counter = 0
+                            while (additional_query is None or additional_query in self.query_selection) and \
+                                    look_counter < len(slide_inside.acquisitions):
+                                additional_query = random.sample(range(0,
+                                                    len(slide_inside.acquisitions)), 1)
+                                additional_query = additional_query[0] if isinstance(additional_query, list) else \
+                                    additional_query
+                                look_counter += 1
+                                if additional_query not in self.query_selection:
+                                    self.query_selection.append(additional_query)
+                                    # self.num_queries += 1
+                                    break
                     except OSError:
                         pass
-                    if len(self.roi_images) == self.num_queries:
+                    if len(self.roi_images) >= self.num_queries:
                         break
                 else:
                     slide_index += 1
                     continue
-                break
             # else:
             #     continue
             # break
@@ -137,44 +164,54 @@ class RegionThumbnail:
         if self.query_selection and 'names' in self.query_selection:
             query_list = self.query_selection['names']
             label = label if match_mask_name_to_quantification_sheet_roi(matched_mask, query_list) else None
-        if label and label not in self.rois_exclude:
+        if label and label not in self.rois_exclude and (self.roi_keyword_in_roi_identifier(label) or
+                self.roi_keyword_in_roi_identifier(tiff_filepath)):
             with TiffFile(tiff_filepath) as tif:
-                acq_image = []
-                channel_index = 1
-                for page in tif.pages:
-                    channel_name = str(f"channel_{channel_index}")
-                    if channel_name in self.currently_selected_channels and \
-                            channel_name in self.blend_dict.keys():
-                        with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
-                                                            self.blend_dict[channel_name])
-                        colour_use = self.blend_dict[channel_name]['color'] if not \
-                            self.use_greyscale else '#FFFFFF'
-                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
-                        acq_image.append(recoloured)
-                    channel_index += 1
-                self.process_additive_image(acq_image, label)
+                # add conditional to check if the tiff dimensions meet the threshold
+                if (tif.pages[0].shape[0] >= self.dim_min and tif.pages[0].shape[1] >= self.dim_min) and \
+                        (tif.pages[0].shape[0] <= self.dim_max and tif.pages[0].shape[1] <= self.dim_max):
+                    acq_image = []
+                    channel_index = 1
+                    for page in tif.pages:
+                        channel_name = str(f"channel_{channel_index}")
+                        if channel_name in self.currently_selected_channels and \
+                                channel_name in self.blend_dict.keys():
+                            with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
+                                                                self.blend_dict[channel_name])
+                            colour_use = self.blend_dict[channel_name]['color'] if not \
+                                self.use_greyscale else '#FFFFFF'
+                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
+                            acq_image.append(recoloured)
+                        channel_index += 1
+                    self.process_additive_image(acq_image, label)
 
     def additive_thumbnail_from_txt(self, txt_filepath):
         basename = str(Path(txt_filepath).stem)
         label = self.parse_thumbnail_label_from_filepath(basename)
-        if label not in self.rois_exclude:
+        if label not in self.rois_exclude and (self.roi_keyword_in_roi_identifier(label) or
+                self.roi_keyword_in_roi_identifier(txt_filepath)):
             with TXTFile(txt_filepath) as acq_text_read:
                 image_index = 1
                 txt_channel_names = acq_text_read.channel_names
                 acq_image = []
                 acq_read = acq_text_read.read_acquisition()
-                for image in acq_read:
-                    channel_name = txt_channel_names[image_index - 1]
-                    if channel_name in self.currently_selected_channels and \
-                            channel_name in self.blend_dict.keys():
-                        with_preset = apply_preset_to_array(image,
-                                                            self.blend_dict[channel_name])
-                        colour_use = self.blend_dict[channel_name]['color'] if not \
-                            self.use_greyscale else '#FFFFFF'
-                        recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
-                        acq_image.append(recoloured)
-                    image_index += 1
-                self.process_additive_image(acq_image, label)
+                # IMP: txt files contain the channel number as the first dimension, not the last
+                acq_dims = (acq_read.shape[1], acq_read.shape[2]) if len(acq_read.shape) >= 3 else \
+                    (acq_read.shape[0], acq_read.shape[1])
+                if (acq_dims[0] >= self.dim_min and acq_dims[1] >= self.dim_min) and \
+                        (acq_dims[0] <= self.dim_max and acq_dims[1] <= self.dim_max):
+                    for image in acq_read:
+                        channel_name = txt_channel_names[image_index - 1]
+                        if channel_name in self.currently_selected_channels and \
+                                channel_name in self.blend_dict.keys():
+                            with_preset = apply_preset_to_array(image,
+                                                                self.blend_dict[channel_name])
+                            colour_use = self.blend_dict[channel_name]['color'] if not \
+                                self.use_greyscale else '#FFFFFF'
+                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
+                            acq_image.append(recoloured)
+                        image_index += 1
+                    self.process_additive_image(acq_image, label)
 
     def parse_thumbnail_label_from_filepath(self, file_basename):
         """
@@ -191,36 +228,42 @@ class RegionThumbnail:
         Process the additive image prior to appending to the gallery, includes matching the mask and
         applying global filters
         """
-        matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
-        summed_image = sum([image for image in image_list]).astype(np.float32)
-        summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,
-                                             self.global_filter_type, self.global_filter_val,
-                                             self.global_filter_sigma)
-        summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
-        # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
-        if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
-                validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]):
-            # requires reverse matching the sample or description to the ROI name in the app
-            # if the query cell is list exists, subset the mask
-            if self.query_cell_id_lists is not None:
-                sam_names = list(self.query_cell_id_lists.keys())
-                # match the sample name in te quant sheet to the matched mask name
-                # TODO: update logic here when the names do not match exactly from quantification to mask
-                # in-app quantification
-                sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
-                if sam_name is not None:
-                    mask_to_use = subset_mask_outline_using_cell_id_list(
-                        self.mask_dict[matched_mask]["raw"], self.mask_dict[matched_mask]["raw"],
-                        self.query_cell_id_lists[sam_name])
+        if len(self.roi_images) < self.num_queries:
+            matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
+            summed_image = sum([image for image in image_list]).astype(np.float32)
+            summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,
+                                                 self.global_filter_type, self.global_filter_val,
+                                                 self.global_filter_sigma)
+            summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
+            # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
+            if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
+                    validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]):
+                # requires reverse matching the sample or description to the ROI name in the app
+                # if the query cell is list exists, subset the mask
+                if self.query_cell_id_lists is not None:
+                    sam_names = list(self.query_cell_id_lists.keys())
+                    # match the sample name in te quant sheet to the matched mask name
+                    # TODO: update logic here when the names do not match exactly from quantification to mask
+                    # in-app quantification
+                    sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
+                    if sam_name is not None:
+                        mask_to_use = subset_mask_outline_using_cell_id_list(
+                            self.mask_dict[matched_mask]["raw"], self.mask_dict[matched_mask]["raw"],
+                            self.query_cell_id_lists[sam_name])
+                    else:
+                        mask_to_use = self.mask_dict[matched_mask]["boundary"]
                 else:
                     mask_to_use = self.mask_dict[matched_mask]["boundary"]
-            else:
-                mask_to_use = self.mask_dict[matched_mask]["boundary"]
-            mask_to_use = np.where(mask_to_use > 0, 255, 0)
-            summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
-                                           mask_to_use.astype(np.uint8), 1, 0).astype(np.uint8)
-        self.roi_images[label] = summed_image
-        self.queries_obtained += 1
+                mask_to_use = np.where(mask_to_use > 0, 255, 0)
+                summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
+                                               mask_to_use.astype(np.uint8), 1, 0).astype(np.uint8)
+            self.roi_images[label] = summed_image
+            self.queries_obtained += 1
 
     def get_image_dict(self):
         return self.roi_images if len(self.roi_images) > 0 else None
+
+    def roi_keyword_in_roi_identifier(self, roi_identifier: str=None):
+        if roi_identifier and self.keyword:
+                return any([elem in roi_identifier for elem in self.keyword])
+        return True

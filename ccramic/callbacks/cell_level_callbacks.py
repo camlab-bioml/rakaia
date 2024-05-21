@@ -15,10 +15,11 @@ from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
     identify_column_matching_roi_to_quantification,
-    validate_mask_shape_matches_image)
+    validate_mask_shape_matches_image,
+    quantification_distribution_table)
 from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
-    generate_umap_plot)
+    generate_umap_plot, umap_eligible_patch, patch_umap_figure)
 from ccramic.io.pdf import AnnotationPDFWriter
 from ccramic.io.annotation_outputs import AnnotationRegionWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
@@ -27,11 +28,11 @@ from ccramic.callbacks.cell_level_wrappers import (
     callback_remove_canvas_annotation_shapes, reset_annotation_import)
 from ccramic.io.annotation_outputs import AnnotationMaskWriter, export_point_annotations_as_csv
 from ccramic.inputs.loaders import adjust_option_height_from_list_length
-from ccramic.utils.pixel_level_utils import split_string_at_pattern, random_hex_colour_generator
+from ccramic.utils.pixel_level_utils import split_string_at_pattern
 from ccramic.io.readers import DashUploaderFileReader
 import os
 from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids
-from dash import dcc
+from dash import dcc, Patch
 import matplotlib
 from werkzeug.exceptions import BadRequest
 import dash_uploader as du
@@ -54,6 +55,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     dash_app.config.suppress_callback_exceptions = True
     matplotlib.use('agg')
+    OVERWRITE = app_config['serverside_overwrite']
 
     @du.callback(Output('session_config_quantification', 'data'),
                  id='upload-quantification')
@@ -70,8 +72,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def populate_quantification_table_from_upload(session_dict, error_config):
         if session_dict is not None:
             quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config)
-            return SessionServerside(quant_dict, key="quantification_dict",
-                    use_unique_key=app_config['serverside_overwrite']), cols, alert
+            return SessionServerside(quant_dict, key="quantification_dict", use_unique_key=OVERWRITE), cols, alert
         raise PreventUpdate
 
     @du.callback(Output('umap-projection', 'data'),
@@ -81,7 +82,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         files = DashUploaderFileReader(status).return_filenames()
         if files:
             return SessionServerside(pd.read_csv(files[0], names=['UMAP1', 'UMAP2'], header=0).to_dict(orient="records"),
-                key="umap_coordinates", use_unique_key=app_config['serverside_overwrite'])
+                key="umap_coordinates", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(Output('quantification-heatmap-full', 'figure'),
@@ -146,7 +147,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
                 cols_selected = list(frame.columns)
             return fig, keep, indices_query, freq_counts_cat, SessionServerside(cell_id_dict,
-                key="cell_id_list", use_unique_key=app_config['serverside_overwrite']), list(frame.columns), cols_selected
+                    key="cell_id_list", use_unique_key=OVERWRITE), list(frame.columns), cols_selected
         raise PreventUpdate
 
     # @dash_app.callback(Output('quantification-bar-full', 'figure'),
@@ -232,13 +233,10 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if ctx.triggered_id == "quantification-dict":
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
-        else:
-            try:
-                return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
-                            current_umap=current_umap, unique_key_serverside=app_config['serverside_overwrite']), \
-                        dash.no_update, dash.no_update
-            except ValueError:
-                raise PreventUpdate
+        try:
+            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
+            current_umap=current_umap, unique_key_serverside=OVERWRITE), dash.no_update, dash.no_update
+        except ValueError: raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
                        Output('umap-div-holder', 'style', allow_duplicate=True),
@@ -254,8 +252,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id != 'quantify-cur-roi-execute':
             if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
             try:
-                umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
-                display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
+                if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay):
+                    return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
+                else:
+                    umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                    display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
             except BadRequest: return dash.no_update, blank_umap
         return dash.no_update, blank_umap
@@ -277,7 +278,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation > 0:
             return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
                 pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col, annot_value).to_dict(
-                orient='records'), key="quantification_dict", use_unique_key=app_config['serverside_overwrite'])
+                orient='records'), key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @du.callback(Output('mask-uploads', 'data'),
@@ -346,7 +347,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
         if multi_upload or single_upload:
             mask_dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
-                            cur_mask_dict, unique_key_serverside=app_config['serverside_overwrite'])
+                                                                  cur_mask_dict, unique_key_serverside=OVERWRITE)
             # if any of the names are longer than 40 characters, increase the height to make them visible
             height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
             return mask_dict, options, height_update
@@ -401,8 +402,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
             quantification_frame, data_selection, mask_config, mask_toggle, mask_selection, sample_name=sample_name,
                             id_column=id_column, config=app_config, remove=remove, indices_remove=indices_remove)
-            return SessionServerside(quant_frame, key="quantification_dict",
-                use_unique_key=app_config['serverside_overwrite']), annotations, []
+            return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=OVERWRITE), annotations, []
         raise PreventUpdate
 
     @dash_app.callback(
@@ -498,7 +498,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (cur_annotation_dict, data_selection) and data_selection in cur_annotation_dict:
             cur_annotation_dict[data_selection] = {}
-            return SessionServerside(cur_annotation_dict, key="annotation_dict", use_unique_key=app_config['serverside_overwrite'])
+            return SessionServerside(cur_annotation_dict, key="annotation_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -510,24 +510,16 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('quant-dist-table', 'data'),
                        Output('quant-dist-table', 'columns'),
-                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input("umap-projection-options", "value"),
                        Input('quantification-dict', 'data'),
                        Input('cur-umap-subset-category-counts', 'data'),
                        prevent_initial_call=True)
     def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
         # TODO: populate the frequency distribution table for a variable in the quantification results
+        columns = [{'id': p, 'name': p, 'editable': False} for p in ["Value", "Counts", "Proportion"]]
         if None not in (quantification_dict, umap_variable):
-            if subset_cur_cat is None:
-                frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
-                    columns={"index": "Value", 0: "Count"})
-            else:
-                frame = pd.DataFrame(zip(list(subset_cur_cat.keys()),
-                                         list(subset_cur_cat.values())), columns=["Value", "Counts"])
-            # frame.reset_index().rename(columns={"index": "Value", 0: "Count"})
-            columns = [{'id': p, 'name': p, 'editable': False} for p in list(frame.columns)]
-            return frame.to_dict(orient="records"), columns, dash.no_update
-        raise PreventUpdate
+            return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), columns
+        return pd.DataFrame({}).to_dict(orient="records"), columns
 
     @dash_app.callback(
         Output("download-point-csv", "data"),
@@ -599,8 +591,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         preview = mask_object_counter_preview(mask_dict, mask_selection)
         if ctx.triggered_id == "mask-options": return dash.no_update, preview
         if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False, preview
-        else:
-            return not is_open if n else is_open
+        return not is_open if n else is_open, preview
 
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')
@@ -613,8 +604,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if files:
             frame = pd.read_csv(files[0])
             if validate_imported_csv_annotations(frame):
-                return SessionServerside(frame.to_dict(orient="records"), key="point_annotations",
-                                         use_unique_key=app_config['serverside_overwrite'])
+                return SessionServerside(frame.to_dict(orient="records"), key="point_annotations", use_unique_key=OVERWRITE)
             raise PreventUpdate
         raise PreventUpdate
 
@@ -635,7 +625,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_cluster_assignment_upload_from_drag_and_drop(uploads, cur_clusters, data_selection):
         if uploads:
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
-            pd.read_csv(uploads[0])), key="cluster_assignments", use_unique_key=app_config['serverside_overwrite'])
+            pd.read_csv(uploads[0])), key="cluster_assignments", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -750,7 +740,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (gating_val, gate_selected):
             gating_dict = update_gating_dict_with_slider_values(gating_dict, gate_selected, gating_val)
-            return SessionServerside(gating_dict, key="gating_dict", use_unique_key=app_config['serverside_overwrite'])
+            return SessionServerside(gating_dict, key="gating_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(Output('gating-cell-list', 'data'),
@@ -766,6 +756,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (cur_gate_selection, roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
             id_list = object_id_list_from_gating(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
                         mask_selection, intersection=(gating_type == 'intersection'))
-            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=
-            app_config['serverside_overwrite']), gating_label_children(True, gating_dict, cur_gate_selection)
+            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key= OVERWRITE), \
+                gating_label_children(True, gating_dict, cur_gate_selection)
         return [] if gating_dict is not None else dash.no_update, []
