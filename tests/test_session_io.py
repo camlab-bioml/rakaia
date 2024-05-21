@@ -10,11 +10,11 @@ from ccramic.io.session import (
     SessionServerside,
     TabText,
     all_roi_match,
-    panel_length_match)
+    panel_length_match, sort_channel_dropdown)
 
 def test_session_serverside_objects():
     blend_dict = {"channel_1": np.full((1000, 1000), 1)}
-    # with the default local configuration, assert that the
+    # with the default local configuration, assert that the key is fixed
     serverside = SessionServerside(blend_dict, key="test_blend")
     assert serverside.key == "test_blend" == serverside.identifier
     # assert that the key is replaced with a uuid if the invocation is shared
@@ -140,3 +140,9 @@ def test_panel_compatible_import():
               "roi_2+++": {"Channel_1": 1, "Channel_2": 2}}
     assert not all_roi_match(None, new_blend, images)
     assert not all_roi_match(None, {}, images)
+
+def test_sort_channel_options():
+    channels = {"1": "Eu151", "2": "Nd145", "3": "196pb", "4": "a_channel"}
+    assert list(sort_channel_dropdown(channels, True).keys()) == ['3', '4', '1', '2']
+    assert list(sort_channel_dropdown(channels, False).keys()) == ['1', '2', '3', '4']
+    assert sort_channel_dropdown(None, True) is None

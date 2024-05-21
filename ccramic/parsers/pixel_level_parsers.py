@@ -13,6 +13,9 @@ import pandas as pd
 from PIL import Image
 from typing import Union
 
+class NoAcquisitionsParsedError(Exception):
+    pass
+
 class FileParser:
     """
     Parses a list of filepaths into a dictionary of image arrays, grouped by region (ROI) identifiers
@@ -283,6 +286,14 @@ class FileParser:
                                                    'ccramic Label']
             self.panel_length = len(txt_channel_names) if self.panel_length is None else self.panel_length
         self.acq_index += 1
+
+    def get_parsed_information(self):
+        if isinstance(self.dataset_information_frame, dict) and \
+                all([len(col) > 0 for col in self.dataset_information_frame.values()]) or \
+                isinstance(self.dataset_information_frame, pd.DataFrame) and len(self.dataset_information_frame) > 0:
+            return self.dataset_information_frame
+        raise NoAcquisitionsParsedError(f"No acquisitions were successfully parsed from the following files: \n"
+                                        f"{self.filepaths}. Please review the input files.")
 
 def create_new_blending_dict(uploaded):
     """

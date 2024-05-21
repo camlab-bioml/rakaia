@@ -58,7 +58,7 @@ from ccramic.io.session import (
     write_session_data_to_h5py,
     subset_mask_for_data_export,
     create_download_dir,
-    SessionServerside, panel_length_match, all_roi_match)
+    SessionServerside, panel_length_match, all_roi_match, sort_channel_dropdown)
 from pathlib import Path
 import json
 from dash import dcc
@@ -148,8 +148,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 filenames = dialog.GetPaths()
                 if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
                     session_config = validate_session_upload_config(cur_session)
-                    for filename in filenames:
-                        session_config["uploads"].append(filename)
+                    for filename in filenames: session_config["uploads"].append(filename)
                     dialog.Destroy()
                     return session_config
                 dialog.Destroy()
@@ -170,8 +169,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         session_config = validate_session_upload_config(cur_session)
         if upload_list is not None and len(upload_list) > 0:
             for new_upload in upload_list:
-                if new_upload not in session_config["uploads"]:
-                    session_config["uploads"].append(new_upload)
+                if new_upload not in session_config["uploads"]: session_config["uploads"].append(new_upload)
             return session_config
         raise PreventUpdate
 
@@ -196,15 +194,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
             files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
             message, unique_suffixes = file_import_message(files)
-            if len(unique_suffixes) > 1:
-                error_config = add_warning_to_error_config(error_config, ALERT.warnings["multiple_filetypes"] + message)
-            else:
-                error_config = add_warning_to_error_config(error_config, message)
+            suffix_add = ALERT.warnings["multiple_filetypes"] if len(unique_suffixes) > 1 else ""
+            error_config = add_warning_to_error_config(error_config, suffix_add + message)
             try:
                 fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                 session_dict['unique_images'] = fileparser.unique_image_names
                 columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
-                data = pd.DataFrame(fileparser.dataset_information_frame).to_dict(orient='records')
+                data = pd.DataFrame(fileparser.get_parsed_information()).to_dict(orient='records')
                 blend_return = fileparser.blend_config if (current_blend is None or len(current_blend) == 0) else dash.no_update
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
@@ -262,8 +258,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     # @cache.memoize())
     def reset_canvas_on_new_upload(uploaded, cur_fig):
-        if None not in (uploaded, cur_fig) and 'data' in cur_fig and cur_fig['data']:
-            return go.Figure()
+        if None not in (uploaded, cur_fig) and 'data' in cur_fig and cur_fig['data']: return go.Figure()
         raise PreventUpdate
 
 
@@ -294,9 +289,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # set the default canvas to return without a load screen
         if image_dict and data_selection and names:
-            if ' sort (A-z)' in sort_channels:
-                channels_return = dict(sorted(names.items(), key=lambda x: x[1].lower()))
-            else: channels_return = names
+            channels_return = sort_channel_dropdown(names, sort_channels)
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
                 try:
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,

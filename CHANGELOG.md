@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2024-05-21
+
+### Added
+
+- Exception thrown when the file parser doesn't successfully parse any ROIs
+
 ## [0.15.0] - 2024-05-17
 
 ### Added

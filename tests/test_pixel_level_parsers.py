@@ -9,7 +9,8 @@ from ccramic.parsers.pixel_level_parsers import (
     convert_rgb_to_greyscale,
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
-    check_empty_missing_layer_dict)
+    check_empty_missing_layer_dict,
+    NoAcquisitionsParsedError)
 from scipy.sparse import csc_matrix
 import numpy as np
 from ccramic.utils.alert import PanelMismatchError
@@ -53,10 +54,14 @@ def test_basic_parser_from_mcd(get_current_dir):
     assert len(uploaded_dict['query+++slide0+++Xylene_5']) == 11
     # the values will all be none for the mcd because of lazy loading
     assert all([value is None for value in uploaded_dict['query+++slide0+++Xylene_5'].values()])
-    dataset_info = parser.dataset_information_frame
+    dataset_info = parser.get_parsed_information()
     assert len(dataset_info['ROI']) == 6
     assert '11 markers' in dataset_info['Panel']
 
+def test_empty_information_parser(get_current_dir):
+    parser = FileParser([os.path.join(get_current_dir, "empty.txt")])
+    with pytest.raises(NoAcquisitionsParsedError):
+        parser.get_parsed_information()
 
 def test_basic_parser_exceptions(get_current_dir):
     """

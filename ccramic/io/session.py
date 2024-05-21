@@ -186,3 +186,14 @@ def subset_mask_for_data_export(canvas_layout, array_shape):
     except KeyError:
         pass
     return mask
+
+
+def sort_channel_dropdown(channel_list: Union[dict, None]=None, sort_channels: bool=False):
+    try:
+        if sort_channels:
+            channels_return = dict(sorted(channel_list.items(), key=lambda x: x[1].lower()))
+        else:
+            channels_return = channel_list
+        return channels_return
+    except AttributeError:
+        return channel_list
