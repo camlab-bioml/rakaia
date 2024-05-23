@@ -1,7 +1,10 @@
 import math
 from ccramic.utils.cell_level_utils import get_min_max_values_from_zoom_box, get_min_max_values_from_rect_box
-from ccramic.utils.pixel_level_utils import get_area_statistics_from_rect, get_area_statistics_from_closed_path, \
-    get_bounding_box_for_svgpath, RectangularKeys
+from ccramic.utils.pixel_level_utils import (
+    get_area_statistics_from_rect,
+    get_area_statistics_from_closed_path,
+    get_bounding_box_for_svgpath,
+    RectangularKeys)
 from pydantic import BaseModel
 from typing import Union
 import ast
@@ -51,7 +54,7 @@ class RectangleRegion(ChannelRegion):
         self.redrawn = redrawn
         self.key_dict = RectangularKeys().keys
         if self.type == "rect" and self.redrawn:
-            self.required_keys = self.key_dict["rect_redrawn"]
+            self.required_keys = list(self.coordinate_dict.keys())
         else:
             self.required_keys = self.key_dict[self.type]
         if all([elem in self.coordinate_dict] for elem in self.required_keys):
@@ -126,9 +129,9 @@ class AnnotationPreviewGenerator:
     Generates a text-based preview of an annotation to be compatible with the annotation preview table,
     which summarizes all of the current annotations in the selected ROI
     Different annotation types will have different string previews:
-        - region: lists the bounding box coordinates
-        - point: lists the xy coordinates
-        - gating: lists the number of objects in the gate
+    - region: lists the bounding box coordinates
+    - point: lists the xy coordinates
+    - gating: lists the number of objects in the gate
     """
 
     def generate_annotation_preview(self, annot_key, annot_type="zoom"):

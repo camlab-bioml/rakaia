@@ -41,7 +41,6 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         # "drawcircle",
                         "drawrect",
                         "eraseshape"],
-                        # TODO: add in dimension specs for the width and height on the download
                         # https://plotly.com/python/configuration-options/
                         'toImageButtonOptions': {'format': 'png', 'filename': filename, 'scale': 1},
                             # disable scrollable zoom for now to control the scale bar

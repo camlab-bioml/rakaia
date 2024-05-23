@@ -59,7 +59,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('session_config_quantification', 'data'),
                  id='upload-quantification')
-    # @cache.memoize())
     def get_quantification_upload_from_drag_and_drop(status: du.UploadStatus):
         return get_quantification_filepaths_from_drag_and_drop(status)
 
@@ -77,7 +76,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('umap-projection', 'data'),
                  id='upload-umap-coordinates')
-    # @cache.memoize())
+
     def get_umap_upload_from_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
         if files:
@@ -283,7 +282,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
-    # @cache.memoize())
+
     def return_mask_upload(status: du.UploadStatus):
         return parse_masks_from_filenames(status)
 
@@ -409,7 +408,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("download-edited-annotations", "data"),
         Input("btn-download-annotations", "n_clicks"),
         Input("quantification-dict", "data"))
-    # @cache.memoize())
+
     def download_quantification_with_annotations(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-annotations":
@@ -429,7 +428,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('global-filter-type', 'value'),
         State("global-kernel-val-filter", 'value'),
         State("global-sigma-val-filter", 'value'))
-    # @cache.memoize())
     def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers, data_selection, mask_config, aliases,
                 blend_dict, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
@@ -450,7 +448,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-dict', 'data'),
         State('apply-mask', 'value'),
         State('mask-options', 'value'))
-    # @cache.memoize())
     def download_annotations_masks(n_clicks, annotations_dict, canvas_layers,
                                  data_selection, image_dict, mask_dict, apply_mask, mask_selection):
         if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
@@ -476,7 +473,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),
         State('session_alert_config', 'data'))
-    # @cache.memoize())
     def clear_canvas_shapes(n_clicks, cur_canvas, canvas_layout, error_config):
         """
         Clear the current canvas of any shapes that are not associated with the legend or scalebar
@@ -491,7 +487,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State("annotations-dict", "data"),
         State('data-collection', 'value'),
         prevent_initial_call=True)
-    # @cache.memoize())
     def clear_current_roi_annotations(n_clicks, cur_annotation_dict, data_selection):
         """
         Clear all the current ROI annotations
@@ -532,7 +527,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('uploaded_dict', 'data'),
         State('dataset-delimiter', 'value'),
         prevent_initial_call=True)
-    # @cache.memoize())
     def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
                                           mask_dict, apply_mask, mask_selection, image_dict, delimiter):
         exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
@@ -547,7 +541,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-dict', 'data'),
         State('dataset-delimiter', 'value'),
         prevent_initial_call=True)
-    # @cache.memoize())
     def download_region_annotations_as_csv(n_clicks, annotations_dict, data_selection, mask_dict, delimiter):
         if n_clicks and None not in (annotations_dict, data_selection):
             download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
@@ -595,7 +588,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')
-    # @cache.memoize())
+
     def import_point_annotations_from_drag_and_drop(status: du.UploadStatus):
         """
         Import a CSV of point annotations to re-render on the canvas
@@ -610,7 +603,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('uploads_cluster', 'data', allow_duplicate=True),
                  id='upload-cluster-annotations')
-    # @cache.memoize())
+
     def get_filenames_from_cluster_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
         if files is not None: return files
@@ -621,7 +614,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  Input('uploads_cluster', 'data'),
                  State('imported-cluster-frame', 'data'),
                  State('data-collection', 'value'))
-    # @cache.memoize())
+
     def get_cluster_assignment_upload_from_drag_and_drop(uploads, cur_clusters, data_selection):
         if uploads:
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
@@ -636,7 +629,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 Input('imported-cluster-frame', 'data'),
                 State('data-collection', 'value'),
                 State('cluster-colour-assignments-dict', 'data'))
-    # @cache.memoize())
     def generate_cluster_colour_assignment(cluster_frame, data_selection, cur_cluster_dict):
         if None not in (cluster_frame, data_selection):
             default_colors, options = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
@@ -647,7 +639,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('cluster-label-selection', 'value', allow_duplicate=True),
         Input('toggle-clust-selection', 'value'),
         State('cluster-label-selection', 'options'))
-    # @cache.memoize())
     def generate_cluster_colour_assignment(toggle_clust_selection, clust_options):
         return clust_options if toggle_clust_selection else []
 
@@ -656,7 +647,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('cluster-label-list', 'options', allow_duplicate=True),
                        Output('cluster-label-selection', 'options', allow_duplicate=True),
                        Output('cluster-label-selection', 'value', allow_duplicate=True))
-    # @cache.memoize())
     def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame):
         if None not in (data_selection, cluster_frame) and data_selection in cluster_frame.keys():
             return list(cluster_frame[data_selection].keys()), list(cluster_frame[data_selection].keys()), \
@@ -694,7 +684,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('cluster-label-collapse', 'is_open'),
         [Input('toggle-cluster-labels', 'n_clicks')],
         [State('cluster-label-collapse', 'is_open')])
-    # @cache.memoize())
+
     def toggle_pixel_hist_collapse(n, is_open):
         return not is_open if n else is_open
 

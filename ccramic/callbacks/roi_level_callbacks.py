@@ -97,7 +97,6 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('data-collection', 'options'),
         State('data-collection', 'value'),
         prevent_initial_call=True)
-    # @cache.memoize())
     def load_roi_through_query_click(roi_query, dataset_options, current_roi):
         if dataset_options is not None and not all([elem is None for elem in roi_query]):
             index_from = ctx.triggered_id["index"]
@@ -125,7 +124,6 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('session_alert_config', 'data'),
         State('dataset-delimiter', 'value'),
         prevent_initial_call=True)
-    # @cache.memoize())
     def quantify_current_roi(execute, apply_mask, mask_dict, mask_selection, image_dict, data_selection,
                              dataset_options, cur_quant_dict, channels_to_quantify, aliases, error_config, delimiter):
         """

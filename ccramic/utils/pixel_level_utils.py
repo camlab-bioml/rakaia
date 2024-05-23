@@ -293,8 +293,8 @@ def validate_incoming_metadata_table(metadata, upload_dict):
     """
     Validate the incoming metadata sheet on custom upload against the data dictionary.
     The incoming metadata sheet must have the following characteristics:
-        - be on the same length as every ROI in the dataset
-        - have a column named "Column Label" that can be copied for editing
+    - be on the same length as every ROI in the dataset
+    - have a column named "Column Label" that can be copied for editing
     """
     if isinstance(metadata, pd.DataFrame) and "Channel Label" in metadata.columns and upload_dict is not None and \
         all([len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if \
@@ -528,16 +528,15 @@ class RectangularKeys(BaseModel):
     or edited
     """
     keys: dict = {"zoom": ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]'),
-                  "rect": ('x0', 'x1', 'y0', 'y1'),
-                  "rect_redrawn": ('shapes[1].x0', 'shapes[1].x1', 'shapes[1].y0', 'shapes[1].y1')}
+                  "rect": ('x0', 'x1', 'y0', 'y1')}
 
 class MarkerCorrelation:
     """
     Generate marker correlation metrics for a target marker compared to a baseline marker expression
     Output will generate a tuple of values:
-        - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
-        - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
-          marker expression at the baseline threshold, relative to the total marker expression inside the mask
+    - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
+    - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
+    marker expression at the baseline threshold, relative to the total marker expression inside the mask
     """
     def __init__(self, image_dict: dict, roi_selection: str, target_channel: Union[str, None],
                                baseline_channel: Union[str, None]=None, target_threshold: Union[float, int]=0,

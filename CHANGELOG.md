@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-05-21
+## [0.16.0] - 2024-05-23
 
 ### Added
 
 - Exception thrown when the file parser doesn't successfully parse any ROIs
+
+### Changed
+
+- Improved shape region parsing for redrawn/edited shapes
+- Better generalizations for conditions for tiff and HTML download
 
 ## [0.15.0] - 2024-05-17
 
