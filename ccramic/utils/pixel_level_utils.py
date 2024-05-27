@@ -16,6 +16,7 @@ import re
 import random
 import numexpr as ne
 from typing import Union
+import glasbey
 
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
@@ -404,6 +405,8 @@ def select_random_colour_for_channel(blend_dict, current_channel, default_colour
             break
     return blend_dict
 
+def glasbey_palette(palette_length=10):
+    return glasbey.create_palette(palette_length)
 
 def random_hex_colour_generator(number=10):
     """

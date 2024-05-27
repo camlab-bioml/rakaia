@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-05-23
+## [0.16.0] - 2024-05-27
 
 ### Added
 
@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Improved shape region parsing for redrawn/edited shapes
 - Better generalizations for conditions for tiff and HTML download
+- Switch to `glasbey` for palette generation
+- Switch to `steinbock` `scipy.ndimage` implementation for quantification and region props
+- add local persistence to mask-related inputs
 
 ## [0.15.0] - 2024-05-17
 
