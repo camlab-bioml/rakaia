@@ -9,6 +9,7 @@ from PIL import Image
 import numpy as np
 from skimage.segmentation import find_boundaries
 from pydantic import BaseModel
+import scipy
 
 class QuantificationColumns(BaseModel):
     """
@@ -285,7 +286,7 @@ def process_mask_array_for_hovertemplate(mask_array):
     return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))
 
 
-def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85):
+def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85, use_partial: bool=True):
     """
     Derive a list of cell IDs from a mask that are contained within the svg path based on a threshold
     For example, with a threshold of 0.85, one would include a cell ID if 85% of the cell's pixels are
@@ -293,17 +294,23 @@ def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=
     Returns a dict with the cell ID from the mask and its percentage
     """
     bool_inside = path_to_mask(svgpath, (mask_array.shape[0], mask_array.shape[1]))
-    uniques, counts = np.unique(mask_array[bool_inside], return_counts=True)
-    channel_index = 0
-    cells_included = {}
-    for cell in list(uniques):
-        if int(cell) > 0:
-            where_is_cell = np.where(mask_array == cell)
-            percent = counts[channel_index] / len(mask_array[where_is_cell])
+    if len(mask_array.shape) > 2:
+        mask_array = mask_array.reshape((mask_array.shape[0], mask_array.shape[1]))
+    if use_partial:
+        mask_subset = np.where(bool_inside == True, mask_array, 0)
+        objects = np.unique(mask_array)
+        objects = objects[objects != 0]
+        inside_counts = scipy.ndimage.sum(mask_subset, labels=mask_subset, index=objects)
+        total_counts = scipy.ndimage.sum(mask_array, labels=mask_array, index=objects)
+        mapping = {}
+        percentages = [a / b for a, b in zip(inside_counts, total_counts)]
+        for obj_id, percent in zip(objects, percentages):
             if percent >= threshold:
-                cells_included[cell] = percent
-        channel_index += 1
-    return cells_included
+                mapping[obj_id] = percent
+        return mapping
+    uniques, counts = np.unique(mask_array[bool_inside], return_counts=True)
+    uniques = uniques[uniques != 0]
+    return {cell: 100 for cell in list(uniques)}
 
 def subset_measurements_by_point(measurements, x, y):
     """

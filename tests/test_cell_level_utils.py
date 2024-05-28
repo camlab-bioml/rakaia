@@ -151,7 +151,8 @@ def test_get_cell_ids_in_svgpath(get_current_dir):
     cells_included_2 = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath, threshold=0.97)
     assert len(cells_included_2) == 1
     assert list(cells_included_2.keys()) == [452]
-
+    cells_all = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath, use_partial=False)
+    assert len(cells_all) == 2
 
 def test_basic_cell_annotation_col_pop_from_masking(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))

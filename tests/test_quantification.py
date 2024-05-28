@@ -37,22 +37,23 @@ def test_quantification_valid_vals(get_current_dir):
 
 def test_quantification_multiple_channels(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
-    channel_dict = {"set1+++slide0+++roi_1": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
+    channel_dict = {"set1+++slide0+++acq_1": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
                  "channel_2": np.full((mask.shape[0], mask.shape[1]), 2),
                  "channel_3": np.full((mask.shape[0], mask.shape[1]), 3),
                  "channel_4": np.full((mask.shape[0], mask.shape[1]), 4)}}
     channel_list = ["channel_2", "channel_3", "channel_4"]
-    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_1", channel_list)
+    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq_1", channel_list)
+    assert multi_frame['cell_id'].to_list()[0] == 1
     assert len(multi_frame.index) == int(np.max(mask))
     column_list = list(multi_frame.columns)
     assert 'sample' in multi_frame.columns
     assert column_list.index('sample') == 5
     assert all([elem in column_list[0:3] for elem in channel_list])
 
-    dataset_options = ["set1+++slide0+++roi_1", "set1+++slide0+++roi_2"]
+    dataset_options = ["set1+++slide0+++acq_1", "set1+++slide0+++acq_2"]
 
     aliases = {elem: elem for elem in channel_list}
-    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_1", channel_list,
+    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq_1", channel_list,
                                                      aliases, dataset_options)
 
     assert 'set1_1' in multi_frame['sample'].tolist()

@@ -1,5 +1,6 @@
 import dash
 import pandas as pd
+
 from ccramic.io.session import SessionServerside
 from ccramic.utils.cell_level_utils import (
     populate_cell_annotation_column_from_bounding_box,
@@ -11,7 +12,7 @@ import ast
 from ccramic.components.canvas import CanvasLayout
 from dash.exceptions import PreventUpdate
 from ccramic.utils.alert import AlertMessage
-from ccramic.utils.shapes import is_bad_shape
+from ccramic.utils.shapes import filter_annotation_shapes
 import plotly.graph_objs as go
 
 def callback_add_region_annotation_to_quantification_frame(annotations, quantification_frame, data_selection,
@@ -45,7 +46,6 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                         quantification_frame = populate_cell_annotation_column_from_bounding_box(quantification_frame,
                         values_dict=dict(annotation), cell_type=annotations[data_selection][annotation]['cell_type'],
                         annotation_column=annotations[data_selection][annotation]['annotation_column'], remove=remove)
-                    # TODO: add in annotation from gated cell list here
                     elif annotations[data_selection][annotation]['type'] in ["path", "gate"] and mask_toggle and \
                                 None not in (mask_config, mask_selection) and len(mask_config) > 0:
                         cells_included = []
@@ -87,7 +87,6 @@ def callback_add_region_annotation_to_quantification_frame(annotations, quantifi
                             mask_toggle=mask_toggle, mask_dict=mask_config, mask_selection=mask_selection,
                             sample=sample_name, id_column=id_column, remove=remove)
                     annotations[data_selection][annotation]['imported'] = True
-
             # if remove, remove the last annotation from the dictionary
             if remove:
                 annotations = remove_annotation_entry_by_indices(annotations, data_selection, indices_remove)
@@ -108,22 +107,12 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
     if n_clicks > 0 and None not in (cur_canvas, canvas_layout) and 'shapes' not in canvas_layout:
         cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
         if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
-            new_shapes = []
-            for shape in cur_canvas['layout']['shapes']:
-                try:
-                    if shape is not None and ('type' in shape and shape['type'] not in
-                        ['rect', 'path', 'circle'] and not is_bad_shape(shape)):
-                        new_shapes.append(shape)
-                except KeyError:
-                    pass
-            cur_canvas['layout']['shapes'] = new_shapes
+            cur_canvas['layout']['shapes'] = filter_annotation_shapes(cur_canvas)
             # IMP: to avoid the phantom shape set by https://github.com/plotly/dash/issues/2741
             # set the uirevision status to something different from what it was, BUT must still be truthy
             cur_canvas['layout']['uirevision'] = True if cur_canvas['layout']['uirevision'] not in [True] else "clear"
             fig = go.Figure(cur_canvas)
             fig.update_layout(dragmode="zoom")
-            # cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
-            # cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             return fig, dash.no_update
         else:
             return go.Figure(cur_canvas), dash.no_update
@@ -133,7 +122,6 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
         if error_config is None:
             error_config = {"error": None}
         error_config["error"] = AlertMessage().warnings["invalid_annotation_shapes"]
-        # cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
         return dash.no_update, error_config
     else:
         raise PreventUpdate

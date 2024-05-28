@@ -3,6 +3,10 @@ from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import pandas as pd
 from dash import html
+from steinbock.measurement.intensities import (
+    IntensityAggregation,
+    measure_intensites)
+from steinbock.measurement.regionprops import measure_regionprops
 
 def mask_object_counter_preview(mask_dict: dict=None, mask_selection: str=None):
     """
@@ -38,40 +42,9 @@ def quantify_one_channel(image, mask):
             is_cell = mask == cell
             # IMP: only apply the offset in the positions, not for the actual cell id
             expr_mat[:, int(cell - offset)] = np.mean(image[is_cell])
-        # cell_ids_adata = [f"{image_name}_{str(cell_id)}" for cell_id in cell_ids]
-
-        # adata = ad.AnnData(
-        #     X=expr_mat,
-        #     obs=pd.DataFrame(index=cell_ids_adata, data={"image_name": image_name}),
-        #     var=pd.DataFrame(index=channel_names)
-        # )
-
         return expr_mat
     else:
         return None
-
-def quantify_roi_xy_coordinates_area(mask):
-    """
-    Quantify the xy coordinates and area for every object in an ROI mask
-    Returns three arrays of values that can be cast to dataframe series: x, y, and area
-    """
-    # reshape the image to retain only the first two dimensions
-    mask = mask.reshape((mask.shape[0], mask.shape[1]))
-    vals_dict = {"x": None, "y": None, "area": None}
-    # Get unique list of cell IDs. Remove '0' which corresponds to background
-    cell_ids = np.unique(mask)
-    cell_ids = cell_ids[cell_ids != 0]
-    # IMP: the cell ids start at 1, but the array positions start at 0, so offset the array positions by 1
-    offset = 1 if min(cell_ids) == 1 else 0
-    for key in vals_dict.keys():
-        vals_dict[key] = np.zeros((1, len(cell_ids)))
-    for cell in cell_ids:
-        subset = np.where(mask == cell)
-        vals_dict['x'][:, int(cell - offset)] = subset[1].mean()
-        vals_dict['y'][:, int(cell - offset)] = subset[0].mean()
-        vals_dict['area'][:, int(cell - offset)] = subset[0].shape[0]
-    return vals_dict['x'], vals_dict['y'], vals_dict['area']
-
 
 def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None,
                                        dataset_options=None, delimiter: str="+++", mask_name: str=None):
@@ -80,14 +53,16 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     as rows and channels + metadata as columns
     """
     exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
-    channel_frame = pd.DataFrame()
-    for channel in channels_to_quantify:
-        if channel in list(channel_dict[data_selection].keys()):
-            mat = quantify_one_channel(channel_dict[data_selection][channel], mask)
-            column = pd.Series(mat.flatten())
-            # set the channel label if the aliases exists with a different name
-            channel_name = aliases[channel] if aliases is not None and channel in aliases.keys() else channel
-            channel_frame[channel_name] = column
+    # TODO: implement steinbock intensity measurements using dstack and skimage
+    array = np.stack([channel_dict[data_selection][channel] for channel in list(channel_dict[data_selection].keys()) if \
+                       channel in channels_to_quantify], axis=0)
+    chan_names = []
+    for chan in channels_to_quantify:
+        if aliases and chan in aliases.keys():
+            chan_names.append(aliases[chan])
+        else:
+            chan_names.append(chan)
+    channel_frame = measure_intensites(array, mask, chan_names, IntensityAggregation.MEAN)
     description_name = roi_name
     sample_name = mask_name
     if dataset_options is not None:
@@ -96,21 +71,20 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
             if roi == roi_name:
                 index = dataset_options.index(dataset) + 1
                 # TODO: figure out best naming strategy for ROI names for different input names
-                if len(description_name) <= 5:
+                if len(description_name) <= 5 and description_name.startswith("acq"):
                     description_name = mask_name
                     sample_name = f"{exp}_{index}"
     # TODO: change the order of the identifying columns here, and set the description to the mask used for the quant
     # to ensure matching
     # TODO: figure out what the ROI designation should be
     channel_frame['description'] = description_name
-    channel_frame['cell_id'] = pd.Series(range(1, (len(channel_frame.index) + 1)), dtype='int64')
+    channel_frame['cell_id'] = pd.Series(range(0, (len(channel_frame.index) + 1)), dtype='int64')
     channel_frame['sample'] = sample_name
-    x, y, area = quantify_roi_xy_coordinates_area(mask)
-    channel_frame['x'] = pd.Series(x.flatten())
-    channel_frame['y'] = pd.Series(y.flatten())
-    channel_frame['area'] = pd.Series(area.flatten())
-    return channel_frame
-
+    props = ['area', 'centroid', 'axis_major_length', 'axis_minor_length', 'eccentricity']
+    # TODO: check to see if bugs in the region props
+    region_props = measure_regionprops(array, mask, props)
+    to_return = channel_frame.join(region_props).reset_index(drop=True)
+    return to_return
 
 def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_selection, delimiter: str="+++"):
     """
@@ -155,8 +129,6 @@ def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_sel
     current_gate_dict = {gate_selected: {}} if current_gate_dict is None else current_gate_dict
     if gate_selected and gate_selected not in current_gate_dict: current_gate_dict[gate_selected] = \
         {'lower_bound': None, 'upper_bound': None}
-    # if current_gate_dict[gate_selected]['lower_bound'] != float(min(gating_vals)) and \
-    #         current_gate_dict[gate_selected]['upper_bound'] != float(max(gating_vals)):
     current_gate_dict[gate_selected]['lower_bound'] = float(min(gating_vals))
     current_gate_dict[gate_selected]['upper_bound'] = float(max(gating_vals))
     return current_gate_dict

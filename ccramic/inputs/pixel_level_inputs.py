@@ -14,6 +14,7 @@ import plotly.express as px
 from ccramic.io.session import SessionTheme
 from ccramic.utils.pixel_level_utils import split_string_at_pattern, get_first_image_from_roi_dictionary
 from typing import Union
+from ccramic.utils.shapes import is_bad_shape
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False, filename: str="canvas", delimiter: str="+++"):

@@ -37,6 +37,7 @@ Flask-Dance==7.0.0
 Flask-HTTPAuth==4.8.0
 fonttools==4.39.4
 freeport==0.1.15
+glasbey==0.2.0
 h11==0.14.0
 h5py==3.8.0
 idna==3.4
@@ -109,6 +110,7 @@ sortedcontainers==2.4.0
 soupsieve==2.4.1
 statsmodels==0.14.0
 stdlib-list==0.8.0
+steinbock==0.16.1
 tenacity==8.2.2
 texttable==1.6.7
 threadpoolctl==3.1.0
