@@ -2,7 +2,8 @@ import pytest
 
 from ccramic.callbacks.pixel_level_wrappers import (
     parse_global_filter_values_from_json,
-    parse_local_path_imports)
+    parse_local_path_imports,
+    mask_options_from_json)
 import dash
 import os
 
@@ -48,3 +49,8 @@ def test_import_paths_from_local(get_current_dir):
     assert isinstance(imports, dash._callback.NoUpdate)
     with pytest.raises(dash.exceptions.PreventUpdate):
         parse_local_path_imports(mcd_file, "no_type", {'uploads': []}, {"error": None})
+
+def test_parse_json_mask_options():
+    config_dict = {"mask": {"mask_toggle": True, "mask_level": 62.5, "mask_boundary": [" add boundary"], "mask_hover": []}}
+    assert mask_options_from_json(config_dict) == list(config_dict['mask'].values())
+    assert all([isinstance(elem, dash._callback.NoUpdate) for elem in mask_options_from_json({})])

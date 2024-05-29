@@ -48,3 +48,9 @@ def parse_local_path_imports(path: str, import_type: str, session_config: dict, 
             error_config["error"] = AlertMessage().warnings["invalid_directory"]
             return dash.no_update, error_config
     raise PreventUpdate
+
+def mask_options_from_json(config: dict):
+    mask_options = ["mask_toggle", "mask_level", "mask_boundary", "mask_hover"]
+    if 'mask' in config and all([key in config['mask'].keys() for key in mask_options]):
+        return [val for val in config['mask'].values()]
+    return dash.no_update, dash.no_update, dash.no_update, dash.no_update

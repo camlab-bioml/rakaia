@@ -1,5 +1,6 @@
 import pandas as pd
 from ccramic.io.session import JSONSessionDocument
+from typing import Union
 
 def match_db_config_to_request_str(db_config_list: list, db_config_selection: str):
     """
@@ -64,11 +65,14 @@ def preview_dataframe_from_db_config_list(config_list):
 def format_blend_config_document_for_insert(user, config_name, blend_dict, selected_channel_list, global_apply_filter,
                                             global_filter_type, global_filter_val, global_filter_sigma,
                                             data_selection: str=None, cluster_assignments: dict=None,
-                                            aliases: dict=None, gating_dict: dict=None):
+                                            aliases: dict=None, gating_dict: dict=None, mask_toggle: bool=False,
+                                            mask_level: Union[int, float]=35, mask_boundary: bool=True,
+                                            mask_hover: Union[bool, list]=False):
     """
     Format a mongoDB document from a session config that can be posted to the `blend_config` collection
     in the `ccramic-db` mongoDB database
     """
     return JSONSessionDocument("db", user, config_name, blend_dict, selected_channel_list, global_apply_filter,
                                          global_filter_type, global_filter_val, global_filter_sigma,
-                                         data_selection, cluster_assignments, aliases, gating_dict).get_document()
+                                         data_selection, cluster_assignments, aliases, gating_dict,
+                               mask_toggle, mask_level, mask_boundary, mask_hover).get_document()

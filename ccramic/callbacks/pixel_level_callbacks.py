@@ -52,7 +52,8 @@ from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     adjust_option_height_from_list_length, set_roi_tooltip_based_on_length)
-from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json, parse_local_path_imports
+from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
+    mask_options_from_json
 from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -423,6 +424,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
                        Output('gating-dict', 'data', allow_duplicate=True),
                        Output('images_in_blend', 'value', allow_duplicate=True),
+                       Output('apply-mask', 'value', allow_duplicate=True),
+                       Output('mask-blending-slider', 'value', allow_duplicate=True),
+                       Output('add-mask-boundary', 'value', allow_duplicate=True),
+                       Output('add-cell-id-mask-hover', 'value', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
             add_to_layer, all_layers, current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
@@ -460,18 +465,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 clust_return = {data_selection: new_blend_dict['cluster']} if \
                     'cluster' in new_blend_dict.keys() and new_blend_dict['cluster'] else dash.no_update
                 gate_return = new_blend_dict['gating'] if 'gating' in new_blend_dict.keys() else dash.no_update
+                apply, level, boundary, hover = mask_options_from_json(new_blend_dict)
                 return SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE), \
                     current_blend_dict, error_config, channel_list_return, global_apply_filter, global_filter_type, \
-                    global_filter_val, global_filter_sigma, metadata_return, dash.no_update, dash.no_update, clust_return, gate_return, None
+                    global_filter_val, global_filter_sigma, metadata_return, dash.no_update, \
+                    dash.no_update, clust_return, gate_return, None, apply, level, boundary, hover
             # IMP: if the update does not occur, clear the database selection and auto filled config name
             else:
                 error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_update_error"])
                 return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, \
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         elif data_selection is None:
             error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_requires_roi"])
             return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update, None, None, \
+                dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Input('image_layers', 'value'),
@@ -1202,14 +1211,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('cluster-colour-assignments-dict', 'data'),
                        State('data-collection', 'value'),
                        State('alias-dict', 'data'),
-                       State('gating-dict', 'data'))
+                       State('gating-dict', 'data'),
+                       State('apply-mask', 'value'),
+                       State('mask-blending-slider', 'value'),
+                       State('add-mask-boundary', 'value'),
+                       State('add-cell-id-mask-hover', 'value'))
     def download_session_config_json(download_json, blend_dict, blend_layers, global_apply_filter,
-        global_filter_type, global_filter_val, global_filter_sigma, cluster_assignments, data_selection, aliases, gating_dict):
+        global_filter_type, global_filter_val, global_filter_sigma, cluster_assignments,
+        data_selection, aliases, gating_dict, apply_mask, mask_level, mask_boundary, mask_hover):
         if blend_dict:
             download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
             create_download_dir(download_dir)
             return dcc.send_file(write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
-            global_filter_type, global_filter_val, global_filter_sigma, data_selection, cluster_assignments, aliases, gating_dict))
+            global_filter_type, global_filter_val, global_filter_sigma, data_selection,
+            cluster_assignments, aliases, gating_dict, apply_mask, mask_level, mask_boundary, mask_hover))
         raise PreventUpdate
 
     @dash_app.callback(Output('download-roi-h5py', 'data'),

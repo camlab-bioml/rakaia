@@ -3,6 +3,7 @@ from pymongo.server_api import ServerApi
 from ccramic.utils.db import format_blend_config_document_for_insert
 from pymongo.collection import Collection
 from pymongo.errors import ConfigurationError
+from typing import Union
 
 class AtlasDatabaseConnection:
     """
@@ -54,7 +55,9 @@ class AtlasDatabaseConnection:
 
     def insert_blend_config(self, config_name, blend_dict, selected_channel_list, global_apply_filter,
                             global_filter_type, global_filter_val, global_filter_sigma, data_selection: str=None,
-                            cluster_assignments: dict=None, alias_dict: dict=None, gating_dict: dict=None):
+                            cluster_assignments: dict=None, alias_dict: dict=None, gating_dict: dict=None,
+                            mask_toggle: bool = False, mask_level: Union[int, float] = 35, mask_boundary: bool = True,
+                            mask_hover: Union[bool, list] = False):
         """
         Insert a blend config document into the `blend_config` collection.
         Important: will overwrite any previous configs from the user with the same name
@@ -64,7 +67,8 @@ class AtlasDatabaseConnection:
         insert = self.blend_collection.insert_one(format_blend_config_document_for_insert(
             self.username, config_name, blend_dict, selected_channel_list, global_apply_filter,
                                     global_filter_type, global_filter_val, global_filter_sigma, data_selection,
-                                    cluster_assignments, alias_dict, gating_dict))
+                                    cluster_assignments, alias_dict, gating_dict,
+                                    mask_toggle, mask_level, mask_boundary, mask_hover))
     def username_password_pair(self):
         return {'username': self.username, 'password': self.password}
 
