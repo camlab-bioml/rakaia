@@ -1912,6 +1912,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return not is_open if n else is_open
 
     @dash_app.callback(
+        Output("channel-list-collapse", "is_open", allow_duplicate=True),
+        [Input("show-channel-collapse", "n_clicks")],
+        [State("channel-list-collapse", "is_open")])
+    def toggle_draggable_list_collapse(n, is_open):
+        return not is_open if n else is_open
+
+    @dash_app.callback(
         Output("annotation-preview", "is_open"),
         Input('show-annotation-table', 'n_clicks'),
         [State("annotation-preview", "is_open")])
