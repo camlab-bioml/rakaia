@@ -14,7 +14,6 @@ import plotly.express as px
 from ccramic.io.session import SessionTheme
 from ccramic.utils.pixel_level_utils import split_string_at_pattern, get_first_image_from_roi_dictionary
 from typing import Union
-from ccramic.utils.shapes import is_bad_shape
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False, filename: str="canvas", delimiter: str="+++"):
@@ -29,7 +28,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
         style_canvas = {"margin": "auto", "width": "100vw", "height": "100vh",
                    "max-width": "none", "max-height": "none"}
     else:
-        style_canvas = {"width": "65vw", "height": "65vh"}
+        style_canvas = {"width": "55vw", "height": "55vh"}
 
     # set a custom output filename based on the current ROI
     if filename != "canvas":
