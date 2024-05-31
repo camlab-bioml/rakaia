@@ -428,6 +428,7 @@ class CanvasLayout:
                 shape['label'] = {}
         self.figure['layout']['annotations'] = cur_annotations
         self.figure['layout']['shapes'] = cur_shapes
+        self.figure['layout']['uirevision'] = True if self.figure['layout']['uirevision'] not in [True] else "clear"
         if not toggle_scalebar:
             return self.figure
         else:

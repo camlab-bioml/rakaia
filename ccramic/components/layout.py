@@ -34,7 +34,7 @@ def register_app_layout(config, cache_dest):
         dbc.Modal(children=[dbc.ModalHeader(),
             dbc.ModalBody
             ([render_default_annotation_canvas(input_id="annotation_canvas-fullscreen",
-                                                                           fullscreen_mode=True)])],
+                                                fullscreen_mode=True)])],
             id="fullscreen-canvas", fullscreen=True, size='xl',
         centered=True, style={"margin": "auto", "width": "100vw", "height": "100vh",
                               "max-width": "none", "max-height": "none"}),

@@ -289,7 +289,8 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
     return indices_query, freq_counts
 
 
-def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_options: list, delimiter: str="+++"):
+def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_options: list, delimiter: str="+++",
+                             return_as_dash: bool=False):
     """
     Attempt to match a mask name to the currently selected ROI.
     Heuristics order:
@@ -330,6 +331,8 @@ def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_option
                     # IMP: assumes that the mask name contains all of the experiment or ROI name somewhere in the label
                     if exp in mask_name or acq in mask_name:
                         mask_return = mask_name
+    if not mask_return:
+        mask_return = dash.no_update if (return_as_dash and not mask_options) else None
     return mask_return
 
 

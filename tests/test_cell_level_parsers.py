@@ -149,6 +149,7 @@ def test_mask_match_to_roi_name():
     data_selection = "MCD1+++slide0+++roi_1"
     mask_options = ["roi_1", "roi_2"]
     assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1"
+    assert match_mask_name_with_roi(data_selection, mask_options, None, return_as_dash=True) == "roi_1"
 
     data_selection_2 = "roi_1+++slide0+++roi_1"
     assert match_mask_name_with_roi(data_selection_2, mask_options, None) == "roi_1"
@@ -170,7 +171,8 @@ def test_mask_match_to_roi_name():
     assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", None, dataset_options) is None
 
     assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options) is None
-
+    assert isinstance(match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options, return_as_dash=True),
+                      dash._callback.NoUpdate)
 
 def test_match_mask_name_to_quantification_sheet_roi():
     samples = ["query_1", "query_2", "query_3", "query_4"]

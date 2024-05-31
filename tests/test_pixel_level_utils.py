@@ -34,7 +34,8 @@ from ccramic.utils.pixel_level_utils import (
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
     MarkerCorrelation, high_low_values_from_zoom_layout,
-    glasbey_palette)
+    glasbey_palette,
+    layers_exist)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -44,6 +45,11 @@ import numpy as np
 def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
     assert acq == "acq1"
+
+def test_layer_condition():
+    assert layers_exist({"roi_1": {"channel_1": None}}, "roi_1")
+    assert not layers_exist({"roi_1": {}}, "roi_1")
+    assert not layers_exist({"roi_1": {"channel_1": None}}, "roi_2")
 
 def test_identify_rgb_codes():
     # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string

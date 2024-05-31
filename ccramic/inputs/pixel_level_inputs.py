@@ -14,7 +14,6 @@ import plotly.express as px
 from ccramic.io.session import SessionTheme
 from ccramic.utils.pixel_level_utils import split_string_at_pattern, get_first_image_from_roi_dictionary
 from typing import Union
-from ccramic.utils.shapes import is_bad_shape
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False, filename: str="canvas", delimiter: str="+++"):
@@ -48,7 +47,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         'edits': {'shapePosition': False}, 'scrollZoom': fullscreen_mode, 'displaylogo': False},
                         relayoutData={'autosize': True},
                         id=input_id,
-                            style=style_canvas,
+                        style=style_canvas,
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                newshape = dict(line=dict(color="white")),
                                               xaxis=go.XAxis(showticklabels=False),
@@ -303,9 +302,12 @@ def update_canvas_filename(canvas_config: dict, roi_name: str=None, delimiter: s
     """
     if canvas_config and roi_name:
         try:
-            canvas_config['toImageButtonOptions']['filename'] = str(set_roi_identifier_from_length(roi_name,
-                                                                                    delimiter=delimiter))
-            return canvas_config
+            if canvas_config['toImageButtonOptions']['filename'] != str(set_roi_identifier_from_length(roi_name,
+                                                                                    delimiter=delimiter)):
+                canvas_config['toImageButtonOptions']['filename'] = str(set_roi_identifier_from_length(
+                    roi_name, delimiter=delimiter))
+                return canvas_config
+            raise PreventUpdate
         except KeyError:
             pass
     return canvas_config
