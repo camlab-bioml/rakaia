@@ -231,6 +231,9 @@ def test_window_viewport_settings():
     assert set_canvas_viewport(30, blank_image_dict, "roi_1", {}, {}, (1000, 2000)) == \
            {'width': '60.0vh', 'height': '30.0vh'}
 
+    assert set_canvas_viewport(175, blank_image_dict, "roi_1", {}, {}, (1000, 2000)) == \
+           {'width': '150.0vh', 'height': '75.0vh'}
+
 def test_generate_marker_correlation_information():
     children = marker_correlation_children(None, None, None, None)
     assert not children

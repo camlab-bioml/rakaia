@@ -28,7 +28,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
         style_canvas = {"margin": "auto", "width": "100vw", "height": "100vh",
                    "max-width": "none", "max-height": "none"}
     else:
-        style_canvas = {"width": "55vw", "height": "55vh"}
+        style_canvas = {"width": "100vh", "height": "100vh"}
 
     # set a custom output filename based on the current ROI
     if filename != "canvas":
@@ -47,7 +47,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                         'edits': {'shapePosition': False}, 'scrollZoom': fullscreen_mode, 'displaylogo': False},
                         relayoutData={'autosize': True},
                         id=input_id,
-                            style=style_canvas,
+                        style=style_canvas,
                         figure={'layout': dict(xaxis_showgrid=False, yaxis_showgrid=False,
                                                newshape = dict(line=dict(color="white")),
                                               xaxis=go.XAxis(showticklabels=False),
@@ -302,9 +302,12 @@ def update_canvas_filename(canvas_config: dict, roi_name: str=None, delimiter: s
     """
     if canvas_config and roi_name:
         try:
-            canvas_config['toImageButtonOptions']['filename'] = str(set_roi_identifier_from_length(roi_name,
-                                                                                    delimiter=delimiter))
-            return canvas_config
+            if canvas_config['toImageButtonOptions']['filename'] != str(set_roi_identifier_from_length(roi_name,
+                                                                                    delimiter=delimiter)):
+                canvas_config['toImageButtonOptions']['filename'] = str(set_roi_identifier_from_length(
+                    roi_name, delimiter=delimiter))
+                return canvas_config
+            raise PreventUpdate
         except KeyError:
             pass
     return canvas_config
@@ -312,7 +315,8 @@ def update_canvas_filename(canvas_config: dict, roi_name: str=None, delimiter: s
 def set_canvas_viewport(size_slider_val: Union[float, int]=None,
                         image_dict: dict=None, data_selection: str=None,
                         current_canvas: Union[go.Figure, dict]=None, cur_canvas_layout: dict=None,
-                        cur_dimensions: Union[tuple, list]=None):
+                        cur_dimensions: Union[tuple, list]=None,
+                        max_width: Union[int, float]=150):
     """
     Set the canvas viewport based on the canvas size range slider, as well as the aspect ratio of
     the ROI dimensions
@@ -338,6 +342,9 @@ def set_canvas_viewport(size_slider_val: Union[float, int]=None,
 
     width = float(size_slider_val * aspect_ratio)
     height = float(size_slider_val)
+    if max_width and width > max_width:
+        width = float(max_width)
+        height = float(max_width / aspect_ratio)
     try:
         if cur_canvas_layout['height'] != f'{height}vh' and cur_canvas_layout['width'] != f'{width}vh':
             return {'width': f'{width}vh', 'height': f'{height}vh'}

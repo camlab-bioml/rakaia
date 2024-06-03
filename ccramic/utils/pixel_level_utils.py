@@ -21,6 +21,15 @@ import glasbey
 def split_string_at_pattern(string, pattern="+++"):
     return string.split(pattern)
 
+def layers_exist(layer_dict: dict=None, data_selection: str=None):
+    """
+    Assess whether the channel layer hash has the current data selection with any loaded channels
+    Required to be able to create a blended image
+    """
+    if layer_dict and data_selection:
+        return data_selection in layer_dict and bool(layer_dict[data_selection])
+    return False
+
 
 def set_array_storage_type_from_config(array_type="float"):
     """
