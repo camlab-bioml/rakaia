@@ -65,17 +65,14 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         session_config) and not quant_empty and len(currently_selected) > 0:
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
                 rois_decided = query_from_quantification
-                rois_exclude = []
-                row_children = []
+                rois_exclude, row_children = [], []
             else:
-                rois_decided = None
+                rois_decided, row_children = None, None
             # if the query is being extended, append on top of the existing gallery
             if ctx.triggered_id == "dataset-query-additional-load" and load_additional > 0:
-                rois_exclude = rois_exclude
-                row_children = existing_gallery
+                rois_exclude, row_children = rois_exclude, existing_gallery
             elif ctx.triggered_id == "execute-dataset-query" and execute_query > 0:
-                rois_exclude = [data_selection]
-                row_children = []
+                rois_exclude, row_children = [data_selection], []
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries),
             rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,
             global_filter_type, global_filter_val, global_filter_sigma, delimiter, False, dim_min, dim_max, keyw).get_image_dict()
@@ -102,8 +99,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             index_from = ctx.triggered_id["index"]
             if index_from in dataset_options and index_from != current_roi:
                 return index_from, "pixel-analysis"
-            else:
-                raise PreventUpdate
+            raise PreventUpdate
         raise PreventUpdate
 
     @dash_app.callback(
@@ -132,14 +128,12 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         obtained as the UMAP projections will no longer align with the quantification frame and must be re-run
         If the quantification is successful, close the modal
         """
-        if execute > 0 and None not in (image_dict, data_selection, mask_selection, channels_to_quantify) and \
-                apply_mask and len(channels_to_quantify) > 0:
+        if None not in (image_dict, data_selection, mask_selection) and apply_mask and channels_to_quantify:
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 new_quant = quantify_multiple_channels_per_roi(image_dict, mask_dict[mask_selection]['raw'],
                             data_selection, channels_to_quantify, aliases, dataset_options, delimiter, mask_selection)
-                quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant,
-                                                                     data_selection, delimiter)
+                quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant, data_selection, delimiter)
                 return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",
                         use_unique_key=app_config['serverside_overwrite']), dash.no_update, {'display': 'None'}, None
             else:

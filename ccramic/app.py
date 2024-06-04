@@ -33,12 +33,13 @@ def init_dashboard(server, authentic_id, config=None):
 
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
-                             update_title=None,
+                        update_title=None,
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
-                         external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
-                         server=server,
-                         routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True,
-                         prevent_initial_callbacks=True)
+                        external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
+                        server=server,
+                        routes_pathname_prefix="/ccramic/",
+                        suppress_callback_exceptions=True,
+                        prevent_initial_callbacks=True)
         dash_app._favicon = 'ccramic.ico'
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"

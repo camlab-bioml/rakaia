@@ -1,5 +1,3 @@
-import pytest
-
 from ccramic.callbacks.pixel_level_wrappers import (
     parse_global_filter_values_from_json,
     parse_local_path_imports,
@@ -37,18 +35,16 @@ def test_parse_global_filters():
 
 def test_import_paths_from_local(get_current_dir):
     mcd_file = os.path.join(get_current_dir, 'query.mcd')
-    imports, error = parse_local_path_imports(mcd_file, "filepath", {'uploads': []}, {"error": None})
+    imports, error = parse_local_path_imports(mcd_file, {'uploads': []}, {"error": None})
     assert imports['uploads']
     assert 'query.mcd' in imports['uploads'][0]
-    imports, error = parse_local_path_imports(get_current_dir, "directory", {'uploads': []}, {"error": None})
+    assert isinstance(error, dash._callback.NoUpdate)
+    imports, error = parse_local_path_imports(get_current_dir, {'uploads': []}, {"error": None})
     assert imports['uploads']
-    imports, error = parse_local_path_imports(get_current_dir, "filepath", {'uploads': []}, {"error": None})
-    assert error['error']
-    imports, error = parse_local_path_imports(mcd_file, "directory", {'uploads': []}, {"error": None})
+    assert isinstance(error, dash._callback.NoUpdate)
+    imports, error = parse_local_path_imports('', {'uploads': []}, {"error": None})
     assert error['error']
     assert isinstance(imports, dash._callback.NoUpdate)
-    with pytest.raises(dash.exceptions.PreventUpdate):
-        parse_local_path_imports(mcd_file, "no_type", {'uploads': []}, {"error": None})
 
 def test_parse_json_mask_options():
     config_dict = {"mask": {"mask_toggle": True, "mask_level": 62.5, "mask_boundary": [" add boundary"], "mask_hover": []}}

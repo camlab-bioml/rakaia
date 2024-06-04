@@ -123,13 +123,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('add-file-by-path', 'n_clicks'),
                        State('session_config', 'data'),
                        State('session_alert_config', 'data'),
-                       State('local-read-type', 'value'),
                        prevent_initial_call=True)
-    def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, import_type):
+    def get_session_uploads_from_local_path(path, clicks, cur_session, error_config):
         if path and clicks > 0:
             session_config = validate_session_upload_config(cur_session)
             error_config = {"error": None} if error_config is None else error_config
-            return parse_local_path_imports(path, import_type, session_config, error_config)
+            return parse_local_path_imports(path, session_config, error_config)
         raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
