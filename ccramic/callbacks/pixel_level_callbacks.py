@@ -1710,8 +1710,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (cur_graph, cur_graph_layout) and all([elem in cur_graph_layout for elem in bound_keys]):
             # only update if these keys are used for drag or pan to set custom coords
             x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(cur_graph_layout)
-            return html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}),\n"
-            f"Y: ({round(y_low, 2)}, {round(y_high, 2)})", style={"color": "black", "white-space": "pre"}), \
+            return [html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}), "
+            f"Y: ({round(y_low, 2)}, {round(y_high, 2)})", style={"color": "black", "white-space": "pre"}), html.Br()], \
                 {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
         # if the zoom is reset to the default, clear the bound window
         elif cur_graph_layout in [{'xaxis.autorange': True, 'yaxis.autorange': True}, {'autosize': True}]:
@@ -1894,6 +1894,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input("blend-offcanvas-button", "n_clicks"),
         State("blend-config-offcanvas", "is_open"))
     def toggle_offcanvas_blend_options(n, is_open):
+        return not is_open if n else is_open
+
+    @dash_app.callback(
+        Output("color-picker-collapse", "is_open", allow_duplicate=True),
+        [Input("show-color-picker", "n_clicks")],
+        [State("color-picker-collapse", "is_open")])
+    def toggle_color_picker_collapse(n, is_open):
         return not is_open if n else is_open
 
     @dash_app.callback(

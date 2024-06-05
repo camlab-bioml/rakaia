@@ -2,18 +2,23 @@
   --widget: #0f4d92;
 }
 
+#inputs-offcanvas{
+header {
+visibility: hidden;}
+}
+
 .dash-debug-menu {
-  background-color: #0f4d92;
+  background-color: #0f4d92 !important;
   //color: #0f4d92;
  }
 
  .dash-debug-menu--open {
-  background-color: #0f4d92;
+  background-color: #0f4d92 !important;
   color: #0f4d92;
  }
 
 .dash-debug-menu:hover {
-  background-color: #0f4d92;
+  background-color: #0f4d92 !important;
   //color: #0f4d92;
  }
 

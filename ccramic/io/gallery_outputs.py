@@ -1,4 +1,3 @@
-
 import dash_bootstrap_components as dbc
 from dash import html
 from PIL import Image
@@ -49,12 +48,14 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
 
             label = aliases[key] if aliases is not None and key in aliases.keys() else key
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                                                            html.Br(), dbc.Button("Add to canvas",
+                                                            dbc.Button("Add to canvas",
                                                                                   id={'type': 'gallery-channel',
                                                                                       'index': key},
                                                                                   outline=True, color="dark",
                                                                                   className="me-1", size="sm",
-                                                                                  style={"margin-top": "15px"})]),
+                                                                                  style={"padding": "5px",
+                                                                                         "margin-left": "10px",
+                                                                                         "margin-top": "5px"})]),
                                               dbc.CardImg(src=Image.fromarray(image_render).convert('RGB'),
                                                           bottom=True)]), width=3))
     return row_children
@@ -70,7 +71,7 @@ def generate_roi_query_gallery_children(image_dict, col_width=4, max_size=28, ma
     if image_dict is not None and len(image_dict) > 0:
         for key, value in image_dict.items():
             # add the dimensions to the label as a list to provide a line break
-            label = [f"{key}: ", html.Br(), f"{value.shape[1]}x{value.shape[0]}"]
+            label = f"{key}: ({value.shape[1]}x{value.shape[0]})"
             aspect_ratio = int(value.shape[1]) / int(value.shape[0])
             # implement a cap on very tall images to avoid a lot of white space
             if aspect_ratio < max_aspect_ratio_tall:
@@ -78,12 +79,14 @@ def generate_roi_query_gallery_children(image_dict, col_width=4, max_size=28, ma
             else:
                 style = None
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                                                            html.Br(), dbc.Button("Load in canvas",
+                                                            dbc.Button("Load in canvas",
                                                                                   id={'type': 'data-query-gallery',
                                                                                       'index': key},
                                                                                   outline=True, color="dark",
                                                                                   className="me-1", size="sm",
-                                                                                  style={"margin-top": "15px"})]),
+                                                                       style={"padding": "5px",
+                                                                              "margin-left": "10px",
+                                                                              "margin-top": "5px"})]),
                                               dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
                                                           bottom=True, style=style, className='align-self-center')]),
                                     width=col_width))
