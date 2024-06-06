@@ -31,7 +31,7 @@ class TabText(BaseModel):
                          "blend."
     region_gallery: str = "Generate a thumbnail for one or more ROIs contained in the current session with the " \
                           "blend parameters that are currently applied to the canvas. These thumbnails may be generated " \
-                          "randomly from the query below, or from subsetting the UMAP plot under the quantification tab. " \
+                          "randomly using query parameters, or from subsetting the UMAP plot under the quantification tab. " \
                           "Each thumbnail enables the specific ROI to be loaded into the main canvas."
 
 

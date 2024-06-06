@@ -741,7 +741,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def set_blend_options_from_preset(preset_selection, preset_dict, current_blend_dict, data_selection):
         if None not in (preset_selection, preset_dict, current_blend_dict, data_selection):
-
             for key, value in current_blend_dict.items():
                 current_blend_dict[key] = apply_preset_to_blend_dict(value, preset_dict[preset_selection])
             return current_blend_dict
@@ -849,7 +848,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         - if the hover template is updated (it is faster to recreate the figure rather than trying to remove the
         hover template)
         """
-        # TODO: error here caused by canvas layers being set to None
         # do not update if the trigger is a global filter and the filter is not applied
         global_not_enabled = global_filter_disabled(ctx.triggered_id, global_apply_filter)
         channel_order_same = channel_order_as_default(ctx.triggered_id, channel_order, currently_selected)
@@ -872,11 +870,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 apply_gating, gating_cell_id_list, scale_color, clust_selected)
                 fig = canvas.generate_canvas()
                 if cluster_type == 'mask' or not apply_cluster_on_mask:
-                    fig = CanvasLayout(fig)
-                    fig = fig.remove_cluster_annotation_shapes()
+                    fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask:
-                    fig = CanvasLayout(fig)
-                    fig = fig.add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"], pd.DataFrame(
+                    fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"], pd.DataFrame(
                 cluster_frame[data_selection]), cluster_assignments_dict, data_selection, 2, apply_gating, gating_cell_id_list, clust_selected)
                 # set if the image is to be downloaded or not
                 dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
@@ -889,28 +885,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
                 return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config
-        #TODO: this step can be used to keep the current ui revision if a new ROI is selected with the same dimensions
-        # elif currently_selected is not None and 'shapes' not in cur_graph_layout:
-        #     fig = cur_graph if cur_graph is not None else go.Figure()
-        #     if 'data' in fig:
-        #         fig['data'] = []
-        #         if 'shapes' in fig['layout']:
-        #             fig['layout']['shapes'] = []
-        #         if 'annotations' in fig['layout']:
-        #             fig['layout']['annotations'] = [annotation for annotation in \
-        #                                         fig['layout']['annotations'] if annotation['y'] == 0.06]
-        #     fig = go.Figure(fig)
-        #     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-        #                       xaxis=XAxis(showticklabels=False),
-        #                       yaxis=YAxis(showticklabels=False),
-        #                       margin=dict(
-        #                           l=0,
-        #                           r=0,
-        #                           b=0,
-        #                           t=0,
-        #                           pad=0
-        #                       ), dragmode="zoom")
-        #     return fig, None, {'autosize': True}
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
@@ -933,7 +907,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def render_canvas_from_coord_or_zoom_change(cur_graph, cur_graph_layout, x_request, y_request, current_window,
                              nclicks_coord, data_selection, image_dict, custom_scale_val, pixel_ratio,
                             toggle_scalebar, legend_size, invert_annot, scale_col):
-
         """
         Update the annotation canvas when the zoom or custom coordinates are requested.
         """
@@ -945,8 +918,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 try:
                     image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
                     proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
-                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout,
-                                                            pixel_ratio, proportion, scale_col)
+                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion, scale_col)
                     pixel_ratio = pixel_ratio if pixel_ratio is not None else 1
                     x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
                     cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
@@ -966,28 +938,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 raise PreventUpdate
             raise PreventUpdate
         raise PreventUpdate
-
-    # @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
-    #                    State('annotation_canvas', 'figure'),
-    #                    Input('annotation_canvas', 'relayoutData'),
-    #                    prevent_initial_call=True)
-    #
-    # def fix_x_coords(canvas, layout):
-    #     zoom_keys = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
-    #     if all([elem in layout for elem in zoom_keys]) and canvas is not None and 'layout' in canvas:
-    #         if canvas['layout']['xaxis']['range'][0] != layout['xaxis.range[0]'] and \
-    #                 canvas['layout']['xaxis']['range'][1] != layout['xaxis.range[1]']:
-    #             fig = go.Figure(canvas)
-    #             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-    #                               yaxis=YAxis(showticklabels=False,
-    #                                           range=[layout['yaxis.range[1]'], layout['yaxis.range[0]']]),
-    #                               xaxis=XAxis(showticklabels=False,
-    #                                           range=[layout['xaxis.range[0]'], layout['xaxis.range[1]']]))
-    #             return fig
-    #         else:
-    #             raise PreventUpdate
-    #     else:
-    #         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
                        Input('toggle-canvas-legend', 'value'),
@@ -1166,30 +1116,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 html_path = dash.no_update
             return html_path, error_config
         raise PreventUpdate
-
-    # @dash_app.callback(Output('download-canvas-image-tiff-annotations', 'data'),
-    #                    Input('btn-download-canvas-tiff-annotations', 'n_clicks'),
-    #                    State('annotation_canvas', 'figure'),
-    #                    State('data-collection', 'value'),
-    #                    State('dataset-delimiter', 'value'),
-    #                    State('uploaded_dict', 'data'))
-    #
-    # def download_tiff_w_annotations(download_tiff_annotations, cur_graph, data_selection, delimiter, uploaded):
-    #     if None not in (cur_graph, uploaded, data_selection) and download_tiff_annotations > 0:
-    #         dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-    #         first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
-    #         fig = go.Figure(cur_graph)
-    #         fig.update_layout(margin=dict(
-    #                     l=0,
-    #                     r=0,
-    #                     b=0,
-    #                     t=0,
-    #                     pad=0
-    #                 ))
-    #         canvas = plotly_fig2array(fig, first_image)
-    #         return dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas,
-    #                 dest_dir=dest_path, use_roi_name=True,roi_name=data_selection, delimiter=delimiter))
-    #     raise PreventUpdate
 
     @dash_app.callback(Output('download-session-config-json', 'data'),
                        Input('btn-download-session-config-json', 'n_clicks'),
@@ -1442,8 +1368,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig = dash.no_update
                     hist_max = float(np.max(uploaded[data_selection][selected_channel]))
             except (ValueError, TypeError):
-                fig = dash.no_update
-                hist_max = 100.0
+                fig, hist_max = dash.no_update, 100.0
             try:
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             except ValueError:
@@ -1518,8 +1443,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('pixel-intensity-slider', 'marks', allow_duplicate=True),
                        Output('pixel-intensity-slider', 'step', allow_duplicate=True),
                        Output('custom-slider-max', 'value', allow_duplicate=True),
-                       # Output('blending_colours', 'data', allow_duplicate=True),
-                       # Output('image_layers', 'value', allow_duplicate=True),
                        State('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
@@ -1527,8 +1450,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('pixel-intensity-slider', 'value'),
                        Input('set-default-rangeslider', 'n_clicks'),
                        State('custom-slider-max', 'value'),
-                       # Input('set-default-rangeslider-all', 'n_clicks'),
-                       # State('image_layers', 'value'),
                        prevent_initial_call=True)
     def reset_intensity_slider_to_default(selected_channel, uploaded, data_selection, current_blend_dict,
                                     cur_slider_values, reset, cur_max):
@@ -1536,19 +1457,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Reset the range slider for the current channel to the default values (min of 0 and max of 99th pixel
         percentile)
         """
-        # TODO: could add here the button for all channels to reset to default
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
-            # if ctx.triggered_id == "set-default-rangeslider-all" and channels_in_blend:
-            #     for channel in channels_in_blend:
-            #         current_blend_dict[channel]['x_lower_bound'] = 0
-            #         current_blend_dict[channel]['x_upper_bound'] = float(get_default_channel_upper_bound_by_percentile(
-            #             uploaded[data_selection][channel]))
             hist_max = upper_bound_for_range_slider(uploaded[data_selection][selected_channel])
             upper_bound = float(get_default_channel_upper_bound_by_percentile(uploaded[data_selection][selected_channel]))
             if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
-                vals_return = [0, upper_bound]
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
-                return hist_max, vals_return, tick_markers, step_size, []
+                return hist_max, [0, upper_bound], tick_markers, step_size, []
             raise PreventUpdate
         raise PreventUpdate
 
@@ -1625,15 +1539,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def generate_preset_options(selected_click, preset_name, current_preset_options, data_selection, layer,
                                 current_blend_dict, current_presets, cur_preset_chosen):
         if selected_click is not None and selected_click > 0 and None not in (preset_name, data_selection, layer, current_blend_dict):
-
             if preset_name not in current_preset_options:
                 current_preset_options.append(preset_name)
-
             current_presets = {} if current_presets is None else current_presets
-
             current_presets[preset_name] = current_blend_dict[layer]
             set_preset = cur_preset_chosen if cur_preset_chosen in current_preset_options else None
-
             return current_preset_options, current_presets, set_preset
         raise PreventUpdate
 
@@ -1846,8 +1756,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and None not in \
                 (annotation_title, annotation_body, canvas_layout, data_selection, cur_layers):
-            # use the data collection as the highest key for each ROI, then use the canvas coordinates to
-            # uniquely identify a region
+            # use the data collection as the highest key then use the canvas coordinates to uniquely identify a region
             # IMP: convert the dictionary to a sorted tuple to use as a key
             # https://stackoverflow.com/questions/1600591/using-a-python-dictionary-as-a-key-non-nested
             annotation_list = {}
@@ -2058,8 +1967,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Toggle the visibility/availability of the previous and next ROI buttons depending on the current ROI selection
         """
-        disabled_prev = True if cur_options[0] == cur_data_selection else False
-        disabled_next = True if cur_options[-1] == cur_data_selection else False
+        disabled_prev = True if cur_options and cur_options[0] == cur_data_selection else False
+        disabled_next = True if cur_options and cur_options[-1] == cur_data_selection else False
         return disabled_prev, disabled_next
 
 

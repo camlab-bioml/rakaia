@@ -529,9 +529,11 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         prevent_initial_call=True)
     def download_point_annotations_as_csv(n_clicks, annotations_dict, data_selection,
                                           mask_dict, apply_mask, mask_selection, image_dict, delimiter):
-        exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
-        return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection, mask_dict, apply_mask,
+        if data_selection and annotations_dict and image_dict and delimiter:
+            exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
+            return export_point_annotations_as_csv(n_clicks, acq, annotations_dict, data_selection, mask_dict, apply_mask,
                                         mask_selection, image_dict, authentic_id, tmpdirname, delimiter, True)
+        raise PreventUpdate
 
     @dash_app.callback(
         Output("download-region-csv", "data"),
