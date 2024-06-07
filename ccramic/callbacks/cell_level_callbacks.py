@@ -368,7 +368,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Input("annotations-dict", "data"),
-        Input('undo-latest-annotation', 'n_clicks'),
         State('quantification-dict', 'data'),
         State('data-collection', 'value'),
         State('data-collection', 'options'),
@@ -382,7 +381,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True),
         Output('annotation-table', 'selected_rows', allow_duplicate=True))
-    def update_region_annotation_in_quantification_frame(annotations, undo_latest_annotation, quantification_frame,
+    def update_region_annotation_in_quantification_frame(annotations, quantification_frame,
                         data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
                         delete_from_table, annot_table_selection, reimport_annots):
         """
@@ -392,7 +391,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # TODO: use toggle for adding annotations to quantification frame or not
         if data_selection:
-            remove = ctx.triggered_id in ["undo-latest-annotation", "delete-annotation-tabular"]
+            remove = ctx.triggered_id in ["delete-annotation-tabular"]
             indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
             sample_name, id_column = identify_column_matching_roi_to_quantification(
             data_selection, quantification_frame, data_dropdown_options, delimiter)

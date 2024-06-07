@@ -1238,7 +1238,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # do not update if the canvas triggers, but gallery zoom is not enabled
             zoom_not_needed = ctx.triggered_id == 'annotation_canvas' and not toggle_gallery_zoom
             data_there = data_selection in gallery_data.keys() and all([elem is not None for elem in gallery_data[data_selection].values()])
-            if data_there and not zoom_not_needed:
+            no_channel = ctx.triggered_id == "unique-channel-list" and not view_by_channel
+            if data_there and not zoom_not_needed and not no_channel:
                 # maintain the original order of channels that is dictated by the metadata
                 # decide if channel view or ROI view is selected
                 if view_by_channel and channel_selected is not None:

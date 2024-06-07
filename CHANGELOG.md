@@ -7,8 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-
-## [0.16.0] - 2024-05-28
+## [0.16.0] - 2024-06-07
 
 ### Added
 
@@ -16,12 +15,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Major UI revamp prior to public release
 - Improved shape region parsing for redrawn/edited shapes
 - Better generalizations for conditions for tiff and HTML download
 - Switch to `glasbey` for palette generation
 - Switch to `steinbock` `scipy.ndimage` implementation for quantification and region props
 - add local persistence to mask-related inputs
 - Switch to `scipy.ngimage` to compute mask object overlap on drawn annotations
+- Bump import max for `dash-upload` image components (up to 50gb)
+
+### Fixed
+
+- Prevent callback on gallery channel view when not enabled
+
+### Removed
+
+- `Undo last annotation` for regions (annotations table has selectable deletion)
 
 ## [0.15.0] - 2024-05-17
 
