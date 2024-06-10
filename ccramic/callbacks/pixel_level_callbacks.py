@@ -53,7 +53,7 @@ from ccramic.inputs.loaders import (
     next_roi_trigger,
     adjust_option_height_from_list_length, set_roi_tooltip_based_on_length)
 from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
-    mask_options_from_json
+    mask_options_from_json, bounds_text, generate_annotation_list
 from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -139,8 +139,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if nclicks > 0:
             import wx
             app = wx.App(None)
-            dialog = wx.FileDialog(None, 'Open', str(Path.home()),
-                                   style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
+            dialog = wx.FileDialog(None, 'Open', str(Path.home()), style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
                                    wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5|*.tiff;*.tif;*.mcd;*.txt;*.h5")
             if dialog.ShowModal() == wx.ID_OK:
                 filenames = dialog.GetPaths()
@@ -578,14 +577,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
-
                     # if upper and lower bounds have been set before for this layer, use them before recolouring
-
                     if current_blend_dict[layer]['x_lower_bound'] is not None and \
                         current_blend_dict[layer]['x_upper_bound'] is not None:
                         array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
                                 float(current_blend_dict[layer]['x_upper_bound']))
-
                     array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
                     current_blend_dict[layer]['color'] = colour['hex']
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array, colour['hex'])).astype(np.uint8)
@@ -613,16 +609,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 slider_values = [float(elem) for elem in slider_values]
                 lower_bound, upper_bound = min(slider_values), max(slider_values)
-
                 if float(current_blend_dict[layer]['x_lower_bound']) == float(lower_bound) and \
                         float(current_blend_dict[layer]['x_upper_bound']) == float(upper_bound):
                     raise PreventUpdate
                 else:
                     current_blend_dict[layer]['x_lower_bound'] = float(lower_bound)
                     current_blend_dict[layer]['x_upper_bound'] = float(upper_bound)
-
                     array = apply_preset_to_array(uploaded_w_data[data_selection][layer], current_blend_dict[layer])
-
                     all_layers[data_selection][layer] = np.array(recolour_greyscale(array, current_blend_dict[layer]['color']))
                     return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE)
             except (TypeError, KeyError):
@@ -647,10 +640,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val', 'filter_sigma']
         if None not in (preset_selection, preset_dict, data_selection, current_blend_dict, layer):
-
             for preset_val in preset_keys:
                 current_blend_dict[layer][preset_val] = preset_dict[preset_selection][preset_val]
-
             array = apply_preset_to_array(uploaded_w_data[data_selection][layer], preset_dict[preset_selection])
             all_layers[data_selection][layer] = np.array(recolour_greyscale(array, current_blend_dict[layer]['color']))
             return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE)
@@ -678,16 +669,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
             only_options_changed = channel_already_added(ctx.triggered_id, ctx.triggered, session_vars)
-
         if None not in (layer, current_blend_dict, data_selection, filter_value, filter_name, all_layers,
                         filter_sigma) and not only_options_changed:
-
             try: array = uploaded[data_selection][layer]
             except KeyError: array = None
-
             # condition where the current inputs are set to not have a filter, and the current blend dict matches
             no_filter_in_both = no_filter_chosen(current_blend_dict, layer, filter_chosen)
-
             # condition where toggling between two channels, and the first one has no filter and the second
             # has a filter. prevent the callback with no actual change
             same_filter_params = channel_filter_matches(current_blend_dict, layer, filter_chosen,
@@ -751,7 +738,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('data-collection', 'value'),
                        State('data-collection', 'options'),
                        State('mask-options', 'options'),
-                       # State('image_layers', 'value'),
                        State('annotation_canvas', 'figure'),
                        State('dataset-delimiter', 'value'),
                        prevent_initial_call=True)
@@ -1013,10 +999,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Update the canvas when the size of the annotations is modified
         """
         if cur_graph is not None:
-            try:
-                return CanvasLayout(cur_graph).change_annotation_size(legend_size)
-            except KeyError:
-                raise PreventUpdate
+            try: return CanvasLayout(cur_graph).change_annotation_size(legend_size)
+            except KeyError: raise PreventUpdate
         raise PreventUpdate
 
     @du.callback(Output('metadata_config', 'data'),
@@ -1145,7 +1129,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(Output('download-roi-h5py', 'data'),
-                       # Output('download-canvas-interactive-html', 'href'),
                        Input('btn-download-roi-h5py', 'n_clicks'),
                        State('uploaded_dict', 'data'),
                        State('imc-metadata-editable', 'data'),
@@ -1167,8 +1150,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
                     mask = subset_mask_for_data_export(canvas_layout, first_image.shape)
-                return dcc.send_file(write_session_data_to_h5py(download_dir, metadata_sheet, uploaded,
-                                                               data_selection, blend_dict, mask))
+                return dcc.send_file(write_session_data_to_h5py(download_dir, metadata_sheet, uploaded, data_selection, blend_dict, mask))
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError: raise PreventUpdate
         raise PreventUpdate
@@ -1178,10 +1160,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('annotation_canvas', 'style'),
         Input('annotation-canvas-size', 'value'),
         State('annotation_canvas', 'figure'),
-        # State('annotation_canvas', 'relayoutData'),
         State('data-collection', 'value'),
-        # State('uploaded_dict', 'data'),
-        # State('image_layers', 'value'),
         State('annotation_canvas', 'style'),
         Input('cur_roi_dimensions', 'data'),
         Input('canvas-viewport-max', 'value'),
@@ -1243,7 +1222,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # maintain the original order of channels that is dictated by the metadata
                 # decide if channel view or ROI view is selected
                 if view_by_channel and channel_selected is not None:
-                    views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 10000,
+                    views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 1000000,
                             delimiter=delimiter, use_greyscale=True, dataset_options=options).get_image_dict()
                     if toggle_scaling_gallery:
                         try:
@@ -1496,7 +1475,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
             only_options_changed = channel_already_added(ctx.triggered_id, ctx.triggered, session_vars)
-
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:
             filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict, selected_channel)
@@ -1620,14 +1598,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         bound_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
         if None not in (cur_graph, cur_graph_layout) and all([elem in cur_graph_layout for elem in bound_keys]):
             # only update if these keys are used for drag or pan to set custom coords
-            x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(cur_graph_layout)
-            return [html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}), "
-            f"Y: ({round(y_low, 2)}, {round(y_high, 2)})", style={"color": "black", "white-space": "pre"}), html.Br()], \
-                {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
+            return bounds_text(*high_low_values_from_zoom_layout(cur_graph_layout))
         # if the zoom is reset to the default, clear the bound window
         elif cur_graph_layout in [{'xaxis.autorange': True, 'yaxis.autorange': True}, {'autosize': True}]:
             return [], {"x_low": None, "x_high": None, "y_low": None, "y_high": None}
-        # otherwise, keep the bound window (i.e. if a shape is created)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1646,7 +1620,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def select_roi_from_preview_table(active_selection, dataset_options, cur_selection):
         if None not in (active_selection, dataset_options) and len(active_selection) > 0:
             try:
-                # if the selection is the current one, do nothing
                 return dataset_options[active_selection[0]] if \
                     dataset_options[active_selection[0]] != cur_selection else dash.no_update
             except KeyError: raise PreventUpdate
@@ -1757,23 +1730,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and None not in \
                 (annotation_title, annotation_body, canvas_layout, data_selection, cur_layers):
-            # use the data collection as the highest key then use the canvas coordinates to uniquely identify a region
-            # IMP: convert the dictionary to a sorted tuple to use as a key
-            # https://stackoverflow.com/questions/1600591/using-a-python-dictionary-as-a-key-non-nested
-            annotation_list = {}
-            # Option 1: if zoom is used
-            if isinstance(canvas_layout, dict) and 'shapes' not in canvas_layout:
-                annotation_list[tuple(sorted(canvas_layout.items()))] = "zoom"
-            # Option 2: if a shape is drawn on the canvas
-            elif 'shapes' in canvas_layout and isinstance(canvas_layout, dict) and len(canvas_layout['shapes']) > 0:
-                # only get the shapes that are a rect or path, the others are canvas annotations
-                # Set which shapes to use based on the checklist either all or the most recent
-                shapes_use = canvas_layout['shapes'] if bulk_annot else [canvas_layout['shapes'][-1]]
-                for shape in shapes_use:
-                    if shape['type'] == 'path': annotation_list[shape['path']] = 'path'
-                    elif shape['type'] == "rect":
-                        key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}
-                        annotation_list[tuple(sorted(key.items()))] = "rect"
+            annotation_list = generate_annotation_list(canvas_layout, bulk_annot)
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = RegionAnnotation(title = annotation_title, body = annotation_body,
                 cell_type = annotation_cell_type, imported = False, annotation_column = annot_col, type = value,

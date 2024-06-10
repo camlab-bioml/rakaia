@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-07
+## [0.16.0] - 2024-06-10
 
 ### Added
 
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add local persistence to mask-related inputs
 - Switch to `scipy.ngimage` to compute mask object overlap on drawn annotations
 - Bump import max for `dash-upload` image components (up to 50gb)
+- Channel gallery thumbnails now use smaller add icon without text
 
 ### Fixed
 

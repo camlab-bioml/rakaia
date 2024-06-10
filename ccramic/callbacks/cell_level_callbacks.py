@@ -352,20 +352,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return mask_dict, options, height_update
         raise PreventUpdate
 
-    # @dash_app.callback(
-    #     Output("quantification-config-modal", "is_open"),
-    #     Input('cell-type-col-designation', 'options'),
-    #     prevent_initial_call=True)
-    # def toggle_annotation_col_modal(quantification_dict):
-    #     """
-    #     Toggle the annotation modal on or off when the quantification dataset
-    #     updates the possible cell type annotations
-    #     """
-    #     if quantification_dict is not None:
-    #         return True
-    #     else:
-    #         return False
-
     @dash_app.callback(
         Input("annotations-dict", "data"),
         State('quantification-dict', 'data'),

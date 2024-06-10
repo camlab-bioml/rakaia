@@ -48,14 +48,29 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
 
             label = aliases[key] if aliases is not None and key in aliases.keys() else key
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                                                            dbc.Button("Add to canvas",
-                                                                                  id={'type': 'gallery-channel',
-                                                                                      'index': key},
-                                                                                  outline=True, color="dark",
-                                                                                  className="me-1", size="sm",
-                                                                                  style={"padding": "5px",
-                                                                                         "margin-left": "10px",
-                                                                                         "margin-top": "5px"})]),
+                                                            # dbc.Button("Add to canvas",
+                                                            #                       id={'type': 'gallery-channel',
+                                                            #                           'index': key},
+                                                            #                       outline=True, color="dark",
+                                                            #                       className="me-1", size="sm",
+                                                            #                       style={"padding": "5px",
+                                                            #                              "margin-left": "10px",
+                                                            #                              "margin-top": "5px"}),
+                                                                dbc.Button(children=html.Span(
+                                                                    [html.I(className="fa-solid fa-plus-circle",
+                                                                            style={"display": "inline-block",
+                                                                                   "margin-right": "7.5px",
+                                                                                   "margin-top": "-5px"})],
+                                                                    style={"display": "flex", "float": "center",
+                                                                           "justifyContent": "center"}),
+                                                                    id={'type': 'gallery-channel',
+                                                                        'index': key},
+                                                                    outline=False, color="light",
+                                                                    className="me-1", size="m",
+                                                                    style={"padding": "5px",
+                                                                           "margin-left": "10px",
+                                                                           "margin-top": "2.5px"})
+                                                                ]),
                                               dbc.CardImg(src=Image.fromarray(image_render).convert('RGB'),
                                                           bottom=True)]), width=3))
     return row_children
@@ -79,14 +94,14 @@ def generate_roi_query_gallery_children(image_dict, col_width=4, max_size=28, ma
             else:
                 style = None
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                                                            dbc.Button("Load in canvas",
+                                                            dbc.Button("Load",
                                                                                   id={'type': 'data-query-gallery',
                                                                                       'index': key},
                                                                                   outline=True, color="dark",
                                                                                   className="me-1", size="sm",
                                                                        style={"padding": "5px",
                                                                               "margin-left": "10px",
-                                                                              "margin-top": "5px"})]),
+                                                                              "margin-top": "2.5px"})]),
                                               dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
                                                           bottom=True, style=style, className='align-self-center')]),
                                     width=col_width))
