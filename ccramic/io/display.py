@@ -10,6 +10,8 @@ import plotly.graph_objs as go
 from typing import Union
 from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
 from ccramic.components.canvas import CanvasLayout
+import datetime
+from dash import html
 
 class RegionSummary:
     """
@@ -258,3 +260,12 @@ def annotation_preview_table(annotation_dict: dict=None, roi_selection: str=None
             columns = [{'id': p, 'name': p, 'editable': False} for p in columns_keep + ["preview"]]
             return annotation_list, columns
     return [], []
+
+def timestamp_download_child(download_type: str="Canvas (tiff)"):
+    """
+    Generate an HTML compatible alert when a session download is completed
+    with a download type passed as a string, and the current timestamp
+    """
+    if download_type:
+        return html.H6(f'{download_type} downloaded: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
+    return []

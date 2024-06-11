@@ -5,12 +5,14 @@ from ccramic.io.display import (
     output_current_canvas_as_html,
     FullScreenCanvas,
     generate_preset_options_preview_text,
-    annotation_preview_table)
+    annotation_preview_table,
+    timestamp_download_child)
 import numpy as np
 import pandas as pd
 import tempfile
 import plotly.graph_objs as go
 import plotly.express as px
+import datetime
 
 def test_generate_channel_statistics_dataframe():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.full((1000, 1000), 100),
@@ -379,3 +381,10 @@ def test_annotation_preview_table():
     assert len(preview_frame) == len(annotations_dict['Patient1+++slide0+++pos1_1'].keys()) - 1
     assert '5 cells' in preview_frame['preview'].tolist()
     assert annotation_preview_table() == ([], [])
+
+def test_timestamp_downloads():
+    right_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = timestamp_download_child()
+    assert timestamp.children
+    assert right_now[0:10] in str(timestamp.children)
+    assert not timestamp_download_child(None)

@@ -29,8 +29,8 @@ class TabText(BaseModel):
                          "expression of a biomarker. Individual biomarker images, termed tiles, are visible in the " \
                          "channel gallery when an ROI is selected, and one or more biomarkers can be added to the canvas " \
                          "blend."
-    region_gallery: str = "Generate a thumbnail for one or more ROIs contained in the current session with the " \
-                          "blend parameters that are currently applied to the canvas. These thumbnails may be generated " \
+    region_gallery: str = "Generate a thumbnail for one or more ROIs contained in the current session with either the " \
+                          "current blend parameters or a saved blend. These thumbnails may be generated " \
                           "randomly using query parameters, or from subsetting the UMAP plot under the quantification tab. " \
                           "Each thumbnail enables the specific ROI to be loaded into the main canvas."
 

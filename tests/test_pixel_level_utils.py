@@ -35,7 +35,8 @@ from ccramic.utils.pixel_level_utils import (
     ag_grid_cell_styling_conditions,
     MarkerCorrelation, high_low_values_from_zoom_layout,
     glasbey_palette,
-    layers_exist)
+    layers_exist,
+    add_saved_blend)
 from dash.exceptions import PreventUpdate
 import pandas as pd
 from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
@@ -700,3 +701,13 @@ def test_marker_correlation_metrics(get_current_dir):
                     "target", "baseline", mask=mask_bad_shape, blend_dict=blend_dict).get_correlation_statistics()
     assert (proportion_target, overlap, proportion_baseline) == (None, None, None)
     assert pearson_2 != pearson
+
+def test_saving_blend():
+    saved = add_saved_blend(None, "infiltration", ["chan_1", "chan_4", "chan_5"])
+    assert saved == {'infiltration': ['chan_1', 'chan_4', 'chan_5']}
+    saved = add_saved_blend(saved, "immune", ["CD8", "CD3"])
+    assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}
+    saved = add_saved_blend(saved, None, ["chan_11", "chan_12"])
+    assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}
+    saved = add_saved_blend(saved, "empty")
+    assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}

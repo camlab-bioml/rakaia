@@ -474,6 +474,10 @@ def register_app_layout(config, cache_dest):
                                     dcc.Download(id="download-umap-projection")
                                 ], style={"border":"1px black solid", "display": "inline-block",
                                                         "width": "auto", "padding": "7.5px"}),
+                                # TODO: add a spinner status for long downloads here
+                                html.Br(),
+                                html.Br(),
+                                dbc.Spinner(html.Div([], id='status-div'), color="dark"),
                                 ])],
                                 style={"margin-top": "-15px", "padding": "0px"})],
                     style={"width": "37.5%", "padding": "5px", "margin-bottom": "0px",
@@ -749,7 +753,7 @@ def register_app_layout(config, cache_dest):
                                                placement="end", style={"width": "32%"}, backdrop=False, scrollable=True,
                                                is_open=False, children=[
                                 dbc.Tabs(id='config-tabs',
-                                children=[dbc.Tab(label="Configuration", tab_id='blend-config-tab',
+                                children=[dbc.Tab(label="Configure", tab_id='blend-config-tab',
                                         label_style={"color": DEFAULT_WIDGET_COLOUR},
                                 children=[
                                 # need more space for multi options
@@ -928,6 +932,20 @@ def register_app_layout(config, cache_dest):
                                 html.Br(),
                                 html.H6(children=[], id="marker-cor-display")],
                                 style={"margin-top": "10px"}),
+                                dbc.Tab(label='Blends', label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
+                                html.Br(),
+                                html.Div([
+                                    dcc.Input(id="name-cur-blend", type="text", value=None,
+                                              placeholder="save current blend",
+                                              style={"width": "65%", "height": "175%", "margin-top": "15px"}),
+                                    dbc.Button("Save blend", id="save-cur-blend", className="me-1",
+                                               style={"background-color": DEFAULT_WIDGET_COLOUR, "margin": "7px"}),
+                                ], style={"display": "flex"}),
+                                html.Br(),
+                                html.H6("Load saved blend"),
+                                dcc.Dropdown(options=[], value=None, id='saved-blend-options', style={"width": "90%"},
+                                             multi=False),
+                                ])
                                 ]),
                                 ]),
                                 dbc.Tab(label="Annotate",
@@ -979,7 +997,7 @@ def register_app_layout(config, cache_dest):
                                                 id="click-annotation-add-circle", style={"margin-top": "12px",
                                                 "accent-color": DEFAULT_WIDGET_COLOUR}),
                                 dcc.Input(id="click-annotation-assignment", type="text", value=None,
-                                          placeholder="Add an annotation on click",
+                                          placeholder="Add annotation on click",
                                     style={"width": "65%", "margin-left": "1px"})],
                                          style={"display": "flex"}),
                                 dcc.Checklist(options=[' Overlay grid'], value=[],
@@ -1338,7 +1356,7 @@ def register_app_layout(config, cache_dest):
                               ],
                              style={"display": "flex", "margin-top": "15px"}),
                 ]),
-                dbc.Col(width=3, children=[html.H6("Set dimension threshold", style={"margin-top": "15px"}),
+                dbc.Col(width=2, children=[html.H6("Set dimension threshold", style={"margin-top": "15px"}),
                 html.Div([dcc.Input(id="dataset-query-dim-min", type="number",
                     placeholder="Dim. min for query", value=None, style={"height": "25%", "width": "50%",
                                                                          "margin-right": "5px"}),
@@ -1348,9 +1366,14 @@ def register_app_layout(config, cache_dest):
                 style={"margin-left": "75px"}),
                 dbc.Col(width=3, children=[html.H6("Add query keyword", style={"margin-top": "15px"}),
                 html.Div([dcc.Input(id="dataset-query-keyw", type="text",
-                    placeholder="ROI keyword", value=None, style={"height": "25%", "width": "75%",
+                    placeholder="ROI keyword", value=None, style={"height": "25%", "width": "85%",
                     "margin-right": "5px"})],
-                style={"display": "flex", "margin-top": "15px"})], style={"margin-left": "75px"}),
+                style={"display": "flex", "margin-top": "15px"})], style={"margin-left": "20px"}),
+                dbc.Col(width=2, children=[html.H6("Use saved blend", style={"margin-top": "15px"}),
+                html.Div([dcc.Dropdown(options=[], value=None, id='saved-blend-options-roi', style={"width": "100%"},
+                                             multi=False)],
+                        style={"display": "flex", "margin-top": "15px"})],
+                    style={"margin-left": "20px"}),
                 dbc.Col(width=1, children=[
                     dbc.Button(
                         children=html.Span([html.I(className="fa-solid fa-circle-question",
@@ -1416,6 +1439,7 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id="gating-cell-list"),
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
         dcc.Store(id='query-cell-id-lists'),
+        dcc.Store(id='saved-blends'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

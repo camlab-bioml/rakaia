@@ -356,6 +356,7 @@ class CanvasLayout:
 
     def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size,
                      proportion=0.1, annotation_color: str="white"):
+        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         try:
             proportion = float(proportion / pixel_ratio)
         except ZeroDivisionError:
@@ -418,6 +419,7 @@ class CanvasLayout:
 
     def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot,
                         pixel_ratio, image_shape, legend_size, proportion=0.1, scalebar_color: str="white"):
+        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         cur_shapes = [shape for shape in self.cur_shapes if \
                       shape not in [None, "None"] and 'type' in shape and shape['type'] \
                       in ['rect', 'path', 'circle'] and not is_bad_shape(shape)]
@@ -478,6 +480,7 @@ class CanvasLayout:
         update the scalebar value when zoom is used
         Loop through the annotations to identify the scalebar value when y = 0.06
         """
+        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         try:
             proportion = float(proportion / pixel_ratio)
         except ZeroDivisionError:

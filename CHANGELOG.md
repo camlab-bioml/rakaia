@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-10
+## [0.16.0] - 2024-06-11
 
 ### Added
 
 - Exception thrown when the file parser doesn't successfully parse any ROIs
+- Named blend configurations can be saved and toggle using a dropdown menu,
+to rapidly change the canvas among sets of blended channels
 
 ### Changed
 

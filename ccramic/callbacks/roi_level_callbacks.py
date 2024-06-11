@@ -13,6 +13,8 @@ from dash import ctx
 from dash.exceptions import PreventUpdate
 from ccramic.utils.alert import AlertMessage, add_warning_to_error_config
 from ccramic.io.session import SessionServerside
+from ccramic.utils.roi_utils import override_roi_gallery_blend_list
+
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -47,13 +49,15 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-query-dim-min', 'value'),
                        State('dataset-query-dim-max', 'value'),
                        State('dataset-query-keyw', 'value'),
+                       Input('saved-blend-options-roi', 'value'),
+                       State('saved-blends', 'data'),
                        prevent_initial_call=True)
     def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
                                     existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
                                     dataset_options, query_cell_id_lists, global_apply_filter,
                                     global_filter_type, global_filter_val, global_filter_sigma, delimiter, error_config,
-                                    dim_min, dim_max, keyw):
+                                    dim_min, dim_max, keyw, saved_blend, saved_blend_dict):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -71,8 +75,10 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # if the query is being extended, append on top of the existing gallery
             if ctx.triggered_id == "dataset-query-additional-load" and load_additional > 0:
                 rois_exclude, row_children = rois_exclude, existing_gallery
-            elif ctx.triggered_id == "execute-dataset-query" and execute_query > 0:
+            elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
+            # TODO: add input here to show different saved blends in the region gallery
+            currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries),
             rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,
             global_filter_type, global_filter_val, global_filter_sigma, delimiter, False, dim_min, dim_max, keyw).get_image_dict()
@@ -81,7 +87,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id == "dataset-query-additional-load":
                 roi_list = list(set(rois_exclude + roi_list))
             roi_list.append(data_selection)
-            row_children = row_children + new_row_children
+            row_children = row_children + new_row_children if row_children else new_row_children
             return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update
         else:
             error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_query"])

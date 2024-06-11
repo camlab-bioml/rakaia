@@ -83,6 +83,7 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
     Add a scalebar value to a canvas figure based on the dimensions of the current image
     The y coordinate is always fixed at 0.06 to make it readily identifiable when parsing the annotation dictionary
     """
+    pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
     if scale_value is None:
         scale_val = int(float(proportion * image_shape[1]) * float(pixel_ratio))
     else:

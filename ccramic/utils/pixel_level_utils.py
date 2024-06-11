@@ -711,3 +711,14 @@ class MarkerCorrelation:
         except IndexError:
             baseline_array = None
         return baseline_array, baseline_threshold
+
+def add_saved_blend(saved_blend_dict: dict=None, blend_name: str=None,
+                    cur_selected_channels: list=None):
+    """
+    Add a saved blend by name. Adding a new entry will save the list of channels in the
+    current blend to a named configuration for rapid toggling
+    """
+    saved_blend_dict = {} if not saved_blend_dict else saved_blend_dict
+    if blend_name and cur_selected_channels:
+        saved_blend_dict[blend_name] = [i for i in cur_selected_channels]
+    return saved_blend_dict

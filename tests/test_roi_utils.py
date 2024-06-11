@@ -3,7 +3,10 @@ import os
 import numpy as np
 from PIL import Image
 from ccramic.utils.cell_level_utils import convert_mask_to_cell_boundary
-from ccramic.utils.roi_utils import generate_dict_of_roi_cell_ids, subset_mask_outline_using_cell_id_list
+from ccramic.utils.roi_utils import (
+    generate_dict_of_roi_cell_ids,
+    subset_mask_outline_using_cell_id_list,
+    override_roi_gallery_blend_list)
 from ccramic.utils.region import check_for_valid_annotation_hash
 
 def test_generate_dict_of_roi_cell_ids(get_current_dir):
@@ -31,3 +34,10 @@ def test_basic_check_annotation_hash():
     assert check_for_valid_annotation_hash() == {}
     assert check_for_valid_annotation_hash(None, "roi_1") == {"roi_1": {}}
     assert check_for_valid_annotation_hash({"roi_1": {}}, "roi_1") == {"roi_1": {}}
+
+def test_override_roi_channel_list():
+    assert override_roi_gallery_blend_list(["chan_1", "chan_2"], None, None) == ["chan_1", "chan_2"]
+    assert override_roi_gallery_blend_list(["chan_1", "chan_2"], {"immune": ["CD3", "CD8"]},
+            "immune") == ['CD3', 'CD8']
+    assert override_roi_gallery_blend_list(["chan_1", "chan_2"], {"immune": ["CD3", "CD8"]},
+                                           "infiltrate") == ["chan_1", "chan_2"]
