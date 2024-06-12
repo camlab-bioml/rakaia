@@ -123,6 +123,7 @@ def register_app_layout(config, cache_dest):
                             dcc.Dropdown(options=[], value=None, id='preset-options', style={"width": "75%"}),
                             dbc.Tooltip(children="", target="preset-options",
                                         id="hover-preset-information", trigger="hover"),
+                        html.Br(),
                         ], style={"display": "flex", "float": "center", "textAlign": "center", "width": "100%"}),
                     ], style={"margin": "5px"}),
                     dbc.Tab(label='Appearance', label_style={"color": DEFAULT_WIDGET_COLOUR},
@@ -151,9 +152,9 @@ def register_app_layout(config, cache_dest):
                         id="session-config-modal", size='l',
                         style={"margin-left": "10px", "margin-top": "15px"}),
                 html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
-            style={"margin-bottom": "15px", "display": "flex"}),
+            style={"margin-bottom": "7.5px", "display": "flex", "height": "40%"}),
             html.Div([dcc.Dropdown(id='data-collection', multi=False, options=[],
-                placeholder='Select a dataset/ROI', style={'justifyContent': 'right', 'white-space':'initial',
+                placeholder='Load an ROI into the canvas', style={'justifyContent': 'right', 'white-space':'initial',
                                                            'overflow-wrap': 'anywhere'}),
                 dbc.Tooltip(None, target="data-collection", id='data-collection-tooltip')],
             style={'width': '40%', 'justifyContent': 'right', 'float': 'right', 'display': 'inline-block',
@@ -482,9 +483,6 @@ def register_app_layout(config, cache_dest):
                                 style={"margin-top": "-15px", "padding": "0px"})],
                     style={"width": "37.5%", "padding": "5px", "margin-bottom": "0px",
                            "#header": {"display": "None", "margin-top": "7.5px"}}, scrollable=True),
-                        # style={'width': '100%', 'height': '100%', "margin-top": "5px"}
-                        #          )], style={"width": "33%", "padding": "5px", "margin-bottom": "0px"},
-                    # scrollable=True),
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([
                         dbc.Col([
@@ -498,15 +496,13 @@ def register_app_layout(config, cache_dest):
                             html.Div([
                                 html.Div([
                                     html.H5("Select channels",
-                                            style={'width': '80%', "margin-top": "10px", "text-align": "center"}),
+                                            style={'width': '100%', "margin-top": "10px", "text-align": "left"}),
                                     dcc.Checklist(options=[' sort (A-z)'], value=[],
-                                                  id="sort-channels-alpha", style={"margin-top": "10px",
-                                                                                   "width": "50%",
-                                                                                   "accent-color": DEFAULT_WIDGET_COLOUR,
-                                                                                   "text-align": "center"},
+                                                  id="sort-channels-alpha", style={"margin-top": "10px", "width": "50%",
+                                                "accent-color": DEFAULT_WIDGET_COLOUR, "text-align": "left"},
                                                   persistence=config['persistence'], persistence_type='local'),
-                                ], style={"display": "flex", "float": "left", "margin": "7px",
-                                                    "justifyContent": "left", "width": "80%"}),
+                                ], style={"display": "flex", "float": "center", "margin-left": "15px",
+                                          "margin-right": "15px", "justifyContent": "center", "width": "100%"}),
                                 dcc.Dropdown(id='image_layers', multi=True, value=[], style={"margin": "3px",
                                             "width": "100%", "padding": "5px", "height": "25%"}),
                             dbc.Tabs([
@@ -748,7 +744,7 @@ def register_app_layout(config, cache_dest):
                                                     "margin-top": "-10px"}),
                                     html.Br()
                                 ])
-                            ], style={"margin": "7.5px"}),
+                            ], style={"margin-left": "7.5px", "margin-right": "7.5px", "margin-top": "3px"}),
                                  dbc.Offcanvas(id="blend-config-offcanvas", title="Apply additional canvas tools",
                                                placement="end", style={"width": "32%"}, backdrop=False, scrollable=True,
                                                is_open=False, children=[
@@ -1447,4 +1443,4 @@ def register_app_layout(config, cache_dest):
                      "props": ["keyCode", "key"]}],
             logging=True, id="keyboard-listener"
         ),
-    ], style={"margin-left": "20px", "margin-right": "25px", "margin-top": "10px"}, className="dash-bootstrap")
+    ], style={"margin-left": "10px", "margin-right": "15px", "margin-top": "10px"}, className="dash-bootstrap")

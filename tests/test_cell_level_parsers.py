@@ -1,9 +1,33 @@
-import dash
-import pandas as pd
 import pytest
 from dash_uploader import UploadStatus
 import dash_extensions
-from ccramic.parsers.cell_level_parsers import *
+import pandas as pd
+import dash
+import os
+import numpy as np
+from dash.exceptions import PreventUpdate
+from ccramic.parsers.cell_level_parsers import (
+    validate_incoming_measurements_csv,
+    QuantificationFormatError,
+    filter_measurements_csv_by_channel_percentile,
+    get_quantification_filepaths_from_drag_and_drop,
+    parse_and_validate_measurements_csv,
+    parse_masks_from_filenames,
+    read_in_mask_array_from_filepath,
+    set_columns_to_drop,
+    set_mandatory_columns,
+    parse_cell_subtypes_from_restyledata,
+    parse_roi_query_indices_from_quantification_subset,
+    match_steinbock_mask_name_to_mcd_roi,
+    match_mask_name_to_quantification_sheet_roi,
+    match_mask_name_with_roi,
+    validate_coordinate_set_for_image,
+    parse_quantification_sheet_from_h5ad,
+    validate_quantification_from_anndata,
+    return_umap_dataframe_from_quantification_dict,
+    object_id_list_from_gating,
+    cluster_annotation_frame_import
+)
 from pandas.testing import assert_frame_equal
 
 def test_validation_of_measurements_csv(get_current_dir):
@@ -175,6 +199,16 @@ def test_mask_match_to_roi_name():
     assert isinstance(match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options, return_as_dash=True),
                       dash._callback.NoUpdate)
 
+    # with steinbock-style mask naming
+    data_selection = "Patient1+++slide0+++pos_1_3_3"
+    mask_options = ["Patient1_002", "Patient1_003"]
+    assert match_mask_name_with_roi(data_selection, mask_options, None) == "Patient1_003"
+
+    data_selection = "patient7B_SPS23_836_2_3---slide0---ROI_006_6"
+    mask_options = ["patient7B_SPS23_836_2_3_002", "patient7B_SPS23_836_2_3_006", "patient7B_SPS23_836_2_3_007"]
+    assert match_mask_name_with_roi(data_selection, mask_options, None, delimiter="---") == "patient7B_SPS23_836_2_3_006"
+
+
 def test_match_mask_name_to_quantification_sheet_roi():
     samples = ["query_1", "query_2", "query_3", "query_4"]
     mask_selection = "query_s0_a2_ac_IA_mask"
@@ -196,6 +230,19 @@ def test_match_mask_name_to_quantification_sheet_roi():
     mask_name = "Kidney6_Sector2Row9Column6_SlideStart_mask"
     cell_id_list = ["Kidney7_Sector2Row9Column6_SlideStart", "Other"]
     assert match_mask_name_to_quantification_sheet_roi(mask_name, cell_id_list) is None
+
+    mask_name = "patient1_003"
+    cell_id_list = ["pos1_3_3", "Other"]
+    assert match_mask_name_to_quantification_sheet_roi(mask_name, cell_id_list) == "pos1_3_3"
+
+    mask_name = "patient7B_SPS23_836_2_3_11"
+    cell_id_list = ["ROI_011_11", "ROI_012_12", "Other_mask"]
+    assert match_mask_name_to_quantification_sheet_roi(mask_name, cell_id_list) == "ROI_011_11"
+
+    mask_name = "patient1_002"
+    cell_id_list = ["pos1_3_3", "Other"]
+    assert not match_mask_name_to_quantification_sheet_roi(mask_name, cell_id_list)
+
 
 def test_validate_xy_coordinates_for_image():
     image = np.full((1000, 100, 3), 255)
@@ -260,3 +307,12 @@ def test_populating_cluster_annotation_dict():
     session_cluster_dict = cluster_annotation_frame_import(session_cluster_dict, "roi_2", malformed)
     assert "roi_2" not in session_cluster_dict.keys()
     assert "roi_1" in session_cluster_dict.keys()
+
+def test_match_steinbock_mask_name_to_roi():
+    assert match_steinbock_mask_name_to_mcd_roi("patient1_003", "pos_1_3_3") == "patient1_003"
+    assert match_steinbock_mask_name_to_mcd_roi("patient1_003", "pos_1_3_3", False) == "pos_1_3_3"
+    assert not match_steinbock_mask_name_to_mcd_roi("patient1_003", "pos_1_3_2")
+    assert match_steinbock_mask_name_to_mcd_roi("pos1_3_003", "pos_1_3_3") == "pos1_3_003"
+
+    assert not match_steinbock_mask_name_to_mcd_roi("file_1_name", "pos_1_3_3")
+    assert not match_steinbock_mask_name_to_mcd_roi("patient1_003", "3_this_is_an_roi")

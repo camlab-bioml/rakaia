@@ -18,6 +18,7 @@ from sklearn.preprocessing import StandardScaler
 import scanpy as sc
 from ccramic.io.session import SessionServerside
 from typing import Union
+import re
 
 def drop_columns_from_measurements_csv(measurements_csv):
     cols_to_drop = set_columns_to_drop(measurements_csv)
@@ -310,27 +311,35 @@ def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_option
             try:
                 data_index = roi_options.index(data_selection)
                 for mask in mask_options:
-                    # mask naming fro the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
-                    # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
-                    split_1 = mask.split("_ac_IA_mask")[0]
-                    index = int(split_1.split("_")[-1].replace("a", "")) - 1
-                    if index == data_index:
-                        mask_return = mask
+                    if "_ac_IA_mask" in mask:
+                        # mask naming from the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
+                        # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
+                        split_1 = mask.split("_ac_IA_mask")[0]
+                        index = int(split_1.split("_")[-1].replace("a", "")) - 1
+                        if index == data_index:
+                            mask_return = mask
             except (TypeError, IndexError, ValueError):
                 pass
-        if mask_return is None and delimiter in data_selection:
+        if not mask_return and delimiter in data_selection:
             exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
             if mask_options is not None and exp in mask_options:
                 mask_return = exp
             elif mask_options is not None and acq in mask_options:
                 mask_return = acq
-            # begin looking for partial matches if not direct match between experiment/ROI name and mask
-            elif mask_options is not None:
+            # first loop: look for a match using the steinbock naming conventions
+            if mask_options is not None and not mask_return:
                 for mask_name in mask_options:
                     # check if any overlap with the mask options and the current data selection
                     # IMP: assumes that the mask name contains all of the experiment or ROI name somewhere in the label
+                    if match_steinbock_mask_name_to_mcd_roi(mask_name, acq) and exp in mask_name:
+                        mask_return = mask_name
+                        break
+            # second loop: begin looking for partial matches if not direct match between experiment/ROI name and mask
+            if mask_options is not None and not mask_return:
+                for mask_name in mask_options:
                     if exp in mask_name or acq in mask_name:
                         mask_return = mask_name
+                        break
     if not mask_return:
         mask_return = dash.no_update if (return_as_dash and not mask_options) else None
     return mask_return
@@ -351,8 +360,11 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_lis
         # also look for partial match of the cell id list to the mark name
         if cell_id_list:
             for roi_id in cell_id_list:
+                # if exact match
                 if roi_id and mask_selection and roi_id in mask_selection:
                     sam_id = roi_id
+                if not sam_id:
+                    sam_id = match_steinbock_mask_name_to_mcd_roi(mask_selection, roi_id, False)
         # if this pattern exists, try to match to the sample name by index
         # otherwise, try matching directly by name
         if sam_id is None and mask_selection and "_ac_IA_mask" in mask_selection:
@@ -374,6 +386,21 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_lis
             except (KeyError, TypeError):
                 pass
     return sam_id
+
+def match_steinbock_mask_name_to_mcd_roi(mask_name: str=None, roi_name: str=None,
+                                         return_mask_name: bool=True):
+    """
+    Match a steinbock output mask name to an mcd ROI name
+    Example match: Patient1_003 corresponds to pos1_3_3 (Patient1.mcd is the filename and pos1_3_3 is the third ROI
+    in the file, so the mask with the third index should match)
+    """
+    if mask_name and roi_name:
+        re_mask = re.search(r'\d+$', mask_name)
+        re_roi = re.search(r'\d+$', roi_name)
+        if re_mask and re_roi and int(re_mask.group()) == int(re_roi.group()):
+            return mask_name if return_mask_name else roi_name
+        return None
+    return None
 
 def validate_imported_csv_annotations(annotations_csv):
     """

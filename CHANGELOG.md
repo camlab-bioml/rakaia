@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Exception thrown when the file parser doesn't successfully parse any ROIs
 - Named blend configurations can be saved and toggle using a dropdown menu,
 to rapidly change the canvas among sets of blended channels
+- Mask name to ROI matching from `steinbock` pipeline naming conventions
 
 ### Changed
 
