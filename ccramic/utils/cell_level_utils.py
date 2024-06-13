@@ -1,5 +1,6 @@
 from typing import Union
 import pandas as pd
+import re
 from ccramic.utils.pixel_level_utils import (
     path_to_mask,
     split_string_at_pattern,
@@ -208,7 +209,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
     return measurements
 
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
-                        annotation_column="ccramic_cell_annotation",cell_identifier="cell_id", cell_type=None,
+                        annotation_column="ccramic_cell_annotation", cell_identifier="cell_id", cell_type=None,
                         sample_name=None, id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
@@ -351,9 +352,33 @@ def generate_greyscale_grid_array(array_shape, dim=100):
 
     return np.array(Image.fromarray(empty).convert('RGB')).astype(np.uint8)
 
+def match_steinbock_mask_name_to_mcd_roi(mask_name: str=None, roi_name: str=None,
+                                         return_mask_name: bool=True):
+    """
+    Match a steinbock output mask name to an mcd ROI name
+    Example match: Patient1_003 corresponds to pos1_3_3 (Patient1.mcd is the filename and pos1_3_3 is the third ROI
+    in the file, so the mask with the third index should match)
+    """
+    if mask_name and roi_name:
+        re_mask = re.search(r'\d+$', mask_name)
+        re_roi = re.search(r'\d+$', roi_name)
+        if re_mask and re_roi and int(re_mask.group()) == int(re_roi.group()):
+            return mask_name if return_mask_name else roi_name
+        return None
+    return None
+
+def is_steinbock_intensity_anndata(adata):
+    """
+    Identify if the anndata object is generated from steinbock. Factors include:
+    - each Index in adata.obs begins with 'Object' followed by the object id
+    - An 'Image' parameter in obs that contains the tiff information
+    """
+    return 'Image' in adata.obs and 'image_acquisition_description' in adata.obs and \
+        all(['.tiff' in elem for elem in adata.obs['Image'].to_list()]) and \
+      all(['Object' in elem for elem in adata.obs.index])
 
 def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options,
-                                                   delimiter: str="+++"):
+                                                   delimiter: str="+++", mask_name: str=None):
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
@@ -361,19 +386,25 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
     """
     quantification_frame = pd.DataFrame(quantification_frame)
     exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
-    if 'description' in quantification_frame.columns and acq in quantification_frame['description'].tolist():
-        return acq, 'description'
+    if 'description' in quantification_frame.columns:
+        if mask_name and match_steinbock_mask_name_to_mcd_roi(mask_name, acq) or (mask_name == acq):
+            return acq, 'description'
+        elif acq in quantification_frame['description'].tolist():
+            return acq, 'description'
+        return None, None
     elif 'sample' in quantification_frame.columns:
-        try:
-            index = dataset_options.index(data_selection) + 1
-            # TODO: decide if we should use the dataset index with the experiment name or not
-            # this is the default format coming out of the pipeline, but it doesn't always link the mask, ROI, and
-            # quant sheet properly
-            sample_name = f"{exp}_{index}"
-            # sample_name = exp
-            return sample_name, 'sample'
-        except IndexError:
-            return None, None
+        if mask_name and match_steinbock_mask_name_to_mcd_roi(mask_name, acq) or (mask_name == acq):
+            return mask_name, 'sample'
+        else:
+            try:
+                index = dataset_options.index(data_selection) + 1
+                # this is the default format coming out of the pipeline, but it doesn't always link the mask, ROI, and
+                # quant sheet properly
+                sample_name = f"{exp}_{index}"
+                # sample_name = exp
+                return sample_name, 'sample'
+            except IndexError:
+                return None, None
     else:
         return None, None
 

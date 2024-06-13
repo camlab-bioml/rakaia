@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Named blend configurations can be saved and toggle using a dropdown menu,
 to rapidly change the canvas among sets of blended channels
 - Mask name to ROI matching from `steinbock` pipeline naming conventions
+- conversion parser for intensity h5ad from `steinbock` to internal dataframe
 
 ### Changed
 

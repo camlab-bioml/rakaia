@@ -10,7 +10,7 @@ from ccramic.utils.cell_level_utils import (
     convert_mask_to_cell_boundary,
     set_columns_to_drop,
     QuantificationColumns,
-    QuantificationFormatError)
+    QuantificationFormatError, match_steinbock_mask_name_to_mcd_roi, is_steinbock_intensity_anndata)
 from ccramic.utils.pixel_level_utils import split_string_at_pattern
 import anndata
 import sys
@@ -387,21 +387,6 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_lis
                 pass
     return sam_id
 
-def match_steinbock_mask_name_to_mcd_roi(mask_name: str=None, roi_name: str=None,
-                                         return_mask_name: bool=True):
-    """
-    Match a steinbock output mask name to an mcd ROI name
-    Example match: Patient1_003 corresponds to pos1_3_3 (Patient1.mcd is the filename and pos1_3_3 is the third ROI
-    in the file, so the mask with the third index should match)
-    """
-    if mask_name and roi_name:
-        re_mask = re.search(r'\d+$', mask_name)
-        re_roi = re.search(r'\d+$', roi_name)
-        if re_mask and re_roi and int(re_mask.group()) == int(re_roi.group()):
-            return mask_name if return_mask_name else roi_name
-        return None
-    return None
-
 def validate_imported_csv_annotations(annotations_csv):
     """
     Validate that the imported annotations CSV has the correct format and columns
@@ -428,6 +413,19 @@ def parse_quantification_sheet_from_h5ad(h5ad_file):
     quantification_frame = sc.read_h5ad(h5ad_file)
     expression = pd.DataFrame(quantification_frame.X, columns=list(quantification_frame.var_names)).reset_index(
         drop=True)
+    if is_steinbock_intensity_anndata(quantification_frame):
+        # create a sample column that uses indices to match the steinbock masks
+        # TODO: if we want to use the description column, need to have the acq name and index combined
+        edited = pd.DataFrame({"description": [f"{acq}_{position}" for acq, position in \
+                                               zip(quantification_frame.obs['image_acquisition_description'],
+        [int(re.search(r'\d+$', elem.split('.tiff')[0]).group()) for elem in quantification_frame.obs['Image']])],
+                # parse the int cell id from the string index
+                "cell_id": [int(re.search(r'\d+', elem).group()) for elem in quantification_frame.obs.index],
+                "sample": [elem.split('.tiff')[0] for elem in quantification_frame.obs['Image']]},
+                index=quantification_frame.obs.index)
+        edited["cell_id"] = pd.to_numeric(edited["cell_id"])
+        quantification_frame = pd.concat([edited, quantification_frame.obs], axis=1, ignore_index=False)
+        return expression.join(quantification_frame.reset_index(drop=True))
     # return the merged version of the data frames to mimic the pipeline
     return expression.join(quantification_frame.obs.reset_index(drop=True))
 
@@ -485,7 +483,6 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
         query = frame.query(query)
         # pull the cell ids from the subset of the quantification frame from the query where the
         # mask matches the one provided
-        # TODO: write test confirming that only cells from one ROI are retained
         cell_ids = query[query[designation_column] == mask_quant_match][quantification_object_col].tolist()
     else:
         cell_ids = []

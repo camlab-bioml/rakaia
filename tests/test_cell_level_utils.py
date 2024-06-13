@@ -262,6 +262,15 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
     assert name is None
     assert column is None
+    # from steinbock
+    mask_option = "test_018"
+    data_selection = "test---slide0---chr10-h54h54-Gd158_2_18"
+    dataset_options = ["test---slide0---chr10-h54h54-Gd158_2_18"]
+    measurements = parse_quantification_sheet_from_h5ad((os.path.join(get_current_dir, "from_steinbock.h5ad")))
+    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options,
+                                                                  delimiter="---", mask_name=mask_option)
+    assert name == "chr10-h54h54-Gd158_2_18"
+    assert column == "description"
 
 def test_annotation_column_from_umap_(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

@@ -171,7 +171,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     #     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
     #     # Example 2: user selects all but the the second item to view
     #     # [{'visible': ['legendonly']}, [2]]
-    #     # print(restyle_data)
     #
     #
     #     # do not update if the tab is switched and the umap layout is reset to the default
@@ -380,7 +379,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             remove = ctx.triggered_id in ["delete-annotation-tabular"]
             indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
             sample_name, id_column = identify_column_matching_roi_to_quantification(
-            data_selection, quantification_frame, data_dropdown_options, delimiter)
+            data_selection, quantification_frame, data_dropdown_options, delimiter, mask_selection)
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
                 annotations = reset_annotation_import(annotations, data_selection, app_config, False)
             quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,

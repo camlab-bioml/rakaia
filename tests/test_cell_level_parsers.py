@@ -26,9 +26,10 @@ from ccramic.parsers.cell_level_parsers import (
     validate_quantification_from_anndata,
     return_umap_dataframe_from_quantification_dict,
     object_id_list_from_gating,
-    cluster_annotation_frame_import
+    cluster_annotation_frame_import, is_steinbock_intensity_anndata
 )
 from pandas.testing import assert_frame_equal
+import anndata as adata
 
 def test_validation_of_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -252,6 +253,7 @@ def test_validate_xy_coordinates_for_image():
 
 def test_parse_quantification_sheet_from_anndata(get_current_dir):
     anndata = os.path.join(get_current_dir, "quantification_anndata.h5ad")
+    assert not is_steinbock_intensity_anndata(adata.read_h5ad(anndata))
     quant_sheet = parse_quantification_sheet_from_h5ad(anndata)
     assert quant_sheet.shape == (1445, 24)
     assert 'cell_id' in quant_sheet.columns
@@ -263,6 +265,13 @@ def test_parse_quantification_sheet_from_anndata(get_current_dir):
 
     anndata_frame, placeholder = validate_quantification_from_anndata(anndata)
     assert anndata_frame.shape == (1445, 7)
+
+def test_parse_quantification_sheet_from_anndata_steinbock(get_current_dir):
+    anndata = os.path.join(get_current_dir, "from_steinbock.h5ad")
+    assert is_steinbock_intensity_anndata(adata.read_h5ad(anndata))
+    quant_sheet = parse_quantification_sheet_from_h5ad(anndata)
+    assert all([col in quant_sheet.columns for col in ['sample', 'cell_id']])
+    assert quant_sheet.shape[0] == 669
 
 def test_return_umap_dataframe_from_quantification_dict(get_current_dir):
     quant_sheet = pd.DataFrame({'Channel_1': [1, 2, 3, 4, 5, 6], 'Channel_2': [1, 2, 3, 4, 5, 6]})
