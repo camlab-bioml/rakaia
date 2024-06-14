@@ -31,10 +31,17 @@ def drop_columns_from_measurements_csv(measurements_csv):
         return measurements_csv
 
 def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True,
-                                                   rerun=True, unique_key_serverside=True):
+                                                   rerun=True, unique_key_serverside=True,
+                                                   cols_include: list=None):
+    """
+    Generate a UMAP coordinate frame from a data frame of channel expression
+    `cols_include`: Pass an optional list of channels to generate the coordinates from
+    """
     if quantification_dict is not None:
         data_frame = pd.DataFrame(quantification_dict)
-        if current_umap is None or rerun:
+        if cols_include:
+            data_frame = data_frame[data_frame.columns.intersection(cols_include)]
+        if not data_frame.empty and (current_umap is None or rerun):
             # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
             if drop_col:
                 data_frame = drop_columns_from_measurements_csv(data_frame)
@@ -466,11 +473,8 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
             query = query + f'(`{gating_elem}` >= {gating_dict[gating_elem]["lower_bound"]} &' \
                         f'`{gating_elem}` <= {gating_dict[gating_elem]["upper_bound"]}) {combo}'
             gating_index += 1
-
     # set the mandatory columns that need to be appended for the search: including the ROI descriptor and
     # column to identify the cell ID
-
-    # TODO: figure out parameters for matching the mask to the quantification sheet
     mask_quant_match = None
     if None not in (mask_identifier, id_list):
         mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier, id_list, quantification_sample_col)
@@ -483,7 +487,8 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
         query = frame.query(query)
         # pull the cell ids from the subset of the quantification frame from the query where the
         # mask matches the one provided
-        cell_ids = query[query[designation_column] == mask_quant_match][quantification_object_col].tolist()
+        cell_ids = [int(i) for i in query[query[designation_column] ==
+                                          mask_quant_match][quantification_object_col].tolist()]
     else:
         cell_ids = []
     return cell_ids

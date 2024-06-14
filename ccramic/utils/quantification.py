@@ -62,7 +62,7 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
             chan_names.append(aliases[chan])
         else:
             chan_names.append(chan)
-    channel_frame = measure_intensites(array, mask, chan_names, IntensityAggregation.MEAN)
+    channel_frame = measure_intensites(array, mask, chan_names, IntensityAggregation.MEAN).dropna()
     description_name = roi_name
     sample_name = mask_name
     if dataset_options is not None:
@@ -77,7 +77,8 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     # TODO: change the order of the identifying columns here, and set the description to the mask used for the quant
     # TODO: figure out what the ROI designation should be
     channel_frame['description'] = description_name
-    channel_frame['cell_id'] = pd.Series(range(0, (len(channel_frame.index) + 1)), dtype='int64')
+    # channel_frame['cell_id'] = pd.Series(range(0, (int(np.max(mask)))), dtype='int64')
+    channel_frame['cell_id'] = [int(i) for i in channel_frame.index]
     channel_frame['sample'] = sample_name
     props = ['area', 'centroid', 'axis_major_length', 'axis_minor_length', 'eccentricity']
     region_props = measure_regionprops(array, mask, props)

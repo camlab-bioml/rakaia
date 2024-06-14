@@ -53,12 +53,12 @@ class AnnotationRegionWriter:
                     objects_included = list(key)
                 if objects_included:
                     for obj in objects_included:
-                        self.region_object_frame['ROI'].append(self.acquisition_name)
-                        self.region_object_frame['mask_name'].append(str(value['mask_selection']))
-                        self.region_object_frame['cell_id'].append(int(obj))
-                        self.region_object_frame['annotation_col'].append(str(value['annotation_column']))
-                        self.region_object_frame['annotation'].append(str(value['cell_type']))
-
+                        if obj:
+                            self.region_object_frame['ROI'].append(self.acquisition_name)
+                            self.region_object_frame['mask_name'].append(str(value['mask_selection']))
+                            self.region_object_frame['cell_id'].append(int(obj))
+                            self.region_object_frame['annotation_col'].append(str(value['annotation_column']))
+                            self.region_object_frame['annotation'].append(str(value['cell_type']))
         if not pd.DataFrame(self.region_object_frame).empty:
             pd.DataFrame(self.region_object_frame).to_csv(self.filepath, index=False)
             return self.filepath

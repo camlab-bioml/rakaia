@@ -276,7 +276,8 @@ def test_parse_quantification_sheet_from_anndata_steinbock(get_current_dir):
 def test_return_umap_dataframe_from_quantification_dict(get_current_dir):
     quant_sheet = pd.DataFrame({'Channel_1': [1, 2, 3, 4, 5, 6], 'Channel_2': [1, 2, 3, 4, 5, 6]})
     cur_umap = pd.DataFrame({'UMAP1': [1, 2, 3, 4, 5, 6], 'UMAP2': [1, 2, 3, 4, 5, 6]})
-    umap = return_umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False)
+    umap = return_umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False,
+                                                          cols_include=['Channel_1'])
     assert isinstance(umap, dash._callback.NoUpdate)
 
 def test_gating_cell_ids(get_current_dir):

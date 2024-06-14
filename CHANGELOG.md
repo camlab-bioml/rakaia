@@ -29,7 +29,7 @@ to rapidly change the canvas among sets of blended channels
 - Bump import max for `dash-upload` image components (up to 50gb)
 - Channel gallery thumbnails now use smaller add icon without text
 - Modify heatmap to show down-sample by default with reporting total object counts
-
+- Run UMAP on current channels in heatmap
 
 ### Fixed
 

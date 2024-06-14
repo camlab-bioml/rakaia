@@ -223,17 +223,19 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('quantification-dict', 'data'),
                        State('umap-projection', 'data'),
                        Input('execute-umap-button', 'n_clicks'),
+                       State('quant-heatmap-channel-list', 'value'),
                        prevent_initial_call=True)
-    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks):
+    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks, chan_include):
         """
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
         """
+        #TODO: add trigger to run UMAP only on channels in the current heatmap
         if ctx.triggered_id == "quantification-dict":
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         try:
-            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict,
-            current_umap=current_umap, unique_key_serverside=OVERWRITE), dash.no_update, dash.no_update
+            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
+            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update
         except ValueError: raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
