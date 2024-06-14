@@ -111,6 +111,9 @@ def test_gating_label_children():
     current_gate = ["channel_1", "channel_2", "channel_6"]
     children = gating_label_children(True, gating_dict, current_gate)
     assert len(children) == 7
+    # add the gating list to get the length display
+    children = gating_label_children(True, gating_dict, current_gate, [int(i) for i in range(100)])
+    assert len(children) == 8
     assert not gating_label_children(False, gating_dict, current_gate)
 
 

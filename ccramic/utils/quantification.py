@@ -7,6 +7,7 @@ from steinbock.measurement.intensities import (
     IntensityAggregation,
     measure_intensites)
 from steinbock.measurement.regionprops import measure_regionprops
+from typing import Union
 
 def mask_object_counter_preview(mask_dict: dict=None, mask_selection: str=None):
     """
@@ -53,7 +54,6 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     as rows and channels + metadata as columns
     """
     exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
-    # TODO: implement steinbock intensity measurements using dstack and skimage
     array = np.stack([channel_dict[data_selection][channel] for channel in list(channel_dict[data_selection].keys()) if \
                        channel in channels_to_quantify], axis=0)
     chan_names = []
@@ -75,13 +75,11 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
                     description_name = mask_name
                     sample_name = f"{exp}_{index}"
     # TODO: change the order of the identifying columns here, and set the description to the mask used for the quant
-    # to ensure matching
     # TODO: figure out what the ROI designation should be
     channel_frame['description'] = description_name
     channel_frame['cell_id'] = pd.Series(range(0, (len(channel_frame.index) + 1)), dtype='int64')
     channel_frame['sample'] = sample_name
     props = ['area', 'centroid', 'axis_major_length', 'axis_minor_length', 'eccentricity']
-    # TODO: check to see if bugs in the region props
     region_props = measure_regionprops(array, mask, props)
     to_return = channel_frame.join(region_props).reset_index(drop=True)
     return to_return
@@ -134,7 +132,7 @@ def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_sel
     return current_gate_dict
 
 def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
-                          current_gating_params: list=None):
+                          current_gating_params: list=None, object_id_list: Union[list, None]=None):
     """
     Generate the HTML legend for the current parameters used for mask gating
     """
@@ -149,5 +147,7 @@ def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
                 children.append(html.Br())
             except KeyError:
                 pass
+        if object_id_list is not None and isinstance(object_id_list, list):
+            children.append(html.Span(f"{len(object_id_list)} objects"))
         return children
     return []

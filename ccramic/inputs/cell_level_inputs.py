@@ -46,7 +46,7 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
     else:
         return None
 
-def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, subset_val=None):
+def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, subset_val=50000):
     """
     Generate a heatmap of the current quantification frame (total or subset)
     """
@@ -57,10 +57,9 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
             all([elem in measurements.columns for elem in cols_include]):
         measurements = measurements[cols_include]
     # add a string to the title if subsampling is used
-    subset_str = ""
+    total_objects = len(measurements)
     if subset_val is not None and isinstance(subset_val, int) and subset_val < len(measurements):
         measurements = measurements.sample(n=subset_val).reset_index(drop=True)
-        subset_str = "(Sub-sampled)"
     # TODO: figure out why the colour bars won't render after a certain number of dataframe elements
     # https://github.com/plotly/plotly.py/issues/4484
     # return go.Figure(go.Heatmap(
@@ -72,8 +71,8 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     array_measure = np.array(measurements)
     zmax = 1 if np.max(array_measure) <= 1 else np.max(array_measure)
     fig = go.Figure(px.imshow(array_measure, x=measurements.columns, y=measurements.index,
-                              labels=dict(x="Channel", y="Cells", color="Expression Mean"),
-                              title=f"Channel expression per cell ({len(measurements)} cells) {subset_str}",
+                              labels=dict(x="Channel", y="Objects", color="Expression Mean"),
+                              title=f"Channel expression per object ({len(measurements)}/{total_objects} shown)",
                               zmax=zmax))
     fig.update_xaxes(tickangle=90)
     fig.update_layout(xaxis = dict(tickmode = 'linear'))

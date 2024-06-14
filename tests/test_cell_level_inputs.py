@@ -124,16 +124,16 @@ def test_quantification_heatmap(get_current_dir):
     # assert that the last element in the list of columns in the heatmap is a channel
     assert isinstance(fig, plotly.graph_objs._figure.Figure)
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
-    assert '(244 cells)' in fig['layout']['title']['text']
+    assert '(244/244 shown)' in fig['layout']['title']['text']
     cols_include = ["209Bi_SMA"]
     fig = generate_channel_heatmap(measurements_csv, cols_include=cols_include)
-    assert '(244 cells)' in fig['layout']['title']['text']
+    assert '(244/244 shown)' in fig['layout']['title']['text']
     # assert that there is only one channel in the entire
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
     assert list(fig['data'][0]['x'])[0] == "209Bi_SMA"
 
     fig = generate_channel_heatmap(measurements_csv, cols_include=cols_include, subset_val=200)
-    assert '(200 cells)' in fig['layout']['title']['text']
+    assert '(200/244 shown)' in fig['layout']['title']['text']
     # assert that there is only one channel in the entire
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
     assert list(fig['data'][0]['x'])[0] == "209Bi_SMA"
@@ -147,14 +147,14 @@ def test_heatmap_from_interactive_triggers(get_current_dir):
     # category_column = "sample"
     interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, {}, umap_dict,
                                                                 zoom_keys, None, "umap-layout")
-    assert '(244 cells)' in interactive_heat['layout']['title']['text']
+    assert '(244/244 shown)' in interactive_heat['layout']['title']['text']
     embeddings = pd.read_csv(os.path.join(get_current_dir, "umap_coordinates_for_measurements.csv"))
     subset_layout = {'xaxis.range[0]': 7.386287234198646, 'xaxis.range[1]': 9.393588084462001,
                      'yaxis.range[0]': 6.270861713114755, 'yaxis.range[1]': 9.579169008196722}
     interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, subset_layout,
                                                                         embeddings, zoom_keys, "umap-layout")
     assert interactive_heat['layout']['uirevision']
-    assert '(41 cells)' in interactive_heat['layout']['title']['text']
+    assert '(41/41 shown)' in interactive_heat['layout']['title']['text']
 
 
     subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}

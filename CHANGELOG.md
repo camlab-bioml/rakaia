@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-11
+## [0.16.0] - 2024-06-14
 
 ### Added
 
@@ -28,6 +28,8 @@ to rapidly change the canvas among sets of blended channels
 - Switch to `scipy.ngimage` to compute mask object overlap on drawn annotations
 - Bump import max for `dash-upload` image components (up to 50gb)
 - Channel gallery thumbnails now use smaller add icon without text
+- Modify heatmap to show down-sample by default with reporting total object counts
+
 
 ### Fixed
 

@@ -1218,7 +1218,7 @@ def register_app_layout(config, cache_dest):
                                 daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap', labelPosition='bottom',
                                     color=DEFAULT_WIDGET_COLOUR, value=True),
                                 dcc.Input(type="number", placeholder="Subset heatmap", id="subset-heatmap",
-                                          step=1, value=None, debounce=True, style={"width": "20%", "height": "75%",
+                                          step=1, value=50000, debounce=True, style={"width": "20%", "height": "75%",
                                         "margin-left": "30px", "margin-top": "5px"})],
                                 style={"display": "flex", "margin-bottom": "-15px"}),
                                     html.Br(),

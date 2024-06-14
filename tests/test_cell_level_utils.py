@@ -272,6 +272,16 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     assert name == "chr10-h54h54-Gd158_2_18"
     assert column == "description"
 
+    # from tiff, matching the experiment name
+    mask_option = "MB0653_1_63_fullstack_mask"
+    data_selection = "MB0653_1_63_fullstack---slide0---acq0"
+    measurements = pd.DataFrame({"chan_1": [1, 2, 3, 4, 5],
+                                 "description": mask_option,
+                                 "cell_id": [1, 2, 3, 4, 5]})
+    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options,
+                                                                  delimiter="---", mask_name=mask_option)
+    assert name == mask_option
+
 def test_annotation_column_from_umap_(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
     umap_frame = pd.read_csv(os.path.join(get_current_dir, "umap_coordinates_for_measurements.csv"))

@@ -240,7 +240,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('umap-div-holder', 'style', allow_duplicate=True),
                        Input('umap-projection', 'data'),
                        Input('umap-projection-options', 'value'),
-                       State('quantification-dict', 'data'),
+                       Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        Input('quantify-cur-roi-execute', 'n_clicks'),
                        prevent_initial_call=True)
@@ -733,5 +733,5 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             id_list = object_id_list_from_gating(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
                         mask_selection, intersection=(gating_type == 'intersection'))
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key= OVERWRITE), \
-                gating_label_children(True, gating_dict, cur_gate_selection)
+                gating_label_children(True, gating_dict, cur_gate_selection, id_list)
         return [] if gating_dict is not None else dash.no_update, []
