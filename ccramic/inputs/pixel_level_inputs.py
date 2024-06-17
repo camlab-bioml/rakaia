@@ -287,7 +287,7 @@ def set_roi_identifier_from_length(dataset_selection, length_threshold=5, delimi
     """
     Set the output name for a dataset based on the length of the ROI name
     If the ROI name is below a certain length, output the entire dataset identifier if not using the filename,
-    or use the experiment (filename_
+    or use the experiment (filename corresponds to the experiment name)
     """
     try:
         exp, slide, roi = split_string_at_pattern(dataset_selection, delimiter)

@@ -66,6 +66,11 @@ def get_min_max_values_from_rect_box(coord_dict):
     return x_min, x_max, y_min, y_max
 
 def convert_mask_to_cell_boundary(mask):
+    """
+    Generate a mask of object outlines corresponding to a segmentation mask of integer objects
+    Returns an RGB mask where outlines are represented by 255, and all else are 0
+    NOte that this mask does not retain the spatial location of individual objects
+    """
     boundaries = find_boundaries(mask, mode='inner', connectivity=1)
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
 

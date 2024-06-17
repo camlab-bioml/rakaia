@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-14
+## [0.16.0] - 2024-06-17
 
 ### Added
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 to rapidly change the canvas among sets of blended channels
 - Mask name to ROI matching from `steinbock` pipeline naming conventions
 - conversion parser for intensity h5ad from `steinbock` to internal dataframe
+- Mask input options now saved in JSON and database #104
 
 ### Changed
 

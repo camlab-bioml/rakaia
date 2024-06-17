@@ -128,7 +128,7 @@ def test_basic_cell_annotation_col_pop_2(get_current_dir):
     assert 'Unassigned' in dict(counts).keys()
 
 @skip_on(ValueError, "There shouldn't be a numpy truth value error on the array")
-def test_convert_basic_array_to_hovertemplate():
+def test_convert_basic_array_to_hover_template():
     array = np.zeros((1000, 1000))
     assert len(array.shape) == 2
     template = process_mask_array_for_hovertemplate(array)
