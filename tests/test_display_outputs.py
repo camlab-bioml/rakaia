@@ -260,7 +260,7 @@ def test_output_canvas_html_to_file():
     with tempfile.TemporaryDirectory() as tmpdirname:
         file_path = os.path.join(tmpdirname, "canvas.html")
         assert not os.path.exists(file_path)
-        canvas_link = output_current_canvas_as_html(fig, style, tmpdirname)
+        canvas_link = output_current_canvas_as_html(tmpdirname, fig, style)
         assert os.path.exists(file_path)
         assert str(file_path) == str(canvas_link)
         if os.access(canvas_link, os.W_OK):
@@ -272,12 +272,14 @@ def test_output_canvas_html_to_file():
     with tempfile.TemporaryDirectory() as tmpdirname:
         file_path = os.path.join(tmpdirname, "canvas.html")
         assert not os.path.exists(file_path)
-        canvas_link = output_current_canvas_as_html(fig_2, style, tmpdirname)
+        canvas_link = output_current_canvas_as_html(tmpdirname, fig_2, style)
         assert os.path.exists(file_path)
         assert str(file_path) == str(canvas_link)
         if os.access(canvas_link, os.W_OK):
             os.remove(canvas_link)
         assert not os.path.exists(canvas_link)
+
+    assert not output_current_canvas_as_html(None, None, None)
 
 
 

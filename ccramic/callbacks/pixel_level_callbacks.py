@@ -17,7 +17,9 @@ from ccramic.parsers.pixel_level_parsers import (
     create_new_blending_dict,
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel, check_empty_missing_layer_dict)
-from ccramic.utils.decorator import time_taken_callback
+from ccramic.utils.decorator import (
+    time_taken_callback,
+    DownloadDirGenerator)
 from ccramic.utils.pixel_level_utils import (
     delete_dataset_option_from_list_interactively,
     get_default_channel_upper_bound_by_percentile,
@@ -59,7 +61,6 @@ from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
     subset_mask_for_data_export,
-    create_download_dir,
     SessionServerside, panel_length_match, all_roi_match, sort_channel_dropdown)
 from pathlib import Path
 import json
@@ -1083,20 +1084,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('data-collection', 'value'),
                        State('dataset-delimiter', 'value'),
                        State('session_alert_config', 'data'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
     def download_interactive_html_canvas(download_html, cur_graph, uploaded, blend_dict, canvas_style,
                                          dataset_selection, delimiter, error_config):
-        if None not in (cur_graph, uploaded, blend_dict):
+        if None not in (cur_graph, uploaded, blend_dict) and download_html:
             try:
-                download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-                create_download_dir(download_dir)
-                html_path = dcc.send_file(output_current_canvas_as_html(cur_graph, canvas_style, download_dir,
-                                        use_roi_name=True, roi_name=dataset_selection, delimiter=delimiter))
+                # download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
+                # create_download_dir(download_dir)
+                html_path = dcc.send_file(output_current_canvas_as_html(download_html, cur_graph, canvas_style,
+                                    use_roi_name=True, roi_name=dataset_selection, delimiter=delimiter))
                 error_config = dash.no_update
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
                 html_path = dash.no_update
             return html_path, error_config
         raise PreventUpdate
+
 
     @dash_app.callback(Output('download-session-config-json', 'data'),
                        Input('btn-download-session-config-json', 'n_clicks'),
@@ -1114,13 +1117,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('mask-blending-slider', 'value'),
                        State('add-mask-boundary', 'value'),
                        State('add-cell-id-mask-hover', 'value'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
     def download_session_config_json(download_json, blend_dict, blend_layers, global_apply_filter,
         global_filter_type, global_filter_val, global_filter_sigma, cluster_assignments,
         data_selection, aliases, gating_dict, apply_mask, mask_level, mask_boundary, mask_hover):
-        if blend_dict:
-            download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-            create_download_dir(download_dir)
-            return dcc.send_file(write_blend_config_to_json(download_dir, blend_dict, blend_layers, global_apply_filter,
+        if blend_dict and download_json:
+            return dcc.send_file(write_blend_config_to_json(download_json, blend_dict, blend_layers, global_apply_filter,
             global_filter_type, global_filter_val, global_filter_sigma, data_selection,
             cluster_assignments, aliases, gating_dict, apply_mask, mask_level, mask_boundary, mask_hover))
         raise PreventUpdate
@@ -1133,21 +1135,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('data-collection', 'value'),
                        State('annotation_canvas', 'relayoutData'),
                        State('graph-subset-download', 'value'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
     def update_download_href_h5(download_h5py, uploaded, metadata_sheet, blend_dict, data_selection,
                                 canvas_layout, graph_subset):
         """
         Create the download links for the current canvas and the session data.
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
-        if None not in (uploaded, blend_dict) and download_h5py > 0:
+        if None not in (uploaded, blend_dict) and download_h5py:
             first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
-            download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-            create_download_dir(download_dir)
+            # download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
+            # create_download_dir(download_dir)
             try:
                 mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
                     mask = subset_mask_for_data_export(canvas_layout, first_image.shape)
-                return dcc.send_file(write_session_data_to_h5py(download_dir, metadata_sheet, uploaded, data_selection, blend_dict, mask))
+                return dcc.send_file(write_session_data_to_h5py(download_h5py, metadata_sheet, uploaded, data_selection, blend_dict, mask))
             # if the dictionary hasn't updated to include all the experiments, then don't update download just yet
             except KeyError: raise PreventUpdate
         raise PreventUpdate

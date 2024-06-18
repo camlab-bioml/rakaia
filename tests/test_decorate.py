@@ -1,4 +1,8 @@
-from ccramic.utils.decorator import time_taken_callback
+from ccramic.utils.decorator import (
+    time_taken_callback,
+    DownloadDirGenerator)
+import os
+import tempfile
 
 def test_time_taken(capfd):
 
@@ -21,3 +25,22 @@ def test_time_taken_empty(capfd):
     assert out == 5
     captured = capfd.readouterr()
     assert not captured.out
+
+def test_download_dir_decorate():
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        download_dir = os.path.join(tmpdirname, "gibdaiffafisdf", 'downloads')
+        final_file = os.path.join(download_dir, "fake.txt")
+        @DownloadDirGenerator(download_dir)
+        def write_fake_text(dest_dir, filename="fake.txt"):
+            f = open(str(os.path.join(dest_dir, filename)), "w")
+            f.write("decorator test")
+            f.close()
+        write_fake_text("path", filename="fake.txt")
+        assert os.path.isfile(final_file)
+        if os.access(final_file, os.W_OK):
+            os.remove(final_file)
+
+        write_fake_text(dest_dir="path", filename="fake.txt")
+        assert os.path.isfile(final_file)
+        if os.access(final_file, os.W_OK):
+            os.remove(final_file)

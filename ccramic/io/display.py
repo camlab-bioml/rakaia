@@ -148,26 +148,29 @@ def output_current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_defau
     else:
         return None
 
-def output_current_canvas_as_html(cur_graph, canvas_style, dest_dir=None, roi_name: str=None, delimiter: str="+++",
-                                  use_roi_name=False, output_default:str="canvas"):
+def output_current_canvas_as_html(dest_dir=None, cur_graph=None, canvas_style=None,
+                                roi_name: str=None, delimiter: str="+++",
+                                use_roi_name=False, output_default:str="canvas"):
     """
     Output the current `dcc.Graph` object as HTML with the same aspect ratio as the underlying array
     Returns the filepath string for `dcc.send_file`
     """
     # ensure that the domains are between 0 and 1
-    try:
-        cur_graph['layout']['yaxis']['domain'] = [0, 1]
-        cur_graph['layout']['xaxis']['domain'] = [0, 1]
-    except KeyError:
-        pass
-    cur_graph = CanvasLayout(cur_graph)
-    fig = go.Figure(cur_graph.get_fig())
-    fig.update_layout(dragmode="zoom")
-    out_name = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else output_default
-    outfile = str(os.path.join(dest_dir, f"{out_name}.html"))
-    fig.write_html(outfile, default_width=canvas_style['width'],
-                   default_height=canvas_style['height'])
-    return outfile
+    if dest_dir and cur_graph and canvas_style:
+        try:
+            cur_graph['layout']['yaxis']['domain'] = [0, 1]
+            cur_graph['layout']['xaxis']['domain'] = [0, 1]
+        except KeyError:
+            pass
+        cur_graph = CanvasLayout(cur_graph)
+        fig = go.Figure(cur_graph.get_fig())
+        fig.update_layout(dragmode="zoom")
+        out_name = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else output_default
+        outfile = str(os.path.join(dest_dir, f"{out_name}.html"))
+        fig.write_html(outfile, default_width=canvas_style['width'],
+                       default_height=canvas_style['height'])
+        return outfile
+    return None
 
 
 class FullScreenCanvas:

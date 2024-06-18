@@ -46,9 +46,11 @@ def init_dashboard(server, authentic_id, config=None):
         # do not use debugging mode if production is used
         server.config['FLASK_DEBUG'] = config['is_dev_mode']
 
+        # TODO: configure a custom http request handler for public instances
+        # https://github.com/fohrloop/dash-uploader/blob/dev/docs/dash-uploader.md#4-custom-handling-of-http-requests
         du.configure_upload(dash_app, cache_dest)
 
-    #TODO: for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
+    #for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
     # useful when serverside components can cache large stores much more effectively
 
     # VALID_USERNAME_PASSWORD_PAIRS = {

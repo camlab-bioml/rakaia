@@ -47,7 +47,7 @@ class SessionServerside(Serverside):
         self.use_unique_key = use_unique_key
         self.identifier = key
         key = key if self.use_unique_key else None
-        Serverside.__init__(self, value=data, key=key)
+        super().__init__(value=data, key=key)
 
 def create_download_dir(dest_dir):
     """
