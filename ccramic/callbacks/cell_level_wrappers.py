@@ -1,6 +1,5 @@
 import dash
 import pandas as pd
-
 from ccramic.io.session import SessionServerside
 from ccramic.utils.cell_level_utils import (
     populate_cell_annotation_column_from_bounding_box,

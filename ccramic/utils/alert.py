@@ -102,7 +102,9 @@ class ToolTips(BaseModel):
                       "max-viewport": "Modify the maximum viewport width for the main canvas. Use smaller values "
                                       "if the canvas image spills over into the side tabs, or larger values to "
                                       "permit the canvas to fit a larger proportion of the screen. The default is "
-                                      "set at 150."}
+                                      "set at 150.",
+                      "set-blends": "Save the current canvas channels in a named blend. Blends can be quickly toggled"
+                                    " to compare marker expression across the current ROI."}
 
 
 class PanelMismatchError(Exception):

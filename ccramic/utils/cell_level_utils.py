@@ -360,7 +360,7 @@ def generate_greyscale_grid_array(array_shape, dim=100):
 def match_steinbock_mask_name_to_mcd_roi(mask_name: str=None, roi_name: str=None,
                                          return_mask_name: bool=True):
     """
-    Match a steinbock output mask name to an mcd ROI name
+    Match a steinbock output mask name to mcd ROI name
     Example match: Patient1_003 corresponds to pos1_3_3 (Patient1.mcd is the filename and pos1_3_3 is the third ROI
     in the file, so the mask with the third index should match)
     """
@@ -375,7 +375,7 @@ def match_steinbock_mask_name_to_mcd_roi(mask_name: str=None, roi_name: str=None
 def is_steinbock_intensity_anndata(adata):
     """
     Identify if the anndata object is generated from steinbock. Factors include:
-    - each Index in adata.obs begins with 'Object' followed by the object id
+    - each Index in `adata.obs` begins with 'Object' followed by the object id
     - An 'Image' parameter in obs that contains the tiff information
     """
     return 'Image' in adata.obs and 'image_acquisition_description' in adata.obs and \
@@ -436,12 +436,12 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
         # set the cluster assignments to use either from the subset, or the default of all
         clusters_to_use = [str(select) for select in cluster_option_subset] if cluster_option_subset is not None else \
             cluster_frame[cluster_col].unique().tolist()
+        # TODO: try to speed up for very large images with either many cells or many cluster categories
+        # basic time complexity is O(num_clusters) but also slower for larger images
         for cell_type in clusters_to_use:
             cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
             # make sure that the cells are integers so that they match the array values of the mask
             cell_list = [int(i) for i in cell_list]
-            # TODO: try to speed up for very large images with either many cells or many cluster categories
-            # time complexity is O(num_clusters)
             annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
             annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
             annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])

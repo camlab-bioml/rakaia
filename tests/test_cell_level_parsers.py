@@ -5,6 +5,7 @@ import pandas as pd
 import dash
 import os
 import numpy as np
+import re
 from dash.exceptions import PreventUpdate
 from ccramic.parsers.cell_level_parsers import (
     validate_incoming_measurements_csv,
@@ -46,12 +47,6 @@ def test_validation_of_measurements_csv(get_current_dir):
     valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None
     assert err is None
-
-    # fake_image_bad_dims = np.empty((1490, 92, 3))
-    # not_valid, err = validate_incoming_measurements_csv(measurements_csv, current_image=fake_image_bad_dims)
-    # assert not_valid is not None
-    # assert err is not None
-
 
 def test_filtering_channel_measurements_by_percentile(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -270,6 +265,7 @@ def test_parse_quantification_sheet_from_anndata_steinbock(get_current_dir):
     anndata = os.path.join(get_current_dir, "from_steinbock.h5ad")
     assert is_steinbock_intensity_anndata(adata.read_h5ad(anndata))
     quant_sheet = parse_quantification_sheet_from_h5ad(anndata)
+    assert all([re.search(r'\d+$', elem).group() for elem in quant_sheet['sample'].to_list()])
     assert all([col in quant_sheet.columns for col in ['sample', 'cell_id']])
     assert quant_sheet.shape[0] == 669
 

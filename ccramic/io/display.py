@@ -1,8 +1,10 @@
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
 from plotly.graph_objs import XAxis, YAxis
-
-from ccramic.utils.region import RectangleRegion, FreeFormRegion, AnnotationPreviewGenerator
+from ccramic.utils.region import (
+    RectangleRegion,
+    FreeFormRegion,
+    AnnotationPreviewGenerator)
 import os
 from tifffile import imwrite
 import numpy as np

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-17
+## [0.16.0] - 2024-06-19
 
 ### Added
 
@@ -17,6 +17,7 @@ to rapidly change the canvas among sets of blended channels
 - Mask name to ROI matching from `steinbock` pipeline naming conventions
 - conversion parser for intensity h5ad from `steinbock` to internal dataframe
 - Mask input options now saved in JSON and database #104
+- Animation to mantine color swatch buttons on click
 
 ### Changed
 
@@ -35,6 +36,7 @@ to rapidly change the canvas among sets of blended channels
 ### Fixed
 
 - Prevent callback on gallery channel view when not enabled
+- Handle overflow for long ROI names in ROI data table using scroll
 
 ### Removed
 

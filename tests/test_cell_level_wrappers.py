@@ -2,7 +2,12 @@ import dash.exceptions
 import pytest
 import os
 import tifffile
-from ccramic.callbacks.cell_level_wrappers import *
+import pandas as pd
+from dash.exceptions import PreventUpdate
+from ccramic.callbacks.cell_level_wrappers import (
+    callback_remove_canvas_annotation_shapes,
+    callback_add_region_annotation_to_quantification_frame,
+    reset_annotation_import)
 from ccramic.io.session import SessionServerside
 
 def test_basic_callback_import_annotations_quantification_frame(get_current_dir):

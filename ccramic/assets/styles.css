@@ -2,6 +2,17 @@
   --widget: #0f4d92;
 }
 
+#dataset-preview-table {
+overflow: scroll;
+overflow-wrap: anywhere;
+max-width: inherit;
+}
+
+.mantine-majorq:active {
+  box-shadow: 0 5px #666;
+  transform: translateY(5px) !important;
+}
+
 #inputs-offcanvas{
 header {
 visibility: hidden;}
