@@ -501,44 +501,37 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if add_to_layer is not None and current_blend_dict is not None:
             channel_modify = dash.no_update
-            if param_dict is None or len(param_dict) < 1:
-                param_dict = {"current_roi": data_selection}
+            if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}
             if data_selection is not None:
                 if current_blend_dict is not None and "current_roi" in param_dict.keys() and \
                         data_selection != param_dict["current_roi"]:
                     param_dict["current_roi"] = data_selection
                     if cur_image_in_mod_menu is not None and cur_image_in_mod_menu in current_blend_dict.keys():
                         channel_modify = cur_image_in_mod_menu
-                else:
-                    param_dict["current_roi"] = data_selection
+                else: param_dict["current_roi"] = data_selection
             all_layers = check_empty_missing_layer_dict(all_layers, data_selection)
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
-                if elem not in current_blend_dict.keys():
+                if elem not in current_blend_dict.keys() and not preset_selection:
                     current_blend_dict[elem] = {'color': '#FFFFFF', 'x_lower_bound': 0, 'x_upper_bound':
                         get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem]),
                             'filter_type': None, 'filter_val': None, 'filter_sigma': None}
                     if autofill_channel_colours:
                         current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     if None not in (preset_selection, preset_dict):
-                        current_blend_dict[elem] = apply_preset_to_blend_dict(
-                            current_blend_dict[elem], preset_dict[preset_selection])
+                        current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem], preset_dict[preset_selection])
                 # if the selected channel is in the current blend, check if a preset is used to override
                 elif elem in current_blend_dict.keys() and None not in (preset_selection, preset_dict):
                     # do not override the colour of the current channel
-                    current_blend_dict[elem] = apply_preset_to_blend_dict(
-                        current_blend_dict[elem], preset_dict[preset_selection])
+                    current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem], preset_dict[preset_selection])
                 else:
                     if autofill_channel_colours:
                         current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                     current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
                         current_blend_dict, elem, uploaded_w_data, data_selection)
-                    if (data_selection in all_layers.keys() and elem not in all_layers[data_selection].keys()) or \
-                            autofill_channel_colours:
-                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
-                                                         current_blend_dict[elem])
-                        all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
-                                                            current_blend_dict[elem]['color'])).astype(np.uint8)
+                if data_selection in all_layers.keys() and (elem not in all_layers[data_selection].keys() or preset_selection):
+                    array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
+                    all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset, current_blend_dict[elem]['color'])).astype(np.uint8)
             return current_blend_dict, SessionServerside(all_layers, key="layer_dict", use_unique_key=OVERWRITE), param_dict, channel_modify
         raise PreventUpdate
 
@@ -633,9 +626,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('preset-options', 'value'),
                        State('image_presets', 'data'),
                        prevent_initial_call=True)
-    def set_blend_params_on_preset_selection(layer, uploaded_w_data,
-                                    current_blend_dict, data_selection,
-                                    all_layers, preset_selection, preset_dict):
+    def set_blend_params_on_preset_selection(layer, uploaded_w_data, current_blend_dict, data_selection, all_layers,
+                                             preset_selection, preset_dict):
         """
         Set the blend param dictionary and canvas layer dictionary when a preset is applied to the current ROI.
         """
