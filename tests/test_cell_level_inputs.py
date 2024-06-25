@@ -11,7 +11,8 @@ from ccramic.inputs.cell_level_inputs import (
     generate_umap_plot,
     generate_expression_bar_plot_from_interactive_subsetting,
     generate_channel_heatmap,
-    generate_heatmap_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure)
+    generate_heatmap_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
+    reset_custom_gate_slider)
 from ccramic.parsers.cell_level_parsers import parse_and_validate_measurements_csv
 
 
@@ -169,3 +170,9 @@ def test_heatmap_from_interactive_triggers(get_current_dir):
                                                      embeddings, zoom_keys, "umap-projection-options",
                                                      category_column="sample",
                                                      category_subset=["test_1", "test_2"])
+
+def test_reset_custom_gate_slider():
+    # by default, do nothing, or don't reset if triggered by an annotation/quantification
+    assert isinstance(reset_custom_gate_slider(), dash._callback.NoUpdate)
+    assert isinstance(reset_custom_gate_slider("quantification-dict"), dash._callback.NoUpdate)
+    assert not reset_custom_gate_slider("other_trigger")

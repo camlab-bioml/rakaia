@@ -1,4 +1,6 @@
 from typing import Union
+
+import dash
 import pandas as pd
 import re
 from ccramic.utils.pixel_level_utils import (
@@ -490,3 +492,19 @@ def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFr
                              columns=["Value", "Counts"])
     frame[proportion_col] = frame[counts_col] / (frame[counts_col].abs().sum())
     return frame.round(3).to_dict(orient="records")
+
+def custom_gating_id_list(input_string: str=None):
+    """
+    Split a text input string using commas to retrieve a list of mask object IDs for gating
+    Each id element must be compatible as an integer
+    """
+    if input_string:
+        gating_list = []
+        for elem in input_string.split(","):
+            # ignore non integers
+            try:
+                gating_list.append(int(elem.strip()))
+            except ValueError:
+                pass
+        return gating_list
+    return []

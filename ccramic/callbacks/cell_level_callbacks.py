@@ -16,10 +16,10 @@ from ccramic.utils.cell_level_utils import (
     send_alert_on_incompatible_mask,
     identify_column_matching_roi_to_quantification,
     validate_mask_shape_matches_image,
-    quantification_distribution_table)
+    quantification_distribution_table, custom_gating_id_list)
 from ccramic.inputs.cell_level_inputs import (
     generate_heatmap_from_interactive_subsetting,
-    generate_umap_plot, umap_eligible_patch, patch_umap_figure)
+    generate_umap_plot, umap_eligible_patch, patch_umap_figure, reset_custom_gate_slider)
 from ccramic.io.pdf import AnnotationPDFWriter
 from ccramic.io.annotation_outputs import AnnotationRegionWriter
 from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
@@ -723,17 +723,26 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('gating-cell-list', 'data'),
                        Output('gating-param-display', 'children'),
+                       Output('apply-gating-custom', 'value'),
                        Input('gating-dict', 'data'),
                        Input('data-collection', 'value'),
-                       Input('quantification-dict', 'data'),
+                       State('quantification-dict', 'data'),
                        Input('mask-options', 'value'),
                        Input('gating-channel-options', 'value'),
-                       Input('gating-blend-type', 'value'))
-    def update_gating_cell_list(gating_dict, roi_selection, quantification_dict, mask_selection,
-                                cur_gate_selection, gating_type):
-        if None not in (cur_gate_selection, roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
+                       Input('gating-blend-type', 'value'),
+                       Input('custom-id-gating', 'value'),
+                       Input('apply-gating-custom', 'value'))
+    def update_gating_object_list(gating_dict, roi_selection, quantification_dict, mask_selection,
+                                cur_gate_selection, gating_type, id_str, apply_custom_gating):
+        # do not update if using custom list and the parameters are updated
+        if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
+        elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
+            id_list = custom_gating_id_list(id_str)
+            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
+                gating_label_children(False, None, None, id_list, True), dash.no_update
+        elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
             id_list = object_id_list_from_gating(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
                         mask_selection, intersection=(gating_type == 'intersection'))
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key= OVERWRITE), \
-                gating_label_children(True, gating_dict, cur_gate_selection, id_list)
-        return [] if gating_dict is not None else dash.no_update, []
+                gating_label_children(True, gating_dict, cur_gate_selection, id_list), reset_custom_gate_slider(ctx.triggered_id)
+        return [] if gating_dict is not None else dash.no_update, [], dash.no_update if cur_gate_selection else False

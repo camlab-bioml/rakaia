@@ -116,6 +116,10 @@ def test_gating_label_children():
     assert len(children) == 8
     assert not gating_label_children(False, gating_dict, current_gate)
 
+    children_custom = gating_label_children(False, None, None, [1, 2, 3, 4], True)
+    assert len(children_custom) == 3
+    assert 'Gating (custom ID list)' in str(children_custom[0])
+
 
 def test_generate_mask_counter_preview():
     mask_dict = {"mask_1": {"raw": np.zeros((1000, 1000))}}

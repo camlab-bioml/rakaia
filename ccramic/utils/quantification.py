@@ -133,12 +133,13 @@ def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_sel
     return current_gate_dict
 
 def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
-                          current_gating_params: list=None, object_id_list: Union[list, None]=None):
+                          current_gating_params: list=None, object_id_list: Union[list, None]=None,
+                          from_custom_list: bool=False):
     """
     Generate the HTML legend for the current parameters used for mask gating
     """
     if use_gating and gating_dict and current_gating_params:
-        children = [html.B("Current gating parameters (norm 0-1)\n",
+        children = [html.B("Gating parameters (norm 0-1)\n",
                               style={"color": "black"}), html.Br(), html.Br()]
         for current_param in current_gating_params:
             try:
@@ -150,5 +151,10 @@ def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
                 pass
         if object_id_list is not None and isinstance(object_id_list, list):
             children.append(html.Span(f"{len(object_id_list)} objects"))
+        return children
+    elif from_custom_list and object_id_list:
+        children = [html.B("Gating (custom ID list)\n",
+                           style={"color": "black"}), html.Br(),
+                    html.Span(f"{len(object_id_list)} objects")]
         return children
     return []

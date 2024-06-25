@@ -16,7 +16,8 @@ from ccramic.utils.cell_level_utils import (
     populate_quantification_frame_column_from_umap_subsetting,
     generate_mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
-    quantification_distribution_table)
+    quantification_distribution_table,
+    custom_gating_id_list)
 import pandas as pd
 import os
 import numpy as np
@@ -386,3 +387,10 @@ def test_quantification_distribution_table(get_current_dir):
     dist = pd.DataFrame(quantification_distribution_table(measurements, umap_variable="sample",
                                                           subset_cur_cat=subset))
     assert dist['Proportion'].to_list() == [0.924, 0.076]
+
+
+def test_custom_gating_id_from_string():
+    assert custom_gating_id_list() == []
+    gating_list = custom_gating_id_list("130,145,156, 170  ,   not_a_number")
+    assert len(gating_list) == 4
+    assert all([isinstance(elem, int) for elem in gating_list])

@@ -227,3 +227,12 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         return fig, subset_frame
     else:
         raise PreventUpdate
+
+def reset_custom_gate_slider(trigger_id: str=None):
+    """
+    Reset the custom gate slider to False (not enabled) when certain triggers happen
+    By default, the gating selection will come from the quantified parameters, and secondary is the custom list
+    Do not reset the slider if the quantification hash has been updated on an annotation
+    """
+    return False if (trigger_id and trigger_id not in
+            ["quantification-dict", "quantification_dict"]) else dash.no_update

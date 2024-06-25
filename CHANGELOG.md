@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-21
+## [0.16.0] - 2024-06-25
 
 ### Added
 
@@ -18,6 +18,7 @@ to rapidly change the canvas among sets of blended channels
 - conversion parser for intensity h5ad from `steinbock` to internal dataframe
 - Mask input options now saved in JSON and database #104
 - Animation to mantine color swatch buttons on click
+- Ability to gate a custom list of mask IDs provided as a string input
 
 ### Changed
 
