@@ -1,9 +1,7 @@
 from typing import Union
-
 import dash
 import pandas as pd
 from dash import Patch
-
 from ccramic.parsers.cell_level_parsers import drop_columns_from_measurements_csv
 from ccramic.utils.cell_level_utils import subset_measurements_frame_from_umap_coordinates
 from pandas.errors import UndefinedVariableError
@@ -60,22 +58,29 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     total_objects = len(measurements)
     if subset_val is not None and isinstance(subset_val, int) and subset_val < len(measurements):
         measurements = measurements.sample(n=subset_val).reset_index(drop=True)
+    # TODO: find faster implementation of clustergram from dash-bio (very slow)
+    # fig = go.Figure(Clustergram(
+    #     data=measurements,
+    #     column_labels=list(measurements.columns.values),
+    #     hidden_labels=['row'],
+    #     height=500, width=750))
+    # fig.update_xaxes(tickangle=90)
+    # fig.update_layout(xaxis=dict(tickmode='linear'),
+    #                   title=f"Expression per object ({len(measurements)}/{total_objects} shown)",
+    #                   title_font=dict(size=16),
+    #                   margin=dict(
+    #                       l=5,
+    #                       r=1,
+    #                       b=1,
+    #                       t=25,
+    #                       pad=2))
     # TODO: figure out why the colour bars won't render after a certain number of dataframe elements
-    # https://github.com/plotly/plotly.py/issues/4484
-    # return go.Figure(go.Heatmap(
-    # z=measurements,
-    # x=measurements.columns,
-    # y=measurements.index,
-    # # colorscale='Blues',
-    # zsmooth=False))
     array_measure = np.array(measurements)
     zmax = 1 if np.max(array_measure) <= 1 else np.max(array_measure)
     fig = go.Figure(px.imshow(array_measure, x=measurements.columns, y=measurements.index,
                               labels=dict(x="Channel", y="Objects", color="Expression Mean"),
                               title=f"Channel expression per object ({len(measurements)}/{total_objects} shown)",
-                              zmax=zmax))
-    fig.update_xaxes(tickangle=90)
-    fig.update_layout(xaxis = dict(tickmode = 'linear'))
+                              zmax=zmax, binary_compression_level=1))
     return fig
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):

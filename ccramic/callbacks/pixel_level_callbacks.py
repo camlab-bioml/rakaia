@@ -1268,6 +1268,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def toggle_area_stats_collapse(n, is_open):
         return not is_open if n else is_open
 
+    @dash_app.callback(
+        Output("extra-import-collapse", "is_open", allow_duplicate=True),
+        [Input("show-collapse-extra-imports", "n_clicks")],
+        [State("extra-import-collapse", "is_open")])
+    def toggle_extra_imports_collapse(n, is_open):
+        return not is_open if n else is_open
+
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
                        Output('pixel-intensity-slider', 'value', allow_duplicate=True),
                        Input('data-collection', 'value'),
