@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 import platform
-from ccramic.io.annotation_outputs import *
+from ccramic.io.annotation import *
 
 def test_output_annotations_masks():
     with tempfile.TemporaryDirectory() as tmpdirname:

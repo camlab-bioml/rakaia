@@ -1,7 +1,7 @@
 import os
-from ccramic.parsers.roi_parsers import RegionThumbnail
+from ccramic.parsers.roi import RegionThumbnail
 import numpy as np
-from ccramic.parsers.pixel_level_parsers import (
+from ccramic.parsers.pixel import (
     FileParser,
     create_new_blending_dict)
 import random
@@ -32,6 +32,7 @@ def test_roi_query_parser(get_current_dir):
     assert dataset_exclude not in roi_query.keys()
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 20, []).get_image_dict()
     assert len(roi_query) == 6
+    assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
     # with keyword
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
@@ -61,6 +62,7 @@ def test_query_parser_tiff(get_current_dir):
                                 predefined_indices=query_selection).get_image_dict()
     assert 'for_recolour+++slide0+++acq0' in roi_query.keys()
     assert len(roi_query) == 1
+    assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
 def test_query_parser_txt(get_current_dir):
     mcd = os.path.join(get_current_dir, "query_from_text.txt")
@@ -71,6 +73,7 @@ def test_query_parser_txt(get_current_dir):
                                 dataset_options=list(parse.keys())).get_image_dict()
     assert 'query_from_text+++slide0+++0' in roi_query.keys()
     assert len(roi_query) == 1
+    assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
 def test_roi_query_parser_predefined(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")

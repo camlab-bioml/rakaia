@@ -3,7 +3,7 @@ import json
 import h5py
 import pandas as pd
 import numpy as np
-from ccramic.utils.pixel_level_utils import path_to_mask
+from ccramic.utils.pixel import path_to_mask
 from dash_extensions.enrich import Serverside
 from typing import Union
 from pydantic import BaseModel

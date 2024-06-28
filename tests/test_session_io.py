@@ -1,7 +1,6 @@
 import tempfile
 import os
 import numpy as np
-
 from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,

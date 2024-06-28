@@ -1,12 +1,12 @@
 import dash
 import pandas as pd
 from ccramic.io.session import SessionServerside
-from ccramic.utils.cell_level_utils import (
+from ccramic.utils.object import (
     populate_cell_annotation_column_from_bounding_box,
     get_cells_in_svg_boundary_by_mask_percentage,
     populate_cell_annotation_column_from_cell_id_list,
     populate_cell_annotation_column_from_clickpoint, remove_annotation_entry_by_indices)
-from ccramic.utils.pixel_level_utils import get_bounding_box_for_svgpath
+from ccramic.utils.pixel import get_bounding_box_for_svgpath
 import ast
 from ccramic.components.canvas import CanvasLayout
 from dash.exceptions import PreventUpdate

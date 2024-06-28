@@ -10,7 +10,7 @@ from tifffile import imwrite
 import numpy as np
 import plotly.graph_objs as go
 from typing import Union
-from ccramic.inputs.pixel_level_inputs import set_roi_identifier_from_length
+from ccramic.inputs.pixel import set_roi_identifier_from_length
 from ccramic.components.canvas import CanvasLayout
 import datetime
 from dash import html

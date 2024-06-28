@@ -1,6 +1,6 @@
 import pandas as pd
 from dash import html
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     random_hex_colour_generator,
     glasbey_palette)
 

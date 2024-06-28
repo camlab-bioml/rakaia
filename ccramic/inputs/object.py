@@ -2,13 +2,41 @@ from typing import Union
 import dash
 import pandas as pd
 from dash import Patch
-from ccramic.parsers.cell_level_parsers import drop_columns_from_measurements_csv
-from ccramic.utils.cell_level_utils import subset_measurements_frame_from_umap_coordinates
+from ccramic.parsers.object import drop_columns_from_measurements_csv
+from ccramic.utils.object import subset_measurements_frame_from_umap_coordinates
 from pandas.errors import UndefinedVariableError
 import plotly.express as px
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 import numpy as np
+from functools import partial
+
+class PandasFrameSummaryModes:
+    @staticmethod
+    def pd_mean(frame: pd.DataFrame):
+        return frame.mean(axis=0)
+
+    @staticmethod
+    def pd_max(frame: pd.DataFrame):
+        return frame.max(axis=0)
+
+    @staticmethod
+    def pd_min(frame: pd.DataFrame):
+        return frame.min(axis=0)
+
+    @staticmethod
+    def pd_median(frame: pd.DataFrame):
+        return frame.median(axis=0)
+
+class BarChartPartialModes:
+    """
+    Defines a series of pandas summary statistics for the bar chart
+    Pandas operators are applied using partials with a provided measurement frame
+    """
+    mean = partial(PandasFrameSummaryModes.pd_mean)
+    max = partial(PandasFrameSummaryModes.pd_max)
+    min = partial(PandasFrameSummaryModes.pd_min)
+    median = partial(PandasFrameSummaryModes.pd_median)
 
 def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                      subset_dict=None, drop_cols=True):
@@ -16,7 +44,6 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
     Generate a bar plot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
     Ensure that the non-numeric columns are dropped prior to plotting
     """
-
     if subset_dict is not None and len(subset_dict) == 4:
         try:
             measurement_frame = measurement_frame.query(f'x_max >= {subset_dict["x_min"]} & '
@@ -25,24 +52,16 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                                                         f'y_max <= {subset_dict["y_max"]}')
         except (KeyError, UndefinedVariableError):
             pass
-
+    dropped = pd.DataFrame(measurement_frame)
     if drop_cols:
         dropped = drop_columns_from_measurements_csv(measurement_frame)
-    else:
-        dropped = pd.DataFrame(measurement_frame)
-    if mode == "mean":
-        dropped = dropped.mean(axis=0)
-    elif mode == "max":
-        dropped = dropped.max(axis=0)
-    elif mode == "min":
-        dropped = dropped.min(axis=0)
-
+    # call the partial using the mode and provided measurement frame
+    dropped = getattr(BarChartPartialModes, mode)(dropped)
     summary_frame = pd.DataFrame(dropped, columns=[mode]).rename_axis("Channel").reset_index()
     if len(summary_frame) > 0 and summary_frame is not None:
         return px.bar(summary_frame, x="Channel", y=str(mode), color="Channel",
                       title=f"Segmented Marker Expression ({len(measurement_frame)} cells)")
-    else:
-        return None
+    return None
 
 def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, subset_val=50000):
     """
@@ -157,18 +176,6 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
             frame = frame[frame[category_column].isin(category_subset)]
         if cols_drop is not None:
             frame = drop_columns_from_measurements_csv(frame)
-        # TODO: for now, o not allow the bar plot to reflect a canvas subset (assign values only from the UMAP)
-        # if canvas_layout is not None and \
-        #         all([key in canvas_layout for key in zoom_keys]) and triggered_id == "annotation_canvas":
-        #     try:
-        #         subset_zoom = {"x_min": min(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
-        #                    "x_max": max(canvas_layout['xaxis.range[0]'], canvas_layout['xaxis.range[1]']),
-        #                    "y_min": min(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]']),
-        #                    "y_max": max(canvas_layout['yaxis.range[0]'], canvas_layout['yaxis.range[1]'])}
-        #     except UndefinedVariableError:
-        #         subset_zoom = None
-        #     fig = go.Figure(get_cell_channel_expression_plot(frame, subset_dict=subset_zoom, mode=mode_value))
-        #     frame_return = frame
         if triggered_id in ["umap-plot", "umap-projection-options", "quantification-bar-mode"] and \
                 umap_layout is not None and \
                 all([key in umap_layout for key in zoom_keys]):
@@ -200,14 +207,12 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
     """
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame(quantification_dict)
-        # IMP: perform category subsetting before removing columns
+        # IMP: perform category sub-setting before removing columns
         if None not in (category_column, category_subset):
             frame = frame[frame[category_column].isin(category_subset)]
         if cols_drop:
             frame = drop_columns_from_measurements_csv(frame)
-        # TODO: important: need to normalize before  the subset occurs so that it is relative to the entire
-        # frame, not just the subset
-        # TODO: add min max normalization to have ranges between 0 and 1
+        # need to normalize before  the subset occurs so that it is relative to the entire frame, not just the subset
         if normalize:
             frame = ((frame - frame.min()) / (frame.max() - frame.min()))
         if umap_layout is not None and \

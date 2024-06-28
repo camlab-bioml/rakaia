@@ -4,7 +4,7 @@ import plotly.graph_objs as go
 import pytest
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import html
-from ccramic.inputs.pixel_level_inputs import (
+from ccramic.inputs.pixel import (
     render_default_annotation_canvas,
     wrap_canvas_in_loading_screen_for_large_images,
     add_scale_value_to_figure,
@@ -17,11 +17,11 @@ from ccramic.inputs.pixel_level_inputs import (
     set_canvas_viewport,
     marker_correlation_children,
     reset_pixel_histogram)
-from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
+from ccramic.parsers.pixel import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
 import os
-from ccramic.utils.pixel_level_utils import recolour_greyscale
+from ccramic.utils.pixel import recolour_greyscale
 import plotly.express as px
 import dash_bootstrap_components as dbc
 

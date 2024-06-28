@@ -2,7 +2,7 @@ import os
 import dash
 import pytest
 import plotly
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     recolour_greyscale,
     apply_preset_to_array,
     resize_for_canvas,
@@ -39,7 +39,7 @@ from ccramic.utils.pixel_level_utils import (
     add_saved_blend)
 from dash.exceptions import PreventUpdate
 import pandas as pd
-from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
+from ccramic.parsers.pixel import create_new_blending_dict
 from PIL import Image
 import numpy as np
 

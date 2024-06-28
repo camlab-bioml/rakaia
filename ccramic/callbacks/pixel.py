@@ -4,14 +4,14 @@ import dash_uploader as du
 import flask
 from dash import ctx, ALL
 from dash_extensions.enrich import Output, Input, State, html
-from ccramic.inputs.pixel_level_inputs import (
+from ccramic.inputs.pixel import (
     wrap_canvas_in_loading_screen_for_large_images,
     invert_annotations_figure,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
     set_canvas_viewport, marker_correlation_children, reset_pixel_histogram)
-from ccramic.parsers.pixel_level_parsers import (
+from ccramic.parsers.pixel import (
     FileParser,
     populate_image_dict_from_lazy_load,
     create_new_blending_dict,
@@ -20,7 +20,7 @@ from ccramic.parsers.pixel_level_parsers import (
 from ccramic.utils.decorator import (
     time_taken_callback,
     DownloadDirGenerator)
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     delete_dataset_option_from_list_interactively,
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array,
@@ -48,14 +48,14 @@ from ccramic.io.display import (
     FullScreenCanvas,
     generate_preset_options_preview_text,
     annotation_preview_table, timestamp_download_child)
-from ccramic.io.gallery_outputs import generate_channel_tile_gallery_children
-from ccramic.parsers.cell_level_parsers import match_mask_name_with_roi
-from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
+from ccramic.io.gallery import generate_channel_tile_gallery_children
+from ccramic.parsers.object import match_mask_name_with_roi
+from ccramic.utils.graph import strip_invalid_shapes_from_graph_layout
 from ccramic.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
     adjust_option_height_from_list_length, set_roi_tooltip_based_on_length)
-from ccramic.callbacks.pixel_level_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
+from ccramic.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
     mask_options_from_json, bounds_text, generate_annotation_list
 from ccramic.io.session import (
     write_blend_config_to_json,
@@ -80,7 +80,7 @@ import uuid
 from ccramic.utils.region import (
     RegionAnnotation,
     check_for_valid_annotation_hash)
-from ccramic.parsers.roi_parsers import RegionThumbnail
+from ccramic.parsers.roi import RegionThumbnail
 from ccramic.utils.filter import (
     return_current_or_default_filter_apply,
     return_current_or_default_filter_param,
@@ -1793,6 +1793,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("quant-annotation-col", "options"),
         Output('quant-annotation-col-in-tab', 'options'),
         Output('quant-annotation-col-gating', 'options'),
+        Output('annotation-cat-click', 'options'),
         Input('add-annotation-col', 'n_clicks'),
         State('new-annotation-col', 'value'),
         State('quant-annotation-col', 'options'),
@@ -1820,7 +1821,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if not isinstance(cur_cols, list) and len(cur_cols) > 0: raise AssertionError
             if col_to_add not in cur_cols:
                 cur_cols.append(col_to_add)
-            return cur_cols, cur_cols, cur_cols
+            return cur_cols, cur_cols, cur_cols, cur_cols
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1832,7 +1833,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('click-annotation-assignment', 'value'),
         State("annotations-dict", "data"),
         State('data-collection', 'value'),
-        State('quant-annotation-col', 'value'),
+        State('annotation-cat-click', 'value'),
         State('annotation_canvas', 'figure'),
         State('enable_click_annotation', 'value'),
         State('click-annotation-add-circle', 'value'),

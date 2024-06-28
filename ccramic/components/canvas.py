@@ -4,20 +4,20 @@ import plotly.graph_objs as go
 import cv2
 import plotly.express as px
 from PIL import Image
-from ccramic.parsers.cell_level_parsers import validate_coordinate_set_for_image
-from ccramic.utils.cell_level_utils import generate_greyscale_grid_array
-from ccramic.inputs.pixel_level_inputs import (
+from ccramic.parsers.object import validate_coordinate_set_for_image
+from ccramic.utils.object import generate_greyscale_grid_array
+from ccramic.inputs.pixel import (
     add_scale_value_to_figure,
     set_x_axis_placement_of_scalebar)
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     per_channel_intensity_hovertext,
     get_additive_image,
     apply_filter_to_array,
     create_new_coord_bounds)
-from ccramic.utils.cell_level_utils import generate_mask_with_cluster_annotations
+from ccramic.utils.object import generate_mask_with_cluster_annotations
 from plotly.graph_objs.layout import YAxis, XAxis
 from ccramic.utils.shapes import is_cluster_annotation_circle, is_bad_shape
-from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
+from ccramic.utils.roi import subset_mask_outline_using_cell_id_list
 import pandas as pd
 import math
 from skimage import measure

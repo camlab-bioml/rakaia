@@ -4,7 +4,7 @@ import os
 import tifffile
 import pandas as pd
 from dash.exceptions import PreventUpdate
-from ccramic.callbacks.cell_level_wrappers import (
+from ccramic.callbacks.object_wrappers import (
     callback_remove_canvas_annotation_shapes,
     callback_add_region_annotation_to_quantification_frame,
     reset_annotation_import)

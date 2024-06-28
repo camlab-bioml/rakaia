@@ -2,8 +2,8 @@ import pandas as pd
 import os
 import numpy as np
 from PIL import Image
-from ccramic.utils.cell_level_utils import convert_mask_to_cell_boundary
-from ccramic.utils.roi_utils import (
+from ccramic.utils.object import convert_mask_to_cell_boundary
+from ccramic.utils.roi import (
     generate_dict_of_roi_cell_ids,
     subset_mask_outline_using_cell_id_list,
     override_roi_gallery_blend_list)

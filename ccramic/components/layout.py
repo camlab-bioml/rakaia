@@ -2,11 +2,11 @@ from dash import dash_table
 import dash_uploader as du
 from dash_extensions import EventListener
 import dash_daq as daq
-from ccramic.inputs.pixel_level_inputs import (
+from ccramic.inputs.pixel import (
     render_default_annotation_canvas,
     add_local_file_dialog)
 from ccramic.inputs.loaders import wrap_child_in_loading
-from ccramic.utils.pixel_level_utils import generate_default_swatches
+from ccramic.utils.pixel import generate_default_swatches
 import dash_ag_grid as dag
 import dash_mantine_components as dmc
 from plotly.graph_objs.layout import YAxis, XAxis
@@ -920,7 +920,7 @@ def register_app_layout(config, cache_dest):
                                                                  labelPosition='bottom', value=False,
                                                                  color=DEFAULT_WIDGET_COLOUR,
                                                                  style={"width": "40%", "margin-left": "-10px",
-                                                                        "margin-top": "2.5px"}),
+                                                                        "margin-top": "-1.5px"}),
                                             ], style={"display": "flex", "width": "100%", "justifyContent": "center"}),
                                             html.Br(),
                                             html.H6("Annotate gated objects", style={"width": "75%"}),
@@ -1021,23 +1021,31 @@ def register_app_layout(config, cache_dest):
                                 style={"display": "flex"}), id="clear-annotation_dict",
                                 className="mx-auto", color=None, n_clicks=0, style={"margin-top": "10px", "width": "80%"})],
                                 style={"display": "flex", "width": "50%"}),
-                                html.Div([], style={"display": "flex", "width": "50%"}),
                                 html.Br(),
-                                html.H5('Click-point/coordinates'),
                                 html.Br(),
-                                html.Div([daq.ToggleSwitch(label='Click annotation', id='enable_click_annotation',
-                                labelPosition='bottom', value=False, color=DEFAULT_WIDGET_COLOUR,
-                                                           style={"width": "45%","margin-left": "-20px"}),
-                                dcc.Checklist(options=[' Add circle on click'], value=[' add circle on click'],
-                                                id="click-annotation-add-circle", style={"margin-top": "12px",
-                                                "accent-color": DEFAULT_WIDGET_COLOUR}),
+                                html.Div([
+                                html.H5('Click-point/coordinates', style={"float": "left", "justifyContent": "left"}),
+                                daq.ToggleSwitch(label='Enable click annotation', id='enable_click_annotation',
+                                                     labelPosition='bottom', value=False, color=DEFAULT_WIDGET_COLOUR,
+                                                     style={"width": "45%", "margin-left": "17.5px", "float": "right",
+                                                    "justifyContent": "right", "textAlign": "center"}),
+                                ], style={"display": "flex", "width": "100%"}),
+                                html.Br(),
+                                html.Div([
+                                dcc.Dropdown(id='annotation-cat-click',
+                                    multi=False, options=['ccramic_cell_annotation'],
+                                    value="ccramic_cell_annotation", style={"width": "80%"}),
                                 dcc.Input(id="click-annotation-assignment", type="text", value=None,
                                           placeholder="Add annotation on click",
-                                    style={"width": "65%", "margin-left": "1px"})],
-                                         style={"display": "flex"}),
-                                dcc.Checklist(options=[' Overlay grid'], value=[],
-                                id="overlay-grid-canvas", style={"margin-top": "12px",
-                                                        "accent-color": DEFAULT_WIDGET_COLOUR}),
+                                    style={"width": "60%"})], style={"display": "flex"}),
+                                html.Div([
+                                dcc.Checklist(options=[' Overlay grid'], value=[], id="overlay-grid-canvas",
+                                        style={"margin-top": "12px", "accent-color": DEFAULT_WIDGET_COLOUR}),
+                                dcc.Checklist(options=[' Add circle on click'], value=[' add circle on click'],
+                                        id="click-annotation-add-circle", style={"margin-top": "12px", "margin-left": "30px",
+                                                            "accent-color": DEFAULT_WIDGET_COLOUR}),
+                                ], style={"display": "flex", "float": "center", "justifyContent": "center",
+                                          "margin-top": "5px"}),
                                 html.Br(),
                                 dbc.Alert([], color='success', is_open=False, duration=1200, id='click-annotation-alert'),
                                 dbc.Modal(children=dbc.ModalBody(
@@ -1310,13 +1318,15 @@ def register_app_layout(config, cache_dest):
                                              style={"display": "flex", "justifyContent": "right"}),
                                               ], style={"display": "flex", "float": "center", "width": "100%"}),
                                         dbc.Modal(children=dbc.ModalBody([
-                                        html.B("UMAP settings"),
-                                        html.Br(),
-                                        html.Br(),
-                                        dbc.Button("Render UMAP", id="execute-umap-button", style={
-                                                "margin-top": "-5px", "margin-right": "30px"},
-                                                       color="dark", outline=True),
-                                        html.Br(),
+                                        html.Div([
+                                        dbc.Row([dbc.Col(width=6, children=[
+                                        html.B("UMAP settings", style={"float": "left"}),
+                                        ]),
+                                        dbc.Col(width=3, children=[
+                                            dbc.Button("Render UMAP", id="execute-umap-button", style={
+                                                "margin-top": "-5px", "margin-left": "30px", "float": "left",
+                                                "justifyContent": "left"}, color="dark", outline=True),
+                                        ])])], style={"width": "auto"}),
                                         html.Br(),
                                         html.H6("Add annotation to UMAP"),
                                         dcc.Input(id="annotation-col-quantification", type="text",

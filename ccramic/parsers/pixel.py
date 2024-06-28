@@ -2,7 +2,7 @@ import h5py
 from pathlib import Path
 import numpy as np
 from tifffile import TiffFile
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
     get_default_channel_upper_bound_by_percentile)
@@ -12,6 +12,8 @@ from ccramic.utils.alert import PanelMismatchError
 import pandas as pd
 from PIL import Image
 from typing import Union
+from functools import partial
+import os
 
 class NoAcquisitionsParsedError(Exception):
     pass
@@ -24,8 +26,11 @@ class FileParser:
     turned off, greyscale image arrays are read into the dictionary slots with the numpy array type specified
     in `array_store_type`
     """
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5"}
+
     def __init__(self, filepaths: list, array_store_type="float", lazy_load=True,
                  single_roi_parse=True, roi_name=None, internal_name=None, delimiter="+++"):
+
         if array_store_type not in ["float", "int"]:
             raise TypeError("The array stored type must be one of float or int")
         self.filepaths = [str(x) for x in filepaths]
@@ -46,26 +51,37 @@ class FileParser:
             self.blend_config = None
             self.roi_name = roi_name
             self.internal_name = internal_name
+            self.mcd = partial(self.parse_mcd)
+            self.tiff = partial(self.parse_tiff, internal_name=self.internal_name)
+            self.txt = partial(self.parse_txt, internal_name=self.internal_name)
+            self.h5 = partial(self.parse_h5)
             for upload in self.filepaths:
-                # IMP: split reading a single mcd ROI from the entire mcd, as mcds can contain multiple ROIs
-                # this is currently unique to mcds: all other files have one ROI per file
-                if upload.endswith('.mcd') and not lazy_load and single_roi_parse and \
-                        None not in (roi_name, internal_name):
-                   self.read_single_roi_from_mcd(upload, self.internal_name, self.roi_name)
-                elif upload.endswith('.mcd'):
-                    self.parse_mcd(upload)
-                elif upload.endswith('.h5'):
-                    self.parse_h5(upload)
-                elif upload.endswith('.tiff') or upload.endswith('.tif'):
-                    self.parse_tiff(upload, internal_name=internal_name)
-                elif upload.endswith('.txt'):
-                    try:
-                        self.parse_txt(upload, internal_name=internal_name)
-                    except OSError:
-                        pass
-                else:
-                    raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
-                                    ".mcd, .tiff, .txt, or .h5")
+                try:
+                    # IMP: split reading a single mcd ROI from the entire mcd, as mcds can contain multiple ROIs
+                    # this is currently unique to mcds: all other files have one ROI per file
+                    filename, file_extension = os.path.splitext(upload)
+                    if file_extension not in list(self.MATCHES.keys()):
+                        raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
+                                        ".mcd, .tiff, .txt, or .h5")
+                    if upload.endswith('.mcd') and not lazy_load and single_roi_parse and \
+                            None not in (roi_name, internal_name):
+                        self.read_single_roi_from_mcd(upload, self.internal_name, self.roi_name)
+                    else:
+                        # call the additive thumbnail partial function with the corresponding extension
+                        getattr(self, self.MATCHES[file_extension])(upload)
+                except OSError:
+                    pass
+                # elif upload.endswith('.mcd'):
+                #     self.parse_mcd(upload)
+                # elif upload.endswith('.h5'):
+                #     self.parse_h5(upload)
+                # elif upload.endswith('.tiff') or upload.endswith('.tif'):
+                #     self.parse_tiff(upload, internal_name=internal_name)
+                # elif upload.endswith('.txt'):
+                #     try:
+                #         self.parse_txt(upload, internal_name=internal_name)
+                #     except OSError:
+                #         pass
 
     def parse_h5(self, h5py_file):
         data_h5 = h5py.File(h5py_file, "r")

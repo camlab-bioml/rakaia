@@ -3,7 +3,7 @@ from dash import html
 from PIL import Image
 import numpy as np
 import math
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     resize_for_canvas,
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array)

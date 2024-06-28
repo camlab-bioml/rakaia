@@ -5,16 +5,24 @@ import pandas as pd
 import plotly
 import pytest
 from dash.exceptions import PreventUpdate
-
-from ccramic.inputs.cell_level_inputs import (
+from statistics import mean, median
+from ccramic.inputs.object import (
     get_cell_channel_expression_plot,
     generate_umap_plot,
     generate_expression_bar_plot_from_interactive_subsetting,
     generate_channel_heatmap,
     generate_heatmap_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
-    reset_custom_gate_slider)
-from ccramic.parsers.cell_level_parsers import parse_and_validate_measurements_csv
+    reset_custom_gate_slider,
+    BarChartPartialModes)
+from ccramic.parsers.object import parse_and_validate_measurements_csv
 
+def test_partial_bar_chart_modes(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    measurements_csv = measurements_csv.iloc[:,0:measurements_csv.columns.get_loc("209Bi_SMA")]
+    mean_frame = BarChartPartialModes.mean(measurements_csv)
+    assert round(mean_frame.tolist()[0], 3) == round(mean(measurements_csv['153Eu_PDPN'].to_list()), 3)
+    median_frame = BarChartPartialModes.median(measurements_csv)
+    assert round(median_frame.tolist()[0], 3) == round(median(measurements_csv['153Eu_PDPN'].to_list()), 3)
 
 def test_bar_graph_from_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -38,7 +46,10 @@ def test_bar_graph_from_measurements_csv(get_current_dir):
     assert cell_bar_min['layout']['yaxis']['title']['text'] == "min"
     assert cell_bar_min['layout']['title']['text'] == 'Segmented Marker Expression (244 cells)'
 
-
+    cell_bar_median = get_cell_channel_expression_plot(measurements_csv, mode="median")
+    assert cell_bar_median['layout']['xaxis']['title']['text'] == "Channel"
+    assert cell_bar_median['layout']['yaxis']['title']['text'] == "median"
+    assert cell_bar_median['layout']['title']['text'] == 'Segmented Marker Expression (244 cells)'
 
 def test_bar_graph_from_measurements_csv_with_subsetting(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

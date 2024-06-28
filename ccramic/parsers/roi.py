@@ -1,12 +1,12 @@
 from pathlib import Path
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
     apply_filter_to_array)
-from ccramic.parsers.pixel_level_parsers import convert_rgb_to_greyscale
-from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
-from ccramic.utils.roi_utils import subset_mask_outline_using_cell_id_list
-from ccramic.parsers.cell_level_parsers import (
+from ccramic.parsers.pixel import convert_rgb_to_greyscale
+from ccramic.utils.object import validate_mask_shape_matches_image
+from ccramic.utils.roi import subset_mask_outline_using_cell_id_list
+from ccramic.parsers.object import (
     match_mask_name_with_roi,
     match_mask_name_to_quantification_sheet_roi)
 from readimc import MCDFile, TXTFile
@@ -15,7 +15,8 @@ import numpy as np
 import cv2
 from tifffile import TiffFile
 from typing import Union
-
+from functools import partial
+import os
 
 class RegionThumbnail:
     """
@@ -23,6 +24,9 @@ class RegionThumbnail:
     of queries passed
     Thumbnail images will be appended to the ROI gallery with identical blend parameters to the current ROI
     """
+    # define string attribute matches for the partial
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt"}
+
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
                         global_apply_filter=False, global_filter_type="median", global_filter_val=3,
@@ -30,6 +34,9 @@ class RegionThumbnail:
                         dimension_min: Union[int, float, None]=None,
                         dimension_max: Union[int, float, None]=None,
                         roi_keyword: str=None):
+        self.mcd = partial(self.additive_thumbnail_from_mcd)
+        self.tiff = partial(self.additive_thumbnail_from_tiff)
+        self.txt = partial(self.additive_thumbnail_from_txt)
         self.session_config = session_config
         try:
             self.file_list = [file for file in self.session_config['uploads']]
@@ -67,19 +74,13 @@ class RegionThumbnail:
             for file_path in self.file_list:
                 if len(self.roi_images) >= self.num_queries:
                     break
-                elif str(file_path).endswith('.mcd'):
-                    self.additive_thumbnail_from_mcd(file_path)
-                elif str(file_path).endswith('.tiff') or str(file_path).endswith('.tif'):
-                    self.additive_thumbnail_from_tiff(file_path)
-                elif str(file_path).endswith('.txt'):
-                    self.additive_thumbnail_from_txt(file_path)
+                filename, file_extension = os.path.splitext(file_path)
+                # call the additive thumbnail partial function with the corresponding extension
+                getattr(self, self.MATCHES[file_extension])(file_path)
 
     def additive_thumbnail_from_mcd(self, file_path):
         basename = str(Path(file_path).stem)
         with MCDFile(file_path) as mcd_file:
-            # generate a random number of roi indices to query
-            # query_length = min(len(dataset_options), num_queries)
-            # queries = random.sample(range(0, len(dataset_options)), query_length)
             slide_index = 0
             for slide_inside in mcd_file.slides:
                 if self.predefined_indices is None:

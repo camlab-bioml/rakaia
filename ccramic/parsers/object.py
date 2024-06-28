@@ -5,13 +5,15 @@ import os
 from tifffile import TiffFile
 import numpy as np
 from PIL import Image
-from ccramic.utils.cell_level_utils import (
+from ccramic.utils.object import (
     set_mandatory_columns,
     convert_mask_to_cell_boundary,
     set_columns_to_drop,
     QuantificationColumns,
-    QuantificationFormatError, match_steinbock_mask_name_to_mcd_roi, is_steinbock_intensity_anndata)
-from ccramic.utils.pixel_level_utils import split_string_at_pattern
+    QuantificationFormatError,
+    match_steinbock_mask_name_to_mcd_roi,
+    is_steinbock_intensity_anndata)
+from ccramic.utils.pixel import split_string_at_pattern
 import anndata
 import sys
 from sklearn.preprocessing import StandardScaler
@@ -76,19 +78,10 @@ def validate_incoming_measurements_csv(measurements_csv, required_columns=set_ma
             "columns in the CSV, and should link ROI names/masks to quantification results.")
     if not all([column in measurements_csv.columns for column in required_columns]):
         return None, None
-    #TODO: find a different heuristic for validating the measurements CSV as it will contain multiple ROIs
-    # # check the measurement CSV against an image to ensure that the dimensions match
-    # elif validate_with_image and current_image is not None:
-    #     if float(current_image.shape[0]) != float(measurements_csv['x_max'].max()) or \
-    #         float(current_image.shape[1]) != float(measurements_csv['y_max'].max()):
-    #         return measurements_csv, "Warning: the dimensions of the current ROI do not match the quantification sheet."
-    #     else:
-    #         return measurements_csv, None
     else:
         return measurements_csv, None
 
-def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999,
-                                                  drop_cols=False):
+def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999, drop_cols=False):
     """
     Filter out the rows (cells) of a measurements csv (columns as channels, rows as cells) based on a pixel intensity
     threshold by percentile. Effectively removes any cells with "hot" pixels

@@ -3,7 +3,7 @@ from typing import Union
 import dash
 import pandas as pd
 import re
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     path_to_mask,
     split_string_at_pattern,
     recolour_greyscale)

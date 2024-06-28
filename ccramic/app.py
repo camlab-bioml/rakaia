@@ -2,10 +2,10 @@
 import tempfile
 import dash_uploader as du
 from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
-from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
-from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
-from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
-from ccramic.callbacks.db_callbacks import init_db_callbacks
+from ccramic.callbacks.pixel import init_pixel_level_callbacks
+from ccramic.callbacks.object import init_cell_level_callbacks
+from ccramic.callbacks.roi import init_roi_level_callbacks
+from ccramic.callbacks.db import init_db_callbacks
 import shutil
 import os
 import dash_bootstrap_components as dbc

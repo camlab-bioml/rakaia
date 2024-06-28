@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from ccramic.parsers.pixel_level_parsers import (
+from ccramic.parsers.pixel import (
     FileParser,
     create_new_blending_dict,
     populate_image_dict_from_lazy_load,

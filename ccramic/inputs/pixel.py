@@ -1,7 +1,7 @@
 import dash
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import dcc, html
-from ccramic.utils.cell_level_utils import convert_mask_to_cell_boundary
+from ccramic.utils.object import convert_mask_to_cell_boundary
 import plotly.graph_objs as go
 import dash_draggable
 import cv2
@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 import plotly.express as px
 from ccramic.io.session import SessionTheme
-from ccramic.utils.pixel_level_utils import split_string_at_pattern, get_first_image_from_roi_dictionary
+from ccramic.utils.pixel import split_string_at_pattern, get_first_image_from_roi_dictionary
 from typing import Union
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
@@ -324,11 +324,9 @@ def set_canvas_viewport(size_slider_val: Union[float, int]=None,
     returns a hash for the width and height in vh: {'width': f'{value}vh', 'height': f'{value}vh'}
     """
     try:
-        if cur_dimensions is None:
-            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
-            aspect_ratio = int(first_image.shape[1]) / int(first_image.shape[0])
-        else:
-            aspect_ratio = int(cur_dimensions[1]) / int(cur_dimensions[0])
+        if not cur_dimensions:
+            cur_dimensions = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
+        aspect_ratio = int(cur_dimensions[1]) / int(cur_dimensions[0])
     except (KeyError, AttributeError, IndexError):
         if current_canvas is not None and 'layout' in current_canvas and \
                 'range' in current_canvas['layout']['xaxis'] and \

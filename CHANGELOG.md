@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-25
+## [0.16.0] - 2024-06-28
 
 ### Added
 
@@ -33,6 +33,9 @@ to rapidly change the canvas among sets of blended channels
 - Channel gallery thumbnails now use smaller add icon without text
 - Modify heatmap to show down-sample by default with reporting total object counts
 - Run UMAP on current channels in heatmap
+- refactor API module naming for wider release
+- Use partial functions as switch statements for file reading in `RegionThumbnail`, `FileParser`
+- dedicated category dropdown for click annotations
 
 ### Fixed
 

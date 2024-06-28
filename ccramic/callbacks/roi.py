@@ -1,19 +1,19 @@
 import dash
 import pandas as pd
-from ccramic.parsers.roi_parsers import RegionThumbnail
-from ccramic.io.gallery_outputs import generate_roi_query_gallery_children
-from ccramic.utils.pixel_level_utils import get_first_image_from_roi_dictionary
+from ccramic.parsers.roi import RegionThumbnail
+from ccramic.io.gallery import generate_roi_query_gallery_children
+from ccramic.utils.pixel import get_first_image_from_roi_dictionary
 from ccramic.utils.quantification import (
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi)
-from ccramic.utils.cell_level_utils import validate_mask_shape_matches_image
+from ccramic.utils.object import validate_mask_shape_matches_image
 from dash import ALL
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
 from ccramic.utils.alert import AlertMessage, add_warning_to_error_config
 from ccramic.io.session import SessionServerside
-from ccramic.utils.roi_utils import override_roi_gallery_blend_list
+from ccramic.utils.roi import override_roi_gallery_blend_list
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
