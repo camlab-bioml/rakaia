@@ -4,10 +4,10 @@ ccramic.io package
 Submodules
 ----------
 
-ccramic.io.annotation\_outputs module
--------------------------------------
+ccramic.io.annotation module
+----------------------------
 
-.. automodule:: ccramic.io.annotation_outputs
+.. automodule:: ccramic.io.annotation
    :members:
    :undoc-members:
    :show-inheritance:
@@ -20,10 +20,10 @@ ccramic.io.display module
    :undoc-members:
    :show-inheritance:
 
-ccramic.io.gallery\_outputs module
-----------------------------------
+ccramic.io.gallery module
+-------------------------
 
-.. automodule:: ccramic.io.gallery_outputs
+.. automodule:: ccramic.io.gallery
    :members:
    :undoc-members:
    :show-inheritance:

@@ -1,7 +1,6 @@
 import pandas as pd
 from dash import html
 from ccramic.utils.pixel import (
-    random_hex_colour_generator,
     glasbey_palette)
 
 def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_cluster_dict: dict=None,

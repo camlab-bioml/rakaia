@@ -12,14 +12,6 @@ ccramic.utils.alert module
    :undoc-members:
    :show-inheritance:
 
-ccramic.utils.cell\_level\_utils module
----------------------------------------
-
-.. automodule:: ccramic.utils.cell_level_utils
-   :members:
-   :undoc-members:
-   :show-inheritance:
-
 ccramic.utils.cluster module
 ----------------------------
 
@@ -36,6 +28,14 @@ ccramic.utils.db module
    :undoc-members:
    :show-inheritance:
 
+ccramic.utils.decorator module
+------------------------------
+
+.. automodule:: ccramic.utils.decorator
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 ccramic.utils.filter module
 ---------------------------
 
@@ -44,18 +44,26 @@ ccramic.utils.filter module
    :undoc-members:
    :show-inheritance:
 
-ccramic.utils.graph\_utils module
----------------------------------
+ccramic.utils.graph module
+--------------------------
 
-.. automodule:: ccramic.utils.graph_utils
+.. automodule:: ccramic.utils.graph
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.utils.pixel\_level\_utils module
-----------------------------------------
+ccramic.utils.object module
+---------------------------
 
-.. automodule:: ccramic.utils.pixel_level_utils
+.. automodule:: ccramic.utils.object
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+ccramic.utils.pixel module
+--------------------------
+
+.. automodule:: ccramic.utils.pixel
    :members:
    :undoc-members:
    :show-inheritance:
@@ -76,10 +84,10 @@ ccramic.utils.region module
    :undoc-members:
    :show-inheritance:
 
-ccramic.utils.roi\_utils module
--------------------------------
+ccramic.utils.roi module
+------------------------
 
-.. automodule:: ccramic.utils.roi_utils
+.. automodule:: ccramic.utils.roi
    :members:
    :undoc-members:
    :show-inheritance:

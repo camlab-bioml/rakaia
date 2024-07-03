@@ -1493,7 +1493,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('sigma-val-filter', 'disabled'),
                        Input('filter-type', 'value'),
                        prevent_initial_call=True)
-    def update_channel_filter_inputs(filter_type):
+    def update_channel_filter_type(filter_type):
         return True if filter_type == "median" else False
 
     @dash_app.callback(Output('global-sigma-val-filter', 'disabled'),

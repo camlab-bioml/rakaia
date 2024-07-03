@@ -4,26 +4,26 @@ ccramic.parsers package
 Submodules
 ----------
 
-ccramic.parsers.cell\_level\_parsers module
--------------------------------------------
+ccramic.parsers.object module
+-----------------------------
 
-.. automodule:: ccramic.parsers.cell_level_parsers
+.. automodule:: ccramic.parsers.object
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.parsers.pixel\_level\_parsers module
---------------------------------------------
+ccramic.parsers.pixel module
+----------------------------
 
-.. automodule:: ccramic.parsers.pixel_level_parsers
+.. automodule:: ccramic.parsers.pixel
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.parsers.roi\_parsers module
------------------------------------
+ccramic.parsers.roi module
+--------------------------
 
-.. automodule:: ccramic.parsers.roi_parsers
+.. automodule:: ccramic.parsers.roi
    :members:
    :undoc-members:
    :show-inheritance:

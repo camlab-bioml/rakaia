@@ -32,7 +32,7 @@ from ccramic.utils.pixel import split_string_at_pattern
 from ccramic.io.readers import DashUploaderFileReader
 import os
 from ccramic.utils.roi import generate_dict_of_roi_cell_ids
-from dash import dcc, Patch
+from dash import dcc
 import matplotlib
 from werkzeug.exceptions import BadRequest
 import dash_uploader as du
@@ -555,7 +555,7 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 Input('imported-cluster-frame', 'data'),
                 State('data-collection', 'value'),
                 State('cluster-colour-assignments-dict', 'data'))
-    def generate_cluster_colour_assignment(cluster_frame, data_selection, cur_cluster_dict):
+    def assign_cluster_colors(cluster_frame, data_selection, cur_cluster_dict):
         if None not in (cluster_frame, data_selection):
             default_colors, options = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
             return default_colors, options, options, options

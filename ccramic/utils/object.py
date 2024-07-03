@@ -1,6 +1,4 @@
 from typing import Union
-
-import dash
 import pandas as pd
 import re
 from ccramic.utils.pixel import (

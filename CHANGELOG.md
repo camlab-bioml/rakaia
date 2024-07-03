@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-06-28
+## [0.16.0] - 2024-07-03
 
 ### Added
 
@@ -19,6 +19,8 @@ to rapidly change the canvas among sets of blended channels
 - Mask input options now saved in JSON and database #104
 - Animation to mantine color swatch buttons on click
 - Ability to gate a custom list of mask IDs provided as a string input
+- Set steinbock mask dtype os environment variable on app startup, related to
+[this](https://github.com/BodenmillerGroup/steinbock/issues/132)
 
 ### Changed
 

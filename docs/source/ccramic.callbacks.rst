@@ -4,50 +4,50 @@ ccramic.callbacks package
 Submodules
 ----------
 
-ccramic.callbacks.cell\_level\_callbacks module
------------------------------------------------
+ccramic.callbacks.db module
+---------------------------
 
-.. automodule:: ccramic.callbacks.cell_level_callbacks
+.. automodule:: ccramic.callbacks.db
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.callbacks.cell\_level\_wrappers module
-----------------------------------------------
+ccramic.callbacks.object module
+-------------------------------
 
-.. automodule:: ccramic.callbacks.cell_level_wrappers
+.. automodule:: ccramic.callbacks.object
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.callbacks.db\_callbacks module
---------------------------------------
+ccramic.callbacks.object\_wrappers module
+-----------------------------------------
 
-.. automodule:: ccramic.callbacks.db_callbacks
+.. automodule:: ccramic.callbacks.object_wrappers
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.callbacks.pixel\_level\_callbacks module
-------------------------------------------------
+ccramic.callbacks.pixel module
+------------------------------
 
-.. automodule:: ccramic.callbacks.pixel_level_callbacks
+.. automodule:: ccramic.callbacks.pixel
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.callbacks.pixel\_level\_wrappers module
------------------------------------------------
+ccramic.callbacks.pixel\_wrappers module
+----------------------------------------
 
-.. automodule:: ccramic.callbacks.pixel_level_wrappers
+.. automodule:: ccramic.callbacks.pixel_wrappers
    :members:
    :undoc-members:
    :show-inheritance:
 
-ccramic.callbacks.roi\_level\_callbacks module
-----------------------------------------------
+ccramic.callbacks.roi module
+----------------------------
 
-.. automodule:: ccramic.callbacks.roi_level_callbacks
+.. automodule:: ccramic.callbacks.roi
    :members:
    :undoc-members:
    :show-inheritance:

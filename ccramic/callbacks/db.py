@@ -28,10 +28,9 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 connection = AtlasDatabaseConnection(conn_string, username, password)
                 connected, ping = connection.create_connection()
                 pair = connection.username_password_pair() if connected else dash.no_update
-                # connection.close()
                 return pair, ping, True, "success" if connected else "danger"
             except AttributeError:
-                return dash.no_update, f"Invalid database connection string", True, "danger"
+                return dash.no_update, "Invalid database connection string", True, "danger"
         raise PreventUpdate
 
     @dash_app.callback(Output('db-saved-configs', 'data'),
@@ -119,8 +118,7 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 connection = AtlasDatabaseConnection(conn_string, cred['username'], cred['password'])
                 connection.create_connection()
                 connection.remove_blend_document_by_name(db_config_name)
-                # connection.close()
                 return f"{db_config_name} removed successfully", True, "success"
         except AttributeError:
-            return f"Invalid database connection string. Action not performed", True, "danger"
+            return "Invalid database connection string. Action not performed", True, "danger"
         raise PreventUpdate
