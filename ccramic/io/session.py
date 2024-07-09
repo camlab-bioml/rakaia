@@ -96,12 +96,15 @@ class JSONSessionDocument:
     def get_document(self):
         return self.document
 
-def panel_length_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
+def panel_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
     """
-    Check that a new imported panel from db or JSON matches the length of the existing session
+    Check that a new imported panel from db or JSON matches the panel from a currently loaded ROI
     """
     try:
-        return None not in (current_blend, new_blend) and len(current_blend) == len(new_blend['channels'])
+        current_blend = current_blend if isinstance(current_blend, list) else list(current_blend.keys())
+        return None not in (current_blend, new_blend) and all([
+            elem in new_blend['channels'] for elem in current_blend])
+        # len(current_blend) == len(new_blend['channels'])
     except (KeyError, TypeError):
         return False
 

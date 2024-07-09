@@ -43,7 +43,8 @@ class AlertMessage(BaseModel):
                                         "and ensure that all imported datasets share the same panel.\n\n",
                       "json_update_success": "Blend parameters successfully updated from JSON.",
                       "json_update_error": "Error: the blend parameters uploaded from JSON do not " \
-                                        "match the current panel length. The update did not occur.",
+                                        "match the current session panel/channel list. The update did not occur. \n"
+                            "Note that different file types (mcd, tiff, etc.) can produce mismatching channel lists.",
                       "json_requires_roi": "Please select an ROI before importing blend parameters from JSON.",
                       "custom_metadata_error": "Could not import custom metadata. Ensure that: \n \n- the dataset " \
                                         "containing the images is uploaded first" \

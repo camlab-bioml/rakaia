@@ -61,7 +61,7 @@ from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
     subset_mask_for_data_export,
-    SessionServerside, panel_length_match, all_roi_match, sort_channel_dropdown)
+    SessionServerside, panel_match, all_roi_match, sort_channel_dropdown)
 from pathlib import Path
 import json
 from dash import dcc
@@ -440,7 +440,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (uploaded_w_data, new_blend_dict, data_selection):
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
             current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}
-            if panel_length_match(current_blend_dict, new_blend_dict) or all_roi_match(
+            if panel_match(current_blend_dict, new_blend_dict) or all_roi_match(
                     current_blend_dict, new_blend_dict, uploaded_w_data, delimiter):
                 current_blend_dict = new_blend_dict['channels'].copy()
                 all_layers = check_empty_missing_layer_dict(all_layers, data_selection)

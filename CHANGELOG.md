@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.16.0] - 2024-07-03
+## [0.16.0] - 2024-07-09
 
 ### Added
 
@@ -38,6 +38,7 @@ to rapidly change the canvas among sets of blended channels
 - refactor API module naming for wider release
 - Use partial functions as switch statements for file reading in `RegionThumbnail`, `FileParser`
 - dedicated category dropdown for click annotations
+- JSON panel update now requires all keys to match, not just length
 
 ### Fixed
 
