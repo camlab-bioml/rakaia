@@ -2,6 +2,37 @@
   --widget: #0f4d92;
 }
 
+#dataset-preview-table {
+overflow: scroll;
+overflow-wrap: anywhere;
+max-width: inherit;
+}
+
+.mantine-majorq:active {
+  box-shadow: 0 5px #666;
+  transform: translateY(5px) !important;
+}
+
+#inputs-offcanvas{
+header {
+visibility: hidden;}
+}
+
+.dash-debug-menu {
+  background-color: #0f4d92 !important;
+  //color: #0f4d92;
+ }
+
+ .dash-debug-menu--open {
+  background-color: #0f4d92 !important;
+  color: #0f4d92;
+ }
+
+.dash-debug-menu:hover {
+  background-color: #0f4d92 !important;
+  //color: #0f4d92;
+ }
+
 *{
   font-family: Arial;
 }

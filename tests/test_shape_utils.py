@@ -1,4 +1,7 @@
-from ccramic.utils.shapes import *
+from ccramic.utils.shapes import (
+    is_bad_shape,
+    is_cluster_annotation_circle,
+    filter_annotation_shapes)
 
 def test_recognition_of_cluster_circle():
     shape = {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',
@@ -36,3 +39,12 @@ def test_recognition_malformed_shape():
     shape = {'label': {'texttemplate': ''}}
 
     assert is_bad_shape(shape)
+
+def test_filter_annotation_shapes():
+    graph = {'layout': {'shapes': []}}
+    assert not filter_annotation_shapes(graph)
+    graph = {'layout': {'shapes': [{'type': 'circle'}, {'type': 'line'}]}}
+    assert filter_annotation_shapes(graph) == [{'type': 'line'}]
+    graph_2 = {'layout': {'shapes': [{'type': 'line'}, {'type': 'line'}]}}
+    assert filter_annotation_shapes(graph_2) == graph_2['layout']['shapes']
+    assert not filter_annotation_shapes({'layout': {'shapes': [{'type': 'circle'}, 'shape']}})

@@ -6,9 +6,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import uuid
 from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
 import warnings
+import os
 
 _program = "ccramic"
-__version__ = "0.15.0"
+__version__ = "0.16.0"
 
 def init_app(cli_config):
     # suppress numba depreciation warnings from umap
@@ -36,6 +37,10 @@ def init_app(cli_config):
     }
 
     app.config["APPLICATION_ROOT"] = "/"
+
+    # set the steinbock mask dtype environment variable before the module is read
+    # https://github.com/BodenmillerGroup/steinbock/issues/131
+    os.environ["STEINBOCK_MASK_DTYPE"] = "uint32"
 
     @auth.verify_password
     def verify_password(username, password):

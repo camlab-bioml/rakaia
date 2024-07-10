@@ -1,6 +1,7 @@
 import pandas as pd
 from dash import html
-from ccramic.utils.pixel_level_utils import random_hex_colour_generator
+from ccramic.utils.pixel import (
+    glasbey_palette)
 
 def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_cluster_dict: dict=None,
                                           roi_selection: str=None, cluster_id_col: str='cluster'):
@@ -11,7 +12,7 @@ def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_clu
     """
     try:
         unique_clusters = pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_id_col].unique().tolist()
-        unique_colours = random_hex_colour_generator(len(unique_clusters))
+        unique_colours = glasbey_palette(len(unique_clusters))
         cluster_assignments = {roi_selection: {}} if not cur_cluster_dict else cur_cluster_dict
         # reset the dictionary if either the ROI doesn't have clusters, or new assignments are uploaded
         if (roi_selection not in cluster_assignments) or (roi_selection in cluster_assignments and

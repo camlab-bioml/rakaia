@@ -162,3 +162,6 @@ dmypy.json
 .pyre/
 
 *.tar.gz
+*build
+*dist
+*.xml

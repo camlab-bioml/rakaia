@@ -2,7 +2,7 @@ import os
 import dash
 import pytest
 import plotly
-from ccramic.utils.pixel_level_utils import (
+from ccramic.utils.pixel import (
     recolour_greyscale,
     apply_preset_to_array,
     resize_for_canvas,
@@ -33,10 +33,13 @@ from ccramic.utils.pixel_level_utils import (
     no_filter_chosen,
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
-    MarkerCorrelation, high_low_values_from_zoom_layout)
+    MarkerCorrelation, high_low_values_from_zoom_layout,
+    glasbey_palette,
+    layers_exist,
+    add_saved_blend)
 from dash.exceptions import PreventUpdate
 import pandas as pd
-from ccramic.parsers.pixel_level_parsers import create_new_blending_dict
+from ccramic.parsers.pixel import create_new_blending_dict
 from PIL import Image
 import numpy as np
 
@@ -44,6 +47,10 @@ def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
     assert acq == "acq1"
 
+def test_layer_condition():
+    assert layers_exist({"roi_1": {"channel_1": None}}, "roi_1")
+    assert not layers_exist({"roi_1": {}}, "roi_1")
+    assert not layers_exist({"roi_1": {"channel_1": None}}, "roi_2")
 
 def test_identify_rgb_codes():
     # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string
@@ -57,6 +64,12 @@ def test_return_array_dtype():
     assert str(set_array_storage_type_from_config("int")) == "<class 'numpy.uint16'>"
     with pytest.raises(TypeError):
         set_array_storage_type_from_config("fake_type")
+
+def test_glasbey_palette():
+    palette = glasbey_palette()
+    assert len(set(palette)) == len(palette)
+    palette_longer = glasbey_palette(20)
+    assert palette_longer[0:len(palette)] == palette
 
 def test_random_hex_colour_generator():
     random_cols = random_hex_colour_generator()
@@ -636,9 +649,10 @@ def test_marker_correlation_metrics(get_current_dir):
     assert np.isnan(proportion_target)
 
     # use bounds that cause an index error
-    assert MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=mask,
-        blend_dict=None, bounds={'xaxis.range[0]': 1-0, 'xaxis.range[1]': 100000,
-        'yaxis.range[1]': -110, 'yaxis.range[0]': 0}).get_correlation_statistics() == (None, None, None, None)
+    # on index error, just use the default bounds
+    assert all([elem is not None for elem in MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=mask,
+        blend_dict=None, bounds={'xaxis.range[0]': -10, 'xaxis.range[1]': 100000,
+        'yaxis.range[1]': -110, 'yaxis.range[0]': 0}).get_correlation_statistics()])
 
     # have complete overlap between target and baseline in mask
     image_dict = {"roi_1": {"target": np.where(mask > 0, 1000, 0).astype(np.float32),
@@ -688,3 +702,13 @@ def test_marker_correlation_metrics(get_current_dir):
                     "target", "baseline", mask=mask_bad_shape, blend_dict=blend_dict).get_correlation_statistics()
     assert (proportion_target, overlap, proportion_baseline) == (None, None, None)
     assert pearson_2 != pearson
+
+def test_saving_blend():
+    saved = add_saved_blend(None, "infiltration", ["chan_1", "chan_4", "chan_5"])
+    assert saved == {'infiltration': ['chan_1', 'chan_4', 'chan_5']}
+    saved = add_saved_blend(saved, "immune", ["CD8", "CD3"])
+    assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}
+    saved = add_saved_blend(saved, None, ["chan_11", "chan_12"])
+    assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}
+    saved = add_saved_blend(saved, "empty")
+    assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}

@@ -3,7 +3,7 @@ import json
 import h5py
 import pandas as pd
 import numpy as np
-from ccramic.utils.pixel_level_utils import path_to_mask
+from ccramic.utils.pixel import path_to_mask
 from dash_extensions.enrich import Serverside
 from typing import Union
 from pydantic import BaseModel
@@ -29,9 +29,9 @@ class TabText(BaseModel):
                          "expression of a biomarker. Individual biomarker images, termed tiles, are visible in the " \
                          "channel gallery when an ROI is selected, and one or more biomarkers can be added to the canvas " \
                          "blend."
-    region_gallery: str = "Generate a thumbnail for one or more ROIs contained in the current session with the " \
-                          "blend parameters that are currently applied to the canvas. These thumbnails may be generated " \
-                          "randomly from the query below, or from subsetting the UMAP plot under the quantification tab. " \
+    region_gallery: str = "Generate a thumbnail for one or more ROIs contained in the current session with either the " \
+                          "current blend parameters or a saved blend. These thumbnails may be generated " \
+                          "randomly using query parameters, or from subsetting the UMAP plot under the quantification tab. " \
                           "Each thumbnail enables the specific ROI to be loaded into the main canvas."
 
 
@@ -47,7 +47,7 @@ class SessionServerside(Serverside):
         self.use_unique_key = use_unique_key
         self.identifier = key
         key = key if self.use_unique_key else None
-        Serverside.__init__(self, value=data, key=key)
+        super().__init__(value=data, key=key)
 
 def create_download_dir(dest_dir):
     """
@@ -68,7 +68,8 @@ class JSONSessionDocument:
                  global_apply_filter: Union[list, bool]=False, global_filter_type: str="median",
                  global_filter_val: int = 3, global_filter_sigma: float=1.0,
                  data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None,
-                 gating_dict: dict=None):
+                 gating_dict: dict=None, mask_toggle: bool=False, mask_level: Union[int, float]=35,
+                               mask_boundary: bool=True, mask_hover: Union[bool, list]=False):
         if save_type not in ["json", "db"]:
             raise TypeError("The `save_type` provided should be one of: `json`, for local exports,"
                             "or `db`, for formatting a document for the mongoDB database")
@@ -90,15 +91,20 @@ class JSONSessionDocument:
                                 "global_filter_sigma": global_filter_sigma}}
         self.document['cluster'] = cluster_assignments
         self.document['gating'] = gating_dict
+        self.document['mask'] = {"mask_toggle": mask_toggle, "mask_level": mask_level,
+                               "mask_boundary": mask_boundary, "mask_hover": mask_hover}
     def get_document(self):
         return self.document
 
-def panel_length_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
+def panel_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
     """
-    Check that a new imported panel from db or JSON matches the length of the existing session
+    Check that a new imported panel from db or JSON matches the panel from a currently loaded ROI
     """
     try:
-        return None not in (current_blend, new_blend) and len(current_blend) == len(new_blend['channels'])
+        current_blend = current_blend if isinstance(current_blend, list) else list(current_blend.keys())
+        return None not in (current_blend, new_blend) and all([
+            elem in new_blend['channels'] for elem in current_blend])
+        # len(current_blend) == len(new_blend['channels'])
     except (KeyError, TypeError):
         return False
 
@@ -113,7 +119,8 @@ def all_roi_match(current_blend: Union[dict, None], new_blend: Union[dict, None]
 def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_apply_filter,
                                global_filter_type, global_filter_val, global_filter_sigma,
                                data_selection: str=None, cluster_assignments: dict=None, aliases: dict=None,
-                               gating_dict: dict=None):
+                               gating_dict: dict=None, mask_toggle: bool=False, mask_level: Union[int, float]=35,
+                               mask_boundary: bool=True, mask_hover: Union[bool, list]=False):
     """
     Write the session blend configuration dictionary to a JSON file
     """
@@ -122,7 +129,8 @@ def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_ap
     with open(param_json_path, "w") as outfile:
         dict_write = JSONSessionDocument("json", None, None, blend_dict, blend_layer_list, global_apply_filter,
                                          global_filter_type, global_filter_val, global_filter_sigma,
-                                         data_selection, cluster_assignments, aliases, gating_dict).get_document()
+                                         data_selection, cluster_assignments, aliases, gating_dict,
+                                         mask_toggle, mask_level, mask_boundary, mask_hover).get_document()
         json.dump(dict_write, outfile)
     return param_json_path
 
@@ -186,3 +194,14 @@ def subset_mask_for_data_export(canvas_layout, array_shape):
     except KeyError:
         pass
     return mask
+
+
+def sort_channel_dropdown(channel_list: Union[dict, None]=None, sort_channels: bool=False):
+    try:
+        if sort_channels:
+            channels_return = dict(sorted(channel_list.items(), key=lambda x: x[1].lower()))
+        else:
+            channels_return = channel_list
+        return channels_return
+    except AttributeError:
+        return channel_list

@@ -7,11 +7,11 @@ class DataImportTour(BaseModel):
     Contains the steps used for the dash tour component for data import assistance
     """
     steps: list = [{'selector': '[id="upload-image"]',
-                    'content': "Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
+                    'content': "Option 1: Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
                                " be used only for datasets < 2GB or if the app deployment is public/shared, "
                                "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
-                'content': "For large datasets (> 2GB) on local deployments, "
+                'content': "Option 2: For large datasets (> 2GB) on local deployments, "
                            "copy and paste either a filepath or directory and "
                                "read files directly by selecting Import local. Does not duplicate any data."},
                 {'selector': '[id="show-dataset-info"]',
@@ -32,21 +32,19 @@ class AlertMessage(BaseModel):
     This class returns a simple string alert message display in the `error warning modal
     """
     warnings: dict = {"blend_json_success": "Blend parameters successfully updated from JSON.",
-                      "invalid_filepath": "Invalid filepath provided. Please verify the following: \n\n" \
-                                        "- That the file path provided is a valid local file \n" \
+                      "invalid_path": "Invalid filepath ir directory provided. Please verify the following: \n\n" \
+                                        "- That the file path provided is a valid local file. \n" \
+                                        "- That the directory provided exists and contains imaging files. \n"
                                         "- If running using Docker or a web version, " \
                                         "local file paths will not be available.",
-                      "invalid_directory": "Invalid directory provided. Please verify the following: \n\n" \
-                                            "- That the directory provided exists in the local filesystem \n" \
-                                            "- If running using Docker or a web version, " \
-                                            "local directories will not be available.",
                       "multiple_filetypes": "Warning: Multiple different file types were detected on upload. " \
                                         "This may cause problems during analysis. For best performance, " \
                                         "it is recommended to analyze datasets all from the same file type extension " \
                                         "and ensure that all imported datasets share the same panel.\n\n",
                       "json_update_success": "Blend parameters successfully updated from JSON.",
                       "json_update_error": "Error: the blend parameters uploaded from JSON do not " \
-                                        "match the current panel length. The update did not occur.",
+                                        "match the current session panel/channel list. The update did not occur. \n"
+                            "Note that different file types (mcd, tiff, etc.) can produce mismatching channel lists.",
                       "json_requires_roi": "Please select an ROI before importing blend parameters from JSON.",
                       "custom_metadata_error": "Could not import custom metadata. Ensure that: \n \n- the dataset " \
                                         "containing the images is uploaded first" \
@@ -101,7 +99,13 @@ class ToolTips(BaseModel):
                                            "both the number of channels, and number of mask objects increases. "
                                            "Improve performance by reducing the number of channels quantified.",
                       "mask-name-autofill": "Matching the mask name to the corresponding ROI name will link the "
-                                            "quantification results to region annotations and ROI gating."}
+                                            "quantification results to region annotations and ROI gating.",
+                      "max-viewport": "Modify the maximum viewport width for the main canvas. Use smaller values "
+                                      "if the canvas image spills over into the side tabs, or larger values to "
+                                      "permit the canvas to fit a larger proportion of the screen. The default is "
+                                      "set at 150.",
+                      "set-blends": "Save the current canvas channels in a named blend. Blends can be quickly toggled"
+                                    " to compare marker expression across the current ROI."}
 
 
 class PanelMismatchError(Exception):
@@ -117,6 +121,10 @@ class DataImportError(Exception):
     pass
 
 class LazyLoadError(Exception):
+    """
+    Raise when the lazy loading feature of the `FileParser` class doesn't produce an ROI dictionary
+    containing channel arrays
+    """
     pass
 
 def file_import_message(imported_files: list):

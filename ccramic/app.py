@@ -2,10 +2,10 @@
 import tempfile
 import dash_uploader as du
 from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
-from ccramic.callbacks.pixel_level_callbacks import init_pixel_level_callbacks
-from ccramic.callbacks.cell_level_callbacks import init_cell_level_callbacks
-from ccramic.callbacks.roi_level_callbacks import init_roi_level_callbacks
-from ccramic.callbacks.db_callbacks import init_db_callbacks
+from ccramic.callbacks.pixel import init_pixel_level_callbacks
+from ccramic.callbacks.object import init_cell_level_callbacks
+from ccramic.callbacks.roi import init_roi_level_callbacks
+from ccramic.callbacks.db import init_db_callbacks
 import shutil
 import os
 import dash_bootstrap_components as dbc
@@ -33,21 +33,24 @@ def init_dashboard(server, authentic_id, config=None):
 
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
-                             update_title=None,
+                        update_title=None,
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
-                         external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
-                         server=server,
-                         routes_pathname_prefix="/ccramic/", suppress_callback_exceptions=True,
-                         prevent_initial_callbacks=True)
+                        external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
+                        server=server,
+                        routes_pathname_prefix="/ccramic/",
+                        suppress_callback_exceptions=True,
+                        prevent_initial_callbacks=True)
         dash_app._favicon = 'ccramic.ico'
         dash_app.title = "ccramic"
         server.config['APPLICATION_ROOT'] = "/ccramic"
         # do not use debugging mode if production is used
         server.config['FLASK_DEBUG'] = config['is_dev_mode']
 
+        # TODO: configure a custom http request handler for public instances
+        # https://github.com/fohrloop/dash-uploader/blob/dev/docs/dash-uploader.md#4-custom-handling-of-http-requests
         du.configure_upload(dash_app, cache_dest)
 
-    #TODO: for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
+    #for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
     # useful when serverside components can cache large stores much more effectively
 
     # VALID_USERNAME_PASSWORD_PAIRS = {

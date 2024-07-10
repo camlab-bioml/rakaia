@@ -5,12 +5,14 @@ from ccramic.io.display import (
     output_current_canvas_as_html,
     FullScreenCanvas,
     generate_preset_options_preview_text,
-    annotation_preview_table)
+    annotation_preview_table,
+    timestamp_download_child)
 import numpy as np
 import pandas as pd
 import tempfile
 import plotly.graph_objs as go
 import plotly.express as px
+import datetime
 
 def test_generate_channel_statistics_dataframe():
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.full((1000, 1000), 100),
@@ -24,7 +26,7 @@ def test_generate_channel_statistics_dataframe():
 
     # First stats option: when zoom is used for two channels
 
-    stats_1 = pd.DataFrame(RegionSummary(graph_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
+    stats_1 = pd.DataFrame(RegionSummary({}, graph_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
                                                  aliases).get_summary_frame())
     assert len(stats_1) == 2
     assert list(stats_1['Max'] == [100, 300])
@@ -37,7 +39,7 @@ def test_generate_channel_statistics_dataframe():
 
     graph_layout_2 = {'shapes': [{'line': {'color': 'white', 'width': 2},
                                   'type': 'line', 'x0': 0.05, 'x1': 0.125, 'xref': 'paper', 'y0': 0.05,
-                                  'y1': 0.05, 'yref': 'paper'},
+                                  'y1': 0.05, 'yref': 'paper', 'editable': False},
                                  {'editable': True, 'label': {'text': ''},
                                   'xref': 'x', 'yref': 'y', 'layer': 'above', 'opacity': 1,
                                   'line': {'color': 'white', 'width': 4, 'dash': 'solid'},
@@ -57,7 +59,7 @@ def test_generate_channel_statistics_dataframe():
                                           '283.7814371257485L219.1107784431138,277.4940119760479Z'}]}
 
     stats_2 = pd.DataFrame(
-        RegionSummary(graph_layout_2, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
+        RegionSummary({'layout': graph_layout_2}, {'autosize': True}, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
     assert len(stats_2) == 1
     assert list(stats_2['Min']) == [200]
@@ -80,7 +82,7 @@ def test_generate_channel_statistics_dataframe():
                                   'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
 
     stats_3 = pd.DataFrame(
-        RegionSummary(graph_layout_3, upload_dict, layers, "experiment0+++slide0+++acq0",
+        RegionSummary({'layout': graph_layout_3}, graph_layout_3, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
     assert len(stats_3) == 4
     assert list(stats_3['Max'] == [100, 300, 100, 300])
@@ -91,7 +93,7 @@ def test_generate_channel_statistics_dataframe():
 
     # Option 4: when an existing svg path is edited
 
-    graph_layout_4 = {'shapes[1].path': 'M349.3502994011976,346.2065868263473L366.4161676646707,'
+    graph_layout_4 = {'shapes': [{'type': 'path', 'editable': True, 'path': 'M349.3502994011976,346.2065868263473L366.4161676646707,'
                                         '266.26646706586826L267.6137724550898,'
                                         '275.248502994012L257.73353293413174,277.04491017964074L234.3802395209581,'
                                         '308.4820359281437L210.12874251497004,327.3443113772455L186.7754491017964,'
@@ -100,22 +102,22 @@ def test_generate_channel_statistics_dataframe():
                                         '428.84131736526945L244.26047904191617,454.88922155688624L287.374251497006,'
                                         '480.93712574850304L290.9670658682635,480.93712574850304L294.55988023952096,'
                                         '465.6676646706587L329.5898203592814,395.60778443113776L338.57185628742513,'
-                                        '392.0149700598802L343.062874251497,392.0149700598802Z'}
+                                        '392.0149700598802L343.062874251497,392.0149700598802Z'}]}
 
     stats_4 = pd.DataFrame(
-        RegionSummary(graph_layout_4, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
+        RegionSummary({'layout': graph_layout_4}, graph_layout_4, upload_dict, ["Nuclear"], "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
     assert len(stats_4) == 1
     assert list(stats_4['Min']) == [200]
-
 
     # Option 5: when an existing rectangle is updated
 
     graph_layout_5 = {'shapes[1].x0': 253.2425149700599, 'shapes[1].x1': 350.248502994012,
                       'shapes[1].y0': 111.32634730538922, 'shapes[1].y1': 311.62574850299404}
-
+    shapes_5 = {'shapes': [{'editable': True, 'type': 'rect', 'x0': 253.2425149700599, 'x1': 350.248502994012,
+                      'y0': 111.32634730538922, 'y1': 311.62574850299404}]}
     stats_5 = pd.DataFrame(
-        RegionSummary(graph_layout_5, upload_dict, layers, "experiment0+++slide0+++acq0",
+        RegionSummary({'layout': shapes_5}, graph_layout_5, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
 
     assert len(stats_5) == 2
@@ -129,7 +131,7 @@ def test_generate_channel_statistics_dataframe():
     empty_layout = {'display': None}
 
     stats_6 = pd.DataFrame(
-        RegionSummary(empty_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
+        RegionSummary(empty_layout, empty_layout, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
     assert len(stats_6) == 0
 
@@ -165,7 +167,7 @@ def test_generate_channel_statistics_dataframe_errors():
                                   'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
 
     stats = pd.DataFrame(
-        RegionSummary(graph_layout_bad, upload_dict, layers, "experiment0+++slide0+++acq0",
+        RegionSummary({'layout': graph_layout_bad}, {}, upload_dict, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
     assert len(stats) == 2
     assert list(stats['Max'] == [100, 300])
@@ -184,7 +186,7 @@ def test_generate_channel_statistics_dataframe_errors():
     aliases = {"DNA": "DNA", "Cytoplasm": "Cytoplasm", "Nuclear": "Nuclear"}
 
     stats_none = pd.DataFrame(
-        RegionSummary(graph_layout, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+        RegionSummary(graph_layout, graph_layout, upload_dict_none, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
     assert len(stats_none) == 0
 
@@ -193,10 +195,10 @@ def test_generate_channel_statistics_dataframe_errors():
                       'shapes[1].y0': 111.32634730538922, 'shapes[1].y1': 311.62574850299404}
 
     stats_none_2 = pd.DataFrame(
-        RegionSummary(shape_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+        RegionSummary(shape_edited, shape_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
 
-    assert len(stats_none_2 ) == 0
+    assert len(stats_none_2) == 0
 
     path_edited = {'shapes[1].path': 'M349.3502994011976,346.2065868263473L366.4161676646707,'
                                         '266.26646706586826L267.6137724550898,'
@@ -210,7 +212,7 @@ def test_generate_channel_statistics_dataframe_errors():
                                         '392.0149700598802L343.062874251497,392.0149700598802Z'}
 
     stats_none_3 = pd.DataFrame(
-        RegionSummary(path_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+        RegionSummary(path_edited, path_edited, upload_dict_none, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
 
     assert len(stats_none_3) == 0
@@ -232,7 +234,8 @@ def test_generate_channel_statistics_dataframe_errors():
                                   'x1': 520.0089820359282, 'y1': 443.2125748502994}]}
 
     stats_none_4 = pd.DataFrame(
-        RegionSummary(graph_layout_shapes, upload_dict_none, layers, "experiment0+++slide0+++acq0",
+        RegionSummary({'layout': graph_layout_shapes}, graph_layout_shapes,
+                      upload_dict_none, layers, "experiment0+++slide0+++acq0",
                                            aliases).get_summary_frame())
 
     assert len(stats_none_4) == 0
@@ -257,7 +260,7 @@ def test_output_canvas_html_to_file():
     with tempfile.TemporaryDirectory() as tmpdirname:
         file_path = os.path.join(tmpdirname, "canvas.html")
         assert not os.path.exists(file_path)
-        canvas_link = output_current_canvas_as_html(fig, style, tmpdirname)
+        canvas_link = output_current_canvas_as_html(tmpdirname, fig, style)
         assert os.path.exists(file_path)
         assert str(file_path) == str(canvas_link)
         if os.access(canvas_link, os.W_OK):
@@ -269,12 +272,14 @@ def test_output_canvas_html_to_file():
     with tempfile.TemporaryDirectory() as tmpdirname:
         file_path = os.path.join(tmpdirname, "canvas.html")
         assert not os.path.exists(file_path)
-        canvas_link = output_current_canvas_as_html(fig_2, style, tmpdirname)
+        canvas_link = output_current_canvas_as_html(tmpdirname, fig_2, style)
         assert os.path.exists(file_path)
         assert str(file_path) == str(canvas_link)
         if os.access(canvas_link, os.W_OK):
             os.remove(canvas_link)
         assert not os.path.exists(canvas_link)
+
+    assert not output_current_canvas_as_html(None, None, None)
 
 
 
@@ -290,6 +295,8 @@ def test_fullscreen_canvas():
     fullscreen = FullScreenCanvas(canvas.to_dict(), {"autosize": True})
     fullscreen_canvas = fullscreen.get_canvas()
     assert len(fullscreen_canvas['layout']['shapes']) == len(fullscreen_canvas['layout']['annotations']) == 0
+    fullscreen_canvas_fig = fullscreen.get_canvas(as_fig=True)
+    assert fullscreen_canvas_fig != fullscreen_canvas
 
 def test_output_preset_text():
     presets = {"preset_1": {"x_lower_bound": 1, "x_upper_bound": 10, 'filter_type': 'gaussian',
@@ -376,3 +383,10 @@ def test_annotation_preview_table():
     assert len(preview_frame) == len(annotations_dict['Patient1+++slide0+++pos1_1'].keys()) - 1
     assert '5 cells' in preview_frame['preview'].tolist()
     assert annotation_preview_table() == ([], [])
+
+def test_timestamp_downloads():
+    right_now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = timestamp_download_child()
+    assert timestamp.children
+    assert right_now[0:10] in str(timestamp.children)
+    assert not timestamp_download_child(None)

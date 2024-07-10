@@ -1,7 +1,6 @@
 import tempfile
 import os
 import numpy as np
-
 from ccramic.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -10,11 +9,12 @@ from ccramic.io.session import (
     SessionServerside,
     TabText,
     all_roi_match,
-    panel_length_match)
+    panel_match,
+    sort_channel_dropdown)
 
 def test_session_serverside_objects():
     blend_dict = {"channel_1": np.full((1000, 1000), 1)}
-    # with the default local configuration, assert that the
+    # with the default local configuration, assert that the key is fixed
     serverside = SessionServerside(blend_dict, key="test_blend")
     assert serverside.key == "test_blend" == serverside.identifier
     # assert that the key is replaced with a uuid if the invocation is shared
@@ -128,9 +128,11 @@ def test_tab_text():
 def test_panel_compatible_import():
     channel_dict = {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}
     new_blend = {"channels": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}}
-    assert panel_length_match(channel_dict, new_blend)
-    assert not panel_length_match(channel_dict, {"channels": []})
-    assert not panel_length_match(channel_dict, {})
+    assert panel_match(channel_dict, new_blend)
+    renamed = {"channels": {"Chan_1": 1, "Chan_2": 2, "Chan_3": 3}}
+    assert not panel_match(channel_dict, renamed)
+    assert not panel_match(channel_dict, {"channels": []})
+    assert not panel_match(channel_dict, {})
 
     images = {"roi_1+++": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3},
               "roi_2+++": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}}
@@ -140,3 +142,9 @@ def test_panel_compatible_import():
               "roi_2+++": {"Channel_1": 1, "Channel_2": 2}}
     assert not all_roi_match(None, new_blend, images)
     assert not all_roi_match(None, {}, images)
+
+def test_sort_channel_options():
+    channels = {"1": "Eu151", "2": "Nd145", "3": "196pb", "4": "a_channel"}
+    assert list(sort_channel_dropdown(channels, True).keys()) == ['3', '4', '1', '2']
+    assert list(sort_channel_dropdown(channels, False).keys()) == ['1', '2', '3', '4']
+    assert sort_channel_dropdown(None, True) is None

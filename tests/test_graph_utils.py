@@ -1,6 +1,6 @@
 
 import plotly.graph_objs as go
-from ccramic.utils.graph_utils import strip_invalid_shapes_from_graph_layout
+from ccramic.utils.graph import strip_invalid_shapes_from_graph_layout
 
 def test_graph_strip_improper_shapes():
     fig = go.Figure()

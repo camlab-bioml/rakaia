@@ -7,6 +7,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.16.0] - 2024-07-09
+
+### Added
+
+- Exception thrown when the file parser doesn't successfully parse any ROIs
+- Named blend configurations can be saved and toggle using a dropdown menu,
+to rapidly change the canvas among sets of blended channels
+- Mask name to ROI matching from `steinbock` pipeline naming conventions
+- conversion parser for intensity h5ad from `steinbock` to internal dataframe
+- Mask input options now saved in JSON and database #104
+- Animation to mantine color swatch buttons on click
+- Ability to gate a custom list of mask IDs provided as a string input
+- Set steinbock mask dtype os environment variable on app startup, related to
+[this](https://github.com/BodenmillerGroup/steinbock/issues/132)
+
+### Changed
+
+- Major UI revamp prior to public release
+- Improved shape region parsing for redrawn/edited shapes
+- Better generalizations for conditions for tiff and HTML download
+- Switch to `glasbey` for palette generation
+- Switch to `steinbock` `scipy.ndimage` implementation for quantification and region props
+- add local persistence to mask-related inputs
+- Switch to `scipy.ngimage` to compute mask object overlap on drawn annotations
+- Bump import max for `dash-upload` image components (up to 50gb)
+- Channel gallery thumbnails now use smaller add icon without text
+- Modify heatmap to show down-sample by default with reporting total object counts
+- Run UMAP on current channels in heatmap
+- refactor API module naming for wider release
+- Use partial functions as switch statements for file reading in `RegionThumbnail`, `FileParser`
+- dedicated category dropdown for click annotations
+- JSON panel update now requires all keys to match, not just length
+- Cap length of frequency distribution table in quant tab
+
+### Fixed
+
+- Prevent callback on gallery channel view when not enabled
+- Handle overflow for long ROI names in ROI data table using scroll
+
+### Removed
+
+- `Undo last annotation` for regions (annotations table has selectable deletion)
+- Preset hover (converted to static input + button)
+
 ## [0.15.0] - 2024-05-17
 
 ### Added

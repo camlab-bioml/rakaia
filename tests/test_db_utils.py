@@ -465,8 +465,13 @@ def test_create_insert_document_blend_config():
                        'global_filter_type': 'gaussian',
                        'global_filter_val': 3}},
  'gating': None,
+ 'mask': {'mask_boundary': True,
+          'mask_hover': False,
+          'mask_level': 35,
+          'mask_toggle': False},
  'name': 'first_config',
  'user': 'fake_user'}
+
     clusters = {"roi_1": {"cell_type_1": "#FFFFFF", "cell_type_2": "#FFFFFF"}}
     document_2 = format_blend_config_document_for_insert("fake_user", "first_config", blend_dict, channel_list,
                                                        global_apply_filter, global_filter_type, global_filter_val,
@@ -808,6 +813,10 @@ def test_create_insert_document_blend_config():
                        'global_filter_type': 'gaussian',
                        'global_filter_val': 3}},
  'gating': None,
+'mask': {'mask_boundary': True,
+        'mask_hover': False,
+        'mask_level': 35,
+        'mask_toggle': False},
  'name': 'first_config',
  'user': 'fake_user'}
 

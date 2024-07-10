@@ -1,9 +1,7 @@
 from dash import dcc
-import dash
 from ccramic.io.session import SessionTheme
 from typing import Union
-
-from ccramic.utils.pixel_level_utils import split_string_at_pattern
+from ccramic.utils.pixel import split_string_at_pattern
 
 
 def wrap_child_in_loading(child, wrap=True, fullscreen=True, wrap_type="default"):
