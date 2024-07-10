@@ -7,7 +7,7 @@ import os
 import numpy as np
 import re
 from dash.exceptions import PreventUpdate
-from ccramic.parsers.object import (
+from rakaia.parsers.object import (
     validate_incoming_measurements_csv,
     QuantificationFormatError,
     filter_measurements_csv_by_channel_percentile,

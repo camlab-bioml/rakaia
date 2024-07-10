@@ -1,7 +1,7 @@
-ccramic
+rakaia
 =======
 
 .. toctree::
    :maxdepth: 4
 
-   ccramic
+   rakaia

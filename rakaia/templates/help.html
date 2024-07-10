@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html>
+  <head>
+  <style>
+    title {text-align: center;}
+    h1 {text-align: center;}
+    p {text-align: center;}
+    div {text-align: center;}
+</style>
+    <title>rakaia</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='/css/main.css') }}">
+  </head>
+  <body>
+    <header>
+      <div class="container">
+        <h1 class="logo">rakaia help</h1>
+        <h2 class="logo">Access the help page for rakaia</h2>
+          <p>This is the official help page for rakaia. See below for instructions on usage and troubleshooting.</p>
+        <br>
+
+        <br>
+          <a href="/">Return to home.</a>
+        <strong><nav>
+          <ul class="menu">
+          </ul>
+        </nav></strong>
+      </div>
+    </header>
+    <div class="container">
+      {% block content %}
+      {% endblock %}
+    </div>
+  </body>
+</html>

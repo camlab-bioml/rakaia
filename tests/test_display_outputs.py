@@ -1,5 +1,5 @@
 import os.path
-from ccramic.io.display import (
+from rakaia.io.display import (
     RegionSummary,
     output_current_canvas_as_tiff,
     output_current_canvas_as_html,
@@ -317,7 +317,7 @@ def test_annotation_preview_table():
                                                             'body': 'test',
                                                             'cell_type': 'cell type 1',
                                                             'imported': False,
-                                                            'annotation_column': 'ccramic_cell_annotation',
+                                                            'annotation_column': 'rakaia_cell_annotation',
                                                             'type': 'zoom',
                                                             'channels': ['Ho165'],
                                                             'use_mask': None,
@@ -339,7 +339,7 @@ def test_annotation_preview_table():
                                                        '185.87724550898204,153.99101796407186Z': {
                                                            'title': 'test', 'body': 'test', 'cell_type': 'cell type 2',
                                                            'imported': False, 'id': 'annot_2',
-                                                           'annotation_column': 'ccramic_cell_annotation',
+                                                           'annotation_column': 'rakaia_cell_annotation',
                                                            'type': 'path', 'channels': ['Ho165'], 'use_mask': None,
                                                            'mask_selection': None, 'mask_blending_level': 35,
                                                            'add_mask_boundary': [' add boundary']}, (
@@ -360,14 +360,14 @@ def test_annotation_preview_table():
                                                        "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
                                                            {'title': None, 'body': None, 'cell_type': 'immune',
                                                             'imported': False, 'id': 'annot_5',
-                                                            'annotation_column': 'ccramic_cell_annotation',
+                                                            'annotation_column': 'rakaia_cell_annotation',
                                                             'type': 'point', 'channels': None,
                                                             'use_mask': None, 'mask_selection': None,
                                                             'mask_blending_level': None, 'add_mask_boundary': None},
                                                        (101, 102, 103, 104, 105):
                                                            {'title': None, 'body': None, 'cell_type': 'gated_test',
                                                             'imported': False, 'id': 'annot_6',
-                                                            'annotation_column': 'ccramic_cell_annotation',
+                                                            'annotation_column': 'rakaia_cell_annotation',
                                                             'type': 'gate', 'channels': None,
                                                             'use_mask': True, 'mask_selection': 'mask',
                                                             'mask_blending_level': None, 'add_mask_boundary': None},

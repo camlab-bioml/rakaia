@@ -2,10 +2,10 @@
 Script parses a list input of mcd or tiff files with a common panel and provides a JSON
 output of auto-scaled intensity values on the upper bound
 """
-from ccramic.utils.pixel import (
+from rakaia.utils.pixel import (
     get_default_channel_upper_bound_by_percentile)
 from readimc import MCDFile
-from ccramic.parsers.pixel import FileParser
+from rakaia.parsers.pixel import FileParser
 import sys
 import argparse
 import json

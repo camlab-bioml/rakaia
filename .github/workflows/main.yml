@@ -1,4 +1,4 @@
-name: ccramic
+name: rakaia
 
 on:
   push:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   build:
-    name: ccramic test on ${{ matrix.os }}
+    name: rakaia test on ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
@@ -24,21 +24,21 @@ jobs:
 #      - uses: docker-practice/actions-setup-docker@master
 #      - name: Build docker container and run preliminary checks
 #        run: |
-#          docker build -t ccramic:latest .
-#          docker run ccramic:latest python3 --version && which ccramic
+#          docker build -t rakaia:latest .
+#          docker run rakaia:latest python3 --version && which rakaia
 #        shell: bash -l {0}
 #      - uses: eWaterCycle/setup-singularity@v7
 #        with:
 #            singularity-version: 3.11.0
 #      - name: Build Singularity container and run preliminary checks
 #        run: |
-#          singularity build --fakeroot ccramic.sif Singularity
-#          singularity exec ccramic.sif which ccramic && python3 --version
+#          singularity build --fakeroot rakaia.sif Singularity
+#          singularity exec rakaia.sif which rakaia && python3 --version
         # shell: bash -l {0}
-      - name: Install ccramic dependencies from requirements
+      - name: Install rakaia dependencies from requirements
         run: pip install -r requirements.txt
-      - name: Install ccramic through pip after dependencies
+      - name: Install rakaia through pip after dependencies
         run: pip install -e .
-      - name: Run pytest for ccramic
+      - name: Run pytest for rakaia
         shell: bash -l {0}
-        run: pytest --headless --cov=ccramic
+        run: pytest --headless --cov=rakaia

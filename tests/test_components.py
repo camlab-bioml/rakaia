@@ -1,5 +1,5 @@
 import numpy as np
-from ccramic.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
+from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd

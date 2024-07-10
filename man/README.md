@@ -2,7 +2,7 @@
 
 ## Q: What are the options for downloading images from a session?
 
-Images can be downloaded in a few ways within ccramic.
+Images can be downloaded in a few ways within rakaia.
 
 For exporting to tiff, in the left-side `Inputs/Downloads` tab under `Downloads`,
 there is a collapsible button `Show download links`. Opening this collapsible
@@ -44,8 +44,8 @@ but this is heavily dependent on the individual browser configurations for each 
 
 ## Q: The proportions of my image look strange, and/or the annotations (legend, scalebar) are not visible.
 
-ccramic attempts to find the aspect ratio for each ROI and fit the canvas area viewport appropriately to
-optimize these dimensions. Currently ccramic uses 75% of the screen width for hte canvas, and the other 25%
+rakaia attempts to find the aspect ratio for each ROI and fit the canvas area viewport appropriately to
+optimize these dimensions. Currently rakaia uses 75% of the screen width for hte canvas, and the other 25%
 for the sidebar. Occasionally, ROIs with more extreme aspect ratios (i.e. ones that deviate noticeably from 1) will
 produce strange visualizations (i.e. cropping at the sides, spilling over into the sidebar, etc.)
 
@@ -70,6 +70,6 @@ In certain instances, installing in the editable version may cause problems when
 If the installation was done using `pip install .`, try uninstalling and them installing in editable mode:
 
 ```commandline
-pip uninstall ccramic
+pip uninstall rakaia
 pip install -e .
 ```

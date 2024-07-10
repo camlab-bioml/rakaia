@@ -1,7 +1,7 @@
 import collections
 import pytest
 import dash_extensions
-from ccramic.utils.object import (
+from rakaia.utils.object import (
     send_alert_on_incompatible_mask,
     get_min_max_values_from_zoom_box,
     subset_measurements_by_cell_graph_box,
@@ -22,7 +22,7 @@ import pandas as pd
 import os
 import numpy as np
 from PIL import Image
-from ccramic.parsers.object import (
+from rakaia.parsers.object import (
     drop_columns_from_measurements_csv,
     set_columns_to_drop,
     convert_mask_to_cell_boundary,

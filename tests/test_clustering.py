@@ -1,6 +1,6 @@
 import dash
 import pandas as pd
-from ccramic.utils.cluster import (
+from rakaia.utils.cluster import (
     assign_colours_to_cluster_annotations,
     cluster_label_children)
 from dash import html

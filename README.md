@@ -1,18 +1,16 @@
-# ccramic
+# rakaia
 
-ccramic: **C**ell-type **C**lassification (using)
-**R**apid **A**nalysis (of) **M**ultiplexed **I**maging
-(mass) **C**ytometry in the browser
+rakaia: Analyze multiplexed datasets interactively, fast.
 
 <p align="center">
     <img src="man/assets/app-preview.png">
 </p>
 
 
-ccramic provides streamlined in-browser analysis of multiplexed imaging datasets.
-The ccramic viewer is capable of rapid, interactive analysis of large regions of interest (ROI)
+rakaia provides streamlined in-browser analysis of multiplexed imaging datasets.
+The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI)
 from imaging technologies such as imaging mass cytometry (IMC),
-Immunofluorescence (IF) and others. Tools in the ccramic analysis
+Immunofluorescence (IF) and others. Tools in the rakaia analysis
 suite include:
 
 - pixel level analysis for publication-quality blended images
@@ -23,28 +21,28 @@ suite include:
 - dataset-wide profiling
 - NoSQL database integration
 
-ccramic benefits from on-demand data loading and requires minimal upfront data
+rakaia benefits from on-demand data loading and requires minimal upfront data
 configuration for ease-of-use image analysis. It places no restrictions on
 data or project size, permitting users to visualize and analyze hundreds of
 regions or images in a single session.
 
-Importantly, ccramic does not require any coding/scripting, or
+Importantly, rakaia does not require any coding/scripting, or
 any pre-defined project directories with specific file structures.
 
 
 ## Installation
 
-ccramic can be cloned and installed locally using access to the Github repository
+rakaia can be cloned and installed locally using access to the Github repository
 
 ```
-git clone https://github.com/camlab-bioml/ccramic.git && cd ccramic
+git clone https://github.com/camlab-bioml/rakaia.git && cd rakaia
 ```
 
 From there, the user may either install with or without a conda environment:
 
 ### Without conda (not recommended)
 
-ccramic can be installed locally without an environment or container,
+rakaia can be installed locally without an environment or container,
 but this is not recommended for dependency management:
 
 ```
@@ -54,122 +52,122 @@ pip install .
 
 ### With conda
 
-conda is the recommended installation manager for ccramic. To install conda locally,
+conda is the recommended installation manager for rakaia. To install conda locally,
 visit [this link](https://conda.io/projects/conda/en/latest/user-guide/install/index.html) and
 select the relevant operating system.
 
 Once conda is installed:
 
 ```
-conda create --name ccramic python=3.9
-conda activate ccramic
-# cd ccramic
+conda create --name rakaia python=3.9
+conda activate rakaia
+# cd rakaia
 pip install -r requirements.txt
 pip install .
 ```
 
 ### with Make
 
-ccramic contains a Makefile that wraps the pip installation
+rakaia contains a Makefile that wraps the pip installation
 commands above. Installation can be done as follows:
 
 ```
-# cd ccramic
+# cd rakaia
 make
 make install
 ```
 
 ## Updating local installations
 
-From source, ccramic can be updated locally using the following commands:
+From source, rakaia can be updated locally using the following commands:
 
 ```
-# navigate to the directory where you cloned ccramic from github
-cd ccramic
+# navigate to the directory where you cloned rakaia from github
+cd rakaia
 # activate your env first, if using conda
-# conda activate ccramic
+# conda activate rakaia
 git switch main
 git pull --all
 pip install -r requirements.txt
 pip install .
 ```
 
-## Running ccramic
+## Running rakaia
 
-After installation, ccramic can be run through conda or simply executed using the `ccramic` command:
+After installation, rakaia can be run through conda or simply executed using the `rakaia` command:
 
 ```
-conda activate ccramic
-ccramic
+conda activate rakaia
+rakaia
 ```
-The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access ccramic.
+The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access rakaia.
 
 ### Help
 
-The ClI options for running ccramic can be viewed using:
+The ClI options for running rakaia can be viewed using:
 
 ```
-ccramic -h
+rakaia -h
 ```
 
-Additional information on the CLI options available for running custom ccramic sessions can be
-found in the documentation: https://camlab-bioml.github.io/ccramic-doc/docs/cli
+Additional information on the CLI options available for running custom rakaia sessions can be
+found in the documentation: https://camlab-bioml.github.io/rakaia-doc/docs/cli
 
 
-The current version of ccramic can also be checked on the command line with the following (v0.4.0 or later):
+The current version of rakaia can also be checked on the command line with the following (v0.4.0 or later):
 
 ```
-ccramic -v
+rakaia -v
 ```
 
 ## Documentation
 
-The official user guide documentation for ccramic can be
-found [here](https://camlab-bioml.github.io/ccramic-doc/docs/installation)
+The official user guide documentation for rakaia can be
+found [here](https://camlab-bioml.github.io/rakaia-doc/docs/installation)
 
 ## mongoDB
 
-From ccramic v0.12.0, users can use a registered mongoDB account for the
-`ccramic-db` mongoDB instance to import, save, and remove past saved configurations.
+From rakaia v0.12.0, users can use a registered mongoDB account for the
+`rakaia-db` mongoDB instance to import, save, and remove past saved configurations.
 Login information for the shared lab account is as follows:
 
 ```commandline
 username: jacksonlab
-password: ccramic-user
+password: rakaia-user
 ```
 
 ## For developers
 
-ccramic can be run in editable mode with either configuration shown below,
+rakaia can be run in editable mode with either configuration shown below,
 which permits source code changes to be applied to the application on the fly:
 
 ```
 pip install -e .
-ccramic
+rakaia
 ```
 
 Installing an editable version through pip is also required to run unit tests:
 
 ```
-pytest --headless --cov ccramic
+pytest --headless --cov rakaia
 ```
 
 Conversely, without app installation:
 
 ```
-python ccramic/wsgi.py
+python rakaia/wsgi.py
 ```
 
-By default, ccramic will run in debug mode from the command line, which
+By default, rakaia will run in debug mode from the command line, which
 will apply source code changes on the fly. To disable this feature
 of to use a production-level server from waitress, enable production mode:
 
 ```commandline
-ccramic -pr
+rakaia -pr
 ```
 
 ## Troubleshooting
 
 Troubleshooting tips can be found in the `Troubleshooting`
 section of the [documentation](
-https://camlab-bioml.github.io/ccramic-doc/docs/troubleshooting)
+https://camlab-bioml.github.io/rakaia-doc/docs/troubleshooting)

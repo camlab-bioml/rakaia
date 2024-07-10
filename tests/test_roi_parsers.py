@@ -1,7 +1,7 @@
 import os
-from ccramic.parsers.roi import RegionThumbnail
+from rakaia.parsers.roi import RegionThumbnail
 import numpy as np
-from ccramic.parsers.pixel import (
+from rakaia.parsers.pixel import (
     FileParser,
     create_new_blending_dict)
 import random

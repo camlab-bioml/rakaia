@@ -1,5 +1,5 @@
 import pytest
-from ccramic.db.connection import AtlasDatabaseConnection
+from rakaia.db.connection import AtlasDatabaseConnection
 import pymongo
 from pymongo.errors import OperationFailure, InvalidOperation, ServerSelectionTimeoutError
 from conftest import skip_on
@@ -8,7 +8,7 @@ import mongomock
 @skip_on(ServerSelectionTimeoutError, "A connection to the mongoDB server could not be established")
 def test_real_db_connection():
     client = mongomock.MongoClient()
-    database = client.__getattr__('ccramic')
+    database = client.__getattr__('rakaia')
     collection = database.__getattr__('blend_config')
     atlas_conn = AtlasDatabaseConnection(username="test_user", password="None", existing_client=client)
     atlas_conn.create_connection()

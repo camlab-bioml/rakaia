@@ -1,4 +1,4 @@
-from ccramic.utils.db import (
+from rakaia.utils.db import (
     preview_dataframe_from_db_config_list,
     format_blend_config_document_for_insert,
     match_db_config_to_request_str,
@@ -822,7 +822,7 @@ def test_create_insert_document_blend_config():
 
 def test_extract_alias_labels():
     metadata_frame = pd.DataFrame({"channel": ['channel_1', 'channel_2'],
-                                   'ccramic Label': ['channel_1', 'channel_2']})
+                                   'rakaia Label': ['channel_1', 'channel_2']})
     config = {"user": "user",
      "name": "test_config",
      "channels": {"channel_1": {"alias": "ch1"},
@@ -830,8 +830,8 @@ def test_extract_alias_labels():
 
      "config": {}}
     label_list = extract_alias_labels_from_db_document(config, metadata_frame)
-    assert label_list ==[{'ccramic Label': 'ch1', 'channel': 'channel_1'},
-        {'ccramic Label': 'ch2', 'channel': 'channel_2'}]
+    assert label_list ==[{'rakaia Label': 'ch1', 'channel': 'channel_1'},
+        {'rakaia Label': 'ch2', 'channel': 'channel_2'}]
 
     config = {"user": "user",
               "name": "test_config",
@@ -841,10 +841,10 @@ def test_extract_alias_labels():
 
               "config": {}}
     metadata_frame = pd.DataFrame({"channel": ['channel_1', 'channel_2', 'channel_3'],
-                                   'ccramic Label': ['channel_1', 'channel_2', 'channel_3']})
+                                   'rakaia Label': ['channel_1', 'channel_2', 'channel_3']})
     label_list = extract_alias_labels_from_db_document(config, metadata_frame)
-    assert label_list == [{'ccramic Label': 'ch1', 'channel': 'channel_1'},
-    {'ccramic Label': 'ch2', 'channel': 'channel_2'},
-    {'ccramic Label': 'channel_3', 'channel': 'channel_3'}]
+    assert label_list == [{'rakaia Label': 'ch1', 'channel': 'channel_1'},
+    {'rakaia Label': 'ch2', 'channel': 'channel_2'},
+    {'rakaia Label': 'channel_3', 'channel': 'channel_3'}]
 
     assert extract_alias_labels_from_db_document({"user": "fake_user"}) is None

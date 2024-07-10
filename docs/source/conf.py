@@ -12,12 +12,12 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../ccramic/'))
+sys.path.insert(0, os.path.abspath('../../rakaia/'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'ccramic'
+project = 'rakaia'
 copyright = '2024, Matthew Watson'
 author = 'Matthew Watson'
 

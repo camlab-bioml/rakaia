@@ -2,12 +2,12 @@ import pandas as pd
 import os
 import numpy as np
 from PIL import Image
-from ccramic.utils.object import convert_mask_to_cell_boundary
-from ccramic.utils.roi import (
+from rakaia.utils.object import convert_mask_to_cell_boundary
+from rakaia.utils.roi import (
     generate_dict_of_roi_cell_ids,
     subset_mask_outline_using_cell_id_list,
     override_roi_gallery_blend_list)
-from ccramic.utils.region import check_for_valid_annotation_hash
+from rakaia.utils.region import check_for_valid_annotation_hash
 
 def test_generate_dict_of_roi_cell_ids(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))

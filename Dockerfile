@@ -32,7 +32,7 @@ RUN apt-get install -y python3.9
 
 # RUN python3 -m pip install attrdict cellprofiler
 
-  # RUN git clone https://github.com/camlab-bioml/ccramic.git && cd ccramic && pip install .
+  # RUN git clone https://github.com/camlab-bioml/rakaia.git && cd rakaia && pip install .
 
 COPY . app/
 
@@ -50,4 +50,4 @@ EXPOSE 5000
 
 # RUN python3 -m pip install cellprofiler
 
-# ENTRYPOINT [ "chmod", "+x", "bash", "/scripts/run_ccramic.sh" ]
+# ENTRYPOINT [ "chmod", "+x", "bash", "/scripts/run_rakaia.sh" ]

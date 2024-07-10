@@ -1,6 +1,6 @@
 import pandas as pd
 import pytest
-from ccramic.parsers.pixel import (
+from rakaia.parsers.pixel import (
     FileParser,
     create_new_blending_dict,
     populate_image_dict_from_lazy_load,
@@ -13,7 +13,7 @@ from ccramic.parsers.pixel import (
     NoAcquisitionsParsedError)
 from scipy.sparse import csc_matrix
 import numpy as np
-from ccramic.utils.alert import PanelMismatchError
+from rakaia.utils.alert import PanelMismatchError
 import os
 from scipy.sparse import issparse
 
@@ -107,8 +107,8 @@ def test_basic_parser_from_h5py(get_current_dir):
     uploaded_dict = uploaded.image_dict
     assert 'metadata' in uploaded_dict.keys()
     assert isinstance(uploaded_dict['metadata'], pd.DataFrame)
-    assert 'cycA1A2_Ir_TBS_3_8+++slide0+++0' in uploaded_dict.keys()
-    assert len(uploaded_dict['cycA1A2_Ir_TBS_3_8+++slide0+++0'].keys()) == 4 == len(uploaded_dict['metadata'])
+    assert 'test---slide0---chr10-h54h54-Gd158_2_18' in uploaded_dict.keys()
+    assert len(uploaded_dict['test---slide0---chr10-h54h54-Gd158_2_18'].keys()) == 12 == len(uploaded_dict['metadata'])
 
 def test_identify_sparse_matrices():
     array = np.full((700, 700), 3)
@@ -135,23 +135,23 @@ def test_conversion_between_sparse_dense_matrices():
 
 def test_basic_metadata_alias_parse():
     editable_metadata = [
-        {'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'ccramic Label': 'FSP1'},
-        {'Channel Order': 2, 'Channel Name': 'channel_2', 'Channel Label': 'channel_2', 'ccramic Label': 'SMA'},
-        {'Channel Order': 3, 'Channel Name': 'channel_3', 'Channel Label': 'channel_3', 'ccramic Label': 'H3K27me3'},
-        {'Channel Order': 4, 'Channel Name': 'channel_4', 'Channel Label': 'channel_4', 'ccramic Label': 'pan_CK'},
-        {'Channel Order': 5, 'Channel Name': 'channel_5', 'Channel Label': 'channel_5', 'ccramic Label': 'Fibronectin'},
-        {'Channel Order': 6, 'Channel Name': 'channel_6', 'Channel Label': 'channel_6', 'ccramic Label': 'CD44'}]
+        {'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'rakaia Label': 'FSP1'},
+        {'Channel Order': 2, 'Channel Name': 'channel_2', 'Channel Label': 'channel_2', 'rakaia Label': 'SMA'},
+        {'Channel Order': 3, 'Channel Name': 'channel_3', 'Channel Label': 'channel_3', 'rakaia Label': 'H3K27me3'},
+        {'Channel Order': 4, 'Channel Name': 'channel_4', 'Channel Label': 'channel_4', 'rakaia Label': 'pan_CK'},
+        {'Channel Order': 5, 'Channel Name': 'channel_5', 'Channel Label': 'channel_5', 'rakaia Label': 'Fibronectin'},
+        {'Channel Order': 6, 'Channel Name': 'channel_6', 'Channel Label': 'channel_6', 'rakaia Label': 'CD44'}]
     labels = populate_alias_dict_from_editable_metadata(editable_metadata)
     assert len(labels) == 6
     assert labels['channel_4'] == 'pan_CK'
 
     bad_meta = [
-        {'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'ccramic Label': 'FSP1'},
-        {'Channel Order': 2, 'Channel Label': 'channel_2', 'ccramic Label': 'SMA'}]
+        {'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'rakaia Label': 'FSP1'},
+        {'Channel Order': 2, 'Channel Label': 'channel_2', 'rakaia Label': 'SMA'}]
     labels = populate_alias_dict_from_editable_metadata(bad_meta)
     assert len(labels) == 1
 
-    bad_meta_2 = [{'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'ccramic Label': 'FSP1'},
+    bad_meta_2 = [{'Channel Order': 1, 'Channel Name': 'channel_1', 'Channel Label': 'channel_1', 'rakaia Label': 'FSP1'},
         {'Channel Order': 2, 'Channel Name': 'channel_2', 'Channel Label': 'channel_2'}]
     labels = populate_alias_dict_from_editable_metadata(bad_meta_2)
     assert len(labels) == 2

@@ -1,6 +1,6 @@
 import pytest
 import os
-from ccramic.entrypoint import init_app
+from rakaia.entrypoint import init_app
 from functools import wraps
 import tempfile
 
@@ -9,7 +9,7 @@ def get_current_dir():
     return str(os.path.abspath(os.path.join(os.path.dirname(__file__))))
 
 @pytest.fixture(scope="module")
-def ccramic_flask_test_app():
+def rakaia_flask_test_app():
     app = init_app(cli_config={'use_local_dialog': False, 'use_loading': True,
                                'persistence': True, 'swatches': None, 'array_store_type': 'float',
                                'serverside_overwrite': True, 'is_dev_mode': True, 'cache_dest': tempfile.gettempdir()})
@@ -20,8 +20,8 @@ def ccramic_flask_test_app():
 
 
 @pytest.fixture(scope="module")
-def client(ccramic_flask_test_app):
-    return ccramic_flask_test_app.test_client()
+def client(rakaia_flask_test_app):
+    return rakaia_flask_test_app.test_client()
 
 def skip_on(exception, reason="Default reason"):
     # Func below is the real decorator and will receive the test function as param

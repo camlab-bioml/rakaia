@@ -1,7 +1,7 @@
 import tempfile
 import pytest
 import platform
-from ccramic.io.annotation import *
+from rakaia.io.annotation import *
 
 def test_output_annotations_masks():
     with tempfile.TemporaryDirectory() as tmpdirname:
@@ -13,7 +13,7 @@ def test_output_annotations_masks():
                                                                 'body': 'test',
                                                                 'cell_type': 'cell type 1',
                                                                 'imported': False,
-                                                                'annotation_column': 'ccramic_cell_annotation',
+                                                                'annotation_column': 'rakaia_cell_annotation',
                                                                 'type': 'zoom',
                                                                 'channels': ['Ho165'],
                                                                 'use_mask': None,
@@ -36,7 +36,7 @@ def test_output_annotations_masks():
                                                                'title': 'test', 'body': 'test',
                                                                'cell_type': 'cell type 2',
                                                                'imported': False,
-                                                               'annotation_column': 'ccramic_cell_annotation',
+                                                               'annotation_column': 'rakaia_cell_annotation',
                                                                'type': 'path', 'channels': ['Ho165'], 'use_mask': None,
                                                                'mask_selection': None, 'mask_blending_level': 35,
                                                                'add_mask_boundary': [' add boundary']}, (
@@ -64,7 +64,7 @@ def test_output_annotations_masks():
                                                            "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
                                                                {'title': None, 'body': None, 'cell_type': 'immune',
                                                                 'imported': False,
-                                                                'annotation_column': 'ccramic_cell_annotation',
+                                                                'annotation_column': 'rakaia_cell_annotation',
                                                                 'type': 'point', 'channels': None,
                                                                 'use_mask': True, 'mask_selection': None,
                                                                 'mask_blending_level': None, 'add_mask_boundary': None},
@@ -74,7 +74,7 @@ def test_output_annotations_masks():
                                                            "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
                                                                {'title': None, 'body': None, 'cell_type': 'immune_2',
                                                                 'imported': False,
-                                                                'annotation_column': 'ccramic_cell_annotation',
+                                                                'annotation_column': 'rakaia_cell_annotation',
                                                                 'type': 'point', 'channels': None,
                                                                 'use_mask': True, 'mask_selection': None,
                                                                 'mask_blending_level': None, 'add_mask_boundary': None}
@@ -98,7 +98,7 @@ def test_output_point_annotations_as_csv():
     "'z': {'0': 0, '1': 0, '2': 255, '3': 1}, 'bbox': "
     "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
     {'title': None, 'body': None, 'cell_type': 'immune', 'imported': False,
-     'annotation_column': 'ccramic_cell_annotation', 'type': 'point', 'channels': None,
+     'annotation_column': 'rakaia_cell_annotation', 'type': 'point', 'channels': None,
      'use_mask': None, 'mask_selection': None, 'mask_blending_level': None, 'add_mask_boundary': None}
         }}
 
@@ -110,7 +110,7 @@ def test_output_point_annotations_as_csv():
                                     None, False, None, image_dict,
                                     authentic_id, tmpdirname)
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
+            'pos1_1,235,124,rakaia_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
     mask_dict = {'mask': {'raw': image}}
 
@@ -119,7 +119,7 @@ def test_output_point_annotations_as_csv():
                                                         authentic_id, tmpdirname)
 
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation,mask_cell_id\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune,0\n', 'filename': 'pos1_1_points.csv', 'type': None}
+            'pos1_1,235,124,rakaia_cell_annotation,immune,0\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
 
     point_annotations = export_point_annotations_as_csv(1, 'pos1_1', annotations_dict, 'Patient1+++slide0+++pos1_1',
@@ -128,7 +128,7 @@ def test_output_point_annotations_as_csv():
 
     # assert that the mask id is not included if the image to compare cannot be found
     assert point_annotations == {'base64': False, 'content': 'ROI,x,y,annotation_col,annotation\n'
-            'pos1_1,235,124,ccramic_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
+            'pos1_1,235,124,rakaia_cell_annotation,immune\n', 'filename': 'pos1_1_points.csv', 'type': None}
 
     # assert no update occurs if one of the keys is malformed
 
@@ -144,7 +144,7 @@ def test_output_point_annotations_as_csv():
         "'z': {'0': 0, '1': 0, '2': 255, '3': 1}, 'bbox': "
         "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
             {'title': None, 'body': None, 'cell_type': 'immune', 'imported': False,
-             'annotation_column': 'ccramic_cell_annotation', 'type': 'point', 'channels': None,
+             'annotation_column': 'rakaia_cell_annotation', 'type': 'point', 'channels': None,
              'use_mask': None, 'mask_selection': None, 'mask_blending_level': None, 'add_mask_boundary': None}
         }}
         export_point_annotations_as_csv(1, 'pos1_1', annotations_dict_malformed,
@@ -162,7 +162,7 @@ def test_output_region_writer(get_current_dir):
                                                         'body': 'test',
                                                         'cell_type': 'cell type 1',
                                                         'imported': False,
-                                                        'annotation_column': 'ccramic_cell_annotation',
+                                                        'annotation_column': 'rakaia_cell_annotation',
                                                         'type': 'zoom',
                                                         'channels': ['Ho165'],
                                                         'use_mask': None,
@@ -185,7 +185,7 @@ def test_output_region_writer(get_current_dir):
               '413.68320270043523L507.7279672525115,417.9229344067337Z': {
                                                            'title': 'test', 'body': 'test', 'cell_type': 'cell type 2',
                                                            'imported': False,
-                                                           'annotation_column': 'ccramic_cell_annotation',
+                                                           'annotation_column': 'rakaia_cell_annotation',
                                                            'type': 'path', 'channels': ['Ho165'], 'use_mask': True,
                                                            'mask_selection': 'mask', 'mask_blending_level': 35,
                                                            'add_mask_boundary': [' add boundary']}, (
@@ -206,7 +206,7 @@ def test_output_region_writer(get_current_dir):
                                                            "{'x0': 503.63, 'x1': 504.75, 'y0': 448.61, 'y1': 448.61}}]}":
                                                                {'title': None, 'body': None, 'cell_type': 'immune',
                                                                 'imported': False,
-                                                                'annotation_column': 'ccramic_cell_annotation',
+                                                                'annotation_column': 'rakaia_cell_annotation',
                                                                 'type': 'point', 'channels': None,
                                                                 'use_mask': None, 'mask_selection': None,
                                                                 'mask_blending_level': None, 'add_mask_boundary': None}
@@ -221,7 +221,7 @@ def test_output_region_writer(get_current_dir):
         assert len(region_frame) == 55
         assert 142 in region_frame['cell_id'].to_list()
         assert 'cell type 2' in region_frame['annotation'].to_list()
-        assert 'ccramic_cell_annotation' in region_frame['annotation_col'].to_list()
+        assert 'rakaia_cell_annotation' in region_frame['annotation_col'].to_list()
 
         gated_cell_tuple = (102, 154, 134, 201, 209, 244)
         # annotate using gated cell method

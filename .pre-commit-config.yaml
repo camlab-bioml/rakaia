@@ -17,4 +17,4 @@ repos:
     rev: v0.1.6
     hooks:
     - id: detect-missing-init
-      args: ["--track", "--python-folders", "ccramic"]
+      args: ["--track", "--python-folders", "rakaia"]

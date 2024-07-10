@@ -7,10 +7,10 @@ import socket
 import platform
 import os
 from subprocess import Popen, PIPE
-from ccramic.wsgi import cli_parser, main
-from ccramic.entrypoint import init_app
-from ccramic.app import init_dashboard
-from ccramic.app import init_pixel_level_callbacks
+from rakaia.wsgi import cli_parser, main
+from rakaia.entrypoint import init_app
+from rakaia.app import init_dashboard
+from rakaia.app import init_pixel_level_callbacks
 import time
 import signal
 from flask import Flask
@@ -32,7 +32,7 @@ def test_for_connection():
     result = sock.connect_ex(('localhost', 5000))
     assert result != 0
     # assert result == 0
-    new_process = Popen(["ccramic"],
+    new_process = Popen(["rakaia"],
                         stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
     result = sock.connect_ex(('localhost', 5000))
     assert result == 103
@@ -55,15 +55,15 @@ def recursive_wait_for_elem(app, elem, duration):
 @skip_on(SessionNotCreatedException, "Selenium version is not compatible")
 # @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
 #                     reason="Only test the connection in a GA workflow due to passwordless sudo")
-def test_basic_app_load_from_locale(ccramic_flask_test_app, client):
-    credentials = base64.b64encode(b"ccramic_user:ccramic-1").decode('utf-8')
-    assert str(type(ccramic_flask_test_app)) == "<class 'flask.app.Flask'>"
+def test_basic_app_load_from_locale(rakaia_flask_test_app, client):
+    credentials = base64.b64encode(b"rakaia_user:rakaia-1").decode('utf-8')
+    assert str(type(rakaia_flask_test_app)) == "<class 'flask.app.Flask'>"
     response = client.get('/', headers={"Authorization": "Basic {}".format(credentials)})
     assert response.status_code == 200
     # test landing page alias
     assert client.get("/").data == b'Unauthorized Access'
     assert client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
-    # dash_duo.start_server(ccramic_flask_test_app.server)
+    # dash_duo.start_server(rakaia_flask_test_app.server)
     # for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:
     #     assert dash_duo.find_element(elem) is not None
     # with pytest.raises(NoSuchElementException):
@@ -82,18 +82,18 @@ def test_basic_cli_outputs():
     assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
-    assert "ccramic can be initialized from the command line using:" in parser.usage
+    assert "rakaia can be initialized from the command line using:" in parser.usage
     parser = cli_parser()
     args = parser.parse_args(['-a'])
     assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
-    assert "ccramic can be initialized from the command line using:" in parser.usage
+    assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
     assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
-    assert "ccramic can be initialized from the command line using:" in parser.usage
+    assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-pr'])
     assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': False, 'swatches': None, 'array_type': 'int',
@@ -134,7 +134,7 @@ def test_basic_app_return():
               'swatches': None, 'is_dev_mode': True, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True}
     app = init_app(config)
     assert isinstance(app, Flask)
-    app_2 = Flask("ccramic")
+    app_2 = Flask("rakaia")
     dashboard = init_dashboard(app_2, "test_app", config)
     assert isinstance(dashboard, Flask)
 

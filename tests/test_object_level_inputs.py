@@ -6,7 +6,7 @@ import plotly
 import pytest
 from dash.exceptions import PreventUpdate
 from statistics import mean, median
-from ccramic.inputs.object import (
+from rakaia.inputs.object import (
     get_cell_channel_expression_plot,
     generate_umap_plot,
     generate_expression_bar_plot_from_interactive_subsetting,
@@ -14,7 +14,7 @@ from ccramic.inputs.object import (
     generate_heatmap_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
     reset_custom_gate_slider,
     BarChartPartialModes)
-from ccramic.parsers.object import parse_and_validate_measurements_csv
+from rakaia.parsers.object import parse_and_validate_measurements_csv
 
 def test_partial_bar_chart_modes(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

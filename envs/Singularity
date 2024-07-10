@@ -3,7 +3,7 @@ From: ubuntu:22.04
 Stage: apps
 
 %files
-    ccramic/
+    rakaia/
     tests/
     setup.py
     README.md

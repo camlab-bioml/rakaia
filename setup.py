@@ -1,18 +1,18 @@
 from setuptools import setup, find_packages
-from ccramic.entrypoint import __version__, _program
+from rakaia.entrypoint import __version__, _program
 
 setup(
     name=_program,
     version=__version__,
-    url='https://github.com/camlab-bioml/ccramic',
+    url='https://github.com/camlab-bioml/rakaia',
     project_urls={
-        "Issues": "https://github.com/camlab-bioml/ccramic/issues",
-        "Source": "https://github.com/camlab-bioml/ccramic",
+        "Issues": "https://github.com/camlab-bioml/rakaia/issues",
+        "Source": "https://github.com/camlab-bioml/rakaia",
     },
     author="Matthew Watson",
     author_email="mwatson@lunenfeld.ca",
     packages=find_packages(),
-    package_dir={"ccramic": "ccramic"},
+    package_dir={"rakaia": "rakaia"},
     package_data={'': ['*.json', "*.html", "*.css", "*.ico"]},
     include_package_data=True,
     description="",
@@ -25,8 +25,8 @@ setup(
     ],
     entry_points="""
     [console_scripts]
-    {program} = ccramic.wsgi:main
-    """.format(program="ccramic"),
+    {program} = rakaia.wsgi:main
+    """.format(program="rakaia"),
     license="Unlicensed",
     install_requires=["pillow", "pandas", "matplotlib",
                       "pytest", "freeport", "numpy", "scikit-image", "anndata", "scanpy",

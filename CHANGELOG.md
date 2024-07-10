@@ -171,7 +171,7 @@ when clusters are applied
 
 ### Added
 
-- mongoDB database persistence: Users can use a registered a mongoDB account for the `ccramic-db` Atlas instance
+- mongoDB database persistence: Users can use a registered a mongoDB account for the `rakaia-db` Atlas instance
 to and/remove current and saved session configurations
 (blend parameters, global filters, channel selection, naming/aliases)
 (Note: uses an 0 Sandbox version for initial testing)
@@ -404,7 +404,7 @@ lower bounds or numbers not easily divisible by 3
 - Ensure scalebar value is always centered over the scalebar line
 - Changed nested hash tables for arrays and blend parameters to
 top level hash tables for better hierarchical representation #34
-- Remove any previous ccramic cache dirs in the tmpdir prior to execution
+- Remove any previous rakaia cache dirs in the tmpdir prior to execution
 - Channel modification menu is automatically updated with the latest
 channel in the blend when the layers are updated. If a layer is removed,
 then the last channel in the queue is transferred to the mod menu #57
@@ -441,7 +441,7 @@ instead of manually
 
 ### Added
 
-- Ability to add the ccramic cell type annotation to a quantification data frame from a
+- Ability to add the rakaia cell type annotation to a quantification data frame from a
 region annotation: supports zoom, rectangles, and open form (non-convex) shapes #48
 - Added slider to change the size of the annotations (scalebar value and legend text)
 - Add toggle for custom hovertext over a mask, adding the mask/cell ID to the hover #51

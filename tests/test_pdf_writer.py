@@ -1,7 +1,7 @@
 
 import tempfile
 import os
-from ccramic.io.pdf import AnnotationPDFWriter
+from rakaia.io.pdf import AnnotationPDFWriter
 import numpy as np
 from PIL import Image
 
@@ -10,7 +10,7 @@ def test_output_annotations_pdf():
     test that the output of the annotations pdf produces a valid file
     """
     with tempfile.TemporaryDirectory() as tmpdirname:
-        file_path = os.path.join(tmpdirname, "ccramic_test_annotations.pdf")
+        file_path = os.path.join(tmpdirname, "rakaia_test_annotations.pdf")
         assert not os.path.exists(file_path)
         data_selection = "exp1+++slide0+++roi_1"
         range_tuple = tuple(sorted({'xaxis.range[0]': 50, 'xaxis.range[1]': 100,

@@ -4,11 +4,11 @@ import os
 import tifffile
 import pandas as pd
 from dash.exceptions import PreventUpdate
-from ccramic.callbacks.object_wrappers import (
+from rakaia.callbacks.object_wrappers import (
     callback_remove_canvas_annotation_shapes,
     callback_add_region_annotation_to_quantification_frame,
     reset_annotation_import)
-from ccramic.io.session import SessionServerside
+from rakaia.io.session import SessionServerside
 
 def test_basic_callback_import_annotations_quantification_frame(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
@@ -17,7 +17,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
                   'cell_type': 'mature', 'imported': False, 'type': 'zoom',
-                  'annotation_column': 'ccramic_cell_annotation'}
+                  'annotation_column': 'rakaia_cell_annotation'}
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
@@ -26,7 +26,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                                         config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
 
-    assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
+    assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
                                                         (quantification_frame["y_max"] == 20)]) == ['mature']
     assert isinstance(serverside, SessionServerside)
 
@@ -38,7 +38,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
                   'cell_type': 'mature', 'imported': False, 'type': 'rect',
-                  'annotation_column': 'ccramic_cell_annotation'}
+                  'annotation_column': 'rakaia_cell_annotation'}
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
@@ -47,7 +47,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                                         None, config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
 
-    assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
+    assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
                                                                 (quantification_frame["y_max"] == 20)]) == ['mature']
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
@@ -60,7 +60,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                                         quantification_frame.to_dict(orient="records"), "roi_1", None, False,
                                         None, config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
-    assert "different" not in quantification_frame["ccramic_cell_annotation"].to_list()
+    assert "different" not in quantification_frame["rakaia_cell_annotation"].to_list()
     assert "different" in quantification_frame["broad"].to_list()
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
@@ -78,7 +78,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
                   'cell_type': 'mature', 'imported': False, 'type': 'path',
-                  'annotation_column': 'ccramic_cell_annotation'}
+                  'annotation_column': 'rakaia_cell_annotation'}
 
     annotations_dict = {"roi_1": {svgpath: annotation}}
 
@@ -90,11 +90,11 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert len(quantification_frame[
-                   quantification_frame["ccramic_cell_annotation"] == "mature"]) == 2
+                   quantification_frame["rakaia_cell_annotation"] == "mature"]) == 2
     assert list(quantification_frame[
-                    quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ['Unassigned']
+                    quantification_frame["cell_id"] == 1]["rakaia_cell_annotation"]) == ['Unassigned']
     assert list(quantification_frame[
-                    quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
+                    quantification_frame["cell_id"] == 403]["rakaia_cell_annotation"]) == ["mature"]
 
     with pytest.raises(dash.exceptions.PreventUpdate):
         quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(None,
@@ -102,18 +102,18 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                                     None, sample_name='Dilution_series_1_1', config=app_config)
 
     assert len(quantification_frame[
-                   quantification_frame["ccramic_cell_annotation"] == "mature"]) == 2
+                   quantification_frame["rakaia_cell_annotation"] == "mature"]) == 2
     assert list(quantification_frame[
-                    quantification_frame["cell_id"] == 1]["ccramic_cell_annotation"]) == ['Unassigned']
+                    quantification_frame["cell_id"] == 1]["rakaia_cell_annotation"]) == ['Unassigned']
     assert list(quantification_frame[
-                    quantification_frame["cell_id"] == 403]["ccramic_cell_annotation"]) == ["mature"]
+                    quantification_frame["cell_id"] == 403]["rakaia_cell_annotation"]) == ["mature"]
 
 
     annotations_dict = {'roi_1': {
         "{'points': [{'x': 582, 'y': 465}]}":
             {'title': 'fake_title', 'body': 'fake_body',
              'cell_type': 'mature', 'imported': False, 'type': 'point',
-             'annotation_column': 'ccramic_cell_annotation'}
+             'annotation_column': 'rakaia_cell_annotation'}
     }}
 
     mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
@@ -124,8 +124,8 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
                                     measurements.to_dict(orient="records"), "roi_1", mask_dict, True,
                                     "mask_1", sample_name='Dilution_series_1_1', config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
-    assert 'ccramic_cell_annotation' in quantification_frame.columns
-    assert 'mature' in list(quantification_frame['ccramic_cell_annotation'])
+    assert 'rakaia_cell_annotation' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['rakaia_cell_annotation'])
 
     gated_cell_tuple = (102, 154, 134, 201, 209, 244)
     # annotate using gated cell method
@@ -152,7 +152,7 @@ def test_basic_annotation_dict_without_quantification_frame(get_current_dir):
         "{'points': [{'x': 582, 'y': 465}]}":
             {'title': 'fake_title', 'body': 'fake_body',
              'cell_type': 'mature', 'imported': False, 'type': 'point',
-             'annotation_column': 'ccramic_cell_annotation'}
+             'annotation_column': 'rakaia_cell_annotation'}
     }}
 
     mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
@@ -180,13 +180,13 @@ def test_basic_callback_remove_annotations_quantification_frame(get_current_dir)
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
                   'cell_type': 'mature', 'imported': False, 'type': 'zoom',
-                  'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_1'}
+                  'annotation_column': 'rakaia_cell_annotation', 'id': 'annot_1'}
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation,
                                   "{'points': [{'x': 582, 'y': 465}]}":
                                       {'title': 'fake_title', 'body': 'fake_body',
                                        'cell_type': 'mature', 'imported': False, 'type': 'point',
-                                       'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_2'}
+                                       'annotation_column': 'rakaia_cell_annotation', 'id': 'annot_2'}
                                   }}
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
@@ -194,7 +194,7 @@ def test_basic_callback_remove_annotations_quantification_frame(get_current_dir)
                                         config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
 
-    assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
+    assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
                                                         (quantification_frame["y_max"] == 20)]) == ['mature']
 
     # Remove the most recent annotation
@@ -203,7 +203,7 @@ def test_basic_callback_remove_annotations_quantification_frame(get_current_dir)
                                     quantification_frame.to_dict(orient="records"), "roi_1", None, False, None,
                                     config=app_config, remove=True, indices_remove=[0])
     quantification_frame = pd.DataFrame(quantification_frame)
-    assert list(quantification_frame["ccramic_cell_annotation"][(quantification_frame["x_max"] == 836) &
+    assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
                                                                 (quantification_frame["y_max"] == 20)]) == ['Unassigned']
 
 def test_basic_callback_remove_annotations_quantification_frame_2(get_current_dir):
@@ -216,13 +216,13 @@ def test_basic_callback_remove_annotations_quantification_frame_2(get_current_di
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
                   'cell_type': 'first', 'imported': False, 'type': 'zoom',
-                  'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_1'}
+                  'annotation_column': 'rakaia_cell_annotation', 'id': 'annot_1'}
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation,
                                   "{'points': [{'x': 582, 'y': 465}]}":
                                       {'title': 'fake_title', 'body': 'fake_body',
                                        'cell_type': 'mature', 'imported': False, 'type': 'point',
-                                       'annotation_column': 'ccramic_cell_annotation', 'id': 'annot_2'}
+                                       'annotation_column': 'rakaia_cell_annotation', 'id': 'annot_2'}
                                   }}
     mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
 
@@ -232,18 +232,18 @@ def test_basic_callback_remove_annotations_quantification_frame_2(get_current_di
                                     measurements.to_dict(orient="records"), "roi_1", mask_dict, True,
                                     "mask_1", sample_name='Dilution_series_1_1', config=app_config)
     quantification_frame = pd.DataFrame(quantification_frame)
-    assert 'ccramic_cell_annotation' in quantification_frame.columns
-    assert 'mature' in list(quantification_frame['ccramic_cell_annotation'])
-    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['Unassigned', 'first', 'mature']
+    assert 'rakaia_cell_annotation' in quantification_frame.columns
+    assert 'mature' in list(quantification_frame['rakaia_cell_annotation'])
+    assert list(quantification_frame['rakaia_cell_annotation'].value_counts().index) == ['Unassigned', 'first', 'mature']
 
     quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
                                     quantification_frame.to_dict(orient="records"), "roi_1", mask_dict, True,
                                     "mask_1", sample_name='Dilution_series_1_1', config=app_config, remove=True,
                                     indices_remove=[1])
     quantification_frame = pd.DataFrame(quantification_frame)
-    assert 'ccramic_cell_annotation' in quantification_frame.columns
-    assert not 'mature' in list(quantification_frame['ccramic_cell_annotation'])
-    assert list(quantification_frame['ccramic_cell_annotation'].value_counts().index) == ['Unassigned', 'first']
+    assert 'rakaia_cell_annotation' in quantification_frame.columns
+    assert not 'mature' in list(quantification_frame['rakaia_cell_annotation'])
+    assert list(quantification_frame['rakaia_cell_annotation'].value_counts().index) == ['Unassigned', 'first']
 
 def test_basic_callback_remove_annotations_quantification_frame_3(get_current_dir):
     """
