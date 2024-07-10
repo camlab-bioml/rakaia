@@ -649,9 +649,10 @@ def test_marker_correlation_metrics(get_current_dir):
     assert np.isnan(proportion_target)
 
     # use bounds that cause an index error
-    assert MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=mask,
-        blend_dict=None, bounds={'xaxis.range[0]': 1-0, 'xaxis.range[1]': 100000,
-        'yaxis.range[1]': -110, 'yaxis.range[0]': 0}).get_correlation_statistics() == (None, None, None, None)
+    # on index error, just use the default bounds
+    assert all([elem is not None for elem in MarkerCorrelation(image_dict, "roi_1", "target", "baseline", mask=mask,
+        blend_dict=None, bounds={'xaxis.range[0]': -10, 'xaxis.range[1]': 100000,
+        'yaxis.range[1]': -110, 'yaxis.range[0]': 0}).get_correlation_statistics()])
 
     # have complete overlap between target and baseline in mask
     image_dict = {"roi_1": {"target": np.where(mask > 0, 1000, 0).astype(np.float32),

@@ -525,7 +525,8 @@ def register_app_layout(config, cache_dest):
                                              placeholder='Add channels to canvas blend',
                                              style={"margin": "3px", "width": "100%", "padding": "5px", "height": "25%"}),
                             dbc.Tabs([
-                                dbc.Tab(label='Canvas', label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
+                                dbc.Tab(label='Canvas', tab_id='canvas-config-tab',
+                                    label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
                                     html.Div([
                                         html.Div([
                                         html.Br(),
@@ -647,7 +648,8 @@ def register_app_layout(config, cache_dest):
                                             html.Br(),
                                         ])], style={"margin-top": "3px", "float": "center", "textAlign": "center"}),
                                 ]),
-                                dbc.Tab(label='Channel', label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
+                                dbc.Tab(label='Channel', tab_id='channel-config-tab',
+                                    label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
                                     html.Div([html.H5("Channel modification",
                                                       style={'width': '77.5%', "margin-top": "7.5px",
                                                              "text-align": "center"}),
@@ -765,7 +767,8 @@ def register_app_layout(config, cache_dest):
                                                     "margin-top": "-10px"}),
                                     html.Br()
                                 ])
-                            ], style={"margin-left": "7.5px", "margin-right": "7.5px", "margin-top": "3px"}),
+                            ], style={"margin-left": "7.5px", "margin-right": "7.5px", "margin-top": "3px"},
+                            active_tab='channel-config-tab'),
                                  dbc.Offcanvas(id="blend-config-offcanvas", title="Apply additional canvas tools",
                                                placement="end", style={"width": "32%"}, backdrop=False, scrollable=True,
                                                is_open=False, children=[
@@ -928,8 +931,8 @@ def register_app_layout(config, cache_dest):
                                             html.Br(),
                                             html.H6("Annotate gated objects", style={"width": "75%"}),
                                             html.Div([dcc.Dropdown(id='quant-annotation-col-gating',
-                                            multi=False, options=['ccramic_cell_annotation'],
-                                            value="ccramic_cell_annotation", style={"width": "80%"}),
+                                            multi=False, options=['object_annotation_1'],
+                                            value="object_annotation_1", style={"width": "80%"}),
                                             dcc.Input(id="gating-annotation-assignment", type="text", value=None,
                                             placeholder="Add gating annotation",
                                             style={"width": "65%", "margin-left": "1px"})],
@@ -1036,8 +1039,8 @@ def register_app_layout(config, cache_dest):
                                 html.Br(),
                                 html.Div([
                                 dcc.Dropdown(id='annotation-cat-click',
-                                    multi=False, options=['ccramic_cell_annotation'],
-                                    value="ccramic_cell_annotation", style={"width": "80%"}),
+                                    multi=False, options=['object_annotation_1'],
+                                    value="object_annotation_1", style={"width": "80%"}),
                                 dcc.Input(id="click-annotation-assignment", type="text", value=None,
                                           placeholder="Click annotation name",
                                     style={"width": "60%"})], style={"display": "flex"}),
@@ -1096,8 +1099,8 @@ def register_app_layout(config, cache_dest):
                                                          "background-color": DEFAULT_WIDGET_COLOUR})],
                                                             style={"display": "flex"})], width=8),
                                 dbc.Col([dcc.Dropdown(id='quant-annotation-col',
-                                multi=False, options=['ccramic_cell_annotation'],
-                                    value="ccramic_cell_annotation")], width=4)]),
+                                multi=False, options=['object_annotation_1'],
+                                    value="object_annotation_1")], width=4)]),
                                 html.Br(),
                                 dbc.Row([dbc.Col([html.Div([dcc.Input(id="region-annotation-name", type="text",
                                 value="", placeholder="Annotation title (for PDF only)",
@@ -1341,8 +1344,8 @@ def register_app_layout(config, cache_dest):
                                                        className="me-1", style={"margin-top": "10px",
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
                                         dcc.Dropdown(id='quant-annotation-col-in-tab',
-                                        multi=False, options=['ccramic_cell_annotation'],
-                                            value="ccramic_cell_annotation", style={"width": "75%"}),
+                                        multi=False, options=['object_annotation_1'],
+                                            value="object_annotation_1", style={"width": "75%"}),
                                         dcc.Input(id="annotation-cell-types-quantification", type="text",
                                         value="", placeholder="New annotation type",
                                         style={"width": "55%", "margin-right": "10px", "height": "100%",

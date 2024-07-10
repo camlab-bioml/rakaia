@@ -427,7 +427,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('cur-umap-subset-category-counts', 'data'),
                        prevent_initial_call=True)
     def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
-        # TODO: populate the frequency distribution table for a variable in the quantification results
         columns = [{'id': p, 'name': p, 'editable': False} for p in ["Value", "Counts", "Proportion"]]
         if None not in (quantification_dict, umap_variable):
             return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), columns

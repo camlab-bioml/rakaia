@@ -101,7 +101,7 @@ class RegionAnnotation(BaseModel):
     body: str = None
     cell_type: str = None
     imported: bool = False
-    annotation_column: str = 'ccramic_cell_annotation'
+    annotation_column: str = 'object_annotation_1'
     type: str = None
     channels: list = []
     use_mask: Union[bool, list, str] = None

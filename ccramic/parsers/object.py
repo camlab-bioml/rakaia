@@ -286,7 +286,6 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
             indices_query = None
     freq_counts = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
                     not None else None
-
     return indices_query, freq_counts
 
 

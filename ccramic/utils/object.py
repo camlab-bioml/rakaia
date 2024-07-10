@@ -18,8 +18,8 @@ class QuantificationColumns(BaseModel):
     """
     identifiers: list = ['sample', 'description']
     positions: list = ['sample', 'cell_id', 'description']
-    defaults: list = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'ccramic_cell_annotation',
-                        'PhenoGraph_clusters', 'Labels']
+    defaults: list = ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample', 'x_min', 'y_min', 'object_annotation_1',
+                      'ccramic_cell_annotation', 'PhenoGraph_clusters', 'Labels']
 
 class QuantificationFormatError(Exception):
     pass
@@ -99,7 +99,7 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
 
 
 def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
-                                        annotation_column="ccramic_cell_annotation", annotation_value="Unassigned",
+                                        annotation_column="object_annotation_1", annotation_value="Unassigned",
                                         default_annotation_value="Unassigned"):
     """
     Populate a new column in the quantification frame with a column annotation with a value as subset using the
@@ -175,7 +175,7 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
         return None
 
 def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=None,
-                        annotation_column="ccramic_cell_annotation", values_dict=None, cell_type=None,
+                        annotation_column="object_annotation_1", values_dict=None, cell_type=None,
                         box_type="zoom", remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
@@ -214,7 +214,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
     return measurements
 
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
-                        annotation_column="ccramic_cell_annotation", cell_identifier="cell_id", cell_type=None,
+                        annotation_column="object_annotation_1", cell_identifier="cell_id", cell_type=None,
                         sample_name=None, id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
@@ -234,7 +234,7 @@ def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
 
 
 def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
-                    annotation_column="ccramic_cell_annotation", cell_identifier="cell_id", values_dict=None,
+                    annotation_column="object_annotation_1", cell_identifier="cell_id", values_dict=None,
                     cell_type=None, mask_toggle=True, mask_dict=None, mask_selection=None, sample=None,
                     id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
@@ -478,7 +478,8 @@ def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selectio
 
 def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFrame],
                                       umap_variable: str, subset_cur_cat: Union[dict, None]=None,
-                                      counts_col: str="Counts", proportion_col: str="Proportion"):
+                                      counts_col: str="Counts", proportion_col: str="Proportion",
+                                      counts_threshold: Union[int, float]=100):
     """
     Compute the proportion of frequency counts for a UMAP distribution
     """
@@ -488,8 +489,11 @@ def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFr
     else:
         frame = pd.DataFrame(zip(list(subset_cur_cat.keys()), list(subset_cur_cat.values())),
                              columns=["Value", "Counts"])
-    frame[proportion_col] = frame[counts_col] / (frame[counts_col].abs().sum())
-    return frame.round(3).to_dict(orient="records")
+    if len(frame) <= counts_threshold:
+        frame[proportion_col] = frame[counts_col] / (frame[counts_col].abs().sum())
+        return frame.round(3).to_dict(orient="records")
+    return [{"Value": f"NA ({umap_variable} > {counts_threshold} unique values)",
+                "Counts": "NA", "Proportion": "NA"}]
 
 def custom_gating_id_list(input_string: str=None):
     """

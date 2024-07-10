@@ -585,7 +585,7 @@ class MarkerCorrelation:
                     self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
                                     range(int(self.bounds[0]), int(self.bounds[1]), 1))]
                 except IndexError:
-                    self.mask = None
+                    self.mask = mask
             try:
                 self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
                                                         blend_dict, target_channel, roi_selection, self.bounds)
@@ -650,10 +650,6 @@ class MarkerCorrelation:
         """
         self.marker_overlap_in_mask = np.logical_and(self.target_threshold_in_mask,
                                                 self.baseline_array > float(self.baseline_threshold))
-        # target_image = self.image_dict[self.roi_selection][self.target_channel]
-        # target_image = target_image[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
-        #                   range(int(self.bounds[0]), int(self.bounds[1]), 1))] if \
-        #     self.bounds else target_image
         self.target_proportion_relative = np.sum(self.target_array[self.marker_overlap_in_mask]) / \
                     np.sum(self.target_array[self.target_threshold_in_mask])
 
@@ -684,7 +680,7 @@ class MarkerCorrelation:
                           range(int(bounds[0]), int(bounds[1]), 1))] if bounds else target_array
             target_array = np.where(target_array < target_threshold, 0, target_array)
         except IndexError:
-            target_array = None
+            target_array = target_array
         return target_array, target_threshold
 
     @staticmethod
@@ -709,7 +705,7 @@ class MarkerCorrelation:
                           range(int(bounds[0]), int(bounds[1]), 1))] if bounds else baseline_array
             baseline_array = np.where(baseline_array < baseline_threshold, 0, baseline_array)
         except IndexError:
-            baseline_array = None
+            baseline_array = baseline_array
         return baseline_array, baseline_threshold
 
 def add_saved_blend(saved_blend_dict: dict=None, blend_name: str=None,

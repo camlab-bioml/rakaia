@@ -117,10 +117,10 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
 
     measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds,
                                                                    cell_type="new_cell_type")
-    assert list(measurements["ccramic_cell_annotation"][(measurements["x_max"] == 836) &
+    assert list(measurements["object_annotation_1"][(measurements["x_max"] == 836) &
           (measurements["y_max"] == 20)]) == ['new_cell_type']
-    assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 1
-    counts = measurements["ccramic_cell_annotation"].value_counts(normalize =True)
+    assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 1
+    counts = measurements["object_annotation_1"].value_counts(normalize =True)
     assert len(dict(counts)) == 2
     assert 'Unassigned' in dict(counts).keys()
 
@@ -128,14 +128,14 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
 
     measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds_2,
                                                                      cell_type="new_cell_type")
-    assert list(measurements["ccramic_cell_annotation"][(measurements["x_max"] == 836) &
+    assert list(measurements["object_annotation_1"][(measurements["x_max"] == 836) &
                                                         (measurements["y_max"] == 20)]) == ['new_cell_type']
-    assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 2
+    assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 2
     assert len(dict(counts)) == 2
     assert 'Unassigned' in dict(counts).keys()
     measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds_2,
                                                                     cell_type="new_cell_type_2")
-    counts = measurements["ccramic_cell_annotation"].value_counts(normalize=True)
+    counts = measurements["object_annotation_1"].value_counts(normalize=True)
     assert len(dict(counts)) == 3
     assert 'new_cell_type_2' in dict(counts).keys()
 
@@ -148,10 +148,10 @@ def test_basic_cell_annotation_col_pop_2(get_current_dir):
 
     measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds,
                                                                    cell_type="new_cell_type", box_type="rect")
-    assert list(measurements["ccramic_cell_annotation"][(measurements["x_max"] == 836) &
+    assert list(measurements["object_annotation_1"][(measurements["x_max"] == 836) &
           (measurements["y_max"] == 20)]) == ['new_cell_type']
-    assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 1
-    counts = measurements["ccramic_cell_annotation"].value_counts(normalize =True)
+    assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 1
+    counts = measurements["object_annotation_1"].value_counts(normalize =True)
     assert len(dict(counts)) == 2
     assert 'Unassigned' in dict(counts).keys()
 
@@ -198,33 +198,33 @@ def test_basic_cell_annotation_col_pop_from_masking(get_current_dir):
               '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
     cells_included = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath)
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
-    assert "ccramic_cell_annotation" not in measurements.columns
+    assert "object_annotation_1" not in measurements.columns
     measurements = populate_cell_annotation_column_from_cell_id_list(measurements, cell_list=list(cells_included.keys()),
                                     cell_type="new_cell_type", sample_name="Dilution_series_1_1")
-    assert "ccramic_cell_annotation" in measurements.columns
-    assert len(measurements[measurements["ccramic_cell_annotation"] == "new_cell_type"]) == 2
-    assert list(measurements[measurements["cell_id"] == 1]["ccramic_cell_annotation"]) == ['Unassigned']
-    assert list(measurements[measurements["cell_id"] == 403]["ccramic_cell_annotation"]) == ["new_cell_type"]
+    assert "object_annotation_1" in measurements.columns
+    assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 2
+    assert list(measurements[measurements["cell_id"] == 1]["object_annotation_1"]) == ['Unassigned']
+    assert list(measurements[measurements["cell_id"] == 403]["object_annotation_1"]) == ["new_cell_type"]
 
 def test_basic_clickdata_cell_annotation(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     clickdata = {'points': [{'x': -100, 'y': -100}]}
     annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
                                                                   cell_type="new", sample="Dilution_series_1_1")
-    assert 'new' not in annotations['ccramic_cell_annotation'].tolist()
+    assert 'new' not in annotations['object_annotation_1'].tolist()
 
     clickdata = {'points': [{'x': 53, 'y': 33}]}
     annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
                                                                   cell_type="new", sample="Dilution_series_1_1")
 
-    assert 'new' in annotations['ccramic_cell_annotation'].tolist()
-    assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 1
+    assert 'new' in annotations['object_annotation_1'].tolist()
+    assert dict(collections.Counter(annotations['object_annotation_1']))['new'] == 1
 
     clickdata = {'points': [{'x': 980, 'y': 19}]}
     annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
                                                                   cell_type="new", sample="Dilution_series_1_1")
 
-    assert dict(collections.Counter(annotations['ccramic_cell_annotation']))['new'] == 2
+    assert dict(collections.Counter(annotations['object_annotation_1']))['new'] == 2
 
     subset = subset_measurements_by_point(measurements, 53, 33)
     assert len(subset) == 1
@@ -236,7 +236,7 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
     annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
                                                                   cell_type="new", sample="Dilution_series_1_1")
 
-    assert 'new' not in annotations['ccramic_cell_annotation'].tolist()
+    assert 'new' not in annotations['object_annotation_1'].tolist()
 
     mask = np.zeros((1000, 1000))
     mask[33, 53] = 45
@@ -248,7 +248,7 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
                                                                   mask_dict=mask_dict, mask_selection="roi_1",
                                                                   mask_toggle=True)
 
-    assert 'new' in annotations['ccramic_cell_annotation'].tolist()
+    assert 'new' in annotations['object_annotation_1'].tolist()
 
 
 
@@ -387,6 +387,9 @@ def test_quantification_distribution_table(get_current_dir):
     dist = pd.DataFrame(quantification_distribution_table(measurements, umap_variable="sample",
                                                           subset_cur_cat=subset))
     assert dist['Proportion'].to_list() == [0.924, 0.076]
+    too_many_cats = quantification_distribution_table(measurements, umap_variable="158Gd_GATA3")
+    assert too_many_cats == [{'Value': 'NA (158Gd_GATA3 > 100 unique values)', 'Counts': 'NA', 'Proportion': 'NA'}]
+
 
 
 def test_custom_gating_id_from_string():

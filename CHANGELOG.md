@@ -39,6 +39,7 @@ to rapidly change the canvas among sets of blended channels
 - Use partial functions as switch statements for file reading in `RegionThumbnail`, `FileParser`
 - dedicated category dropdown for click annotations
 - JSON panel update now requires all keys to match, not just length
+- Cap length of frequency distribution table in quant tab
 
 ### Fixed
 
