@@ -19,6 +19,10 @@ from rakaia.utils.roi import override_roi_gallery_blend_list
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with ROI level and cross dataset queries
+    Args:
+            dash_app: the dash proxy server wrapped in the parent Flask app
+            tmpdirname: the path for the tmpdir for tmp storage for the session
+            authentic_id: uuid string identifying the particular app invocation
     """
     @dash_app.callback(Output('dataset-query-gallery-row', 'children'),
                        Output('roi-query', 'data'),

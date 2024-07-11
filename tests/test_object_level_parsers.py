@@ -180,9 +180,11 @@ def test_mask_match_to_roi_name():
     assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1_mask"
 
     dataset_options = ["round_1", "round_2", "round_3", "round_4"]
-    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
+    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
 
     assert match_mask_name_with_roi("round_3", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+    # Expect an index error on the second mask name as it's malformed
+    assert not match_mask_name_with_roi("round_2", mask_options, dataset_options)
 
     dataset_options = ["round_1", "round_2", "MCD1+++slide0+++roi_1", "round_4"]
     mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
@@ -242,8 +244,8 @@ def test_match_mask_name_to_quantification_sheet_roi():
 
 def test_validate_xy_coordinates_for_image():
     image = np.full((1000, 100, 3), 255)
-    assert validate_coordinate_set_for_image(x=10, y=10, image=image)
-    assert not validate_coordinate_set_for_image(x=101, y=10, image=image)
+    assert validate_coordinate_set_for_image(x_coord=10, y_coord=10, image=image)
+    assert not validate_coordinate_set_for_image(x_coord=101, y_coord=10, image=image)
     assert not validate_coordinate_set_for_image()
 
 def test_parse_quantification_sheet_from_anndata(get_current_dir):

@@ -1,6 +1,4 @@
 import numpy as np
-from rakaia.utils.object import validate_mask_shape_matches_image
-from rakaia.utils.pixel import split_string_at_pattern
 import pandas as pd
 from dash import html
 from steinbock.measurement.intensities import (
@@ -8,6 +6,8 @@ from steinbock.measurement.intensities import (
     measure_intensites)
 from steinbock.measurement.regionprops import measure_regionprops
 from typing import Union
+from rakaia.utils.object import validate_mask_shape_matches_image
+from rakaia.utils.pixel import split_string_at_pattern
 
 def mask_object_counter_preview(mask_dict: dict=None, mask_selection: str=None):
     """
@@ -70,12 +70,10 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
             exp, slide, roi = split_string_at_pattern(dataset, pattern=delimiter)
             if roi == roi_name:
                 index = dataset_options.index(dataset) + 1
-                # TODO: figure out best naming strategy for ROI names for different input names
+                # this might not be the optimal way tot figure out the description name from different file types
                 if len(description_name) <= 5 and description_name.startswith("acq"):
                     description_name = mask_name
                     sample_name = f"{exp}_{index}"
-    # TODO: change the order of the identifying columns here, and set the description to the mask used for the quant
-    # TODO: figure out what the ROI designation should be
     channel_frame['description'] = description_name
     # channel_frame['cell_id'] = pd.Series(range(0, (int(np.max(mask)))), dtype='int64')
     channel_frame['cell_id'] = [int(i) for i in channel_frame.index]

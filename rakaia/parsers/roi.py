@@ -1,4 +1,12 @@
+import random
+import numpy as np
+import cv2
+from tifffile import TiffFile
+from typing import Union
+from functools import partial
+import os
 from pathlib import Path
+from readimc import MCDFile, TXTFile
 from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
@@ -9,14 +17,6 @@ from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
     match_mask_name_with_roi,
     match_mask_name_to_quantification_sheet_roi)
-from readimc import MCDFile, TXTFile
-import random
-import numpy as np
-import cv2
-from tifffile import TiffFile
-from typing import Union
-from functools import partial
-import os
 
 class RegionThumbnail:
     """

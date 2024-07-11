@@ -1,13 +1,17 @@
 import tempfile
-from rakaia.entrypoint import init_app, __version__
 import argparse
 import sys
 import webbrowser
-from threading import Timer
 import os
+from threading import Timer
 from waitress import serve
+from rakaia.entrypoint import init_app, __version__
 
 def cli_parser():
+    """Retrieve the argparse parser arguments on aoo CLI initialization.
+        Returns:
+            argparse Argument parser with provided CLI options
+    """
     parser = argparse.ArgumentParser(add_help=False,
                                      description="rakaia: Cell-type Classification (using) Rapid Analysis (of) Multiplexed "
                                                  "Imaging (mass) Cytometry using Flask and Dash.",

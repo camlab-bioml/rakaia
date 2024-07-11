@@ -112,20 +112,17 @@ class PanelMismatchError(Exception):
     """
     Raise this exception when datasets with different panel lengths are uploaded into the same session
     """
-    pass
 
 class DataImportError(Exception):
     """
     Raise when imported data cannot be read fully into the session, likely due to a disk storage error
     """
-    pass
 
 class LazyLoadError(Exception):
     """
     Raise when the lazy loading feature of the `FileParser` class doesn't produce an ROI dictionary
     containing channel arrays
     """
-    pass
 
 def file_import_message(imported_files: list):
     """

@@ -1,18 +1,16 @@
 import os
 from matplotlib.backends.backend_pdf import PdfPages
-
-from rakaia.utils.object import (
-    get_min_max_values_from_zoom_box,
-    get_min_max_values_from_rect_box)
 import numpy as np
 import cv2
 from PIL import Image
 import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
-
 from rakaia.utils.pixel import (
     apply_filter_to_array,
     get_bounding_box_for_svgpath)
+from rakaia.utils.object import (
+    get_min_max_values_from_zoom_box,
+    get_min_max_values_from_rect_box)
 
 class AnnotationPDFWriter:
     """

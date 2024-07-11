@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
-from rakaia.utils.object import validate_mask_shape_matches_image
 from PIL import Image
+from rakaia.utils.object import validate_mask_shape_matches_image
 
 def generate_dict_of_roi_cell_ids(measurements, sample_col="description", cell_id_col="cell_id"):
     """

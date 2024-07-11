@@ -1,19 +1,19 @@
+import os
+import datetime
+from typing import Union
 from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
+from tifffile import imwrite
+import numpy as np
+import plotly.graph_objs as go
+from dash import html
 from plotly.graph_objs import XAxis, YAxis
 from rakaia.utils.region import (
     RectangleRegion,
     FreeFormRegion,
     AnnotationPreviewGenerator)
-import os
-from tifffile import imwrite
-import numpy as np
-import plotly.graph_objs as go
-from typing import Union
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.components.canvas import CanvasLayout
-import datetime
-from dash import html
 
 class RegionSummary:
     """

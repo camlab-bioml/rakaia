@@ -139,6 +139,13 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
     assert len(dict(counts)) == 3
     assert 'new_cell_type_2' in dict(counts).keys()
 
+    fake_bounds = {"1": 241, '2': 253, '3': -1}
+    measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=fake_bounds,
+                                                                     annotation_column="fake",
+                                                                     cell_type="new_cell_type_3")
+    assert 'new_cell_type_3' not in measurements['fake'].to_list()
+
+
 def test_basic_cell_annotation_col_pop_2(get_current_dir):
     """
     Same test as above, but instead from a rectangle instead of zoom
@@ -163,18 +170,8 @@ def test_convert_basic_array_to_hover_template():
     assert template.shape[2] == 1
     assert np.unique(template) == ['None']
 
-def test_get_cell_ids_in_svgpath(get_current_dir):
+def test_get_cell_ids_in_svgpath(get_current_dir, svgpath):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
-    svgpath = 'M670.7797603577856,478.9708311618908L675.5333177884905,487.2270098573258L676.0336922548805,' \
-              '492.2307545212258L671.2801348241755,500.73712044985575L669.7790114250056,' \
-              '501.98805661583077L668.0277007926405,501.4876821494408L665.7760156938856,' \
-              '499.2359970506858L663.5243305951306,497.9850608847108L662.2733944291556,' \
-              '496.23375025234577L661.7730199627656,492.9813162208108L661.7730199627656,' \
-              '491.2300055884458L662.7737688955456,490.47944388886077L665.0254539943006,' \
-              '490.47944388886077L665.7760156938856,486.4764481577408L665.2756412274956,' \
-              '484.72513752537577L664.7752667611055,482.7236396598158L666.0262029270806,' \
-              '477.2195205295258L667.2771390930556,480.7221417942558L667.5273263262505,' \
-              '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
     cells_included_1 = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath)
     assert len(cells_included_1) == 2
     assert list(cells_included_1.keys()) == [403, 452]
@@ -184,18 +181,8 @@ def test_get_cell_ids_in_svgpath(get_current_dir):
     cells_all = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath, use_partial=False)
     assert len(cells_all) == 2
 
-def test_basic_cell_annotation_col_pop_from_masking(get_current_dir):
+def test_basic_cell_annotation_col_pop_from_masking(get_current_dir, svgpath):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
-    svgpath = 'M670.7797603577856,478.9708311618908L675.5333177884905,487.2270098573258L676.0336922548805,' \
-              '492.2307545212258L671.2801348241755,500.73712044985575L669.7790114250056,' \
-              '501.98805661583077L668.0277007926405,501.4876821494408L665.7760156938856,' \
-              '499.2359970506858L663.5243305951306,497.9850608847108L662.2733944291556,' \
-              '496.23375025234577L661.7730199627656,492.9813162208108L661.7730199627656,' \
-              '491.2300055884458L662.7737688955456,490.47944388886077L665.0254539943006,' \
-              '490.47944388886077L665.7760156938856,486.4764481577408L665.2756412274956,' \
-              '484.72513752537577L664.7752667611055,482.7236396598158L666.0262029270806,' \
-              '477.2195205295258L667.2771390930556,480.7221417942558L667.5273263262505,' \
-              '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
     cells_included = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath)
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     assert "object_annotation_1" not in measurements.columns
@@ -279,6 +266,10 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
     assert name == "mcd1_2"
     assert column == "sample"
+    assert identify_column_matching_roi_to_quantification(data_selection, measurements, [])== (None, None)
+    assert identify_column_matching_roi_to_quantification("fake+++slide0+++fake_acq",
+                                                          measurements, dataset_options) == (None, None)
+
 
     measurements.rename(columns={"sample": "description"}, inplace=True)
     dataset_options = ["roi_1", "mcd1+++slide0+++Dilution_series_1_1", "roi_3"]

@@ -1,17 +1,23 @@
+import uuid
+import warnings
+import os
+from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
+from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask
 from flask_caching import Cache
 from flask import render_template
 from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import generate_password_hash, check_password_hash
-import uuid
-from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
-import warnings
-import os
 
 _program = "rakaia"
-__version__ = "0.16.0"
+__version__ = "0.17.0"
 
 def init_app(cli_config):
+    """Initialize the parent Flask app that will wrap the Dash server.
+        Args:
+            cli_config: dictionary of CLI app options from argparse
+        Returns:
+            Parent Flask app object
+    """
     # suppress numba depreciation warnings from umap
     warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
     warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)

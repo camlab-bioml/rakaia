@@ -1,10 +1,10 @@
 import dash
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import dcc, html
-from rakaia.utils.object import convert_mask_to_cell_boundary
 import plotly.graph_objs as go
 import dash_draggable
 import cv2
+from typing import Union
 from plotly.graph_objs.layout import XAxis, YAxis
 import dash_bootstrap_components as dbc
 from copy import deepcopy
@@ -13,7 +13,15 @@ from PIL import Image
 import plotly.express as px
 from rakaia.io.session import SessionTheme
 from rakaia.utils.pixel import split_string_at_pattern, get_first_image_from_roi_dictionary
-from typing import Union
+from rakaia.utils.object import convert_mask_to_cell_boundary
+
+def default_canvas_margins():
+    """
+    Define the default margins for the canvas `go.Figure` as a dictionary
+    Returns:
+        Dictionary with margin elements as keys, compatible with `plotly.go` figures
+    """
+    return dict(l=1.5, r=1.5, b=25, t=35, pad=0)
 
 def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscreen_mode=False,
                                      draggable=False, filename: str="canvas", delimiter: str="+++"):
@@ -52,12 +60,7 @@ def render_default_annotation_canvas(input_id: str="annotation_canvas", fullscre
                                                newshape = dict(line=dict(color="white")),
                                               xaxis=go.XAxis(showticklabels=False),
                                               yaxis=go.YAxis(showticklabels=False),
-                                               margin=dict(
-                                                   l=1.5,
-                                                   r=1.5,
-                                                   b=25,
-                                                   t=35,
-                                                   pad=0)
+                                               margin=default_canvas_margins()
                                                )})
 
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
@@ -74,8 +77,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=80
     if (large_image or hovertext) and wrap:
         return dcc.Loading(render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename,
                         delimiter=delimiter), type="default", fullscreen=False, color=SessionTheme().widget_colour)
-    else:
-        return render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename, delimiter=delimiter)
+    return render_default_annotation_canvas(fullscreen_mode=enable_zoom, filename=filename, delimiter=delimiter)
 
 def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=12, x_axis_left=0.05, pixel_ratio=1,
                               invert=False, proportion=0.1, scale_color: str="white"):
@@ -93,11 +95,11 @@ def add_scale_value_to_figure(figure, image_shape, scale_value=None, font_size=1
     figure = go.Figure(figure)
     half = float(proportion) / 2
     # the midpoint of the annotation is set by the middle of 0.05 and 0.125 and an xanchor of center`
-    x = float((x_axis_left + half) if not invert else (x_axis_left - half))
+    x_anchor = float((x_axis_left + half) if not invert else (x_axis_left - half))
     figure.add_annotation(text=scale_text, font={"size": font_size, 'color': scale_color}, xref='paper',
                        yref='paper',
                        # set the placement of where the text goes relative to the scale bar
-                       x=x,
+                       x=x_anchor,
                        xanchor='center',
                        y=0.06,
                        # yanchor='bottom',
@@ -167,13 +169,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                       xaxis=XAxis(showticklabels=False, domain=[0, 1]),
                       yaxis=YAxis(showticklabels=False),
-                      margin=dict(
-                          l=10,
-                          r=0,
-                          b=25,
-                          t=35,
-                          pad=0
-                      ))
+                      margin=default_canvas_margins())
         fig.update_layout(hovermode="x")
         return fig
     except (KeyError, AttributeError):
@@ -186,8 +182,7 @@ def add_local_file_dialog(use_local_dialog=False, input_id="local-dialog-file"):
         style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
         html.Div("Browse/read local files")], style={"display": "flex"}),
         id=input_id, className="mb-3", color=None, n_clicks=0, style={"margin-top": "10px"})
-    else:
-        return html.Div(id=input_id)
+    return html.Div(id=input_id)
 
 def invert_annotations_figure(cur_canvas: go.Figure):
     """

@@ -1,10 +1,16 @@
-import dash
 import pandas as pd
 from dash.exceptions import PreventUpdate
 import os
 from tifffile import TiffFile
 import numpy as np
 from PIL import Image
+import anndata
+import sys
+from sklearn.preprocessing import StandardScaler
+import scanpy as sc
+from typing import Union
+import re
+import dash
 from rakaia.utils.object import (
     set_mandatory_columns,
     convert_mask_to_cell_boundary,
@@ -14,23 +20,14 @@ from rakaia.utils.object import (
     match_steinbock_mask_name_to_mcd_roi,
     is_steinbock_intensity_anndata)
 from rakaia.utils.pixel import split_string_at_pattern
-import anndata
-import sys
-from sklearn.preprocessing import StandardScaler
-import scanpy as sc
 from rakaia.io.session import SessionServerside
-from typing import Union
-import re
 
 def drop_columns_from_measurements_csv(measurements_csv):
     cols_to_drop = set_columns_to_drop(measurements_csv)
-    try:
-        for col in cols_to_drop:
-            if col in measurements_csv.columns:
-                measurements_csv = pd.DataFrame(measurements_csv).drop(col, axis=1)
-        return measurements_csv
-    except KeyError:
-        return measurements_csv
+    for col in cols_to_drop:
+        if col in measurements_csv.columns:
+            measurements_csv = pd.DataFrame(measurements_csv).drop(col, axis=1)
+    return measurements_csv
 
 def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True,
                                                    rerun=True, unique_key_serverside=True,
@@ -44,10 +41,9 @@ def return_umap_dataframe_from_quantification_dict(quantification_dict, current_
         if cols_include:
             data_frame = data_frame[data_frame.columns.intersection(cols_include)]
         if not data_frame.empty and (current_umap is None or rerun):
-            # TODO: process quantification by removing cells outside of the percentile range for pixel intensity (
             if drop_col:
                 data_frame = drop_columns_from_measurements_csv(data_frame)
-            # TODO: evaluate the umap import speed (slow) possibly due to numba compilation:
+            # the umap import speed (slow) possibly due to numba compilation, so only load when the function is called
             # https://github.com/lmcinnes/umap/issues/631
             if 'umap' not in sys.modules:
                 import umap
@@ -121,12 +117,10 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, use_per
         if str(session_dict['uploads'][0]).endswith('.csv'):
             quantification_worksheet, warning = validate_incoming_measurements_csv(pd.read_csv(session_dict['uploads'][0]))
         elif str(session_dict['uploads'][0]).endswith('.h5ad'):
-            # TODO: add parsing function for h5ad
             quantification_worksheet, warning = validate_quantification_from_anndata(
                 parse_quantification_sheet_from_h5ad(session_dict['uploads'][0]))
         else:
             quantification_worksheet, warning = None, "Error: could not find a valid quantification sheet."
-        # TODO: establish where to use the percentile filtering on the measurements
         measurements_return = filter_measurements_csv_by_channel_percentile(
             quantification_worksheet).to_dict(orient="records") if use_percentile else \
             quantification_worksheet.to_dict(orient="records") if quantification_worksheet is not None else None
@@ -143,11 +137,6 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, use_per
 
 def parse_masks_from_filenames(status):
     filenames = [str(x) for x in status.uploaded_files]
-    # IMP: ensure that the progress is up to 100% in the float before beginning to process
-    # TODO: establish multi mask import
-    # if len(filenames) == 1:
-    #     default_mask_name = os.path.splitext(os.path.basename(filenames[0]))[0]
-    #     return {default_mask_name: filenames[0]}
     masks = {}
     if status.progress == 1.0:
         for mask_file in filenames:
@@ -159,7 +148,6 @@ def parse_masks_from_filenames(status):
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                      set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):
-    #TODO: establish parsing for single mask upload and bulk
     single_upload = len(mask_uploads) == 1 and set_mask > 0
     multi_upload = len(mask_uploads) > 1
     if single_upload or multi_upload:
@@ -228,7 +216,6 @@ def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap
                     subtypes_keep.append(tot_subtypes[selection])
                     indices_use.append(selection)
             return subtypes_keep, indices_use
-        # TODO: different options for single select (include or not)
         # Case 2: if the user has already added or excluded one sub type
 
         # Case 2.1: when user wants to remove current index plus other ones that have already been removed
@@ -269,9 +256,6 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
     Returns a tuple: a dictionary of subtype keys, and a dictionary of frequency counts for those keys
     from the quantification results
     """
-    # get the merged frames to pull the sample names in the subset
-    # IMP: use cbind concat instead of merge as the values might be different depending on if normalization was used
-    # TODO: need to fix duplicate columns on concat
     # merged = pd.concat([subset_frame, pd.DataFrame(quantification_dict)], axis=1,
     #                    join="inner").reset_index(drop=True)
     merged = pd.DataFrame(quantification_dict).iloc[list(subset_frame.index.values)]
@@ -281,9 +265,8 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
         try:
             roi_counts = merged['sample'].value_counts().to_dict()
             indices_query = {'indices': [int(i.split("_")[-1]) - 1 for i in list(roi_counts.keys())]}
-        except ValueError:
-            # may occur if the split doesn't give integers i.e. if there are other underscores in the name
-            indices_query = None
+        # may occur if the split doesn't give integers i.e. if there are other underscores in the name
+        except ValueError: indices_query = None
     freq_counts = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
                     not None else None
     return indices_query, freq_counts
@@ -307,9 +290,9 @@ def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_option
     else:
         # first, check to see if the pattern matches based on the pipeline mask name output
         if mask_options is not None and roi_options is not None:
-            try:
-                data_index = roi_options.index(data_selection)
-                for mask in mask_options:
+            data_index = roi_options.index(data_selection)
+            for mask in mask_options:
+                try:
                     if "_ac_IA_mask" in mask:
                         # mask naming from the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
                         # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
@@ -317,8 +300,8 @@ def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_option
                         index = int(split_1.split("_")[-1].replace("a", "")) - 1
                         if index == data_index:
                             mask_return = mask
-            except (TypeError, IndexError, ValueError):
-                pass
+                except (TypeError, IndexError, ValueError):
+                    pass
         if not mask_return and delimiter in data_selection:
             exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
             if mask_options is not None and exp in mask_options:
@@ -394,12 +377,12 @@ def validate_imported_csv_annotations(annotations_csv):
     return "x" in list(frame.columns) and "y" in list(frame.columns)
 
 
-def validate_coordinate_set_for_image(x=None, y=None, image=None):
+def validate_coordinate_set_for_image(x_coord=None, y_coord=None, image=None):
     """
     Validate that a pair of xy coordinates can fit inside an image's dimensions
     """
-    if None not in (x, y) and image is not None:
-        return int(x) <= image.shape[1] and int(y) <= image.shape[0]
+    if None not in (x_coord, y_coord) and image is not None:
+        return int(x_coord) <= image.shape[1] and int(y_coord) <= image.shape[0]
     return False
 
 def parse_quantification_sheet_from_h5ad(h5ad_file):
@@ -414,7 +397,6 @@ def parse_quantification_sheet_from_h5ad(h5ad_file):
         drop=True)
     if is_steinbock_intensity_anndata(quantification_frame):
         # create a sample column that uses indices to match the steinbock masks
-        # TODO: if we want to use the description column, need to have the acq name and index combined
         edited = pd.DataFrame({"description": [f"{acq}_{position}" for acq, position in \
                                                zip(quantification_frame.obs['image_acquisition_description'],
         [int(re.search(r'\d+$', elem.split('.tiff')[0]).group()) for elem in quantification_frame.obs['Image']])],
@@ -489,7 +471,7 @@ def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: 
                                     Union[pd.DataFrame, dict]=None):
     cur_cluster_dict = {} if cur_cluster_dict is None else cur_cluster_dict
     cluster_frame = pd.DataFrame(cluster_frame)
-    # TODO: for now, use set column names, but expand in the future
+    # for now, use set column names, but expand in the future
     if all([elem in list(cluster_frame.columns) for elem in ['cell_id', 'cluster']]):
         cur_cluster_dict[roi_selection] = cluster_frame
     return cur_cluster_dict

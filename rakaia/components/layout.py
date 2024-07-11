@@ -2,20 +2,20 @@ from dash import dash_table
 import dash_uploader as du
 from dash_extensions import EventListener
 import dash_daq as daq
+import dash_ag_grid as dag
+import dash_mantine_components as dmc
+from plotly.graph_objs.layout import YAxis, XAxis
+from dash import dcc, html
+import dash_bootstrap_components as dbc
+import dash_tour_component
+from rakaia.entrypoint import __version__
+from rakaia.utils.alert import DataImportTour, ToolTips
+from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
     render_default_annotation_canvas,
     add_local_file_dialog)
 from rakaia.inputs.loaders import wrap_child_in_loading
 from rakaia.utils.pixel import generate_default_swatches
-import dash_ag_grid as dag
-import dash_mantine_components as dmc
-from plotly.graph_objs.layout import YAxis, XAxis
-from rakaia.entrypoint import __version__
-from dash import dcc, html
-import dash_bootstrap_components as dbc
-import dash_tour_component
-from rakaia.utils.alert import DataImportTour, ToolTips
-from rakaia.io.session import SessionTheme, TabText
 
 def register_app_layout(config, cache_dest):
 
@@ -493,7 +493,6 @@ def register_app_layout(config, cache_dest):
                                     dcc.Download(id="download-umap-projection")
                                 ], style={"border":"1px black solid", "display": "inline-block",
                                                         "width": "auto", "padding": "7.5px"}),
-                                # TODO: add a spinner status for long downloads here
                                 html.Br(),
                                 html.Br(),
                                 dbc.Spinner(html.Div([], id='status-div'), color="dark"),
@@ -943,13 +942,6 @@ def register_app_layout(config, cache_dest):
                                             id="gating-annotation-create", className="mx-auto", color=None, n_clicks=0,
                                             style={"margin-top": "10px"}),
                                             html.Br(),
-                                            # TODO: add feature to merge custom gating from external sources
-                                            # into quantification
-                                            # html.Br(),
-                                            # du.Upload(id='upload-custom-gating', max_file_size=1000, max_files=1,
-                                            # text='Upload custom gating parameters to merge into quantification',
-                                            # filetypes=['csv'], upload_id="upload-custom-gating",
-                                            # default_style={'minHeight': 2, 'lineHeight': 2})
                                             ]),
                                 ]),
                                 dbc.Tab(label='Marker/blend', label_style={"color": DEFAULT_WIDGET_COLOUR},

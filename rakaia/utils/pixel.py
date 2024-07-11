@@ -1,4 +1,6 @@
-import dash
+import re
+import random
+from typing import Union
 import numpy as np
 import pandas as pd
 import scipy.stats
@@ -10,12 +12,10 @@ from pydantic import BaseModel
 from skimage import draw
 from scipy import ndimage
 from scipy.ndimage import median_filter
+import dash
 from dash.exceptions import PreventUpdate
 import cv2
-import re
-import random
 import numexpr as ne
-from typing import Union
 import glasbey
 
 def split_string_at_pattern(string, pattern="+++"):
@@ -117,21 +117,15 @@ def path_to_mask(path, shape):
     are True, and the other pixels are False.
     """
     cols, rows = path_to_indices(path).T
-    rr, cc = draw.polygon(rows, cols)
+    rr_row, cc_col = draw.polygon(rows, cols)
     mask = np.zeros(shape, dtype=bool)
     # trim the indices to only those that are inside of the border of the image
-    # new_cols = np.array([])
-    # new_rows = np.array([])
-    col_inside = cc < shape[1]
-    row_inside = rr < shape[0]
+    col_inside = cc_col < shape[1]
+    row_inside = rr_row < shape[0]
     both_inside = np.logical_and(col_inside, row_inside)
-    rr = rr[both_inside]
-    cc = cc[both_inside]
-    # for row, col in zip(rr, cc):
-    #     if row < shape[0] and col < shape[1]:
-    #         new_cols = np.append(new_cols, [int(col)])
-    #         new_rows = np.append(new_rows, [int(row)])
-    mask[rr, cc] = True
+    rr_row = rr_row[both_inside]
+    cc_col = cc_col[both_inside]
+    mask[rr_row, cc_col] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask
 
@@ -346,7 +340,8 @@ def per_channel_intensity_hovertext(channel_list):
     """
     data_index = 0
     hover_template = "x: %{x}, y: %{y} <br>"
-    if not isinstance(channel_list, list): return hover_template + "<extra></extra>"
+    if not isinstance(channel_list, list):
+        return hover_template + "<extra></extra>"
     for elem in channel_list:
         if not channel_list.index(elem) == data_index: return hover_template + "<extra></extra>"
         hover_template = hover_template + f"{str(elem)}: " + "%{customdata[" + f"{data_index}]" + "} <br>"

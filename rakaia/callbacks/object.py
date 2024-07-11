@@ -52,6 +52,10 @@ from rakaia.utils.quantification import (
 def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with cell level analysis (object detection, quantification, dimensional reduction)
+    Args:
+            dash_app: the dash proxy server wrapped in the parent Flask app
+            tmpdirname: the path for the tmpdir for tmp storage for the session
+            authentic_id: uuid string identifying the particular app invocation
     """
     dash_app.config.suppress_callback_exceptions = True
     matplotlib.use('agg')
@@ -131,14 +135,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     quantification_dict, frame, umap_col_selection)
                     # also return the current count of the umap category selected to update the distribution table
                 if umap_layout is not None:
-                    # TODO: decide if cell ids should be pulled only when zooming, or at the default zoom out
-                    # and all([key in umap_layout.keys() for key in zoom_keys]):
-                    # merged = frame.merge(full_frame, how="inner", on=frame.columns.tolist())
-                    # merged = pd.merge(pd.DataFrame(frame), pd.DataFrame(quantification_dict),
-                    #          left_index=True, right_index=True).reset_index(drop=True)
-                    # TODO: need to fix duplicate columns on concat
-                    # merged = pd.concat([frame, pd.DataFrame(quantification_dict)], axis=1,
-                    #           join="inner").reset_index(drop=True)
                     merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
                     cell_id_dict = generate_dict_of_roi_cell_ids(merged)
             # if the heatmap channel options are already set, do not update
@@ -307,7 +303,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         Any selected rows in the annotation preview table are reset to avoid erroneous indices
         """
-        # TODO: use toggle for adding annotations to quantification frame or not
         if data_selection:
             remove = ctx.triggered_id in ["delete-annotation-tabular"]
             indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
@@ -506,7 +501,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-dict', 'data'),
         Input('mask-options', 'value'))
     def toggle_show_quantification_config_modal(n, execute, is_open, channels_to_quantify, mask_dict, mask_selection):
-        # TODO: add preview for number of objects in the mask if it exists
         preview = mask_object_counter_preview(mask_dict, mask_selection)
         if ctx.triggered_id == "mask-options": return dash.no_update, preview
         if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False, preview

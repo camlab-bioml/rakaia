@@ -1,19 +1,19 @@
-import h5py
 from pathlib import Path
 import numpy as np
 from tifffile import TiffFile
-from rakaia.utils.pixel import (
-    split_string_at_pattern,
-    set_array_storage_type_from_config,
-    get_default_channel_upper_bound_by_percentile)
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
-from rakaia.utils.alert import PanelMismatchError
 import pandas as pd
 from PIL import Image
 from typing import Union
 from functools import partial
 import os
+import h5py
+from rakaia.utils.pixel import (
+    split_string_at_pattern,
+    set_array_storage_type_from_config,
+    get_default_channel_upper_bound_by_percentile)
+from rakaia.utils.alert import PanelMismatchError
 
 class NoAcquisitionsParsedError(Exception):
     pass
@@ -71,17 +71,6 @@ class FileParser:
                         getattr(self, self.MATCHES[file_extension])(upload)
                 except OSError:
                     pass
-                # elif upload.endswith('.mcd'):
-                #     self.parse_mcd(upload)
-                # elif upload.endswith('.h5'):
-                #     self.parse_h5(upload)
-                # elif upload.endswith('.tiff') or upload.endswith('.tif'):
-                #     self.parse_tiff(upload, internal_name=internal_name)
-                # elif upload.endswith('.txt'):
-                #     try:
-                #         self.parse_txt(upload, internal_name=internal_name)
-                #     except OSError:
-                #         pass
 
     def parse_h5(self, h5py_file):
         data_h5 = h5py.File(h5py_file, "r")
@@ -201,7 +190,6 @@ class FileParser:
                         self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
                                                            'rakaia Label']
                     else:
-                        # TODO: establish within an MCD if the channel names should be exactly the same
                         # for now, just checking the that the length matches is sufficient in case
                         # there are slight spelling errors between mcds with the same panel
                         if len(acq.channel_labels) != len(channel_labels) or \
@@ -256,7 +244,6 @@ class FileParser:
             txt_channel_names = acq_text_read.channel_names
             txt_channel_labels = acq_text_read.channel_labels
             # check that the channel names and labels are the same if an upload has already passed
-            # TODO: add custom exception rule here for mismatched panels
             if len(self.metadata_channels) > 0:
                 if not len(self.metadata_channels) == len(txt_channel_names) or \
                         not len(self.metadata_labels) == len(txt_channel_labels) or \
@@ -268,7 +255,6 @@ class FileParser:
             roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
                   f"{self.delimiter}{str(self.acq_index)}" if internal_name is None else internal_name
             self.image_dict[roi] = {}
-            # TODO: only read the acquisition if lazy loading is off
             if not self.lazy_load:
                 acq = acq_text_read.read_acquisition(strict=False)
             else:
@@ -276,12 +262,11 @@ class FileParser:
             for image in acq:
                 image_label = txt_channel_labels[image_index - 1]
                 identifier = txt_channel_names[image_index - 1]
-                # TODO: potentially implement lazy loading here for .txt files
                 self.image_dict[roi][identifier] = None if self.lazy_load else image.astype(
                     set_array_storage_type_from_config(self.array_store_type))
                 if image_index == 1:
                     self.dataset_information_frame["ROI"].append(str(roi))
-                    # TODO: see if you can get dimensions without reading the entire acq, as this is time consuming
+                    # dimensions cannot be parsed from txt without reading everything into memory
                     dimensions = f"{image.shape[1]}x{image.shape[0]}" if not self.lazy_load else "NA"
                     self.dataset_information_frame["Dimensions"].append(dimensions)
                     self.dataset_information_frame["Panel"].append(

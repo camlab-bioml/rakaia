@@ -2,14 +2,14 @@ from typing import Union
 import dash
 import pandas as pd
 from dash import Patch
-from rakaia.parsers.object import drop_columns_from_measurements_csv
-from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
 from pandas.errors import UndefinedVariableError
 import plotly.express as px
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 import numpy as np
 from functools import partial
+from rakaia.parsers.object import drop_columns_from_measurements_csv
+from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
 
 class PandasFrameSummaryModes:
     @staticmethod
@@ -77,22 +77,6 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     total_objects = len(measurements)
     if subset_val is not None and isinstance(subset_val, int) and subset_val < len(measurements):
         measurements = measurements.sample(n=subset_val).reset_index(drop=True)
-    # TODO: find faster implementation of clustergram from dash-bio (very slow)
-    # fig = go.Figure(Clustergram(
-    #     data=measurements,
-    #     column_labels=list(measurements.columns.values),
-    #     hidden_labels=['row'],
-    #     height=500, width=750))
-    # fig.update_xaxes(tickangle=90)
-    # fig.update_layout(xaxis=dict(tickmode='linear'),
-    #                   title=f"Expression per object ({len(measurements)}/{total_objects} shown)",
-    #                   title_font=dict(size=16),
-    #                   margin=dict(
-    #                       l=5,
-    #                       r=1,
-    #                       b=1,
-    #                       t=25,
-    #                       pad=2))
     # TODO: figure out why the colour bars won't render after a certain number of dataframe elements
     array_measure = np.array(measurements)
     zmax = 1 if np.max(array_measure) <= 1 else np.max(array_measure)
@@ -105,25 +89,13 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
     if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
-        df = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
+        umap_frame = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
         try:
-            # if cur_umap_fig and 'data' in cur_umap_fig and 'layout' in cur_umap_fig:
-            #     try:
-            #         cur_umap_fig['layout']['coloraxis']['colorbar']['title']['text'] = channel_overlay
-            #         cur_umap_fig['data'][0]['marker']['color'] = quant_frame[channel_overlay]
-            #         cur_umap_fig['data'][0]['hovertemplate'] = 'UMAP1=%{x}<br>UMAP2=%{y}<br>' + \
-            #                                                channel_overlay + '=%{marker.color}<extra></extra>'
-            #         fig = cur_umap_fig
-            #     except KeyError:
-            #         if channel_overlay is not None:
-            #             df[channel_overlay] = quant_frame[channel_overlay]
-            #         fig = px.scatter(df, x="UMAP1", y="UMAP2", color=channel_overlay)
-            # else:
             if channel_overlay is not None:
-                df[channel_overlay] = quant_frame[channel_overlay]
-            fig = px.scatter(df, x="UMAP1", y="UMAP2", color=channel_overlay)
+                umap_frame[channel_overlay] = quant_frame[channel_overlay]
+            fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2", color=channel_overlay)
         except KeyError:
-            fig = px.scatter(df, x="UMAP1", y="UMAP2")
+            fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2")
             fig['data'][0]['showlegend'] = True
         if cur_umap_fig is None:
             fig['layout']['uirevision'] = True
@@ -131,8 +103,7 @@ def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_uma
             fig['layout'] = cur_umap_fig['layout']
             fig['layout']['uirevision'] = True
         return fig
-    else:
-        return dash.no_update
+    return dash.no_update
 
 def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict], quantification_dict: Union[pd.DataFrame, dict],
                         channel_overlay: str):
@@ -144,7 +115,7 @@ def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict], quantification_dic
     requires a complete recreation of the figure because of the figure layout properties
     """
     if cur_umap_fig:
-        # numeric overlay does not have a legendgroup in the data slot
+        # numeric overlay does not have a legend group in the data slot
         # if switching to a categorical variable, do not patch (recreate)
         try:
             return 'data' in cur_umap_fig and 'layout' in cur_umap_fig and len(cur_umap_fig['data']) > 0 and \
@@ -193,8 +164,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
             frame_return = frame
         fig['layout']['uirevision'] = True
         return fig, frame_return
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 
 def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings, zoom_keys,
@@ -235,8 +205,7 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         else:
             fig = dash.no_update
         return fig, subset_frame
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 def reset_custom_gate_slider(trigger_id: str=None):
     """

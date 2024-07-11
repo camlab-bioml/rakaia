@@ -1,26 +1,27 @@
 from typing import Union
+import math
 import numpy as np
 import plotly.graph_objs as go
 import cv2
 import plotly.express as px
 from PIL import Image
+from plotly.graph_objs.layout import YAxis, XAxis
+import pandas as pd
+from skimage import measure
 from rakaia.parsers.object import validate_coordinate_set_for_image
 from rakaia.utils.object import generate_greyscale_grid_array
 from rakaia.inputs.pixel import (
     add_scale_value_to_figure,
-    set_x_axis_placement_of_scalebar)
+    set_x_axis_placement_of_scalebar,
+    default_canvas_margins)
 from rakaia.utils.pixel import (
     per_channel_intensity_hovertext,
     get_additive_image,
     apply_filter_to_array,
     create_new_coord_bounds)
 from rakaia.utils.object import generate_mask_with_cluster_annotations
-from plotly.graph_objs.layout import YAxis, XAxis
 from rakaia.utils.shapes import is_cluster_annotation_circle, is_bad_shape
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
-import pandas as pd
-import math
-from skimage import measure
 
 class CanvasImage:
     """
@@ -115,7 +116,6 @@ class CanvasImage:
         image = self.overlay_grid_on_additive_image(image)
         self.image = image
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
-                                # TODO: decide if compression level should be toggleable
                                 # currently set to lowest possible compression level for speed
                                 binary_compression_level=1)
 
@@ -249,8 +249,6 @@ class CanvasImage:
 
     def add_canvas_hover_template(self, fig: go.Figure):
         # the masking mask ID get priority over the channel intensity hover
-        # TODO: combine both the mask ID and channel intensity into one hover if both are requested
-
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0 and \
                 self.add_cell_id_hover:
             try:
@@ -302,12 +300,7 @@ class CanvasImage:
                           newshape=dict(line=dict(color="white")),
                           xaxis=XAxis(showticklabels=False, domain=[0, 1]),
                           yaxis=YAxis(showticklabels=False, domain=[0, 1]),
-                          margin=dict(
-                              l=1.5,
-                              r=1.5,
-                              b=25,
-                              t=35,
-                              pad=0))
+                          margin=default_canvas_margins())
         return fig
 
 
@@ -330,7 +323,6 @@ class CanvasLayout:
         except KeyError:
             pass
         self.figure = figure
-        # TODO: add condition checking whether the annotations or shapes are held in tuples (do not allow)
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
                 len(self.figure['layout']['annotations']) > 0 and not \
                 isinstance(self.figure['layout']['annotations'], tuple):
@@ -363,7 +355,6 @@ class CanvasLayout:
             pass
         fig = go.Figure(self.figure)
         fig.update_layout(newshape=dict(line=dict(color="white")))
-        # TODO: request for custom scalebar value to change the length of the bar, can implement here
         # default length is 0.1 (10% of the canvas), but want to make adjustable
         # set the x0 and x1 depending on if the bar is inverted or not
         x_0 = x_axis_placement if not invert_annot else (x_axis_placement - proportion)
@@ -380,7 +371,7 @@ class CanvasLayout:
                       self.figure['layout']['xaxis']['range'][0])
             x_range_high = math.ceil(int(high))
             x_range_low = math.floor(int(low))
-            if not x_range_high >= x_range_low: raise AssertionError
+            if x_range_high < x_range_low: raise AssertionError
             custom_scale_val = int(float(math.ceil(int(proportion *
                                 (x_range_high - x_range_low))) + 1) * float(pixel_ratio))
         except (KeyError, TypeError, AssertionError):
@@ -433,8 +424,7 @@ class CanvasLayout:
         self.figure['layout']['uirevision'] = True if self.figure['layout']['uirevision'] not in [True] else "clear"
         if not toggle_scalebar:
             return self.figure
-        else:
-            return self.add_scalebar(x_axis_placement, invert_annot,
+        return self.add_scalebar(x_axis_placement, invert_annot,
                     pixel_ratio, image_shape, legend_size, proportion, scalebar_color)
 
     def change_annotation_size(self, legend_size):
@@ -459,18 +449,12 @@ class CanvasLayout:
         """
         imported_annotations = pd.DataFrame(imported_annotations)
         # fig = go.Figure(self.figure)
-        # TODO: figure out what to increase the speed of shape rendering
         for index, row in imported_annotations.iterrows():
             if validate_coordinate_set_for_image(row['x'], row['y'], cur_image):
                 self.cur_shapes.append(
                     {'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
                      'x0': (row['x'] - circle_size), 'x1': (row['x'] + circle_size),
                      'xref': 'x', 'y0': (row['y'] - circle_size), 'y1': (row['y'] + circle_size), 'yref': 'y'})
-                # fig.add_shape(type="circle",
-                #               xref='x', yref='y',
-                #               x0=(row['x'] - circle_size), y0=(row['y'] - circle_size), x1=(row['x'] + circle_size),
-                #               y1=(row['y'] + circle_size),
-                #               line_color="white", editable=True)
         self.figure['layout']['shapes'] = self.cur_shapes
         return self.figure
 
@@ -508,7 +492,7 @@ class CanvasLayout:
                               self.figure['layout']['xaxis']['range'][0])
                     x_range_high = math.ceil(int(high))
                     x_range_low = math.floor(int(low))
-                if not x_range_high >= x_range_low: raise AssertionError
+                if x_range_high < x_range_low: raise AssertionError
                 # Enforce that all values must be above 0 for the scale value to render during panning
                 scale_val = int(float(math.ceil(int(proportion * (x_range_high - x_range_low))) + 1) * float(
                     pixel_ratio))

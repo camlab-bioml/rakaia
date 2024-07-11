@@ -54,19 +54,10 @@ def test_add_scalebar_to_canvas(get_current_dir):
     assert custom_scaleval['layout']['annotations'][0]['text'] == '<span style="color: white">51μm</span><br>'
 
 
-def test_basic_additive_image():
-    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.zeros((600, 600, 3)),
-                                                       "Nuclear": np.zeros((600, 600, 3)),
-                                                       "Cytoplasm": np.zeros((600, 600, 3))},
-                                              "experiment0+++slide0+++acq1": {"DNA": np.zeros((600, 600, 3)),
-                                                       "Nuclear": np.zeros((600, 600, 3)),
-                                                       "Cytoplasm": np.zeros((600, 600, 3))}
-                                              }
-
-    # blend_dict = create_new_blending_dict(upload_dict)
+def test_basic_additive_image(channel_hash):
 
     image = get_additive_image_with_masking(["DNA", "Nuclear"], data_selection="experiment0+++slide0+++acq0",
-                                            canvas_layers=upload_dict, mask_config=None, mask_toggle=False,
+                                            canvas_layers=channel_hash, mask_config=None, mask_toggle=False,
                                             mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
                                             add_mask_boundary=False, legend_text='this is a legend')
     assert isinstance(image, go.Figure)
@@ -76,7 +67,7 @@ def test_basic_additive_image():
     assert image['layout']['uirevision']
 
     bad_col = get_additive_image_with_masking(["fake_channel"], data_selection="experiment0+++slide0+++acq0",
-                                        canvas_layers=upload_dict, mask_config=None, mask_toggle=False,
+                                        canvas_layers=channel_hash, mask_config=None, mask_toggle=False,
                                         mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
                                         add_mask_boundary=False, legend_text='this is a legend')
 
@@ -86,7 +77,7 @@ def test_basic_additive_image():
     mask_config = {"mask": np.zeros((600, 600, 3)).astype(np.uint8)}
 
     image_mask = get_additive_image_with_masking(["DNA", "Nuclear"], data_selection="experiment0+++slide0+++acq0",
-                                            canvas_layers=upload_dict, mask_config=mask_config, mask_toggle=True,
+                                            canvas_layers=channel_hash, mask_config=mask_config, mask_toggle=True,
                                             mask_selection="mask", show_canvas_legend=True, mask_blending_level=1,
                                             add_mask_boundary=True, legend_text='')
     assert isinstance(image_mask, go.Figure)
@@ -100,19 +91,9 @@ def test_basic_return_local_file_dialog():
     assert isinstance(add_local_file_dialog(use_local_dialog=True), dbc.Button)
     assert isinstance(add_local_file_dialog(use_local_dialog=False), html.Div)
 
-def test_invert_annotations_figure():
-    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.zeros((600, 600, 3)),
-                                                   "Nuclear": np.zeros((600, 600, 3)),
-                                                   "Cytoplasm": np.zeros((600, 600, 3))},
-                   "experiment0+++slide0+++acq1": {"DNA": np.zeros((600, 600, 3)),
-                                                   "Nuclear": np.zeros((600, 600, 3)),
-                                                   "Cytoplasm": np.zeros((600, 600, 3))}
-                   }
-
-    # blend_dict = create_new_blending_dict(upload_dict)
-
+def test_invert_annotations_figure(channel_hash):
     image = get_additive_image_with_masking(["DNA", "Nuclear"], data_selection="experiment0+++slide0+++acq0",
-                                            canvas_layers=upload_dict, mask_config=None, mask_toggle=False,
+                                            canvas_layers=channel_hash, mask_config=None, mask_toggle=False,
                                             mask_selection=None, show_canvas_legend=True, mask_blending_level=1,
                                             add_mask_boundary=False, legend_text='')
 
@@ -137,16 +118,8 @@ def test_tick_marker_spacing_range_slider():
     assert len(low_range) == 2
     assert small_step == 0.01
 
-def test_generate_legend_text_channels():
-    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
-                                                   "Nuclear": np.array([1, 1, 1, 1]),
-                                                   "Cytoplasm": np.array([2, 2, 2, 2]),
-                                                   "Other_Nuclear": np.array([3, 3, 3, 3])},
-                   "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
-                                                   "Nuclear": np.array([4, 4, 4, 4]),
-                                                   "Cytoplasm": np.array([5, 5, 5, 5]),
-                                                   "Other_Nuclear": np.array([6, 6, 6, 6])}}
-    blend_dict = create_new_blending_dict(upload_dict)
+def test_generate_legend_text_channels(channel_hash_2):
+    blend_dict = create_new_blending_dict(channel_hash_2)
     channel_order = list(blend_dict.keys())
     aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto", "Other_Nuclear": "nuclear"}
     orientation = "horizontal"
@@ -164,15 +137,8 @@ def test_generate_legend_text_channels():
                           'nuclear</span><br><span style="color:#FFFFFF">cyto</span><br>'
 
 
-def test_generate_legend_text_clustering():
-    upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.array([0, 0, 0, 0]),
-                                                   "Nuclear": np.array([1, 1, 1, 1]),
-                                                   "Cytoplasm": np.array([2, 2, 2, 2])},
-                   "experiment0+++slide0+++acq1": {"DNA": np.array([3, 3, 3, 3]),
-                                                   "Nuclear": np.array([4, 4, 4, 4]),
-                                                   "Cytoplasm": np.array([5, 5, 5, 5])}
-                   }
-    blend_dict = create_new_blending_dict(upload_dict)
+def test_generate_legend_text_clustering(channel_hash_2):
+    blend_dict = create_new_blending_dict(channel_hash_2)
     channel_order = list(blend_dict.keys())
     aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto"}
     annot_dict = {"experiment0+++slide0+++acq0": {"cell_type_1": '#00FF66', "cell_type_2": "5500FF",

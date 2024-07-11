@@ -1,23 +1,29 @@
-
 import tempfile
+import shutil
+import os
 import dash_uploader as du
 from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
+import dash_bootstrap_components as dbc
+from rakaia.components.layout import register_app_layout
 from rakaia.callbacks.pixel import init_pixel_level_callbacks
 from rakaia.callbacks.object import init_cell_level_callbacks
 from rakaia.callbacks.roi import init_roi_level_callbacks
 from rakaia.callbacks.db import init_db_callbacks
-import shutil
-import os
-import dash_bootstrap_components as dbc
-from rakaia.components.layout import register_app_layout
 
 def init_dashboard(server, authentic_id, config=None):
-
+    """Initialize the dashboard server.
+        Args:
+            server: The parent Flask app for rakaia to run
+            authentic_id: A uuid generated on CLI initialization
+            config: dictionary of CLI app options from argparse
+        Returns:
+            Dash proxy server object
+        """
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the server output cache dir and clean it every time a new dash session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup
         if os.access(config['cache_dest'], os.R_OK):
-            # TODO: establish cleaning the tmp dir for any sub directory that has rakaia cache in it
+            # cleaning the tmp dir for any sub directory that has rakaia cache in it
             cache_subdirs = [x[0] for x in os.walk(config['cache_dest']) if 'rakaia_cache' in x[0]]
             # remove any parent directory that has a rakaia cache in it
             for cache_dir in cache_subdirs:
@@ -46,7 +52,7 @@ def init_dashboard(server, authentic_id, config=None):
         # do not use debugging mode if production is used
         server.config['FLASK_DEBUG'] = config['is_dev_mode']
 
-        # TODO: configure a custom http request handler for public instances
+        # Can configure a custom http request handler for public instances
         # https://github.com/fohrloop/dash-uploader/blob/dev/docs/dash-uploader.md#4-custom-handling-of-http-requests
         du.configure_upload(dash_app, cache_dest)
 

@@ -10,6 +10,10 @@ from rakaia.io.session import SessionServerside
 def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with the mongoDB database
+    Args:
+            dash_app: the dash proxy server wrapped in the parent Flask app
+            tmpdirname: the path for the tmpdir for tmp storage for the session
+            authentic_id: uuid string identifying the particular app invocation
     """
     dash_app.config.suppress_callback_exceptions = True
 

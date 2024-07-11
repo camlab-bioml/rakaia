@@ -10,7 +10,7 @@ from rakaia.callbacks.object_wrappers import (
     reset_annotation_import)
 from rakaia.io.session import SessionServerside
 
-def test_basic_callback_import_annotations_quantification_frame(get_current_dir):
+def test_basic_callback_import_annotations_quantification_frame(get_current_dir, svgpath):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     app_config = {'serverside_overwrite': True}
     bounds = {'xaxis.range[0]': 826, 'xaxis.range[1]': 836, 'yaxis.range[0]': 12, 'yaxis.range[1]': 21}
@@ -64,17 +64,6 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir)
     assert "different" in quantification_frame["broad"].to_list()
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
-
-    svgpath = 'M670.7797603577856,478.9708311618908L675.5333177884905,487.2270098573258L676.0336922548805,' \
-              '492.2307545212258L671.2801348241755,500.73712044985575L669.7790114250056,' \
-              '501.98805661583077L668.0277007926405,501.4876821494408L665.7760156938856,' \
-              '499.2359970506858L663.5243305951306,497.9850608847108L662.2733944291556,' \
-              '496.23375025234577L661.7730199627656,492.9813162208108L661.7730199627656,' \
-              '491.2300055884458L662.7737688955456,490.47944388886077L665.0254539943006,' \
-              '490.47944388886077L665.7760156938856,486.4764481577408L665.2756412274956,' \
-              '484.72513752537577L664.7752667611055,482.7236396598158L666.0262029270806,' \
-              '477.2195205295258L667.2771390930556,480.7221417942558L667.5273263262505,' \
-              '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
 
     annotation = {'title': 'fake_title', 'body': 'fake_body',
                   'cell_type': 'mature', 'imported': False, 'type': 'path',

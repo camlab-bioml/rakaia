@@ -1,16 +1,16 @@
 from typing import Union
 import pandas as pd
 import re
-from rakaia.utils.pixel import (
-    path_to_mask,
-    split_string_at_pattern,
-    recolour_greyscale)
 from dash.exceptions import PreventUpdate
 from PIL import Image
 import numpy as np
 from skimage.segmentation import find_boundaries
 from pydantic import BaseModel
 import scipy
+from rakaia.utils.pixel import (
+    path_to_mask,
+    split_string_at_pattern,
+    recolour_greyscale)
 
 class QuantificationColumns(BaseModel):
     """
@@ -22,30 +22,29 @@ class QuantificationColumns(BaseModel):
                       'rakaia_cell_annotation', 'PhenoGraph_clusters', 'Labels']
 
 class QuantificationFormatError(Exception):
-    pass
+    """
+    Raise an exception if any of the inputs required for object quantification are malformed or missing.
+    """
 
 def set_columns_to_drop(measurements_csv=None):
     if measurements_csv is None:
         return QuantificationColumns().defaults
-    else:
-        # drop every column from sample and after, as these don't represent channels
-        indices = []
-        cols = list(measurements_csv.columns)
-        for column in QuantificationColumns().positions:
-            try:
-                indices.append(cols.index(column))
-            except (KeyError, ValueError, IndexError):
-                pass
-        if not indices:
-            # TODO: decide if throw error for quantification results that are missing the key identifying columns
-            return QuantificationColumns().defaults
-        return cols[min(indices): len(measurements_csv.columns)]
+    # drop every column from sample and after, as these don't represent channels
+    indices = []
+    cols = list(measurements_csv.columns)
+    for column in QuantificationColumns().positions:
+        try:
+            indices.append(cols.index(column))
+        except (KeyError, ValueError, IndexError):
+            pass
+    if not indices:
+        return QuantificationColumns().defaults
+    return cols[min(indices): len(measurements_csv.columns)]
 
 def set_mandatory_columns(only_sample=True):
     if only_sample:
         return ['sample', 'cell_id']
-    else:
-        return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
+    return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
 def get_min_max_values_from_zoom_box(coord_dict):
     if not all([elem in coord_dict.keys() for elem in \
@@ -152,8 +151,7 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
                 raise PreventUpdate
         except KeyError:
             raise PreventUpdate
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
     """
@@ -163,8 +161,6 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
     The coordinates_dict assumes the following keys: ['xaxis.range[0]', 'xaxis.range[1]',
     'yaxis.range[0]', 'yaxis.range[1]']
     """
-    #TODO: convert the query into a numpy where statement to fill in the cell type annotation in a new column
-    # while preserving the existing data frame structure
     try:
         return measurements.query(
             f'x_min >= {min(coordinates_dict["xaxis.range[0]"], coordinates_dict["xaxis.range[1]"])} &'
@@ -181,13 +177,11 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
     Populate a cell annotation column in the measurements data frame using numpy conditional searching
     by coordinate bounding box
     """
-    if annotation_column not in measurements.columns:
-        measurements[annotation_column] = default_val
-
     if coord_dict is None:
         coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
-
     try:
+        if annotation_column not in measurements.columns:
+            measurements[annotation_column] = default_val
         if box_type == "zoom":
             x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(values_dict)
         elif box_type == "rect":
@@ -208,9 +202,8 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
                                                 float(y_max)),
                                                         cell_type,
                                                     measurements[annotation_column])
-    except KeyError:
+    except (KeyError, TypeError):
         pass
-
     return measurements
 
 def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
@@ -318,15 +311,14 @@ def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=
     uniques = uniques[uniques != 0]
     return {cell: 100 for cell in list(uniques)}
 
-def subset_measurements_by_point(measurements, x, y):
+def subset_measurements_by_point(measurements, x_coord, y_coord):
     """
     Subset a measurements CSV by using a single xy coordinate. Assumes that only one entry in the measurements
     query is possible
     """
-    #TODO: convert the query into a numpy where statement to fill in the cell type annotation in a new column
-    # while preserving the existing data frame structure
     try:
-        return measurements.query(f'x_min <= {x} & x_max >= {x} & y_min <= {y} & y_max >= {y}')
+        return measurements.query(f'x_min <= {x_coord} & x_max >= {x_coord} & '
+                                  f'y_min <= {y_coord} & y_max >= {y_coord}')
     except pd.errors.UndefinedVariableError:
         return None
 
@@ -411,10 +403,9 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
                 sample_name = f"{exp}_{index}"
                 # sample_name = exp
                 return sample_name, 'sample'
-            except IndexError:
+            except (IndexError, ValueError):
                 return None, None
-    else:
-        return None, None
+    return None, None
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
                                            cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True,
@@ -436,7 +427,6 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
         # set the cluster assignments to use either from the subset, or the default of all
         clusters_to_use = [str(select) for select in cluster_option_subset] if cluster_option_subset is not None else \
             cluster_frame[cluster_col].unique().tolist()
-        # TODO: try to speed up for very large images with either many cells or many cluster categories
         # basic time complexity is O(num_clusters) but also slower for larger images
         for cell_type in clusters_to_use:
             cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()

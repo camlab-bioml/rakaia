@@ -1,5 +1,12 @@
+import os
+import tifffile
+import json
+import shutil
 import numpy as np
-
+from dash import dcc
+import pandas as pd
+from dash.exceptions import PreventUpdate
+import ast
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.io.session import create_download_dir
 from rakaia.utils.object import (
@@ -9,14 +16,6 @@ from rakaia.utils.object import (
     get_cells_in_svg_boundary_by_mask_percentage)
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary, split_string_at_pattern
 from rakaia.utils.pixel import path_to_mask
-import os
-import tifffile
-import json
-import shutil
-from dash import dcc
-import pandas as pd
-from dash.exceptions import PreventUpdate
-import ast
 
 class AnnotationRegionWriter:
     """
@@ -88,6 +87,7 @@ class AnnotationMaskWriter:
             os.makedirs(self.dest_dir)
 
     def add_new_category_mask(self, value):
+        print(value)
         if value['annotation_column'] not in self.cell_class_arrays:
             self.cell_class_arrays[value['annotation_column']] = np.zeros(self.mask_shape)
 
@@ -127,17 +127,17 @@ class AnnotationMaskWriter:
                 # if using an svgpath, get the mask for the interior pixels
                 elif value['type'] == 'point':
                     try:
-                        x = ast.literal_eval(key)['points'][0]['x']
-                        y = ast.literal_eval(key)['points'][0]['y']
+                        x_coord = ast.literal_eval(key)['points'][0]['x']
+                        y_coord = ast.literal_eval(key)['points'][0]['y']
                         if self.mask is not None:
-                            cell_id = self.mask[y, x]
+                            cell_id = self.mask[y_coord, x_coord]
 
                             new_mask = np.where(self.mask == cell_id,
                                                 self.cell_class_ids[value['annotation_column']]['counts'],
                                                 self.cell_class_arrays[value['annotation_column']])
                             self.cell_class_arrays[value['annotation_column']] = new_mask
                         else:
-                            self.cell_class_arrays[value['annotation_column']][y, x] = self.cell_class_ids[
+                            self.cell_class_arrays[value['annotation_column']][y_coord, x_coord] = self.cell_class_ids[
                                 value['annotation_column']]['counts']
                     except (KeyError, ValueError):
                         pass
@@ -154,17 +154,6 @@ class AnnotationMaskWriter:
                              self.cell_class_arrays[name].astype(np.float32))
             with open(os.path.join(self.dest_dir, f"{mask_name}.json"), "w") as outfile:
                 json.dump(self.cell_class_ids[name], outfile)
-        # for name, array in cell_class_arrays.items():
-        #     # set the name of the mask to include the original mask name if provided, otherwise none
-        #     original_name = f"{cell_class_ids[name]['name']}_" if cell_class_ids[name]['name'] else ""
-        #     mask_name = f"{original_name}{name}"
-        #     tifffile.imwrite(os.path.join(dest_path, f"{mask_name}.tiff"), array.astype(np.float32))
-        # for name, labels in cell_class_ids.items():
-        #     original_name = f"{cell_class_ids[name]['name']}_" if cell_class_ids[name]['name'] else ""
-        #     mask_name = f"{original_name}{name}"
-        #     with open(os.path.join(dest_path, f"{mask_name}.json"), "w") as outfile:
-        #         json.dump(labels, outfile)
-        # TODO: convert the hash tables linking IDs to the cell type and save to dir
         shutil.make_archive(self.dest_dir, 'zip', self.dest_dir)
         return str(self.dest_dir + ".zip")
 
