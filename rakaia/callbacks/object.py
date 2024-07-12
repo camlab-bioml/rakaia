@@ -2,7 +2,7 @@ import dash
 import pandas as pd
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.parsers.object import (
-    parse_cell_subtypes_from_restyledata,
+    RestyleDataParser,
     parse_and_validate_measurements_csv,
     parse_masks_from_filenames,
     parse_roi_query_indices_from_quantification_subset,
@@ -24,7 +24,7 @@ from rakaia.io.pdf import AnnotationPDFWriter
 from rakaia.io.annotation import AnnotationRegionWriter
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary
 from rakaia.callbacks.object_wrappers import (
-    callback_add_region_annotation_to_quantification_frame,
+    AnnotationQuantificationMerge,
     callback_remove_canvas_annotation_shapes, reset_annotation_import)
 from rakaia.io.annotation import AnnotationMaskWriter, export_point_annotations_as_csv
 from rakaia.inputs.loaders import adjust_option_height_from_list_length
@@ -110,15 +110,14 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings, annot_cols, restyle_data,
                                             umap_col_selection, prev_categories, channels_to_display,
                                             heatmap_channel_options, normalize_heatmap, subset_heatmap):
-        # TODO: figure out how to decouple the quantification update from the heatmap rendering:
-        #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered, which is
-        #  very slow for large quant results
+        # figure out how to decouple the quantification update from the heatmap rendering:
+        #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered
         if quantification_dict is not None:
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id not in ["umap-projection-options"]:
                 try:
-                    subtypes, keep = parse_cell_subtypes_from_restyledata(restyle_data, quantification_dict,
-                                                                          umap_col_selection, prev_categories)
+                    subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
+                                    umap_col_selection, prev_categories).get_callback_structures()
                 except TypeError:
                     subtypes, keep = None, None
             else:
@@ -292,27 +291,32 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('delete-annotation-tabular', 'n_clicks'),
         State('annotation-table', 'selected_rows'),
         Input('quant-annot-reimport', 'n_clicks'),
+        Input('clear-annotation_dict', 'n_clicks'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True),
         Output('annotation-table', 'selected_rows', allow_duplicate=True))
     def update_region_annotation_in_quantification_frame(annotations, quantification_frame,
                         data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
-                        delete_from_table, annot_table_selection, reimport_annots):
+                        delete_from_table, annot_table_selection, reimport_annots, clear_all_annots):
         """
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         Any selected rows in the annotation preview table are reset to avoid erroneous indices
         """
         if data_selection:
-            remove = ctx.triggered_id in ["delete-annotation-tabular"]
-            indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
+            remove = ctx.triggered_id in ["delete-annotation-tabular", "clear-annotation_dict"]
+            if ctx.triggered_id == "clear-annotation_dict" and data_selection in annotations:
+                indices_remove = [int(i) for i in range(len(annotations[data_selection].keys()))]
+                # annotations[data_selection] = {}
+            else:
+                indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
             sample_name, id_column = identify_column_matching_roi_to_quantification(
             data_selection, quantification_frame, data_dropdown_options, delimiter, mask_selection)
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
                 annotations = reset_annotation_import(annotations, data_selection, app_config, False)
-            quant_frame, annotations = callback_add_region_annotation_to_quantification_frame(annotations,
-            quantification_frame, data_selection, mask_config, mask_toggle, mask_selection, sample_name=sample_name,
-                            id_column=id_column, config=app_config, remove=remove, indices_remove=indices_remove)
+            quant_frame, annotations = AnnotationQuantificationMerge(annotations, quantification_frame, data_selection,
+            mask_config, mask_toggle, mask_selection, sample_name=sample_name, id_column=id_column,
+            config=app_config, remove=remove, indices_remove=indices_remove).get_callback_structures()
             return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=OVERWRITE), annotations, []
         raise PreventUpdate
 
@@ -320,7 +324,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("download-edited-annotations", "data"),
         Input("btn-download-annotations", "n_clicks"),
         Input("quantification-dict", "data"))
-
     def download_quantification_with_annotations(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-annotations":
@@ -392,21 +395,6 @@ def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         canvas layout
         """
         return callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout, error_config)
-
-    @dash_app.callback(
-        Output("annotations-dict", "data", allow_duplicate=True),
-        Input('clear-annotation_dict', 'n_clicks'),
-        State("annotations-dict", "data"),
-        State('data-collection', 'value'),
-        prevent_initial_call=True)
-    def clear_current_roi_annotations(n_clicks, cur_annotation_dict, data_selection):
-        """
-        Clear all the current ROI annotations
-        """
-        if None not in (cur_annotation_dict, data_selection) and data_selection in cur_annotation_dict:
-            cur_annotation_dict[data_selection] = {}
-            return SessionServerside(cur_annotation_dict, key="annotation_dict", use_unique_key=OVERWRITE)
-        raise PreventUpdate
 
     @dash_app.callback(
         Output("show-quant-dist-table", "is_open"),

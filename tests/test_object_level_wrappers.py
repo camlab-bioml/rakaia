@@ -6,8 +6,8 @@ import pandas as pd
 from dash.exceptions import PreventUpdate
 from rakaia.callbacks.object_wrappers import (
     callback_remove_canvas_annotation_shapes,
-    callback_add_region_annotation_to_quantification_frame,
-    reset_annotation_import)
+    reset_annotation_import,
+    AnnotationQuantificationMerge)
 from rakaia.io.session import SessionServerside
 
 def test_basic_callback_import_annotations_quantification_frame(get_current_dir, svgpath):
@@ -21,9 +21,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
-                                        measurements.to_dict(orient="records"), "roi_1", None, False, None,
-                                        config=app_config)
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
+                                        measurements, "roi_1", None, False, None,
+                                        config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
@@ -31,7 +31,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
     assert isinstance(serverside, SessionServerside)
 
     with pytest.raises(PreventUpdate):
-        callback_add_region_annotation_to_quantification_frame(None, None, "roi_1", None, False, None)
+        AnnotationQuantificationMerge(None, None, "roi_1", None, False, None).get_callback_structures()
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     bounds = {'x0': 826, 'x1': 836, 'y0': 12, 'y1': 21}
@@ -42,9 +42,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                         measurements.to_dict(orient="records"), "roi_1", None, False,
-                                        None, config=app_config)
+                                        None, config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
@@ -56,9 +56,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
 
     annotations_dict = {"roi_1": {tuple(sorted(bounds.items())): annotation}}
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                         quantification_frame.to_dict(orient="records"), "roi_1", None, False,
-                                        None, config=app_config)
+                                        None, config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
     assert "different" not in quantification_frame["rakaia_cell_annotation"].to_list()
     assert "different" in quantification_frame["broad"].to_list()
@@ -73,9 +73,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
 
     mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                         measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
-                                        sample_name='Dilution_series_1_1', config=app_config)
+                                        sample_name='Dilution_series_1_1', config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert len(quantification_frame[
@@ -86,9 +86,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
                     quantification_frame["cell_id"] == 403]["rakaia_cell_annotation"]) == ["mature"]
 
     with pytest.raises(dash.exceptions.PreventUpdate):
-        quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(None,
+        quantification_frame, serverside = AnnotationQuantificationMerge(None,
                                     None,b"roi_1", None, False,
-                                    None, sample_name='Dilution_series_1_1', config=app_config)
+                                    None, sample_name='Dilution_series_1_1', config=app_config).get_callback_structures()
 
     assert len(quantification_frame[
                    quantification_frame["rakaia_cell_annotation"] == "mature"]) == 2
@@ -109,9 +109,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                     measurements.to_dict(orient="records"), "roi_1", mask_dict, True,
-                                    "mask_1", sample_name='Dilution_series_1_1', config=app_config)
+                                    "mask_1", sample_name='Dilution_series_1_1', config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'rakaia_cell_annotation' in quantification_frame.columns
     assert 'mature' in list(quantification_frame['rakaia_cell_annotation'])
@@ -125,9 +125,9 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
              'annotation_column': 'gating_test'}
     }}
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                 measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
-                                sample_name='Dilution_series_1_1', config=app_config)
+                                sample_name='Dilution_series_1_1', config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'gating_test' in quantification_frame.columns
     assert 'mature' in list(quantification_frame['gating_test'])
@@ -137,6 +137,7 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
 
 
 def test_basic_annotation_dict_without_quantification_frame(get_current_dir):
+
     annotations_dict = {'roi_1': {
         "{'points': [{'x': 582, 'y': 465}]}":
             {'title': 'fake_title', 'body': 'fake_body',
@@ -146,15 +147,15 @@ def test_basic_annotation_dict_without_quantification_frame(get_current_dir):
 
     mask_dict = {"mask_1": {"raw": tifffile.imread(os.path.join(get_current_dir, "mask.tiff"))}}
     app_config = {'serverside_overwrite': True}
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                         None, "roi_1", mask_dict, True, "mask_1", sample_name='Dilution_series_1_1',
-                                        config=app_config)
+                                        config=app_config).get_callback_structures()
     assert quantification_frame is None
     assert not serverside.value['roi_1']["{'points': [{'x': 582, 'y': 465}]}"]['imported']
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+    quantification_frame, serverside = AnnotationQuantificationMerge(serverside.value,
                     None, "roi_1", mask_dict, True, "mask_1", sample_name='Dilution_series_1_1',
-                    config=app_config, remove=True)
+                    config=app_config, remove=True).get_callback_structures()
     assert not serverside.value['roi_1']
 
 
@@ -178,9 +179,9 @@ def test_basic_callback_remove_annotations_quantification_frame(get_current_dir)
                                        'annotation_column': 'rakaia_cell_annotation', 'id': 'annot_2'}
                                   }}
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                         measurements.to_dict(orient="records"), "roi_1", None, False, None,
-                                        config=app_config)
+                                        config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
 
     assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
@@ -188,9 +189,9 @@ def test_basic_callback_remove_annotations_quantification_frame(get_current_dir)
 
     # Remove the most recent annotation
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+    quantification_frame, serverside = AnnotationQuantificationMerge(serverside.value,
                                     quantification_frame.to_dict(orient="records"), "roi_1", None, False, None,
-                                    config=app_config, remove=True, indices_remove=[0])
+                                    config=app_config, remove=True, indices_remove=[0]).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
     assert list(quantification_frame["rakaia_cell_annotation"][(quantification_frame["x_max"] == 836) &
                                                                 (quantification_frame["y_max"] == 20)]) == ['Unassigned']
@@ -217,18 +218,18 @@ def test_basic_callback_remove_annotations_quantification_frame_2(get_current_di
 
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
                                     measurements.to_dict(orient="records"), "roi_1", mask_dict, True,
-                                    "mask_1", sample_name='Dilution_series_1_1', config=app_config)
+                                    "mask_1", sample_name='Dilution_series_1_1', config=app_config).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'rakaia_cell_annotation' in quantification_frame.columns
     assert 'mature' in list(quantification_frame['rakaia_cell_annotation'])
     assert list(quantification_frame['rakaia_cell_annotation'].value_counts().index) == ['Unassigned', 'first', 'mature']
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+    quantification_frame, serverside = AnnotationQuantificationMerge(serverside.value,
                                     quantification_frame.to_dict(orient="records"), "roi_1", mask_dict, True,
                                     "mask_1", sample_name='Dilution_series_1_1', config=app_config, remove=True,
-                                    indices_remove=[1])
+                                    indices_remove=[1]).get_callback_structures()
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'rakaia_cell_annotation' in quantification_frame.columns
     assert not 'mature' in list(quantification_frame['rakaia_cell_annotation'])
@@ -253,9 +254,9 @@ def test_basic_callback_remove_annotations_quantification_frame_3(get_current_di
              'annotation_column': 'gating_test', 'mask_selection': 'mask', 'id': 'gating_1'}
     }}
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(annotations_dict,
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
             measurements.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
-            sample_name='Dilution_series_1_1', config=app_config)
+            sample_name='Dilution_series_1_1', config=app_config).get_callback_structures()
 
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'gating_test' in quantification_frame.columns
@@ -264,9 +265,10 @@ def test_basic_callback_remove_annotations_quantification_frame_3(get_current_di
     assert quantification_frame.index[quantification_frame['gating_test'] == 'mature'].tolist() == \
            [int(elem) - 1 for elem in sorted(list(gated_cell_tuple))]
 
-    quantification_frame, serverside = callback_add_region_annotation_to_quantification_frame(serverside.value,
+    quantification_frame, serverside = AnnotationQuantificationMerge(serverside.value,
                     quantification_frame.to_dict(orient="records"), "roi_1", mask_dict, True, "mask_1",
-                    sample_name='Dilution_series_1_1', config=app_config, remove=True, indices_remove=[0, 1, 2])
+                    sample_name='Dilution_series_1_1', config=app_config,
+                    remove=True, indices_remove=[0, 1, 2]).get_callback_structures()
 
     quantification_frame = pd.DataFrame(quantification_frame)
     assert 'gating_test' in quantification_frame.columns

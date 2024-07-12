@@ -16,7 +16,9 @@ from rakaia.utils.pixel import (
 from rakaia.utils.alert import PanelMismatchError
 
 class NoAcquisitionsParsedError(Exception):
-    pass
+    """
+    Passed when the session upload dictionary produces no viable ROIs
+    """
 
 class FileParser:
     """

@@ -78,29 +78,32 @@ class RegionThumbnail:
                 # call the additive thumbnail partial function with the corresponding extension
                 getattr(self, self.MATCHES[file_extension])(file_path)
 
+    def set_mcd_query_selection(self, mcd_slide):
+        if self.predefined_indices is None:
+            if self.num_queries > len(mcd_slide.acquisitions):
+                self.query_selection = range(0, len(mcd_slide.acquisitions))
+            else:
+                self.query_selection = random.sample(range(0,
+                                                           len(mcd_slide.acquisitions)), self.num_queries)
+        elif isinstance(self.query_selection, dict):
+            if 'indices' in self.query_selection:
+                self.num_queries = len(self.query_selection['indices'])
+                self.query_selection = [i for i in self.query_selection['indices'] if \
+                                        len(mcd_slide.acquisitions) > i >= 0]
+            elif 'names' in self.query_selection:
+                acq_names = [f"{str(acq.description)}_{str(acq.id)}" for acq in mcd_slide.acquisitions]
+                self.num_queries = len(self.query_selection['names'])
+                try:
+                    self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
+                except ValueError:
+                    self.query_selection = []
+
     def additive_thumbnail_from_mcd(self, file_path):
         basename = str(Path(file_path).stem)
         with MCDFile(file_path) as mcd_file:
             slide_index = 0
             for slide_inside in mcd_file.slides:
-                if self.predefined_indices is None:
-                    if self.num_queries > len(slide_inside.acquisitions):
-                        self.query_selection = range(0, len(slide_inside.acquisitions))
-                    else:
-                        self.query_selection = random.sample(range(0,
-                                                len(slide_inside.acquisitions)), self.num_queries)
-                elif isinstance(self.query_selection, dict):
-                    if 'indices' in self.query_selection:
-                        self.num_queries = len(self.query_selection['indices'])
-                        self.query_selection = [i for i in self.query_selection['indices'] if \
-                                           len(slide_inside.acquisitions) > i >= 0]
-                    elif 'names' in self.query_selection:
-                        acq_names = [f"{str(acq.description)}_{str(acq.id)}" for acq in slide_inside.acquisitions]
-                        self.num_queries = len(self.query_selection['names'])
-                        try:
-                            self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
-                        except ValueError:
-                            self.query_selection = []
+                self.set_mcd_query_selection(slide_inside)
                 for query in self.query_selection:
                     try:
                         acq = slide_inside.acquisitions[query]
@@ -244,8 +247,7 @@ class RegionThumbnail:
                 if self.query_cell_id_lists is not None:
                     sam_names = list(self.query_cell_id_lists.keys())
                     # match the sample name in te quant sheet to the matched mask name
-                    # TODO: update logic here when the names do not match exactly from quantification to mask
-                    # in-app quantification
+                    # logic here should be flexible with different mask and sample names in the quantification sheet
                     sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
                     if sam_name is not None:
                         mask_to_use = subset_mask_outline_using_cell_id_list(

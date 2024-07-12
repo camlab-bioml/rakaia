@@ -188,67 +188,139 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
     else:
         return frame, None
 
-def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation, existing_cats=None):
+class RestyleDataParser:
     """
-    Parse the selected cell subtypes from the UMAP plot as selected by the legend
-    if a subset is not found, return None for both elements of the tuple
-    Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
-    and a list of the indices of those subtypes relative to the list of subtypes for a specific category
+        Parse the selected categorical subtypes from the UMAP plot as selected by the legend.
+        Categorical selections from the interactive legend are found in the restyledata attribute of the
+        `go.Figure` object, stored as index lists under the 'visible' hash key
+        If a subset is not found, return None for both elements of the tuple
+        Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
+        and a list of the indices of those subtypes relative to the list of subtypes for a specific category
     """
-    # Example 1: user selected only the third legend item to view
-    # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
-    # Example 2: user selects all but the the second item to view
-    # [{'visible': ['legendonly']}, [2]]
-    # print(restyle_data)
-    # do not allow the restyledata to be empty from categorical
-    if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0] and \
-        umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns) and \
-            restyledata not in [[{'visible': ['legendonly']}, [0]]]:
-        # get the total number of possible sub annotations and figure out which ones were selected
-        quant_frame = pd.DataFrame(quantification_frame)
-        tot_subtypes = list(quant_frame[umap_col_annotation].unique())
-        subtypes_keep = []
-        # Case 1: if only one sub type is selected
-        if len(restyledata[0]['visible']) == len(tot_subtypes):
-            indices_use = []
-            for selection in range(len(restyledata[0]['visible'])):
-                if restyledata[0]['visible'][selection] != 'legendonly':
-                    subtypes_keep.append(tot_subtypes[selection])
-                    indices_use.append(selection)
-            return subtypes_keep, indices_use
-        # Case 2: if the user has already added or excluded one sub type
+    def __init__(self, restyledata: Union[dict, list], quantification_frame: Union[dict, pd.DataFrame],
+                 umap_col_annotation: str, existing_categories: Union[dict, list]=None):
+        self.restyledata = restyledata
+        self.quantification_frame = quantification_frame
+        self.umap_col_annotation = umap_col_annotation
+        self.existing_categories = existing_categories
+        self._subtypes_return = None
+        self._indices_keep = None
 
-        # Case 2.1: when user wants to remove current index plus other ones that have already been removed
-        # [{'visible': ['legendonly']}, [3]]
+        if None not in (self.restyledata, self.quantification_frame) and 'visible' in self.restyledata[0] and \
+               self.umap_col_annotation is not None and self.umap_col_annotation in list(
+            pd.DataFrame(self.quantification_frame).columns) and \
+                self.restyledata not in [[{'visible': ['legendonly']}, [0]]]:
+            quant_frame = pd.DataFrame(self.quantification_frame)
+            tot_subtypes = list(quant_frame[self.umap_col_annotation].unique())
+            self._subtypes_return = []
+            if self.single_category_selected(tot_subtypes):
+                self._indices_keep = []
+                for selection in range(len(self.restyledata[0]['visible'])):
+                    if self.restyledata[0]['visible'][selection] != 'legendonly':
+                        self._subtypes_return.append(tot_subtypes[selection])
+                        self._indices_keep.append(selection)
+            elif self.subtypes_already_selected():
+                if self.ignore_selected_index():
+                    self.generate_indices_from_ignore(self._subtypes_return, tot_subtypes)
+                elif self.keep_current_index():
+                    self.generate_indices_from_keep(self._subtypes_return, tot_subtypes)
 
-        # Case 2.2: when user wants to add current index plus others that have already been added
-        # [{'visible': [True]}, [3]]
-        elif len(restyledata[0]['visible']) == 1 and len(restyledata[1]) == 1:
-            # case 2.1: When the current and previous indices are to be ignored
-            # [{'visible': ['legendonly']}, [3]]
-            if restyledata[0]['visible'][0] == 'legendonly':
-                # existing indices will be ones to keep
-                indices_keep = existing_cats.copy() if existing_cats is not None else \
-                    [ind for ind in range(0, len(tot_subtypes))]
-                if restyledata[1][0] in indices_keep:
-                    indices_keep.remove(restyledata[1][0])
-                for selection in range(len(tot_subtypes)):
-                    if selection in indices_keep:
-                        subtypes_keep.append(tot_subtypes[selection])
-                return subtypes_keep, indices_keep
-            # Case 2.2: when the current and previous indices are to be kept
-            # [{'visible': [True]}, [3]]
-            elif restyledata[0]['visible'][0]:
-                indices_keep = existing_cats.copy() if existing_cats is not None else []
-                for elem in restyledata[1]:
-                    if elem not in indices_keep:
-                        indices_keep.append(elem)
-                for selection in range(len(tot_subtypes)):
-                    if selection in indices_keep:
-                        subtypes_keep.append(tot_subtypes[selection])
-                return subtypes_keep, indices_keep
-    return None, None
+    def single_category_selected(self, tot_subtypes):
+        return len(self.restyledata[0]['visible']) == len(tot_subtypes)
 
+    def subtypes_already_selected(self):
+        return len(self.restyledata[0]['visible']) == 1 and len(self.restyledata[1]) == 1
+
+    def ignore_selected_index(self):
+        return self.restyledata[0]['visible'][0] == 'legendonly'
+
+    def generate_indices_from_ignore(self, subtypes_keep, tot_subtypes):
+        indices_keep = self.existing_categories.copy() if self.existing_categories is not None else \
+            [ind for ind in range(0, len(tot_subtypes))]
+        if self.restyledata[1][0] in indices_keep:
+            indices_keep.remove(self.restyledata[1][0])
+        for selection in range(len(tot_subtypes)):
+            if selection in indices_keep:
+                subtypes_keep.append(tot_subtypes[selection])
+        self._subtypes_return, self._indices_keep = subtypes_keep, indices_keep
+
+    def keep_current_index(self):
+        return bool(self.restyledata[0]['visible'][0])
+
+    def generate_indices_from_keep(self, subtypes_keep, tot_subtypes):
+        indices_keep = self.existing_categories.copy() if self.existing_categories is not None else []
+        for elem in self.restyledata[1]:
+            if elem not in indices_keep:
+                indices_keep.append(elem)
+        for selection in range(len(tot_subtypes)):
+            if selection in indices_keep:
+                subtypes_keep.append(tot_subtypes[selection])
+        self._subtypes_return, self._indices_keep = subtypes_keep, indices_keep
+
+    def get_callback_structures(self):
+        return self._subtypes_return if self._subtypes_return else None, \
+            self._indices_keep if self._indices_keep else None
+
+# def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation, existing_cats=None):
+#     """
+#     Parse the selected cell subtypes from the UMAP plot as selected by the legend
+#     if a subset is not found, return None for both elements of the tuple
+#     Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
+#     and a list of the indices of those subtypes relative to the list of subtypes for a specific category
+#     """
+#     # Example 1: user selected only the third legend item to view
+#     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
+#     # Example 2: user selects all but the the second item to view
+#     # [{'visible': ['legendonly']}, [2]]
+#     # print(restyle_data)
+#     # do not allow the restyledata to be empty from categorical
+#     if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0] and \
+#         umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns) and \
+#             restyledata not in [[{'visible': ['legendonly']}, [0]]]:
+#         # get the total number of possible sub annotations and figure out which ones were selected
+#         quant_frame = pd.DataFrame(quantification_frame)
+#         tot_subtypes = list(quant_frame[umap_col_annotation].unique())
+#         subtypes_keep = []
+#         # Case 1: if only one sub type is selected
+#         if len(restyledata[0]['visible']) == len(tot_subtypes):
+#             indices_use = []
+#             for selection in range(len(restyledata[0]['visible'])):
+#                 if restyledata[0]['visible'][selection] != 'legendonly':
+#                     subtypes_keep.append(tot_subtypes[selection])
+#                     indices_use.append(selection)
+#             return subtypes_keep, indices_use
+#         # Case 2: if the user has already added or excluded one sub type
+#
+#         # Case 2.1: when user wants to remove current index plus other ones that have already been removed
+#         # [{'visible': ['legendonly']}, [3]]
+#
+#         # Case 2.2: when user wants to add current index plus others that have already been added
+#         # [{'visible': [True]}, [3]]
+#         elif len(restyledata[0]['visible']) == 1 and len(restyledata[1]) == 1:
+#             # case 2.1: When the current and previous indices are to be ignored
+#             # [{'visible': ['legendonly']}, [3]]
+#             if restyledata[0]['visible'][0] == 'legendonly':
+#                 # existing indices will be ones to keep
+#                 indices_keep = existing_cats.copy() if existing_cats is not None else \
+#                     [ind for ind in range(0, len(tot_subtypes))]
+#                 if restyledata[1][0] in indices_keep:
+#                     indices_keep.remove(restyledata[1][0])
+#                 for selection in range(len(tot_subtypes)):
+#                     if selection in indices_keep:
+#                         subtypes_keep.append(tot_subtypes[selection])
+#                 return subtypes_keep, indices_keep
+#             # Case 2.2: when the current and previous indices are to be kept
+#             # [{'visible': [True]}, [3]]
+#             elif restyledata[0]['visible'][0]:
+#                 indices_keep = existing_cats.copy() if existing_cats is not None else []
+#                 for elem in restyledata[1]:
+#                     if elem not in indices_keep:
+#                         indices_keep.append(elem)
+#                 for selection in range(len(tot_subtypes)):
+#                     if selection in indices_keep:
+#                         subtypes_keep.append(tot_subtypes[selection])
+#                 return subtypes_keep, indices_keep
+#     return None, None
 
 def parse_roi_query_indices_from_quantification_subset(quantification_dict, subset_frame, umap_col_selection=None):
     """

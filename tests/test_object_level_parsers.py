@@ -17,7 +17,7 @@ from rakaia.parsers.object import (
     read_in_mask_array_from_filepath,
     set_columns_to_drop,
     set_mandatory_columns,
-    parse_cell_subtypes_from_restyledata,
+    RestyleDataParser,
     parse_roi_query_indices_from_quantification_subset,
     match_steinbock_mask_name_to_mcd_roi,
     match_mask_name_to_quantification_sheet_roi,
@@ -136,18 +136,18 @@ def test_parse_restyledata_from_legend_change():
     restyle_1 = [{'visible': ['legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly', 'legendonly']},
                  [0, 1, 2, 3, 4, 5, 6]]
 
-    types_return_1 = parse_cell_subtypes_from_restyledata(restyle_1, test_frame, "category", None)
+    types_return_1 = RestyleDataParser(restyle_1, test_frame, "category", None).get_callback_structures()
     assert types_return_1 == (['two'], [1])
 
     restyle_2 = [{'visible': [True]}, [6]]
-    types_return_2 = parse_cell_subtypes_from_restyledata(restyle_2, test_frame, "category", [1])
+    types_return_2 = RestyleDataParser(restyle_2, test_frame, "category", [1]).get_callback_structures()
     assert types_return_2 == (['two', 'seven'], [1, 6])
 
     restyle_3 = [{'visible': ['legendonly']}, [3]]
-    types_return_3 = parse_cell_subtypes_from_restyledata(restyle_3, test_frame, "category", [0, 1, 2, 3])
+    types_return_3 = RestyleDataParser(restyle_3, test_frame, "category", [0, 1, 2, 3]).get_callback_structures()
     assert types_return_3 == (['one', 'two', 'three'], [0, 1, 2])
-    assert parse_cell_subtypes_from_restyledata([{'visible': ['legendonly']}, [0]],
-                                                test_frame, "category", [0, 1, 2, 3]) == (None, None)
+    assert RestyleDataParser([{'visible': ['legendonly']}, [0]],
+        test_frame, "category", [0, 1, 2, 3]).get_callback_structures() == (None, None)
 
 def test_valid_parse_for_indices_for_query(get_current_dir):
     """
