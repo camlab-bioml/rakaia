@@ -9,8 +9,8 @@ from rakaia.entrypoint import init_app, __version__
 
 def cli_parser():
     """Retrieve the argparse parser arguments on aoo CLI initialization.
-        Returns:
-            argparse Argument parser with provided CLI options
+
+    :return: argparse Argument parser with provided CLI options
     """
     parser = argparse.ArgumentParser(add_help=False,
                                      description="rakaia: Cell-type Classification (using) Rapid Analysis (of) Multiplexed "

@@ -13,7 +13,11 @@ import ast
 
 class ChannelRegion:
     """
-    This abstract class defines a region for a particular channel
+    Abstract class defines a region for a particular channel
+
+    :param channel_array: Numpy array for one channel (should contain raw signal intensity as pixels)
+    :param coordinates: A dictionary of coordinates corresponding to the spatial location of the region
+    :return: None
     """
     def __init__(self, channel_array, coordinates):
         self.channel_array = channel_array
@@ -26,29 +30,38 @@ class ChannelRegion:
 
     def compute_pixel_mean(self):
         """
-        Compute the mean pixel intensity of the channel region
+        :return: Channel region signal intensity mean
         """
         return self.mean_exp
 
     def compute_pixel_min(self):
         """
-        Compute the min pixel intensity of the channel region
+        :return: Channel region signal intensity min
         """
         return self.min_exp
 
 
     def compute_pixel_max(self):
         """
-        Compute the max pixel intensity of the channel region
+        return: Channel region signal intensity max
         """
         return self.max_exp
 
     def compute_integrated_signal(self):
+        """
+        return: Channel region intensity sum
+        """
         return self.integrated
 
 class RectangleRegion(ChannelRegion):
     """
-    This class defines a channel region created using the zoom feature
+    Defines a rectangular channel region created using the zoom feature, or a drawn rectangle.
+
+    :param channel_array: Numpy array for one channel (should contain raw signal intensity as pixels)
+    :param coordinates: A dictionary of coordinates corresponding to the spatial location of the region
+    :param reg_type: Whether the region type is created using `zoom` or a drawn `rect`.
+    :param redrawn: If the type is a drawn rectangle, if the rectangle has been redrawn, or is a new canvas shape
+    :return: None
     """
     def __init__(self, channel_array, coordinates, reg_type="zoom", redrawn=False):
         super().__init__(channel_array, coordinates)
@@ -75,9 +88,12 @@ class RectangleRegion(ChannelRegion):
 
 class FreeFormRegion(ChannelRegion):
     """
-    This class defines a channel region created by drawing a freeform SVG path shape
-    """
+    Defines a channel region created by drawing a freeform SVG path shape
 
+    :param channel_array: Numpy array for one channel (should contain raw signal intensity as pixels)
+    :param coordinates: A dictionary of coordinates corresponding to the spatial location of the region
+    :return: None
+    """
     def __init__(self, channel_array, coordinates):
         super().__init__(channel_array, coordinates)
         if 'path' in self.coordinate_dict:
@@ -128,11 +144,18 @@ class AnnotationPreviewGenerator:
     - region: lists the bounding box coordinates
     - point: lists the xy coordinates
     - gating: lists the number of objects in the gate
+
+    :return: None
     """
 
     def generate_annotation_preview(self, annot_key, annot_type="zoom"):
         """
         Generates a list of previews for each annotation in the current ROI
+
+        :param annot_key: The string or tuple identifier for a specific annotation
+        :param annot_type: The type of annotation to be summarized. Options include [`zoom`, `point`,
+        `gate`, `rect`, and `path`].
+        :return: `pd.DataFrame` of annotations summarized by their objects, or relative coordinate positions.
         """
         if annot_type == "point":
             return self.generate_point_preview(annot_key)
@@ -144,7 +167,7 @@ class AnnotationPreviewGenerator:
         return None
 
     @staticmethod
-    def generate_region_preview(key, reg_type="zoom"):
+    def generate_region_preview(key, reg_type="zoom") -> str:
         """
         Generate a preview of a region key. Has the following general tuple structures:
         Zoom:
@@ -154,6 +177,10 @@ class AnnotationPreviewGenerator:
         svg path:
         'M670.7797603577856,478.9708311618908L675.5333177884905,487.2270098573258L676.0336922548805,'
         '481.4727034938408L668.2778880258355,479.9715800946708L668.5280752590305,479.9715800946708Z'
+
+        :param key: The string or tuple identifier for a specific annotation
+        :param reg_type: The type of annotation to be summarized. Options include [`zoom`, `rect`, and `path`].
+        :return: String representation of the x and y axis bounds (min and max) for the region.
         """
         x_min, x_max, y_min, y_max = None, None, None, None
         if reg_type == "zoom":
@@ -169,6 +196,9 @@ class AnnotationPreviewGenerator:
         """
         Generate a preview of the click point key. Has the following general string structure:
         "{'points': [{'x': 582, 'y': 465}]}"
+
+        :param key: The string or tuple identifier for a specific annotation
+        :return: String specifying the x and y coordinate for a click
         """
         eval_points = ast.literal_eval(key)
         return f"x: {eval_points['points'][0]['x']}, y: {eval_points['points'][0]['y']}"

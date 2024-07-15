@@ -27,6 +27,16 @@ class FileParser:
     will be created, but the dictionary will contain None values in place of image arrays. When lazy loading is
     turned off, greyscale image arrays are read into the dictionary slots with the numpy array type specified
     in `array_store_type`
+
+    :param filepaths: List of filepaths successfully imported into the session
+    :param array_store_type: Specify the numpy dtype for storing the channel arrays. Default is 32-byte `float` or
+    16-byte `int`.
+    :param lazy_load: Whether arrays should be loaded into memory only when their corresponding ROI is requested.
+    Default is `True` and is recommended.
+    :param single_roi_parse: When parsing mcd files, if only a single ROI should be parsed when using lazy loading.
+    Default is `True` and is recommended.
+    :param roi_name: When parsing mcd files and not using lazy loading, pass a single ROI name to pull from an mcd.
+    :param internal_name: When not using lazy loading, retain the current ROI selection string
     """
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5"}
 
@@ -75,6 +85,12 @@ class FileParser:
                     pass
 
     def parse_h5(self, h5py_file):
+        """
+        Parse an h5py ROI file generated from a previous session.
+
+        :param h5py_file: path to a compatible h5py file.
+        :return: None
+        """
         data_h5 = h5py.File(h5py_file, "r")
         self.blend_config = {}
         for roi in list(data_h5.keys()):
@@ -122,6 +138,14 @@ class FileParser:
         self.image_dict['metadata'] = meta_back
 
     def parse_tiff(self, tiff_file, internal_name=None):
+        """
+        Parse a tiff file. A tiff file should be multiple pages where each page is an array for raw pixel intensities
+        for a particular channel.
+
+        :param tiff_file: path to a compatible tiff file.
+        :param internal_name: When not using lazy loading, retain the current ROI selection string
+        :return: None
+        """
         with TiffFile(tiff_file) as tif:
             tiff_path = Path(tiff_file)
             # IMP: if the length of this tiff is not the same as the current metadata, implies that
@@ -171,6 +195,12 @@ class FileParser:
         self.acq_index += 1
 
     def parse_mcd(self, mcd_filepath):
+        """
+        Parse a mcd file.
+
+        :param mcd_filepath: path to a compatible tiff file.
+        :return: None
+        """
         with MCDFile(mcd_filepath) as mcd_file:
             channel_names = None
             channel_labels = None
@@ -223,8 +253,12 @@ class FileParser:
 
     def read_single_roi_from_mcd(self, mcd_filepath, internal_name, roi_name):
         """
-        Read a single ROI into the dictionary from an mcd file
-        the internal name is that string representation of the
+        Read a single ROI into the dictionary from an mcd file.
+
+        :param mcd_filepath: path to a compatible tiff file.
+        :param roi_name: When parsing mcd files and not using lazy loading, pass a single ROI name to pull from an mcd.
+        :param internal_name: When not using lazy loading, retain the current ROI selection string
+        :return: None
         """
         with MCDFile(mcd_filepath) as mcd_file:
             self.image_dict = {internal_name: {}}
@@ -241,6 +275,14 @@ class FileParser:
                             channel_index += 1
 
     def parse_txt(self, txt_filepath, internal_name=None):
+        """
+        Parse a compatible txt file. Txt files are often used as backup files for individual ROIs generated from
+        mcd, and can be used if the mcd has become corrupted.
+
+        :param txt_filepath: path to a compatible txt file.
+        :param internal_name: When not using lazy loading, retain the current ROI selection string
+        :return: None
+        """
         with TXTFile(txt_filepath) as acq_text_read:
             image_index = 1
             txt_channel_names = acq_text_read.channel_names
@@ -290,7 +332,12 @@ class FileParser:
             self.panel_length = len(txt_channel_names) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
-    def get_parsed_information(self):
+    def get_parsed_information(self) -> pd.DataFrame:
+        """
+        Get a dataframe listing successfully parsed ROIs.
+
+        :return: `pd.DataFrame` listing parsed ROIsw with their dimensions and panel length.
+        """
         if isinstance(self.dataset_information_frame, dict) and \
                 all([len(col) > 0 for col in self.dataset_information_frame.values()]) or \
                 isinstance(self.dataset_information_frame, pd.DataFrame) and len(self.dataset_information_frame) > 0:

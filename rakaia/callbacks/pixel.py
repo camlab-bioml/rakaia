@@ -98,10 +98,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
     Initialize the callbacks associated with pixel level analysis/raw image preprocessing (image loading,
     blending, filtering, scaling, etc.)
-    Args:
-            dash_app: the dash proxy server wrapped in the parent Flask app
-            tmpdirname: the path for the tmpdir for tmp storage for the session
-            authentic_id: uuid string identifying the particular app invocation
+
+    :param dash_app: the dash proxy server wrapped in the parent Flask app
+    :param tmpdirname: the path for the tmpdir for tmp storage for the session
+    :param authentic_id: uuid string identifying the particular app invocation
+    :return: None
     """
     dash_app.config.suppress_callback_exceptions = True
     DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]

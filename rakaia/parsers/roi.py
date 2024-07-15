@@ -21,8 +21,27 @@ from rakaia.parsers.object import (
 class RegionThumbnail:
     """
     Generates a preview image for a series of ROIs, selected either by name, or randomly based on the number
-    of queries passed
-    Thumbnail images will be appended to the ROI gallery with identical blend parameters to the current ROI
+    of queries passed. Thumbnail images will be appended to the ROI gallery with identical
+    blend parameters to the current ROI.
+
+    :param session_config: Dictionary of session parameters parsed from CLI
+    :param blend_dict: Dictionary of channel blend parameters
+    :param currently_selected_channels: List of channels in the current canvas blend
+    :param num_queries: Number of ROI thumbnails to return from random search. Default is 5
+    :param rois_exclude: List of ROI identifiers to exclude
+    :param predefined_indices: list of indices for ROIS to include, if querying from quantification results
+    :param mask_dict: Dictionary of imported mask arrays
+    :param dataset_options: List of ROIs that can be laoded in the current session
+    :param query_cell_id_lists: Dictionary of lists of mask object IDs to subset ROI masks
+    :param global_apply_filter: Whether a global filter has been applied
+    :param global_filter_type: String specifying a global gaussian or median blur
+    :param global_filter_val: Kernel size for the global gaussian or median blur
+    :param global_filter_sigma: If global gaussian blur is applied, set the sigma value
+    :param delimiter: String to split ROI identifiers on. Default is `+++`
+    :param use_greyscale: Whether grey scaling should be used for image thumbnails. Default is False
+    :param dimension_min: Minimum dimension in pixels for an ROI thumbnail to be generated.
+    :param dimension_max: Maximum dimension in pixels for an ROI thumbnail to be generated.
+    :param roi_keyword: String keyword used to search for ROI names.
     """
     # define string attribute matches for the partial
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt"}
@@ -79,6 +98,13 @@ class RegionThumbnail:
                 getattr(self, self.MATCHES[file_extension])(file_path)
 
     def set_mcd_query_selection(self, mcd_slide):
+        """
+        Set the mcd query selection for one or multiple mcd files. Will check the number of queries requested
+        against the number of ROIs inside an mcd slide.
+
+        :param mcd_slide: `Slide` object inside an mcd file
+        :return: None
+        """
         if self.predefined_indices is None:
             if self.num_queries > len(mcd_slide.acquisitions):
                 self.query_selection = range(0, len(mcd_slide.acquisitions))
@@ -99,6 +125,12 @@ class RegionThumbnail:
                     self.query_selection = []
 
     def additive_thumbnail_from_mcd(self, file_path):
+        """
+        Generate one or more image thumbnails from a mcd file.
+
+        :param file_path: Path to a mcd file.
+        :return: None
+        """
         basename = str(Path(file_path).stem)
         with MCDFile(file_path) as mcd_file:
             slide_index = 0
@@ -160,6 +192,12 @@ class RegionThumbnail:
             # break
 
     def additive_thumbnail_from_tiff(self, tiff_filepath):
+        """
+        Generate an image thumbnail from a tiff file.
+
+        :param tiff_filepath: Path to a tiff file.
+        :return: None
+        """
         # set the channel label by parsing through the dataset options to find a partial match of filename
         basename = str(Path(tiff_filepath).stem)
         label = self.parse_thumbnail_label_from_filepath(basename)
@@ -190,6 +228,12 @@ class RegionThumbnail:
                     self.process_additive_image(acq_image, label)
 
     def additive_thumbnail_from_txt(self, txt_filepath):
+        """
+        Generate an image thumbnail from a txt file.
+
+        :param txt_filepath: Path to a txt file.
+        :return: None
+        """
         basename = str(Path(txt_filepath).stem)
         label = self.parse_thumbnail_label_from_filepath(basename)
         if label not in self.rois_exclude and (self.roi_keyword_in_roi_identifier(label) or
@@ -217,9 +261,12 @@ class RegionThumbnail:
                         image_index += 1
                     self.process_additive_image(acq_image, label)
 
-    def parse_thumbnail_label_from_filepath(self, file_basename):
+    def parse_thumbnail_label_from_filepath(self, file_basename) -> str:
         """
         Parse a list of imported dataset options and parse the list based on a file basename
+
+        :param file_basename: The file basename for the current filepath.
+        :return: String label linking the file basename to the internal ROI identifier, or `None` if no match is found.
         """
         label = "None"
         for dataset in self.dataset_options:
@@ -231,6 +278,10 @@ class RegionThumbnail:
         """
         Process the additive image prior to appending to the gallery, includes matching the mask and
         applying global filters
+
+        :param image_list: List of numpy channel arrays to blend
+        :param label: Image label to be displayed above the thumbnail.
+        :return: None
         """
         if len(self.roi_images) < self.num_queries:
             matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
@@ -263,10 +314,20 @@ class RegionThumbnail:
             self.roi_images[label] = summed_image
             self.queries_obtained += 1
 
-    def get_image_dict(self):
+    def get_image_dict(self) -> dict:
+        """
+        Get the dictionary of ROI thumbnail images
+        :return: Dictionary where keys are ROI identifiers, and values are the blended images for each thumbnail.
+        """
         return self.roi_images if len(self.roi_images) > 0 else None
 
     def roi_keyword_in_roi_identifier(self, roi_identifier: str=None):
+        """
+        Identify if an ROI keyword is in an ROI name.
+
+        :param roi_identifier: String representation of the ROI inside the session.
+        :Return: bool indicating keyword presence of not.
+        """
         if roi_identifier and self.keyword:
                 return any([elem in roi_identifier for elem in self.keyword])
         return True

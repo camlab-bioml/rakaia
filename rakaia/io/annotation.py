@@ -19,10 +19,18 @@ from rakaia.utils.pixel import path_to_mask
 
 class AnnotationRegionWriter:
     """
-    Represents an export of annotations that are not points to a CSV file.
+    Provides an export of annotations that are not points to a CSV file.
     Export should be done to retrieve the object ids (i.e. cell ids) from the masks for each annotation
     This export can effectively replace the export of a quantification sheet with matched annotations in the event
     that quantification results are not available
+
+    :param annotation_dict: Dictionary of annotations for the current ROI
+    :param data_selection: String representation of the current session ROI
+    :param mask_dict: Dictionary of the imported mask options
+    :param delimiter: String expression on which to split the `data_selection` parameter into the filename, slide
+    identifier, and ROI name
+    :param use_roi_name: Whether or not to use the ROI name identifier in the column output
+    :return: None
     """
     def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict, delimiter: str="+++",
                  use_roi_name=True):
@@ -37,6 +45,13 @@ class AnnotationRegionWriter:
             use_roi_name else None
 
     def write_csv(self, dest_dir: str, dest_file: str="region_annotations.csv"):
+        """
+        Write the mask objects associated with regions to a CSV file
+
+        :param dest_dir: Output directory for the CSV
+        :param dest_file: Filename output for the CSV
+        :return: `pd.DataFrame` of mask objects per region
+        """
         create_download_dir(dest_dir)
         dest_file = f"{self.out_name}_regions.csv" if self.out_name else dest_file
         self.filepath = str(os.path.join(dest_dir, dest_file))
@@ -66,6 +81,12 @@ class AnnotationRegionWriter:
 class AnnotationMaskWriter:
     """
     Writes a series of region annotations to mask as tiff arrays
+
+    :param annotation_dict: Dictionary of annotations for the current ROI
+    :param data_selection: String representation of the current session ROI
+    :param mask_shape: Tuple of the current mask dimensions
+    :param canvas_mask: numpy array of the current mask applied to the canvas
+    :return: None
     """
     def __init__(self, annotation_dict: dict, output_dir: str=None, data_selection: str=None,
                  mask_shape: tuple=None, canvas_mask: np.ndarray=None):
@@ -80,6 +101,8 @@ class AnnotationMaskWriter:
     def create_dir(self):
         """
         Create the directory to write the mask zip file
+
+        :return: None
         """
         if os.path.exists(self.dest_dir) and os.access(os.path.dirname(self.dest_dir), os.R_OK):
             shutil.rmtree(os.path.dirname(self.dest_dir))
@@ -87,15 +110,30 @@ class AnnotationMaskWriter:
             os.makedirs(self.dest_dir)
 
     def add_new_category_mask(self, value):
-        print(value)
+        """
+        Add a new empty annotation mask to the object array
+
+        :return: None
+        """
         if value['annotation_column'] not in self.cell_class_arrays:
             self.cell_class_arrays[value['annotation_column']] = np.zeros(self.mask_shape)
 
     def add_new_cell_type_category(self, value):
+        """
+        Add a new annotation category to the object array
+
+        :return: None
+        """
         if value['annotation_column'] not in self.cell_class_ids:
             self.cell_class_ids[value['annotation_column']] = {"counts": 0, 'annotations': {}}
 
     def add_new_count_type_id_match(self, value):
+        """
+        Increment the object ID counter for a specific annotation category
+
+        :param value: The annotation associated with a specific annotation category
+        :return: None
+        """
         if value['cell_type'] not in self.cell_class_ids[value['annotation_column']]['annotations']:
             self.cell_class_ids[value['annotation_column']]['counts'] += 1
             self.cell_class_ids[value['annotation_column']]['annotations'][value['cell_type']] = \
@@ -103,6 +141,8 @@ class AnnotationMaskWriter:
     def write_annotation_masks(self):
         """
         Write the annotations to masks in a zip file and return the path of the zip
+
+        :return: The zip filename containing all the zipped mask tiffs and JSON files
         """
         self.create_dir()
         for key, value in self.annotation_dict[self.data_selection].items():

@@ -14,7 +14,20 @@ from rakaia.utils.object import (
 
 class AnnotationPDFWriter:
     """
-    Represents an instance of a matplotlib backend pdf writer for a dictionary of image annotations
+    An instance of a matplotlib backend pdf writer for a dictionary of image annotations
+
+    :param annotations_dict: Dictionary of annotations for the current ROI
+    :param data_selection: String representation of the current session ROI
+    :param mask_config: Dictionary of the imported mask options
+    identifier, and ROI name
+    param dest_dir: Output directory for the PDF
+    :param output_file: Filename output for the PDF
+    :param blend_dict: Dictionary of the blend parameters for the channel panel
+    :param global_apply_filter: Whether or not a global filter has been applied
+    :param global_filter_type: String specifying a global gaussian or median blur
+    :param global_filter_val: Kernel size for the global gaussian or median blur
+    :param global_filter_sigma: If global gaussian blur is applied, set the sigma value
+    :return: None
     """
     def __init__(self, annotations_dict, canvas_layers: dict, data_selection: str, mask_config: dict,
                                     aliases: dict, dest_dir:str=None, output_file="annotations.pdf", blend_dict=None,
@@ -36,6 +49,11 @@ class AnnotationPDFWriter:
         self.global_filter_sigma = global_filter_sigma
 
     def generate_annotation_pdf(self):
+        """
+        Write the annotation PDF to file
+
+        :return: Output PDF filepath.
+        """
         if len(self.annotations_dict) > 0:
             with PdfPages(self.filepath) as pdf:
                 for key, value in self.annotations_dict.items():
@@ -76,7 +94,6 @@ class AnnotationPDFWriter:
                         ax.set_yticks([])
                         x_dims = float(x_max) - float(x_min)
                         y_dims = float(y_max) - float(y_min)
-                        # TODO: add patches function
                         patches = self.pdf_patches_legend(value)
                         body = str(value['body']).replace(r'\n', '\n')
                         description = "Description:\n" + body + "\n\n" + "" \
@@ -95,6 +112,13 @@ class AnnotationPDFWriter:
         return None
 
     def generate_additive_image_for_pdf(self, image, value):
+        """
+        Produce an additive blend image for a specific region
+
+        :param image: Blended RGB array for a region with the currently selected channels
+        :param value: Annotation dictionary specifying the annotation mask parameters
+        :return: Additive blended numpy array with a mask overlaid (if enabled)
+        """
         if value['use_mask'] and None not in (self.mask_config, value['mask_selection']) and \
                 len(self.mask_config) > 0:
             if image.shape[0] == self.mask_config[value['mask_selection']]["array"].shape[0] and \
@@ -114,6 +138,12 @@ class AnnotationPDFWriter:
         return image
 
     def pdf_patches_legend(self, value):
+        """
+        Generate a channel legend text as a matplotlib patch
+
+        :param value: Annotation dictionary specifying the annotation channel blend parameters
+        :return: list of channels and their colors in patch format.
+        """
         patches = []
         for channel in value['channels']:
             label = self.aliases[channel] if channel in self.aliases.keys() else channel

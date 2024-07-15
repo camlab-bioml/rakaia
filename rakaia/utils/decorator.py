@@ -6,6 +6,9 @@ class DownloadDirGenerator:
     Decorate a callback function to create a download directory for file export
     Assumes that the destination directory is passed as keyword `dest_dir` or as the first positional argument
     to the wrapped function
+
+    :param dest_dir: Directory path to the desired output download directory.
+    :return: result
     """
     def __init__(self, dest_dir=None):
         self.dest_dir = dest_dir

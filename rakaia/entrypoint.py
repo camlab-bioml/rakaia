@@ -13,10 +13,9 @@ __version__ = "0.17.0"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.
-        Args:
-            cli_config: dictionary of CLI app options from argparse
-        Returns:
-            Parent Flask app object
+
+    :param cli_config: dictionary of CLI app options from argparse
+    :return: Parent Flask app object that will wrap the Dash Proxy server
     """
     # suppress numba depreciation warnings from umap
     warnings.simplefilter('ignore', category=NumbaDeprecationWarning)

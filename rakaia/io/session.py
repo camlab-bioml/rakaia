@@ -37,11 +37,17 @@ class TabText(BaseModel):
 
 class SessionServerside(Serverside):
     """
-    This class defines the string identification for Serverside objects depending on the session invocation
+    Defines the string identification for Serverside objects depending on the session invocation.
     `use_unique_key` should be set to True for local runs where there are no concurrent users, and the user wishes to
     have the callbacks overwrite previous callback stores
     For public or sessions with concurrent users (i.e. Docker), `use_unique_key` should be set to False so that
     each callback invocation produces a unique Serverside cache
+
+    :param data The pickle-compatible data object to be stored
+    :param key The string key used to identify the pickled objects written to disk
+    :param use_unique_key: Whether or not to specify a unique key for every invocation. default is `True` and is
+    recommended unless or public sessions or sessions with concurrent users (i.e. Docker) are used.
+    :return: None
     """
     def __init__(self, data, key, use_unique_key: bool=True):
         self.use_unique_key = use_unique_key
@@ -62,6 +68,24 @@ class JSONSessionDocument:
     Saved configurations include blend parameters for all channels, naming/aliases,
     global filters, and cluster colour annotations, if imported
     Used for local export to JSON or insertion into a mongoDB collection
+
+    :param save_type Whether the document will be saved as `json` (default) or to the mongoDB database (use `db`).
+    :param user Username
+    :param document_name: User set name of the blend config
+    :param blend_dict: Dictionary of current channel blend parameters
+    :param selected_channel_list: List of channels in the current blend
+    :param global_apply_filter: Whether a global filter has been applied
+    :param global_filter_type: String specifying a global gaussian or median blur
+    :param global_filter_val: Kernel size for the global gaussian or median blur
+    :param global_filter_sigma: If global gaussian blur is applied, set the sigma value
+    :param data_selection: String representation of the current session ROI selection
+    :param cluster_assignments: Dictionary of mask cluster categories matching to a cluster color
+    :param aliases: Dictionary matching channel keys to their displayed labels
+    :param gating_dict: Dictionary of current gating parameters
+    :param mask_toggle: Whether to show the mask over the channel blend
+    :param mask_level: Set opacity of mask relative to the blend image. Takes a value between 0 and 100
+    :param mask_boundary: Whether to include the object boundaries in the mask projection
+    :mask_hover: Whether to include the mask object ID in the hover template
     """
     def __init__(self, save_type="json", user: str=None, document_name: str=None,
                  blend_dict: dict=None, selected_channel_list: list=None,
@@ -93,7 +117,12 @@ class JSONSessionDocument:
         self.document['gating'] = gating_dict
         self.document['mask'] = {"mask_toggle": mask_toggle, "mask_level": mask_level,
                                "mask_boundary": mask_boundary, "mask_hover": mask_hover}
-    def get_document(self):
+    def get_document(self) -> dict:
+        """
+        Return the JSON-style document
+
+        :return: dictionary of session blend parameters in JSON/dict format.
+        """
         return self.document
 
 def panel_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):

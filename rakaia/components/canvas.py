@@ -25,8 +25,51 @@ from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 
 class CanvasImage:
     """
-    This class generates a canvas `go.Figure` with the current selected channels and various
-    UI configurations
+    Generates a canvas `go.Figure` with the current selected channels and various UI configurations for masking,
+    annotations, cluster projection, etc.
+
+    :param canvas_layers: dictionary of current ROI channel images. Each key is a biomarker unique ID, and the value
+        is the cached RGB image for that layer. If the layer doesn't exist, the marker has not yet been requested
+        for the blend.
+    :param data_selection: string representation of the current ROI selection
+    :param currently_selected: List of channels selected for canvas blend
+    :param mask_config: dictionary of imported session mask arrays
+    :param mask_selection: String identifier for the mask applied to the canvas
+    :param mask_blending_level: Opacity setting for the mask relative to the underlying channel blend. Assumes an integer
+        or float value between 0 and 100
+    :param overlay_grid: Whether or not to overlay a line grid
+    :param mask_toggle: Whether ot overlay a mask
+    :param  add_mask_boundary: When a mask is applied, provide a white boundary outline of the objects, regardless of the
+        mask opacity.
+    :param invert_annot: Whether to invert the scalebar and legend along the x-axis
+    :param cur_graph: If a current `go.Figure` graph exists, supply it to retain the `uirevision` variable
+    :param pixel_ratio: Integer or float specifying the number of pixels per micron for the image. Default for
+        multiplexed imaging is 1.
+    :param legend_text: Text supplying the colour-labelled channel list to project over the image
+    :param toggle_scalebar: Whether to include the scalebar or not
+    :param legend_size: Integer or float size specification for the legend and scalebar relative to the canvas
+    :param toggle_legend: Whether to show the legend or not
+    :param add_cell_id_hover: If the mask is applied, include the object ID when hovering on the canvas
+    :param show_each_channel_intensity: Show the individual raw intensity values from the greyscale array for each
+        channel in the hover template
+    :param raw_data_dict: Dictionary of the raw greyscale channel images for the current ROI
+    :param aliases: Dictionary matching internal channel keys to labels, derived from edited metadata
+    :param global_apply_filter: Whether to apply a global gaussian or median filter to the blended channel image
+    :param global_filter_type: Specify either a gaussian or median global blur
+    :param global_filter_val: Specify a global filter kernel size for median or gaussian blur
+    :param global_filter_sigma: If using gaussian blur, set the sigma value for the global filter
+    :param apply_cluster_on_mask: Whether to include cluster assignments in the mask or not
+    :param cluster-assignments_dict: Dictionary matching cluster categories to RGB assignments inside the mask
+    :param cluster_frame: `pd.DataFrame` linking object IDs to cluster assignments
+    :param cluster_type: Specify how the clusters should be rendered over the image. Options are `mask` or `circles`.
+        Default is `mask`
+    :param custom_scale_val: Set a custom scalebar length for the canvas at the un-zoomed level By default, the canvas
+        will auto-generate a scalebar length that is 10% of the x-axis in pixels.
+    :param apply_gating: Whether or not to apply gating to the mask
+    :param gating_cell_id_list: Use a list of mask objects to gate the mask
+    :param annotation_color: Specify the color of the scalebar. Options are "white" (default) or "black"
+    :param cluster_assignment_selection: Pass a subset of cluster categories to show in the mask
+    :return: None
     """
     def __init__(self, canvas_layers: dict, data_selection: str, currently_selected: list,
                  mask_config: dict, mask_selection: str, mask_blending_level: int,
@@ -119,21 +162,41 @@ class CanvasImage:
                                 # currently set to lowest possible compression level for speed
                                 binary_compression_level=1)
 
-    def overlay_grid_on_additive_image(self, image: Union[np.array, np.ndarray]):
+    def overlay_grid_on_additive_image(self, image: Union[np.array, np.ndarray]) -> np.array:
+        """
+        Apply evenly spaced gridlines every 100 pixels over the current canvas
+
+        :param image: Numpy array image of the current canvas blend
+
+        :return: Numpy array with white pixels as lines every 100 pixels
+        """
         if self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     generate_greyscale_grid_array((image.shape[0],
                                     image.shape[1])).astype(np.uint8), 1, 0)
         return image
 
-    def apply_gating_to_canvas_mask_image(self, mask: Union[np.array, np.ndarray]):
+    def apply_gating_to_canvas_mask_image(self, mask: Union[np.array, np.ndarray]) -> np.array:
+        """
+        Apply gating to the current mask
+
+        :param mask: Numpy array for the current mask selection
+        :return: Numpy array of the mask, subset with a mask outline using the class initialize object gating list
+        """
         if self.apply_gating:
             mask = subset_mask_outline_using_cell_id_list(self.mask_config[self.mask_selection]["raw"],
                                                           self.mask_config[self.mask_selection]["raw"],
                                                           self.gating_cell_id_list).astype(np.uint8)
         return mask
 
-    def overlay_mask_outline_on_mask_image(self, image: Union[np.array, np.ndarray]):
+    def overlay_mask_outline_on_mask_image(self, image: Union[np.array, np.ndarray]) -> np.array:
+        """
+        Add the subset mask outline using subset objects to the canvas image
+
+        :param image: Numpy array image of the current canvas blend
+        :return: Numpy array of the current canvas with the subset mask project over using the class initialized
+            mask attributes (blending level, etc.)
+        """
         if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
             # add the border of the mask after converting back to greyscale to derive the conversion
             image = cv2.addWeighted(image.astype(np.uint8), 1,
@@ -141,6 +204,12 @@ class CanvasImage:
         return image
 
     def generate_canvas(self) -> Union[go.Figure, dict]:
+        """
+        Convert the blended channel image into a `go.Figure` object using `px.imshow`
+        Applies the `px.imshow` function to the RGB array, and adds scalebar and legend annotations
+
+        :return: `go.Figure` object or dictinary representation of the object
+        """
         x_axis_placement = set_x_axis_placement_of_scalebar(self.image.shape[1], self.invert_annot)
         # if the current graph already has an image, take the existing layout and apply it to the new figure
         # otherwise, set the uirevision for the first time
@@ -200,23 +269,38 @@ class CanvasImage:
         # fig.update_traces(hovertemplate=None, hoverinfo='skip')
         return fig.to_dict()
 
-    def get_shape(self):
+    def get_shape(self) -> tuple:
+        """
+        Get the tuple representing the current canvas image shape
+
+        :return: tuple of the current dimensions (Image height, Image width)
+        """
         return self.image.shape
 
-    def get_image(self):
+    def get_image(self) -> np.array:
+        """
+        Get the RGB blended image array for the current canvas
+
+        :return: Numpy RGB blended image array for the current canvas
+        """
         return self.image
 
-    def current_canvas_exists(self, hover_template_exists: bool=False):
+    def current_canvas_exists(self, hover_template_exists: bool=False) -> bool:
         """
-        Return if the current canvas passed is a real canvas object
+        Check if the current canvas exists and has revision variables that should be retained
+
+        :return: bool indicating if the current canvas exists with a `uirevision` status that should be retained
         """
         return 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout'] and \
                 self.cur_graph['layout']['uirevision'] and not hover_template_exists
 
-    def transfer_canvas_data_to_existing_canvas(self):
+    def transfer_canvas_data_to_existing_canvas(self) -> Union[go.Figure, dict]:
         """
         Transfer the newly created canvas image to the imported canvas if it has existing parameters such as
         uirevision
+
+        :return: `go.Figure` object or dictionary representing the object with current annotations and `uirevision` status
+            applied from the existing graph
         """
         # fig['layout'] = cur_graph['layout']
         self.cur_graph['data'] = self.canvas['data']
@@ -231,10 +315,15 @@ class CanvasImage:
                                                   shape['type'] != 'line']
         return self.cur_graph
 
-    def add_canvas_legend_text(self, fig: go.Figure, x_axis_placement: Union[int, float]):
+    def add_canvas_legend_text(self, fig: go.Figure, x_axis_placement: Union[int, float]) -> Union[go.Figure, dict]:
         """
         Add canvas legend text using a specified text size and x axis placement
         The y coordinate is always fixed at 0.05 to make it readily identifiable when parsing the shape dictionary
+
+        :param fig: Current `go.Figure` or dictionary of the object for the current canvas
+        :param x_axis_placement: Coordinate between 0 and 1 for the x-axis placement for the legend text
+
+        :return: go.Figure` object or dictionary representing the object with the canvas legend text added
         """
         if self.legend_text != '' and self.toggle_legend:
             fig.add_annotation(text=self.legend_text, font={"size": self.legend_size + 1}, xref='paper',
@@ -247,7 +336,14 @@ class CanvasImage:
                                showarrow=False)
         return fig
 
-    def add_canvas_hover_template(self, fig: go.Figure):
+    def add_canvas_hover_template(self, fig: go.Figure) -> Union[go.Figure, dict]:
+        """
+        Add a hover template to the current canvas object
+
+        :param fig: Current `go.Figure` or dictionary of the object for the current canvas
+
+        :return: go.Figure` object or dictionary representing the object with the hover template applied as a data slot
+        """
         # the masking mask ID get priority over the channel intensity hover
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0 and \
                 self.add_cell_id_hover:
@@ -279,10 +375,15 @@ class CanvasImage:
         return fig
 
 
-    def add_canvas_scalebar(self, fig: go.Figure, x_axis_placement: Union[int, float]):
+    def add_canvas_scalebar(self, fig: go.Figure, x_axis_placement: Union[int, float]) -> Union[go.Figure, dict]:
         """
         Add a canvas scalebar with a set bar width of 2 and a number size set by the user
         The y coordinate is always fixed at 0.05 to make it readily identifiable when parsing the shape dictionary
+
+        :param fig: Current `go.Figure` or dictionary of the object for the current canvas
+        :param x_axis_placement: Coordinate between 0 and 1 for the x-axis placement for the scalebar
+
+        :return: go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
         if self.toggle_scalebar:
             # set the x0 and x1 depending on if the bar is inverted or not
@@ -295,7 +396,14 @@ class CanvasImage:
         return fig
 
     @staticmethod
-    def set_default_canvas_layout(fig: go.Figure):
+    def set_default_canvas_layout(fig: go.Figure) -> Union[go.Figure, dict]:
+        """
+        Set the default canvas margin and grid layout
+
+        :param fig: Current `go.Figure` or dictionary of the object for the current canvas
+
+        :return: go.Figure` object or dictionary representing the object with the margin and grid line layout applied
+        """
         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                           newshape=dict(line=dict(color="white")),
                           xaxis=XAxis(showticklabels=False, domain=[0, 1]),
@@ -306,10 +414,15 @@ class CanvasImage:
 
 class CanvasLayout:
     """
-    This class represents a set of layout manipulations for the image canvas. It is distinct from
+    Represents a set of layout manipulations for the image canvas. It is distinct from
     CanvasImage in that it doesn't manipulate the underlying image, but rather the layout and UI components
     of the attributes projected on top of the data. It expected a `go.Figure` object or a dictionary representing
     a `go.Figure` object as input
+
+    :param figure = `go.Figure` for the current canvas
+
+    :return:
+        None
     """
     def __init__(self, figure: Union[dict, go.Figure]):
         if 'layout' in figure and 'shapes' in figure['layout'] and \
@@ -341,13 +454,35 @@ class CanvasLayout:
             if 'label' in shape and 'texttemplate' in shape['label']:
                 shape['label'] = {}
 
-    def get_fig(self):
+    def get_fig(self) -> Union[go.Figure, dict]:
+        """
+        Return the modified canvas figure
+
+        :return:
+            Current `go.Figure` or dictionary of the object for the current canvas
+        """
         self.figure['layout']['shapes'] = self.cur_shapes
         self.figure['layout']['annotations'] = self.cur_annotations
         return self.figure
 
     def add_scalebar(self, x_axis_placement, invert_annot, pixel_ratio, image_shape, legend_size,
-                     proportion=0.1, annotation_color: str="white"):
+                     proportion=0.1, annotation_color: str="white") -> Union[go.Figure, dict]:
+        """
+        Add a canvas scalebar with a set bar width of 2 and a number size set by the user
+        The y coordinate is always fixed at 0.05 to make it readily identifiable when parsing the shape dictionary
+
+        :param x_axis_placement: Coordinate between 0 and 1 for the x-axis placement for the scalebar
+        :param invert_annot: Boolean for whether or not to invert the scalebar nad legend text along the x-axis
+        :param pixel_ratio: ratio of pixels to micron. FOr most imaging experiments, should be set to 1.
+        :param image_shape: Tuple of numpy array shape
+        :param legend_size: Integer or float of the legend font size relative to the canvas object
+        :param proportion: What proportion of the x-axis width should the length of the scalebar be. By default,
+            it will span 10% of the x-axis
+        :param annotation_color: Specify the color of the scalebar. Options are "white" (default) or "black"
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
+        """
         pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         try:
             proportion = float(proportion / pixel_ratio)
@@ -383,7 +518,17 @@ class CanvasLayout:
 
         return fig.to_dict()
 
-    def add_legend_text(self, legend_text, x_axis_placement, legend_size):
+    def add_legend_text(self, legend_text, x_axis_placement, legend_size) -> Union[go.Figure, dict]:
+        """
+        Add legend text to the current canvas
+
+        :param legend_text: String representation of the current channels in the blend with their color designations
+        :param x_axis_placement: Coordinate between 0 and 1 for the x-axis placement for the scalebar
+        :param legend_size: Integer or float of the legend font size relative to the canvas object
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
+        """
         fig = go.Figure(self.figure)
         fig.update_layout(newshape=dict(line=dict(color="white")))
         if legend_text != '':
@@ -396,9 +541,19 @@ class CanvasLayout:
                                    bgcolor="black",
                                    showarrow=False)
         return fig.to_dict()
-    def toggle_legend(self, toggle_legend: bool, legend_text, x_axis_placement, legend_size):
+
+    def toggle_legend(self, toggle_legend: bool, legend_text, x_axis_placement, legend_size) -> Union[go.Figure, dict]:
         """
         Modify the legend text for the figure, or remove the legend
+
+        :param legend_text: String representation of the current channels in the blend with their color designations
+        :param toggle_legend: Whether or not to show the channel legend over the canvas
+        :param x_axis_placement: Coordinate between 0 and 1 for the x-axis placement for the scalebar
+        :param legend_size: Integer or float of the legend font size relative to the canvas object
+            it will span 10% of the x-axis
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
         cur_annotations = [annot for annot in self.cur_annotations if \
                            annot is not None and 'y' in annot and annot['y'] != 0.05]
@@ -409,7 +564,25 @@ class CanvasLayout:
             return self.add_legend_text(legend_text, x_axis_placement, legend_size)
 
     def toggle_scalebar(self, toggle_scalebar, x_axis_placement, invert_annot,
-                        pixel_ratio, image_shape, legend_size, proportion=0.1, scalebar_color: str="white"):
+                        pixel_ratio, image_shape, legend_size, proportion=0.1,
+                        scalebar_color: str="white") -> Union[go.Figure, dict]:
+        """
+        Add a canvas scalebar with a set bar width of 2 and a number size set by the user
+        The y coordinate is always fixed at 0.05 to make it readily identifiable when parsing the shape dictionary
+
+        :param x_axis_placement: Coordinate between 0 and 1 for the x-axis placement for the scalebar
+        :param toggle_scalebar: Whether to show the scalebar oevr the canvas or not
+        :param invert_annot: Boolean for whether or not to invert the scalebar nad legend text along the x-axis
+        :param pixel_ratio: ratio of pixels to micron. FOr most imaging experiments, should be set to 1.
+        :param image_shape: Tuple of numpy array shape
+        :param legend_size: Integer or float of the scalebar font size relative to the canvas object
+        :param proportion: What proportion of the x-axis width should the length of the scalebar be. By default,
+                    it will span 10% of the x-axis
+        :param scalebar_color: Color of the scalebar relative to the image. default is `white`.
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
+        """
         pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         cur_shapes = [shape for shape in self.cur_shapes if \
                       shape not in [None, "None"] and 'type' in shape and shape['type'] \
@@ -427,9 +600,14 @@ class CanvasLayout:
         return self.add_scalebar(x_axis_placement, invert_annot,
                     pixel_ratio, image_shape, legend_size, proportion, scalebar_color)
 
-    def change_annotation_size(self, legend_size):
+    def change_annotation_size(self, legend_size) -> Union[go.Figure, dict]:
         """
         Change the size of the legend and scalebar
+
+        :param legend_size: Integer or float of the font size relative to the canvas object
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
         # annotations_copy = self.figure['layout']['annotations'].copy() if not isinstance()
         for annotation in self.cur_annotations:
@@ -442,10 +620,18 @@ class CanvasLayout:
                                               elem is not None and 'texttemplate' not in elem]
         return self.figure
 
-    def add_point_annotations_as_circles(self, imported_annotations, cur_image, circle_size):
+    def add_point_annotations_as_circles(self, imported_annotations,
+                                         cur_image, circle_size) -> Union[go.Figure, dict]:
         """
         Add a circle for each point annotation in a CSV file. Each annotation is validated against the
         image dimensions in the current canvas to ensure that the annotation lies within the dimensions
+
+        :param imported_annotations: pd.DatdFrame of imported click-point annotations
+        :param cur_image: RGB numpy array of the current canvas blend
+        :param circle_size: Integer or float specifying the radius size of the circles to be drawn on the canvas
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
         imported_annotations = pd.DataFrame(imported_annotations)
         # fig = go.Figure(self.figure)
@@ -459,10 +645,19 @@ class CanvasLayout:
         return self.figure
 
     def update_scalebar_zoom_value(self, current_graph_layout, pixel_ratio, proportion=0.1,
-                                   scalebar_col: str="white"):
+                                   scalebar_col: str="white") -> Union[go.Figure, dict]:
         """
         update the scalebar value when zoom is used
         Loop through the annotations to identify the scalebar value when y = 0.06
+
+        :param current_graph_layout: Dictionary of the current zoom parameters of the canvas
+        :param pixel_ratio: ratio of pixels to micron. FOr most imaging experiments, should be set to 1.
+        :param proportion: What proportion of the x-axis width should the length of the scalebar be. By default,
+                    it will span 10% of the x-axis
+        :param scalebar_col: Color of the scalebar relative to the image. default is `white`.
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
         pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         try:
@@ -508,7 +703,19 @@ class CanvasLayout:
         # return fig
         return self.figure
 
-    def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio, proportion=0.1):
+    def use_custom_scalebar_value(self, custom_scale_val, pixel_ratio, proportion=0.1) -> Union[go.Figure, dict]:
+        """
+        Specify a custom scalebar length
+
+        :param custom_scale_val: Set a custom scalebar length for the canvas at the un-zoomed level By default, the canvas
+            will auto-generate a scalebar length that is 10% of the x-axis in pixels.
+        :param pixel_ratio: ratio of pixels to micron. FOr most imaging experiments, should be set to 1.
+        :param proportion: What proportion of the x-axis width should the length of the scalebar be. By default,
+                    it will span 10% of the x-axis
+
+        :return:
+            go.Figure` object or dictionary representing the object with the canvas scalebar added
+        """
         # self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
         pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
         for annotations in self.figure['layout']['annotations']:
@@ -536,7 +743,13 @@ class CanvasLayout:
         fig.update_layout(newshape=dict(line=dict(color="white")))
         return fig.to_dict()
 
-    def clear_improper_shapes(self):
+    def clear_improper_shapes(self) -> Union[go.Figure, dict]:
+        """
+        Remove any malformed canvas shapes that have an empty label slow in the `texttemplate` dictionary
+
+        :return:
+            go.Figure` object or dictionary representing the object with the shapes cleared
+        """
         new_shapes = []
         for shape in self.cur_shapes:
             if 'label' in shape and 'texttemplate' not in shape['label']:
@@ -551,14 +764,22 @@ class CanvasLayout:
 
     def add_cluster_annotations_as_circles(self, mask, cluster_frame, cluster_assignments,
                                            data_selection, circle_size=2, use_gating: bool=False,
-                                           gating_cell_id_list: list=None, cluster_selection_subset: list=None):
+                                           gating_cell_id_list: list=None,
+                                           cluster_selection_subset: list=None) -> Union[go.Figure, dict]:
         """
         Add an annotation circle to every mask object in a mask, or in a list of gated objects
-        requires:
-        mask = a mask with raw object values starting at 1 in numpy int32 form
-        cluster_frame = a dataframe with the columns `cell_id` and `cluster`
-        cluster_assignments = a dictionary of cluster labels corresponding to a hex colour
-        data_selection = string representation of the current ROI
+
+        :param mask: a mask with raw object values starting at 1 in numpy int32 form
+        :param cluster_frame: `pd.DataFrame` with the columns `cell_id` and `cluster`
+        :param cluster_assignments: dictionary of cluster labels corresponding to a hex colour
+        :param data_selection: string representation of the current ROI
+        :param circle_size: Circle radius for the cluster projection over the mask object
+        :param use_gating: Whether or not to apply gating to the mask
+        :param gating_cell_id_list: Use a list of mask objects to gate the mask
+        :param cluster_selection_subset: Pass a subset of cluster categories to show in the mask
+
+        :return:
+            go.Figure` object or dictionary representing the object with the cluster annotations added as circles
         """
         shapes = []
         if self.cur_shapes:
@@ -590,10 +811,13 @@ class CanvasLayout:
         self.figure['layout']['shapes'] = shapes
         return self.figure
 
-    def remove_cluster_annotation_shapes(self):
+    def remove_cluster_annotation_shapes(self) -> Union[go.Figure, dict]:
         """
         Remove the cluster annotation shapes from the canvas.
         These are uniquely recognized as circles that are not editable
+
+        :return:
+            go.Figure` object or dictionary representing the object with the cluster circle annotations removed
         """
         new_shapes = []
         for shape in self.cur_shapes:
@@ -602,7 +826,17 @@ class CanvasLayout:
         self.figure['layout']['shapes'] = new_shapes
         return self.figure
 
-    def update_coordinate_window(self, current_window, x_request, y_request):
+    def update_coordinate_window(self, current_window, x_request, y_request) -> tuple:
+        """
+        Specify a new central canvas coordinate while retaining the curent canvas zoom level
+
+        :param current_window: Dictionary of the x and y bounds of the current window to derive the zoom level
+        :param x_request: Requested x-coordinate for the center point
+        :param y_request: Requested y-coordinate for the center point
+
+        :return:
+            go.Figure` object or dictionary representing the object with new zoom window applied as the view range
+        """
         # calculate midway distance for each coord. this distance is
         # added on either side of the x and y requests
         new_x_low, new_x_high, new_y_low, new_y_high = create_new_coord_bounds(current_window,
@@ -625,7 +859,18 @@ class CanvasLayout:
         fig['layout']['annotations'] = annotations
         return fig.to_dict(), new_layout
 
-    def add_click_point_circle(self, x_coord: int=None, y_coord: int=None, circle_size: Union[float, int]=None):
+    def add_click_point_circle(self, x_coord: int=None, y_coord: int=None,
+                               circle_size: Union[float, int]=None) -> Union[go.Figure, dict]:
+        """
+        Add a click point coordinate as a circle shape object
+
+        :param x_coord: x coordinate for the click
+        :param y_coord: y coordinate for the click
+        :param circle_size: radius of the circle shape to be drawn around the coordinate
+
+        :return:
+            go.Figure` object or dictionary representing the object with the coordinate supplied as a circle shape
+        """
         self.cur_shapes.append({'editable': True, 'line': {'color': 'white'}, 'type': 'circle',
                                 'x0': (x_coord - int(circle_size)), 'x1': (x_coord + int(circle_size)),
                                 'xref': 'x', 'y0': (y_coord - int(circle_size)),
@@ -634,10 +879,14 @@ class CanvasLayout:
         return self.figure
 
 
-def reset_graph_with_malformed_template(graph: Union[go.Figure, dict]):
+def reset_graph_with_malformed_template(graph: Union[go.Figure, dict]) -> Union[go.Figure, dict]:
     """
     Parse a current graph that may have malformed shapes (i.e. a shape with a blank texttemplate in the 'label'
-    slot), and return a cleaned graph dictionary object with the dragmode set to zoom
+    slot), and return a cleaned graph dictionary object with the drag mode set to zoom
+
+    :param graph: Current canvas in `go.Figure` object format
+    :return:
+            go.Figure` object or dictionary representing the object with the drag mode reset to zoom
     """
     graph = graph.to_dict() if not isinstance(graph, dict) else graph
     fig = go.Figure(CanvasLayout(graph).get_fig())

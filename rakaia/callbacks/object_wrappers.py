@@ -20,10 +20,23 @@ import plotly.graph_objs as go
 class AnnotationQuantificationMerge:
     """
     Iterate a dictionary of ROI annotations and align them to a pandas dataframe of quantification results
+
+    :param annotations: Dictionary of annotations for the current ROI
+    :param quantification_frame: `pd.DataFrame` of object quantification results
+    :param data_selection: String representation of the current ROI selection
+    :param mask_config: dictionary of imported mask arrays that are selectable
+    :param mask_toggle: Whether a mask is currently being applied
+    :param mask_selection: Mask from the `mask_config` currently applied
+    :param sample_name: Current ROI identifier
+    :param id_column: Column in the quantification frame linking the mask to the measured results. Default is `sample`.
+    :param config: Dictionary of current rakaia session settings from CLI
+    :param remove: Whether or not the annotation(s) should be removed
+    :param indices_remove: List of ROI indices from the preview table to be removed
+    :return: None
     """
     def __init__(self, annotations, quantification_frame, data_selection,
                 mask_config, mask_toggle, mask_selection, sample_name=None, id_column='sample',
-                config: dict=None, remove: bool=False, indices_remove: list=None):
+                config: dict=None, remove: bool=False, indices_remove: list=None) -> None:
         self.annotations = annotations
         self.quantification_frame = quantification_frame
         self.data_selection = data_selection
@@ -52,9 +65,9 @@ class AnnotationQuantificationMerge:
                         elif self.annotations[self.data_selection][annotation]['type'] in ["path", "gate"] and \
                                 self.mask_toggle and None not in (self.mask_config, self.mask_selection) and \
                                 len(self.mask_config) > 0:
-                            cells_included = self.get_cells_included(annotation)
+                            objects_included = self.get_objects_included(annotation)
                             self.quantification_frame = populate_cell_annotation_column_from_cell_id_list(
-                                self.quantification_frame, cell_list=list(cells_included.keys()),
+                                self.quantification_frame, cell_list=list(objects_included.keys()),
                                 cell_type=self.annotations[self.data_selection][annotation]['cell_type'],
                                 sample_name=self.sample_name,
                                 annotation_column=self.annotations[self.data_selection][annotation]['annotation_column'],
@@ -68,12 +81,23 @@ class AnnotationQuantificationMerge:
                 self.annotations = remove_annotation_entry_by_indices(self.annotations,
                                                self.data_selection, self.indices_remove)
     @staticmethod
-    def truthy_quantification(quantification_results: Union[dict, pd.DataFrame]):
+    def truthy_quantification(quantification_results: Union[dict, pd.DataFrame]) -> bool:
+        """
+        Return if the current quantification results are truthy
+
+        :param quantification_results: `pd.DataFrame` of object quantification results
+        :return: boolean for truthy quantification results
+        """
         if isinstance(quantification_results, pd.DataFrame):
             return not quantification_results.empty
         return bool(quantification_results)
 
-    def remove_annotations(self):
+    def remove_annotations(self) -> None:
+        """
+        Remove annotations from the annotation hash
+
+        :return: None
+        """
         if self.remove and self.annotations[self.data_selection]:
             # set the ids for the indices to remove
             if not self.indices_remove:
@@ -90,8 +114,14 @@ class AnnotationQuantificationMerge:
                     except IndexError:
                         pass
 
-    def get_cells_included(self, annotation):
-        cells_included = []
+    def get_objects_included(self, annotation) -> dict:
+        """
+        Get the objects associated with an annotation from a mask
+
+        :param annotation: The ROI annotation dict
+        :return: dictionary of objects included with the proportion of overlap for each ID
+        """
+        cells_included = {}
         # option 1: list from gated cells
         if self.annotations[self.data_selection][annotation]['type'] == "gate":
             cells_included = {cell: 100.0 for cell in list(annotation)}
@@ -105,6 +135,12 @@ class AnnotationQuantificationMerge:
 
 
     def populate_quantification_from_zoom(self, annotation):
+        """
+        Populate the quantification frame annotation category from a zoom window annotation
+
+        :param annotation: The ROI annotation dict
+        :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
+        """
         return populate_cell_annotation_column_from_bounding_box(self.quantification_frame,
                                     values_dict=dict(annotation),
                 cell_type=self.annotations[self.data_selection][annotation]['cell_type'],
@@ -112,6 +148,12 @@ class AnnotationQuantificationMerge:
                 remove=self.remove)
 
     def populate_quantification_from_svgpath(self, annotation):
+        """
+        Populate the quantification frame annotation category from a svg-path annotation drawn around a mask
+
+        :param annotation: The ROI annotation dict
+        :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
+        """
         x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
         val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
                     'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
@@ -122,6 +164,12 @@ class AnnotationQuantificationMerge:
             remove=self.remove)
 
     def populate_quantification_from_rectangle(self, annotation):
+        """
+        Populate the quantification frame annotation category from a drawn rectangle
+
+        :param annotation: The ROI annotation dict
+        :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
+        """
         return populate_cell_annotation_column_from_bounding_box(
                             self.quantification_frame, values_dict=dict(annotation),
                             cell_type=self.annotations[self.data_selection][annotation]['cell_type'], box_type="rect",
@@ -129,6 +177,12 @@ class AnnotationQuantificationMerge:
                             remove=self.remove)
 
     def populate_quantification_from_clickpoint(self, annotation):
+        """
+        Populate the quantification frame annotation category from a click point coordinate set
+
+        :param annotation: The ROI annotation dict
+        :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
+        """
         return populate_cell_annotation_column_from_clickpoint(
                             self.quantification_frame, values_dict=ast.literal_eval(annotation),
                             cell_type=self.annotations[self.data_selection][annotation]['cell_type'],
@@ -137,15 +191,32 @@ class AnnotationQuantificationMerge:
                             mask_selection=self.mask_selection,
                             sample=self.sample_name, id_column=self.identifier, remove=self.remove)
 
-    def get_annotated_frame(self):
+    def get_annotated_frame(self) -> Union[dict, pd.DataFrame, None]:
+        """
+        Get the quantification result frame with the annotations added
+
+        :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
+        """
         return pd.DataFrame(self.quantification_frame).to_dict(orient="records") if \
             self.truthy_quantification(self.quantification_frame) else None
 
-    def get_annotation_cache(self):
+    def get_annotation_cache(self) -> SessionServerside:
+        """
+        Get the annotation hash in pickle transform format
+
+        :return: `SessionServerside` transform of the annotation dictionary for all ROIs
+        """
         return SessionServerside(self.annotations,
             key="annotation_dict", use_unique_key=self.config['serverside_overwrite'])
 
-    def get_callback_structures(self):
+    def get_callback_structures(self) -> tuple:
+        """
+        Get the annotation hash in pickle transform format and quantification result frame with the annotations added
+
+        :return: tuple: `pd.DataFrame` of quantification results with
+        the annotated objects in the annotation category column, and `
+        SessionServerside` transform of the annotation dictionary for all ROIs
+        """
         if self.annotations:
             return self.get_annotated_frame(), self.get_annotation_cache()
         raise PreventUpdate

@@ -21,6 +21,14 @@ class RegionSummary:
     with summary pixel-level statistics for minimum, mean, and maximum array values
     Statistics may be computed for various types of shapes drawn on the interactive canvas,
     and identified from the `dash`-based graph layout: zoom, rectangle shapes, and svg freeform paths
+
+    :param graph: Current `go.Figure` canvas object
+    :param graph_layout: Dictionary of canvas layout modifications
+    :param image_dict: Dictionary of raw channel intensity numpy arrays
+    :param layers: List of currently selected channels in the blend canvas
+    :param data_selection: String representation of the current ROI selection
+    :param aliases_dict: Dictionary matching channel ids to display values
+    :return: None
     """
     def __init__(self, graph: Union[go.Figure, dict], graph_layout: dict, image_dict: dict,
                  layers: Union[list, dict], data_selection: str, aliases_dict: dict):
@@ -50,6 +58,8 @@ class RegionSummary:
     def compute_statistics_shapes(self):
         """
         Compute the region statistics when new shapes are drawn on the canvas and are not modified
+
+        :return: None
         """
         # these are for each sample
         mean_panel = []
@@ -107,6 +117,8 @@ class RegionSummary:
         Compute the region statistics when a rectangular shape or zoom is enabled
         `reg_type` will specify the type of shape or zoom used for the region,
         and `redrawn` specifies if the keys are modified when an existing shape is changed
+
+        :return: None
         """
         try:
             mean_panel = []
@@ -132,6 +144,11 @@ class RegionSummary:
             pass
 
     def get_summary_frame(self):
+        """
+        Get the summary frame for all regions evaluated
+
+        :return: `pd.DataFrame` of summarized regions for all currently selected channels
+        """
         return self.summary_frame
 
 
@@ -177,8 +194,12 @@ def output_current_canvas_as_html(dest_dir=None, cur_graph=None, canvas_style=No
 
 class FullScreenCanvas:
     """
-    Represents a `go.Figure` instance of a blended canvas with the annotations and shapes
-    removed
+    Represents a `go.Figure` instance of a blended canvas with the annotations and shapes removed
+
+    :param canvas: Current canvas  `go.Figure` object
+    :param canvas_layout: Dictionary of canvas layout modifications
+
+    :return" None
     """
     def __init__(self, canvas: Union[dict, go.Figure], canvas_layout: dict):
         self.canvas = canvas
@@ -194,7 +215,15 @@ class FullScreenCanvas:
         if 'layout' in self.canvas.keys() and 'shapes' in self.canvas['layout'].keys():
             self.canvas['layout']['shapes'] = []
 
-    def get_canvas(self, as_fig: bool=False):
+    def get_canvas(self, as_fig: bool=False) -> Union[go.Figure, dict]:
+
+        """
+        Get the modified canvas
+
+        :param as_fig: Whether the canvas should be returned as a `go.Figure` object, or as a dictionary (default).
+
+        :return: `go.Figure` or dictionary representation of the fullscreen canvas object
+        """
         if as_fig:
             fig = go.Figure(self.canvas)
             fig.update_layout(dragmode='pan')

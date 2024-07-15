@@ -12,13 +12,12 @@ from rakaia.callbacks.db import init_db_callbacks
 
 def init_dashboard(server, authentic_id, config=None):
     """Initialize the dashboard server.
-        Args:
-            server: The parent Flask app for rakaia to run
-            authentic_id: A uuid generated on CLI initialization
-            config: dictionary of CLI app options from argparse
-        Returns:
-            Dash proxy server object
-        """
+
+    :param server: The parent Flask app for rakaia to run
+    :param authentic_id: A uuid generated on CLI initialization
+    :param config: dictionary of CLI app options from argparse
+    :return: Dash proxy server object
+    """
     with tempfile.TemporaryDirectory() as tmpdirname:
         # set the server output cache dir and clean it every time a new dash session is started
         # if whatever reason, the tmp is not writable, use a new directory as a backup

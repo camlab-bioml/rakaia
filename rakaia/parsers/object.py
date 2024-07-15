@@ -190,12 +190,18 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
 
 class RestyleDataParser:
     """
-        Parse the selected categorical subtypes from the UMAP plot as selected by the legend.
-        Categorical selections from the interactive legend are found in the restyledata attribute of the
-        `go.Figure` object, stored as index lists under the 'visible' hash key
-        If a subset is not found, return None for both elements of the tuple
-        Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
-        and a list of the indices of those subtypes relative to the list of subtypes for a specific category
+    Parse the selected categorical subtypes from the UMAP plot as selected by the legend.
+    Categorical selections from the interactive legend are found in the restyledata attribute of the
+    `go.Figure` object, stored as index lists under the 'visible' hash key
+    If a subset is not found, return None for both elements of the tuple
+    Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
+    and a list of the indices of those subtypes relative to the list of subtypes for a specific category
+
+    :param resyledata: Dictionary from the UMAP `go.Figure` object specifying legend category interaction
+    :param quantification_frame: dictionary of `pd.DataFrame` for quantified mask objects
+    :param umap_col_annotation: The current UMAP overlay category (found in `quantification_frame`).
+    :param existing_categories: List of any previously selected variables in the current UMAP overlay category
+    :return: None
     """
     def __init__(self, restyledata: Union[dict, list], quantification_frame: Union[dict, pd.DataFrame],
                  umap_col_annotation: str, existing_categories: Union[dict, list]=None):
@@ -226,15 +232,28 @@ class RestyleDataParser:
                     self.generate_indices_from_keep(self._subtypes_return, tot_subtypes)
 
     def single_category_selected(self, tot_subtypes):
+        """
+        :return: If the restyledata returns a single category selection
+        """
         return len(self.restyledata[0]['visible']) == len(tot_subtypes)
 
     def subtypes_already_selected(self):
+        """
+        :return: If the restyledata indicates that categories have already been selected
+        """
         return len(self.restyledata[0]['visible']) == 1 and len(self.restyledata[1]) == 1
 
     def ignore_selected_index(self):
+        """
+        :return: If the retyledata ignores the currently selected index
+        """
         return self.restyledata[0]['visible'][0] == 'legendonly'
 
     def generate_indices_from_ignore(self, subtypes_keep, tot_subtypes):
+        """
+        Specify a list of subtypes and their ordinal indices to ignore
+        :return: None
+        """
         indices_keep = self.existing_categories.copy() if self.existing_categories is not None else \
             [ind for ind in range(0, len(tot_subtypes))]
         if self.restyledata[1][0] in indices_keep:
@@ -245,9 +264,16 @@ class RestyleDataParser:
         self._subtypes_return, self._indices_keep = subtypes_keep, indices_keep
 
     def keep_current_index(self):
+        """
+        :return: If the currently selected category index should be kept.
+        """
         return bool(self.restyledata[0]['visible'][0])
 
     def generate_indices_from_keep(self, subtypes_keep, tot_subtypes):
+        """
+        Specify a list of subtypes and their ordinal indices to keep.
+        return: None
+        """
         indices_keep = self.existing_categories.copy() if self.existing_categories is not None else []
         for elem in self.restyledata[1]:
             if elem not in indices_keep:
@@ -258,69 +284,12 @@ class RestyleDataParser:
         self._subtypes_return, self._indices_keep = subtypes_keep, indices_keep
 
     def get_callback_structures(self):
+        """
+        Get a list of subtypes to keep for analysis and their ordinal indices
+        :return: tuple: List of subtypes to keep, list of corresponding indices to keep
+        """
         return self._subtypes_return if self._subtypes_return else None, \
             self._indices_keep if self._indices_keep else None
-
-# def parse_cell_subtypes_from_restyledata(restyledata, quantification_frame, umap_col_annotation, existing_cats=None):
-#     """
-#     Parse the selected cell subtypes from the UMAP plot as selected by the legend
-#     if a subset is not found, return None for both elements of the tuple
-#     Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
-#     and a list of the indices of those subtypes relative to the list of subtypes for a specific category
-#     """
-#     # Example 1: user selected only the third legend item to view
-#     # [{'visible': ['legendonly', 'legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly']}, [0, 1, 2, 3, 4, 5, 6]]
-#     # Example 2: user selects all but the the second item to view
-#     # [{'visible': ['legendonly']}, [2]]
-#     # print(restyle_data)
-#     # do not allow the restyledata to be empty from categorical
-#     if None not in (restyledata, quantification_frame) and 'visible' in restyledata[0] and \
-#         umap_col_annotation is not None and umap_col_annotation in list(pd.DataFrame(quantification_frame).columns) and \
-#             restyledata not in [[{'visible': ['legendonly']}, [0]]]:
-#         # get the total number of possible sub annotations and figure out which ones were selected
-#         quant_frame = pd.DataFrame(quantification_frame)
-#         tot_subtypes = list(quant_frame[umap_col_annotation].unique())
-#         subtypes_keep = []
-#         # Case 1: if only one sub type is selected
-#         if len(restyledata[0]['visible']) == len(tot_subtypes):
-#             indices_use = []
-#             for selection in range(len(restyledata[0]['visible'])):
-#                 if restyledata[0]['visible'][selection] != 'legendonly':
-#                     subtypes_keep.append(tot_subtypes[selection])
-#                     indices_use.append(selection)
-#             return subtypes_keep, indices_use
-#         # Case 2: if the user has already added or excluded one sub type
-#
-#         # Case 2.1: when user wants to remove current index plus other ones that have already been removed
-#         # [{'visible': ['legendonly']}, [3]]
-#
-#         # Case 2.2: when user wants to add current index plus others that have already been added
-#         # [{'visible': [True]}, [3]]
-#         elif len(restyledata[0]['visible']) == 1 and len(restyledata[1]) == 1:
-#             # case 2.1: When the current and previous indices are to be ignored
-#             # [{'visible': ['legendonly']}, [3]]
-#             if restyledata[0]['visible'][0] == 'legendonly':
-#                 # existing indices will be ones to keep
-#                 indices_keep = existing_cats.copy() if existing_cats is not None else \
-#                     [ind for ind in range(0, len(tot_subtypes))]
-#                 if restyledata[1][0] in indices_keep:
-#                     indices_keep.remove(restyledata[1][0])
-#                 for selection in range(len(tot_subtypes)):
-#                     if selection in indices_keep:
-#                         subtypes_keep.append(tot_subtypes[selection])
-#                 return subtypes_keep, indices_keep
-#             # Case 2.2: when the current and previous indices are to be kept
-#             # [{'visible': [True]}, [3]]
-#             elif restyledata[0]['visible'][0]:
-#                 indices_keep = existing_cats.copy() if existing_cats is not None else []
-#                 for elem in restyledata[1]:
-#                     if elem not in indices_keep:
-#                         indices_keep.append(elem)
-#                 for selection in range(len(tot_subtypes)):
-#                     if selection in indices_keep:
-#                         subtypes_keep.append(tot_subtypes[selection])
-#                 return subtypes_keep, indices_keep
-#     return None, None
 
 def parse_roi_query_indices_from_quantification_subset(quantification_dict, subset_frame, umap_col_selection=None):
     """
@@ -356,30 +325,14 @@ def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_option
     mask options : list of masks in the current session
     roi options: list of dropdown ROI options in the current session
     """
-    mask_return = None
     if mask_options is not None and data_selection in mask_options:
         mask_return = data_selection
     else:
         # first, check to see if the pattern matches based on the pipeline mask name output
-        if mask_options is not None and roi_options is not None:
-            data_index = roi_options.index(data_selection)
-            for mask in mask_options:
-                try:
-                    if "_ac_IA_mask" in mask:
-                        # mask naming from the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
-                        # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
-                        split_1 = mask.split("_ac_IA_mask")[0]
-                        index = int(split_1.split("_")[-1].replace("a", "")) - 1
-                        if index == data_index:
-                            mask_return = mask
-                except (TypeError, IndexError, ValueError):
-                    pass
+        mask_return = match_mask_old_pipeline_syntax(data_selection, mask_options, roi_options)
         if not mask_return and delimiter in data_selection:
             exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
-            if mask_options is not None and exp in mask_options:
-                mask_return = exp
-            elif mask_options is not None and acq in mask_options:
-                mask_return = acq
+            mask_return = match_mask_to_roi_name_components(data_selection, mask_options, delimiter)
             # first loop: look for a match using the steinbock naming conventions
             if mask_options is not None and not mask_return:
                 for mask_name in mask_options:
@@ -397,6 +350,36 @@ def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_option
     if not mask_return:
         mask_return = dash.no_update if (return_as_dash and not mask_options) else None
     return mask_return
+
+def match_mask_old_pipeline_syntax(data_selection: str, mask_options: Union[list, None],
+                                   roi_options: Union[list, None]):
+    # first, check to see if the pattern matches based on the pipeline mask name output
+    mask_return = None
+    if mask_options is not None and roi_options is not None:
+        data_index = roi_options.index(data_selection)
+        for mask in mask_options:
+            try:
+                if "_ac_IA_mask" in mask:
+                    # mask naming from the pipeline follows {mcd_name}_s0_a2_ac_IA_mask.tiff
+                    # where s0 is the slide index (0-indexed) and a2 is the acquisition index (1-indexed)
+                    split_1 = mask.split("_ac_IA_mask")[0]
+                    index = int(split_1.split("_")[-1].replace("a", "")) - 1
+                    if index == data_index:
+                        mask_return = mask
+            except (TypeError, IndexError, ValueError):
+                pass
+    return mask_return
+
+def match_mask_to_roi_name_components(data_selection: str, mask_options: Union[list, None],
+                                      delimiter: str="+++"):
+    mask_return = None
+    exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
+    if mask_options is not None and exp in mask_options:
+        mask_return = exp
+    elif mask_options is not None and acq in mask_options:
+        mask_return = acq
+    return mask_return
+
 
 def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_list: Union[list, None],
                                                 sample_col_id="sample"):
@@ -421,24 +404,31 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_lis
                     sam_id = match_steinbock_mask_name_to_mcd_roi(mask_selection, roi_id, False)
         # if this pattern exists, try to match to the sample name by index
         # otherwise, try matching directly by name
-        if sam_id is None and mask_selection and "_ac_IA_mask" in mask_selection:
-            try:
-                split_1 = mask_selection.split("_ac_IA_mask")[0]
-                # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
-                index = int(split_1.split("_")[-1].replace("a", ""))
-                for sample in sorted(cell_id_list):
-                    if sample == mask_selection:
-                        sam_id = sample
-                    elif sample_col_id == "sample":
-                        split = sample.split("_")
-                        try:
-                            if int(split[-1]) == int(index):
-                                sam_id = sample
-                        except ValueError:
-                            pass
-                return sam_id
-            except (KeyError, TypeError):
-                pass
+        if not sam_id:
+            sam_id = match_quantification_identifier_old_pipeline_syntax(mask_selection, cell_id_list, sample_col_id)
+    return sam_id
+
+def match_quantification_identifier_old_pipeline_syntax(mask_selection: str, cell_id_list: Union[list, None],
+                                                        sample_col_id: str="sample"):
+    sam_id = None
+    if mask_selection and "_ac_IA_mask" in mask_selection and cell_id_list:
+        try:
+            split_1 = mask_selection.split("_ac_IA_mask")[0]
+            # IMP: do not subtract 1 here as both the quantification sheet and mask name are 1-indexed
+            index = int(split_1.split("_")[-1].replace("a", ""))
+            for sample in sorted(cell_id_list):
+                if sample == mask_selection:
+                    sam_id = sample
+                elif sample_col_id == "sample":
+                    split = sample.split("_")
+                    try:
+                        if int(split[-1]) == int(index):
+                            sam_id = sample
+                    except ValueError:
+                        pass
+            return sam_id
+        except (KeyError, TypeError):
+            pass
     return sam_id
 
 def validate_imported_csv_annotations(annotations_csv):
@@ -465,8 +455,9 @@ def parse_quantification_sheet_from_h5ad(h5ad_file):
     - Additional metadata variables are held in h5ad_file.obs
     """
     quantification_frame = sc.read_h5ad(h5ad_file)
-    expression = pd.DataFrame(quantification_frame.X, columns=list(quantification_frame.var_names)).reset_index(
-        drop=True)
+    expression = pd.DataFrame(quantification_frame.X,
+                columns=list(quantification_frame.var_names)).reset_index(
+                drop=True)
     if is_steinbock_intensity_anndata(quantification_frame):
         # create a sample column that uses indices to match the steinbock masks
         edited = pd.DataFrame({"description": [f"{acq}_{position}" for acq, position in \
@@ -523,7 +514,8 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
     # column to identify the cell ID
     mask_quant_match = None
     if None not in (mask_identifier, id_list):
-        mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier, id_list, quantification_sample_col)
+        mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier,
+                                                id_list, quantification_sample_col)
     if mask_quant_match is not None and query:
         frame = quantification_frame
         if normalize:
