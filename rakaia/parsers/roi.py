@@ -124,6 +124,10 @@ class RegionThumbnail:
                 except ValueError:
                     self.query_selection = []
 
+    def roi_within_dimension_threshold(self, roi_height, roi_width):
+        return (roi_height >= self.dim_min and roi_width >= self.dim_min) and \
+                (roi_height <= self.dim_max and roi_width <= self.dim_max)
+
     def additive_thumbnail_from_mcd(self, file_path):
         """
         Generate one or more image thumbnails from a mcd file.
@@ -143,8 +147,7 @@ class RegionThumbnail:
                            f"{str(acq.description)}_{str(acq.id)}"
                         if self.roi_keyword_in_roi_identifier(roi_identifier) and roi_identifier \
                                 not in self.rois_exclude and \
-                                (acq.height_px >= self.dim_min and acq.width_px >= self.dim_min) and \
-                                (acq.height_px <= self.dim_max and acq.width_px <= self.dim_max):
+                                self.roi_within_dimension_threshold(acq.height_px, acq.width_px):
                             channel_names = acq.channel_names
                             channel_index = 0
                             img = mcd_file.read_acquisition(acq, strict=False)
@@ -210,8 +213,7 @@ class RegionThumbnail:
                 self.roi_keyword_in_roi_identifier(tiff_filepath)):
             with TiffFile(tiff_filepath) as tif:
                 # add conditional to check if the tiff dimensions meet the threshold
-                if (tif.pages[0].shape[0] >= self.dim_min and tif.pages[0].shape[1] >= self.dim_min) and \
-                        (tif.pages[0].shape[0] <= self.dim_max and tif.pages[0].shape[1] <= self.dim_max):
+                if self.roi_within_dimension_threshold(tif.pages[0].shape[0], tif.pages[0].shape[1]):
                     acq_image = []
                     channel_index = 1
                     for page in tif.pages:
@@ -246,8 +248,7 @@ class RegionThumbnail:
                 # IMP: txt files contain the channel number as the first dimension, not the last
                 acq_dims = (acq_read.shape[1], acq_read.shape[2]) if len(acq_read.shape) >= 3 else \
                     (acq_read.shape[0], acq_read.shape[1])
-                if (acq_dims[0] >= self.dim_min and acq_dims[1] >= self.dim_min) and \
-                        (acq_dims[0] <= self.dim_max and acq_dims[1] <= self.dim_max):
+                if self.roi_within_dimension_threshold(acq_dims[0], acq_dims[1]):
                     for image in acq_read:
                         channel_name = txt_channel_names[image_index - 1]
                         if channel_name in self.currently_selected_channels and \

@@ -60,7 +60,7 @@ def init_app(cli_config):
         return render_template(
             'home.html',
             title='rakaia',
-            description='Cell-type Classification (using) Rapid Analysis (of) Multiplexed Imaging (mass) Cytometry.',
+            description='Analyze multiplexed imaging datasets interactively and quickly.',
             template='home-template',
             body="This is a homepage served with Flask."
         )

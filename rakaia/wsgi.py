@@ -13,8 +13,7 @@ def cli_parser():
     :return: argparse Argument parser with provided CLI options
     """
     parser = argparse.ArgumentParser(add_help=False,
-                                     description="rakaia: Cell-type Classification (using) Rapid Analysis (of) Multiplexed "
-                                                 "Imaging (mass) Cytometry using Flask and Dash.",
+                                     description="rakaia: Analyze multiplexed imaging datasets interactively and quickly.",
                                      usage='''
             rakaia can be initialized from the command line using: \n
             rakaia \n

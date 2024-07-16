@@ -120,10 +120,7 @@ class CanvasImage:
         self.gating_cell_id_list = gating_cell_id_list
         self.annotation_color = annotation_color
         self.uirevision_status = True
-        # try to get the uirevision status from the current graph if it exists: two possible truthy values
-        # are toggled when shapes are cleared
-        if self.cur_graph and 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout']:
-            self.uirevision_status = self.cur_graph['layout']['uirevision']
+        self.get_previous_uirevision()
         self.cluster_selection = cluster_assignment_selection
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
@@ -161,6 +158,15 @@ class CanvasImage:
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
                                 # currently set to lowest possible compression level for speed
                                 binary_compression_level=1)
+
+    def get_previous_uirevision(self):
+        """
+        # try to get the uirevision status from the current graph if it exists.
+        Two possible truthy values are toggled when shapes are cleared
+        :return: None
+        """
+        if self.cur_graph and 'layout' in self.cur_graph and 'uirevision' in self.cur_graph['layout']:
+            self.uirevision_status = self.cur_graph['layout']['uirevision']
 
     def overlay_grid_on_additive_image(self, image: Union[np.array, np.ndarray]) -> np.array:
         """
@@ -374,7 +380,6 @@ class CanvasImage:
         fig.update_traces(hovertemplate=new_hover)
         return fig
 
-
     def add_canvas_scalebar(self, fig: go.Figure, x_axis_placement: Union[int, float]) -> Union[go.Figure, dict]:
         """
         Add a canvas scalebar with a set bar width of 2 and a number size set by the user
@@ -425,34 +430,61 @@ class CanvasLayout:
         None
     """
     def __init__(self, figure: Union[dict, go.Figure]):
-        if 'layout' in figure and 'shapes' in figure['layout'] and \
-                len(figure['layout']['shapes']) > 0 and not \
-                isinstance(figure['layout']['shapes'], tuple):
-            figure['layout']['shapes'] = [shape for shape in figure['layout']['shapes'] if \
-                                          shape and not is_bad_shape(shape)]
+
+        self.cur_annotations = []
+        self.cur_shapes = []
+        figure = self.parse_out_bad_shapes(figure)
         try:
             figure['layout']['yaxis']['domain'] = [0, 1]
             figure['layout']['xaxis']['domain'] = [0, 1]
         except KeyError:
             pass
+
         self.figure = figure
+        self.set_current_annotations()
+        self.set_current_shapes()
+
+        for shape in self.cur_shapes:
+            if 'label' in shape and 'texttemplate' in shape['label']:
+                shape['label'] = {}
+
+    @staticmethod
+    def parse_out_bad_shapes(figure) -> Union[go.Figure, dict]:
+        """
+        Remove any malformed shapes from the canvas
+
+        :param figure: Current canvas as `go.Figure`
+        :return: `go.Figure`` with malformed shapes in the layout removes
+        """
+        if 'layout' in figure and 'shapes' in figure['layout'] and \
+                len(figure['layout']['shapes']) > 0 and not \
+                isinstance(figure['layout']['shapes'], tuple):
+            figure['layout']['shapes'] = [shape for shape in figure['layout']['shapes'] if \
+                                          shape and not is_bad_shape(shape)]
+        return figure
+
+    def set_current_annotations(self):
+        """
+        Set and retain the annotations from the current canvas. Includes the legend and scalebar text.
+
+        :return: None
+        """
         if 'layout' in self.figure and 'annotations' in self.figure['layout'] and \
                 len(self.figure['layout']['annotations']) > 0 and not \
                 isinstance(self.figure['layout']['annotations'], tuple):
             self.cur_annotations = [annot for annot in self.figure['layout']['annotations'] if annot is not None]
-        else:
-            self.cur_annotations = []
+
+    def set_current_shapes(self):
+        """
+        Set and retain the shapes from the current canvas. Drawn shapes will be kept through canvas updates.
+
+        :return: None
+        """
         if 'layout' in self.figure and 'shapes' in self.figure['layout'] and \
                 len(self.figure['layout']['shapes']) > 0 and not \
                 isinstance(self.figure['layout']['shapes'], tuple):
             self.cur_shapes = [shape for shape in self.figure['layout']['shapes'] if shape and \
                                'type' in shape and not is_bad_shape(shape)]
-        else:
-            self.cur_shapes = []
-
-        for shape in self.cur_shapes:
-            if 'label' in shape and 'texttemplate' in shape['label']:
-                shape['label'] = {}
 
     def get_fig(self) -> Union[go.Figure, dict]:
         """

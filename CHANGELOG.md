@@ -15,7 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Rename and code clean (pylint compatibility)
+- Rename (rakaia) and code clean (pylint compatibility)
 
 ### Fixed
 

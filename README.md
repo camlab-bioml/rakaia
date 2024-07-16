@@ -1,6 +1,6 @@
 # rakaia
 
-rakaia: Analyze multiplexed datasets interactively, fast.
+rakaia: Analyze multiplexed imaging datasets interactively and quickly.
 
 <p align="center">
     <img src="man/assets/app-preview.png">
