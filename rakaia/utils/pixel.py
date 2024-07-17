@@ -541,10 +541,10 @@ class MarkerCorrelation:
     """
     Generate marker correlation metrics for a target marker compared to a baseline marker expression
     Metrics computed include:
-        - Basic Pearson correlation
-        - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
-        - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
-        - marker expression at the baseline threshold, relative to the total marker expression inside the mask
+    - Basic Pearson correlation
+    - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
+    - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
+    - marker expression at the baseline threshold, relative to the total marker expression inside the mask
 
     :param image_dict: Dictionary where keys are the channel ids, and values are raw pixel intensities arrays
     :param roi_selection: String representation of the current ROI selection
@@ -628,6 +628,7 @@ class MarkerCorrelation:
 
     def get_correlation_statistics(self) -> tuple:
         """
+
         :return: tuple: The proportion of the target channel that is inside the mask, the
         target overlap with the baseline channel inside the mask, and baseline proportion in mask, and basic correlation
         """
@@ -638,6 +639,7 @@ class MarkerCorrelation:
         """
         Set the target threshold of expression, the target threshold inside the mask,
         and the target proportion inside the mask
+
         :return: None
         """
         self.target_threshold_bool = self.target_array > float(self.target_threshold)
@@ -650,6 +652,7 @@ class MarkerCorrelation:
         """
         Set the baseline threshold of expression, the baseline threshold inside the mask,
         and the baseline proportion inside the mask
+
         :return: None
         """
         baseline_threshold_bool = self.baseline_array > float(self.baseline_threshold)
@@ -661,6 +664,7 @@ class MarkerCorrelation:
         """
         Compute the proportion of the target channel that is inside the mask, and the
         target overlap with the baseline channel inside the mask
+
         :return: None
         """
         self.marker_overlap_in_mask = np.logical_and(self.target_threshold_in_mask,
@@ -671,6 +675,7 @@ class MarkerCorrelation:
     def compute_basic_pearson_correlation(self):
         """
         Compute basic pearson correlation between two channel arrays
+
         :return: None
         """
         if self.target_array is not None and self.baseline_array is not None:
@@ -688,8 +693,7 @@ class MarkerCorrelation:
         :param roi_selection: String representation of the current ROI selection
         :param target_channel: ID of the target channel
         :param blend_dict: Dictionary of current channel blend parameters
-        :param use_blend_params: Whether channel blend parameters such as pixel thresholds and filters should be used
-        in the computations. Default is True and is recommended.
+        :param use_blend_params: Whether channel blend parameters such as pixel thresholds and filters should be used.
         :param bounds: If canvas zoom bounds are passed, compute the statistics only in that region,
         :return: tuple: The target array and target threshold
         """
@@ -721,8 +725,7 @@ class MarkerCorrelation:
         :param roi_selection: String representation of the current ROI selection
         :param baseline_channel: ID of the baseline channel
         :param blend_dict: Dictionary of current channel blend parameters
-        :param use_blend_params: Whether channel blend parameters such as pixel thresholds and filters should be used
-        in the computations. Default is True and is recommended.
+        :param use_blend_params: Whether channel blend parameters such as pixel thresholds and filters should be used.
         :param bounds: If canvas zoom bounds are passed, compute the statistics only in that region,
         :return: tuple: The baseline array and baseline threshold
         """

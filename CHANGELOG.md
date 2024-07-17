@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased
 
-## [0.17.0] - 2024-07-15
+## [0.17.0] - 2024-07-17
 
 ### Added
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Rename (rakaia) and code clean (pylint compatibility)
+- modify cache clearing conditions on new app initialization
 
 ### Fixed
 

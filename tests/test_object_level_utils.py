@@ -4,12 +4,12 @@ import dash_extensions
 from rakaia.utils.object import (
     send_alert_on_incompatible_mask,
     get_min_max_values_from_zoom_box,
-    subset_measurements_by_cell_graph_box,
-    populate_cell_annotation_column_from_bounding_box,
+    subset_measurements_by_object_graph_box,
+    populate_object_annotation_column_from_bounding_box,
     process_mask_array_for_hovertemplate,
-    get_cells_in_svg_boundary_by_mask_percentage,
-    populate_cell_annotation_column_from_cell_id_list,
-    populate_cell_annotation_column_from_clickpoint,
+    get_objs_in_svg_boundary_by_mask_percentage,
+    populate_obj_annotation_column_from_obj_id_list,
+    populate_obj_annotation_column_from_clickpoint,
     subset_measurements_by_point,
     generate_greyscale_grid_array,
     identify_column_matching_roi_to_quantification,
@@ -25,7 +25,7 @@ from PIL import Image
 from rakaia.parsers.object import (
     drop_columns_from_measurements_csv,
     set_columns_to_drop,
-    convert_mask_to_cell_boundary,
+    convert_mask_to_object_boundary,
     parse_quantification_sheet_from_h5ad,
     parse_and_validate_measurements_csv,
     return_umap_dataframe_from_quantification_dict)
@@ -44,7 +44,7 @@ def test_basic_mask_boundary_converter(get_current_dir):
     fake_mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
     mask_copy = fake_mask.copy()
     assert np.array_equal(fake_mask, mask_copy)
-    mask_with_boundary = convert_mask_to_cell_boundary(fake_mask)
+    mask_with_boundary = convert_mask_to_object_boundary(fake_mask)
     assert not np.array_equal(fake_mask, mask_with_boundary)
     assert np.max(mask_with_boundary) == 255
     assert not np.max(fake_mask) == 255
@@ -54,7 +54,7 @@ def test_basic_mask_boundary_converter(get_current_dir):
     # the cell are converted to black
     # need to convert the mask to RGB then back to greyscale to ensure that the mask max is 255 for standard intensity
     # comparison
-    mask_from_reconverted = convert_mask_to_cell_boundary(reconverted_back)
+    mask_from_reconverted = convert_mask_to_object_boundary(reconverted_back)
     assert np.mean(reconverted_back) > np.mean(mask_from_reconverted)
     # assert that a pixel inside the cell boundary is essentially invisible
     assert reconverted_back[628, 491] == 255
@@ -107,16 +107,16 @@ def test_basic_parser_bounding_box_min_max():
 def test_basic_box_query_measurements_csv(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     coord_dict = {'xaxis.range[0]': 826, 'xaxis.range[1]': 836, 'yaxis.range[0]': 12, 'yaxis.range[1]': 21}
-    assert len(subset_measurements_by_cell_graph_box(measurements, coord_dict)) == 1
+    assert len(subset_measurements_by_object_graph_box(measurements, coord_dict)) == 1
     measurements_2 = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
-    assert subset_measurements_by_cell_graph_box(measurements_2, coord_dict) is None
+    assert subset_measurements_by_object_graph_box(measurements_2, coord_dict) is None
 
 def test_basic_cell_annotation_col_pop(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     bounds = {'xaxis.range[0]': 826, 'xaxis.range[1]': 836, 'yaxis.range[0]': 12, 'yaxis.range[1]': 21}
 
-    measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds,
-                                                                   cell_type="new_cell_type")
+    measurements = populate_object_annotation_column_from_bounding_box(measurements, values_dict=bounds,
+                                                                       obj_type="new_cell_type")
     assert list(measurements["object_annotation_1"][(measurements["x_max"] == 836) &
           (measurements["y_max"] == 20)]) == ['new_cell_type']
     assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 1
@@ -126,23 +126,23 @@ def test_basic_cell_annotation_col_pop(get_current_dir):
 
     bounds_2 = {'xaxis.range[0]': 241, 'xaxis.range[1]': 253, 'yaxis.range[0]': -1, 'yaxis.range[1]': 4}
 
-    measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds_2,
-                                                                     cell_type="new_cell_type")
+    measurements = populate_object_annotation_column_from_bounding_box(measurements, values_dict=bounds_2,
+                                                                       obj_type="new_cell_type")
     assert list(measurements["object_annotation_1"][(measurements["x_max"] == 836) &
                                                         (measurements["y_max"] == 20)]) == ['new_cell_type']
     assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 2
     assert len(dict(counts)) == 2
     assert 'Unassigned' in dict(counts).keys()
-    measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds_2,
-                                                                    cell_type="new_cell_type_2")
+    measurements = populate_object_annotation_column_from_bounding_box(measurements, values_dict=bounds_2,
+                                                                       obj_type="new_cell_type_2")
     counts = measurements["object_annotation_1"].value_counts(normalize=True)
     assert len(dict(counts)) == 3
     assert 'new_cell_type_2' in dict(counts).keys()
 
     fake_bounds = {"1": 241, '2': 253, '3': -1}
-    measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=fake_bounds,
-                                                                     annotation_column="fake",
-                                                                     cell_type="new_cell_type_3")
+    measurements = populate_object_annotation_column_from_bounding_box(measurements, values_dict=fake_bounds,
+                                                                       annotation_column="fake",
+                                                                       obj_type="new_cell_type_3")
     assert 'new_cell_type_3' not in measurements['fake'].to_list()
 
 
@@ -153,8 +153,8 @@ def test_basic_cell_annotation_col_pop_2(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     bounds = {'x0': 826, 'x1': 836, 'y0': 12, 'y1': 21}
 
-    measurements = populate_cell_annotation_column_from_bounding_box(measurements, values_dict=bounds,
-                                                                   cell_type="new_cell_type", box_type="rect")
+    measurements = populate_object_annotation_column_from_bounding_box(measurements, values_dict=bounds,
+                                                                       obj_type="new_cell_type", box_type="rect")
     assert list(measurements["object_annotation_1"][(measurements["x_max"] == 836) &
           (measurements["y_max"] == 20)]) == ['new_cell_type']
     assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 1
@@ -172,22 +172,22 @@ def test_convert_basic_array_to_hover_template():
 
 def test_get_cell_ids_in_svgpath(get_current_dir, svgpath):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
-    cells_included_1 = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath)
+    cells_included_1 = get_objs_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath)
     assert len(cells_included_1) == 2
     assert list(cells_included_1.keys()) == [403, 452]
-    cells_included_2 = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath, threshold=0.97)
+    cells_included_2 = get_objs_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath, threshold=0.97)
     assert len(cells_included_2) == 1
     assert list(cells_included_2.keys()) == [452]
-    cells_all = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath, use_partial=False)
+    cells_all = get_objs_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath, use_partial=False)
     assert len(cells_all) == 2
 
 def test_basic_cell_annotation_col_pop_from_masking(get_current_dir, svgpath):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
-    cells_included = get_cells_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath)
+    cells_included = get_objs_in_svg_boundary_by_mask_percentage(mask_array=mask, svgpath=svgpath)
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     assert "object_annotation_1" not in measurements.columns
-    measurements = populate_cell_annotation_column_from_cell_id_list(measurements, cell_list=list(cells_included.keys()),
-                                    cell_type="new_cell_type", sample_name="Dilution_series_1_1")
+    measurements = populate_obj_annotation_column_from_obj_id_list(measurements, obj_list=list(cells_included.keys()),
+                                                        obj_type="new_cell_type", sample_name="Dilution_series_1_1")
     assert "object_annotation_1" in measurements.columns
     assert len(measurements[measurements["object_annotation_1"] == "new_cell_type"]) == 2
     assert list(measurements[measurements["cell_id"] == 1]["object_annotation_1"]) == ['Unassigned']
@@ -196,20 +196,20 @@ def test_basic_cell_annotation_col_pop_from_masking(get_current_dir, svgpath):
 def test_basic_clickdata_cell_annotation(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
     clickdata = {'points': [{'x': -100, 'y': -100}]}
-    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new", sample="Dilution_series_1_1")
+    annotations = populate_obj_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                 obj_type="new", sample="Dilution_series_1_1")
     assert 'new' not in annotations['object_annotation_1'].tolist()
 
     clickdata = {'points': [{'x': 53, 'y': 33}]}
-    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new", sample="Dilution_series_1_1")
+    annotations = populate_obj_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                 obj_type="new", sample="Dilution_series_1_1")
 
     assert 'new' in annotations['object_annotation_1'].tolist()
     assert dict(collections.Counter(annotations['object_annotation_1']))['new'] == 1
 
     clickdata = {'points': [{'x': 980, 'y': 19}]}
-    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new", sample="Dilution_series_1_1")
+    annotations = populate_obj_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                 obj_type="new", sample="Dilution_series_1_1")
 
     assert dict(collections.Counter(annotations['object_annotation_1']))['new'] == 2
 
@@ -220,8 +220,8 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
                                                                                                  axis=1)
 
     clickdata = {'points': [{'x': 53, 'y': 33}]}
-    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new", sample="Dilution_series_1_1")
+    annotations = populate_obj_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                 obj_type="new", sample="Dilution_series_1_1")
 
     assert 'new' not in annotations['object_annotation_1'].tolist()
 
@@ -230,10 +230,10 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
 
     mask_dict = {"roi_1": {"raw": mask}}
 
-    annotations = populate_cell_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
-                                                                  cell_type="new", sample="Dilution_series_1_1",
-                                                                  mask_dict=mask_dict, mask_selection="roi_1",
-                                                                  mask_toggle=True)
+    annotations = populate_obj_annotation_column_from_clickpoint(measurements, None, values_dict=clickdata,
+                                                                 obj_type="new", sample="Dilution_series_1_1",
+                                                                 mask_dict=mask_dict, mask_selection="roi_1",
+                                                                 mask_toggle=True)
 
     assert 'new' in annotations['object_annotation_1'].tolist()
 
@@ -339,7 +339,7 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
 
     # run without keeping the cells that are not annotated
     with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
-                                                              retain_cells=False)
+                                                              retain_objs=False)
     # assert that where cells were before, there is nothing
     assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
 

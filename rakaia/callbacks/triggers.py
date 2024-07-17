@@ -1,9 +1,6 @@
 from typing import Union
 import numpy as np
-"""
-Triggers are responsible for detecting the context input trigger for callbacks and assessing whether
-callbacks should fire
-"""
+
 def new_roi_same_dims(triggered_id: str, cur_dimensions: Union[tuple, list], first_image: np.array):
     """
     Do not update the canvas graph component with a new property if the dimensions of the incoming ROI

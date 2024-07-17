@@ -124,7 +124,10 @@ class RegionThumbnail:
                 except ValueError:
                     self.query_selection = []
 
-    def roi_within_dimension_threshold(self, roi_height, roi_width):
+    def roi_within_dimension_threshold(self, roi_height, roi_width) -> bool:
+        """
+        :return: If the ROI height and width dimensions fit within the provided min and max query dimensions
+        """
         return (roi_height >= self.dim_min and roi_width >= self.dim_min) and \
                 (roi_height <= self.dim_max and roi_width <= self.dim_max)
 

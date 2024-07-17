@@ -49,13 +49,15 @@ from rakaia.utils.quantification import (
     update_gating_dict_with_slider_values,
     gating_label_children, mask_object_counter_preview)
 
-def init_cell_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
+def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
-    Initialize the callbacks associated with cell level analysis (object detection, quantification, dimensional reduction)
+    Initialize the callbacks associated with object level analysis
+    (object detection, quantification, dimensional reduction)
 
     :param dash_app: the dash proxy server wrapped in the parent Flask app
     :param tmpdirname: the path for the tmpdir for tmp storage for the session
     :param authentic_id: uuid string identifying the particular app invocation
+    :param app_config: Dictionary of session options passed through CLI
     :return: None
     """
     dash_app.config.suppress_callback_exceptions = True

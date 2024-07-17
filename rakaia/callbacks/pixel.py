@@ -102,6 +102,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     :param dash_app: the dash proxy server wrapped in the parent Flask app
     :param tmpdirname: the path for the tmpdir for tmp storage for the session
     :param authentic_id: uuid string identifying the particular app invocation
+    :param app_config: Dictionary of session options passed through CLI
     :return: None
     """
     dash_app.config.suppress_callback_exceptions = True
@@ -1086,8 +1087,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                          dataset_selection, delimiter, error_config):
         if None not in (cur_graph, uploaded, blend_dict) and download_html:
             try:
-                # download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-                # create_download_dir(download_dir)
                 html_path = dcc.send_file(output_current_canvas_as_html(download_html, cur_graph, canvas_style,
                                     use_roi_name=True, roi_name=dataset_selection, delimiter=delimiter))
                 error_config = dash.no_update
@@ -1141,8 +1140,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (uploaded, blend_dict) and download_h5py:
             first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
-            # download_dir = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-            # create_download_dir(download_dir)
             try:
                 mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:

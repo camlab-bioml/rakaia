@@ -13,7 +13,7 @@ from PIL import Image
 import plotly.express as px
 from rakaia.io.session import SessionTheme
 from rakaia.utils.pixel import split_string_at_pattern, get_first_image_from_roi_dictionary
-from rakaia.utils.object import convert_mask_to_cell_boundary
+from rakaia.utils.object import convert_mask_to_object_boundary
 
 def default_canvas_margins():
     """
@@ -131,7 +131,7 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
                     # add the border of the mask after converting back to greyscale to derive the conversion
                     greyscale_mask = np.array(Image.fromarray(mask_config[mask_selection]).convert('L'))
                     reconverted = np.array(Image.fromarray(
-                        convert_mask_to_cell_boundary(greyscale_mask)).convert('RGB'))
+                        convert_mask_to_object_boundary(greyscale_mask)).convert('RGB'))
                     image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
         default_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
         fig = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True, binary_compression_level=1)

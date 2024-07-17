@@ -64,7 +64,7 @@ def get_min_max_values_from_rect_box(coord_dict):
     y_max = max(coord_dict['y0'], coord_dict['y1'])
     return x_min, x_max, y_min, y_max
 
-def convert_mask_to_cell_boundary(mask):
+def convert_mask_to_object_boundary(mask):
     """
     Generate a mask of object outlines corresponding to a segmentation mask of integer objects
     Returns an RGB mask where outlines are represented by 255, and all else are 0
@@ -153,10 +153,10 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
             raise PreventUpdate
     raise PreventUpdate
 
-def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
+def subset_measurements_by_object_graph_box(measurements, coordinates_dict):
     """
     Subset a measurements CSV by getting the min and max coordinates in both dimensions from the canvas
-    The query assumes a bounding box for the region in question and that the cells are wholly contained within
+    The query assumes a bounding box for the region in question and that the objects are wholly contained within
     the region
     The coordinates_dict assumes the following keys: ['xaxis.range[0]', 'xaxis.range[1]',
     'yaxis.range[0]', 'yaxis.range[1]']
@@ -170,11 +170,11 @@ def subset_measurements_by_cell_graph_box(measurements, coordinates_dict):
     except pd.errors.UndefinedVariableError:
         return None
 
-def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=None,
-                        annotation_column="object_annotation_1", values_dict=None, cell_type=None,
-                        box_type="zoom", remove: bool=False, default_val: str="Unassigned"):
+def populate_object_annotation_column_from_bounding_box(measurements, coord_dict=None,
+                annotation_column="object_annotation_1", values_dict=None, obj_type=None,
+                box_type="zoom", remove: bool=False, default_val: str="Unassigned"):
     """
-    Populate a cell annotation column in the measurements data frame using numpy conditional searching
+    Populate an object annotation column in the measurements data frame using numpy conditional searching
     by coordinate bounding box
     """
     if coord_dict is None:
@@ -190,7 +190,7 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
             raise KeyError
 
         # if the annotation is being removed/overwritten, replace the annotation with the default
-        cell_type = cell_type if not remove else default_val
+        obj_type = obj_type if not remove else default_val
 
         measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] >=
                                                         float(x_min)) &
@@ -200,38 +200,38 @@ def populate_cell_annotation_column_from_bounding_box(measurements, coord_dict=N
                                                 float(y_min)) &
                                                (measurements[str(f"{coord_dict['y_max']}")] <=
                                                 float(y_max)),
-                                                        cell_type,
+                                                        obj_type,
                                                     measurements[annotation_column])
     except (KeyError, TypeError):
         pass
     return measurements
 
-def populate_cell_annotation_column_from_cell_id_list(measurements, cell_list,
-                        annotation_column="object_annotation_1", cell_identifier="cell_id", cell_type=None,
-                        sample_name=None, id_column='sample', remove: bool=False, default_val: str="Unassigned"):
+def populate_obj_annotation_column_from_obj_id_list(measurements, obj_list,
+                    annotation_column="object_annotation_1", obj_identifier="cell_id", obj_type=None,
+                    sample_name=None, id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
-    Populate a cell annotation column in the measurements data frame using numpy conditional searching
-    with a list of cell IDs
+    Populate a object annotation column in the measurements data frame using numpy conditional searching
+    with a list of object IDs
     """
     if annotation_column not in measurements.columns:
         measurements[annotation_column] = default_val
 
     try:
-        cell_type = cell_type if not remove else default_val
-        measurements[annotation_column] = np.where((measurements[cell_identifier].isin(cell_list)) &
-                                               (measurements[id_column] == sample_name), cell_type,
+        obj_type = obj_type if not remove else default_val
+        measurements[annotation_column] = np.where((measurements[obj_identifier].isin(obj_list)) &
+                                               (measurements[id_column] == sample_name), obj_type,
                                                measurements[annotation_column])
     except KeyError:
         pass
     return measurements
 
 
-def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=None,
-                    annotation_column="object_annotation_1", cell_identifier="cell_id", values_dict=None,
-                    cell_type=None, mask_toggle=True, mask_dict=None, mask_selection=None, sample=None,
-                    id_column='sample', remove: bool=False, default_val: str="Unassigned"):
+def populate_obj_annotation_column_from_clickpoint(measurements, coord_dict=None,
+        annotation_column="object_annotation_1", obj_identifier="cell_id", values_dict=None,
+        obj_type=None, mask_toggle=True, mask_dict=None, mask_selection=None, sample=None,
+        id_column='sample', remove: bool=False, default_val: str="Unassigned"):
     """
-    Populate a cell annotation column in the measurements data frame from a single xy coordinate clickpoint
+    Populate an object annotation column in the measurements data frame from a single xy coordinate clickpoint
     """
     try:
         if annotation_column not in measurements.columns:
@@ -243,17 +243,17 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
         x = values_dict['points'][0]['x']
         y = values_dict['points'][0]['y']
 
-        cell_type = cell_type if not remove else default_val
+        obj_type = obj_type if not remove else default_val
 
         if mask_toggle and None not in (mask_dict, mask_selection) and len(mask_dict) > 0:
 
-            # get the cell ID at that position to match
+            # get the object ID at that position to match
             mask_used = mask_dict[mask_selection]['raw']
-            cell_id = mask_used[y, x].astype(int)
-            cell_id = int(cell_id[0]) if isinstance(cell_id, np.ndarray) else cell_id
+            obj_id = mask_used[y, x].astype(int)
+            obj_id = int(obj_id[0]) if isinstance(obj_id, np.ndarray) else obj_id
 
-            measurements[annotation_column] = np.where((measurements[cell_identifier]== cell_id) &
-                                                   (measurements[id_column] == sample), cell_type,
+            measurements[annotation_column] = np.where((measurements[obj_identifier]== obj_id) &
+                                                   (measurements[id_column] == sample), obj_type,
                                                    measurements[annotation_column])
         else:
             measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
@@ -265,7 +265,7 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
                                                (measurements[str(f"{coord_dict['y_max']}")] >=
                                                 float(y)) &
                                                 (measurements['sample'] == sample),
-                                                        cell_type,
+                                                        obj_type,
                                                     measurements[annotation_column])
         return measurements
     except (KeyError, AssertionError):
@@ -274,10 +274,10 @@ def populate_cell_annotation_column_from_clickpoint(measurements, coord_dict=Non
 
 def process_mask_array_for_hovertemplate(mask_array):
     """
-    Process a mask array with cell IDs for the hover template. Steps include:
+    Process a mask array with mask object IDs for the hover template. Steps include:
     - converting the array shape to 3D with (shape[0], shape[1], 1)
     - Coercing array to string
-    - Replacing '0' with None. 0 entries indicate that there is no cell ID present at the pixel
+    - Replacing '0' with None. 0 entries indicate that there is no mask object ID present at the pixel
     """
     mask_array = mask_array.astype(str)
     mask_array[mask_array == '0.0'] = 'None'
@@ -285,12 +285,12 @@ def process_mask_array_for_hovertemplate(mask_array):
     return mask_array.reshape((mask_array.shape[0], mask_array.shape[1], 1))
 
 
-def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85, use_partial: bool=True):
+def get_objs_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=0.85, use_partial: bool=True):
     """
-    Derive a list of cell IDs from a mask that are contained within the svg path based on a threshold
-    For example, with a threshold of 0.85, one would include a cell ID if 85% of the cell's pixels are
+    Derive a list of object IDs from a mask that are contained within the svg path based on a threshold
+    For example, with a threshold of 0.85, one would include an object ID if 85% of the object's pixels are
     contained within the svg path
-    Returns a dict with the cell ID from the mask and its percentage
+    Returns a dict with the object ID from the mask and its percentage
     """
     bool_inside = path_to_mask(svgpath, (mask_array.shape[0], mask_array.shape[1]))
     if len(mask_array.shape) > 2:
@@ -309,7 +309,7 @@ def get_cells_in_svg_boundary_by_mask_percentage(mask_array, svgpath, threshold=
         return mapping
     uniques, counts = np.unique(mask_array[bool_inside], return_counts=True)
     uniques = uniques[uniques != 0]
-    return {cell: 100 for cell in list(uniques)}
+    return {obj: 100 for obj in list(uniques)}
 
 def subset_measurements_by_point(measurements, x_coord, y_coord):
     """
@@ -408,11 +408,11 @@ def identify_column_matching_roi_to_quantification(data_selection, quantificatio
     return None, None
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
-                                           cluster_col: str = "cluster", cell_id_col: str = "cell_id", retain_cells=True,
+                                           cluster_col: str = "cluster", obj_id_col: str = "cell_id", retain_objs=True,
                                            use_gating_subset: bool = False, gating_subset_list: list=None,
                                            cluster_option_subset=None):
     """
-    Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated cells
+    Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated objects
     remain as greyscale values
     Returns a mask in RGB format
     """
@@ -428,18 +428,18 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
         clusters_to_use = [str(select) for select in cluster_option_subset] if cluster_option_subset is not None else \
             cluster_frame[cluster_col].unique().tolist()
         # basic time complexity is O(num_clusters) but also slower for larger images
-        for cell_type in clusters_to_use:
-            cell_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(cell_type))][cell_id_col].tolist()
-            # make sure that the cells are integers so that they match the array values of the mask
-            cell_list = [int(i) for i in cell_list]
-            annot_mask = np.where(np.isin(mask_array, cell_list), mask_array, 0)
+        for obj_type in clusters_to_use:
+            obj_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(obj_type))][obj_id_col].tolist()
+            # make sure that the objects are integers so that they match the array values of the mask
+            obj_list = [int(i) for i in obj_list]
+            annot_mask = np.where(np.isin(mask_array, obj_list), mask_array, 0)
             annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
-            annot_mask = recolour_greyscale(annot_mask, cluster_annotations[cell_type])
+            annot_mask = recolour_greyscale(annot_mask, cluster_annotations[obj_type])
             empty = empty + annot_mask
-        # Find where the cells are annotated, and add back in the ones that are not
-        if retain_cells:
-            already_cells = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
-            mask_array[already_cells] = 0
+        # Find where the objects are annotated, and add back in the ones that are not
+        if retain_objs:
+            already_objs = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
+            mask_array[already_objs] = 0
             mask_to_add = np.array(Image.fromarray(mask_array).convert('RGB'))
             mask_to_add = np.where(mask_to_add > 0, 255, 0).astype(empty.dtype)
             return (empty + mask_to_add).clip(0, 255).astype(np.uint8)

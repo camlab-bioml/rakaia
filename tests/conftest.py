@@ -13,7 +13,7 @@ def get_current_dir():
 def rakaia_flask_test_app():
     app = init_app(cli_config={'use_local_dialog': False, 'use_loading': True,
                                'persistence': True, 'swatches': None, 'array_store_type': 'float',
-                               'serverside_overwrite': True, 'is_dev_mode': True, 'cache_dest': tempfile.gettempdir()})
+                               'serverside_overwrite': False, 'is_dev_mode': False, 'cache_dest': tempfile.gettempdir()})
     app.config.update({
         "TESTING": True,
     })

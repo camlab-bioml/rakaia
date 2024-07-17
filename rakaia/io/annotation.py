@@ -13,7 +13,7 @@ from rakaia.utils.object import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box,
     validate_mask_shape_matches_image,
-    get_cells_in_svg_boundary_by_mask_percentage)
+    get_objs_in_svg_boundary_by_mask_percentage)
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary, split_string_at_pattern
 from rakaia.utils.pixel import path_to_mask
 
@@ -61,7 +61,7 @@ class AnnotationRegionWriter:
                 objects_included = []
                 # for now, just use svg paths to extract mask object annotation
                 if value['type'] == 'path' and value['mask_selection'] is not None:
-                    objects_included = get_cells_in_svg_boundary_by_mask_percentage(
+                    objects_included = get_objs_in_svg_boundary_by_mask_percentage(
                         mask_array=self.mask_dict[value['mask_selection']]["raw"], svgpath=key).keys()
                 elif value['type'] == 'gate' and value['mask_selection'] is not None:
                     objects_included = list(key)

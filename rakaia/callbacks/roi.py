@@ -23,6 +23,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     :param dash_app: the dash proxy server wrapped in the parent Flask app
     :param tmpdirname: the path for the tmpdir for tmp storage for the session
     :param authentic_id: uuid string identifying the particular app invocation
+    :param app_config: Dictionary of session options passed through CLI
     :return: None
     """
     @dash_app.callback(Output('dataset-query-gallery-row', 'children'),

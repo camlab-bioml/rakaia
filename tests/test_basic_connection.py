@@ -10,7 +10,11 @@ from subprocess import Popen, PIPE
 from rakaia.wsgi import cli_parser, main
 from rakaia.entrypoint import init_app
 from rakaia.app import init_dashboard
-from rakaia.app import init_pixel_level_callbacks
+from rakaia.app import (
+    init_pixel_level_callbacks,
+    init_db_callbacks,
+    init_roi_level_callbacks,
+    init_object_level_callbacks)
 import time
 import signal
 from flask import Flask
@@ -131,7 +135,7 @@ def test_basic_cli_outputs_main():
 
 def test_basic_app_return():
     config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
-              'swatches': None, 'is_dev_mode': True, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True}
+              'swatches': None, 'is_dev_mode': False, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True}
     app = init_app(config)
     assert isinstance(app, Flask)
     app_2 = Flask("rakaia")
@@ -144,6 +148,8 @@ def test_basic_callback_register():
     du.configure_upload(dash_app, "/tmp/")
     app_config = {'use_local_dialog': False, 'use_loading': False, 'serverside_overwrite': True}
     init_pixel_level_callbacks(dash_app, "/tmp/", "test_app", app_config)
-    # assert init_pixel_level_callbacks(dash_app, "/tmp/", "test_app") is None
+    init_object_level_callbacks(dash_app, "/tmp/", "test_app", app_config)
+    init_db_callbacks(dash_app, "/tmp/", "test_app", app_config)
+    init_roi_level_callbacks(dash_app, "/tmp/", "test_app", app_config)
     assert isinstance(dash_app, dash_extensions.enrich.DashProxy)
     assert dash_app.callback is not None

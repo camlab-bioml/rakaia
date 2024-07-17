@@ -5,10 +5,10 @@ import dash
 import pandas as pd
 from rakaia.io.session import SessionServerside
 from rakaia.utils.object import (
-    populate_cell_annotation_column_from_bounding_box,
-    get_cells_in_svg_boundary_by_mask_percentage,
-    populate_cell_annotation_column_from_cell_id_list,
-    populate_cell_annotation_column_from_clickpoint,
+    populate_object_annotation_column_from_bounding_box,
+    get_objs_in_svg_boundary_by_mask_percentage,
+    populate_obj_annotation_column_from_obj_id_list,
+    populate_obj_annotation_column_from_clickpoint,
     remove_annotation_entry_by_indices)
 from rakaia.utils.pixel import get_bounding_box_for_svgpath
 from rakaia.components.canvas import CanvasLayout
@@ -66,9 +66,9 @@ class AnnotationQuantificationMerge:
                                 self.mask_toggle and None not in (self.mask_config, self.mask_selection) and \
                                 len(self.mask_config) > 0:
                             objects_included = self.get_objects_included(annotation)
-                            self.quantification_frame = populate_cell_annotation_column_from_cell_id_list(
-                                self.quantification_frame, cell_list=list(objects_included.keys()),
-                                cell_type=self.annotations[self.data_selection][annotation]['cell_type'],
+                            self.quantification_frame = populate_obj_annotation_column_from_obj_id_list(
+                                self.quantification_frame, obj_list=list(objects_included.keys()),
+                                obj_type=self.annotations[self.data_selection][annotation]['cell_type'],
                                 sample_name=self.sample_name,
                                 annotation_column=self.annotations[self.data_selection][annotation]['annotation_column'],
                                 id_column=self.identifier, remove=self.remove)
@@ -121,17 +121,17 @@ class AnnotationQuantificationMerge:
         :param annotation: The ROI annotation dict
         :return: dictionary of objects included with the proportion of overlap for each ID
         """
-        cells_included = {}
+        objects_included = {}
         # option 1: list from gated cells
         if self.annotations[self.data_selection][annotation]['type'] == "gate":
-            cells_included = {cell: 100.0 for cell in list(annotation)}
+            objects_included = {obj: 100.0 for obj in list(annotation)}
         # if a mask is enabled, use the mask ID threshold method
         # otherwise, make a convex envelope bounding box
         # option 2: mask ID threshold from path
         elif self.annotations[self.data_selection][annotation]['type'] == "path":
-            cells_included = get_cells_in_svg_boundary_by_mask_percentage(
+            objects_included = get_objs_in_svg_boundary_by_mask_percentage(
                 mask_array=self.mask_config[self.mask_selection]["raw"], svgpath=annotation)
-        return cells_included
+        return objects_included
 
 
     def populate_quantification_from_zoom(self, annotation):
@@ -141,11 +141,11 @@ class AnnotationQuantificationMerge:
         :param annotation: The ROI annotation dict
         :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
         """
-        return populate_cell_annotation_column_from_bounding_box(self.quantification_frame,
-                                    values_dict=dict(annotation),
-                cell_type=self.annotations[self.data_selection][annotation]['cell_type'],
-                annotation_column= self.annotations[self.data_selection][annotation]['annotation_column'],
-                remove=self.remove)
+        return populate_object_annotation_column_from_bounding_box(self.quantification_frame,
+                            values_dict=dict(annotation),
+                            obj_type=self.annotations[self.data_selection][annotation]['cell_type'],
+                            annotation_column= self.annotations[self.data_selection][annotation]['annotation_column'],
+                            remove=self.remove)
 
     def populate_quantification_from_svgpath(self, annotation):
         """
@@ -157,9 +157,9 @@ class AnnotationQuantificationMerge:
         x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
         val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
                     'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
-        return populate_cell_annotation_column_from_bounding_box(
+        return populate_object_annotation_column_from_bounding_box(
             self.quantification_frame, values_dict=val_dict,
-            cell_type=self.annotations[self.data_selection][annotation]['cell_type'],
+            obj_type=self.annotations[self.data_selection][annotation]['cell_type'],
             annotation_column=self.annotations[self.data_selection][annotation]['annotation_column'],
             remove=self.remove)
 
@@ -170,9 +170,9 @@ class AnnotationQuantificationMerge:
         :param annotation: The ROI annotation dict
         :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
         """
-        return populate_cell_annotation_column_from_bounding_box(
+        return populate_object_annotation_column_from_bounding_box(
                             self.quantification_frame, values_dict=dict(annotation),
-                            cell_type=self.annotations[self.data_selection][annotation]['cell_type'], box_type="rect",
+                            obj_type=self.annotations[self.data_selection][annotation]['cell_type'], box_type="rect",
                             annotation_column=self.annotations[self.data_selection][annotation]['annotation_column'],
                             remove=self.remove)
 
@@ -183,9 +183,9 @@ class AnnotationQuantificationMerge:
         :param annotation: The ROI annotation dict
         :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
         """
-        return populate_cell_annotation_column_from_clickpoint(
+        return populate_obj_annotation_column_from_clickpoint(
                             self.quantification_frame, values_dict=ast.literal_eval(annotation),
-                            cell_type=self.annotations[self.data_selection][annotation]['cell_type'],
+                            obj_type=self.annotations[self.data_selection][annotation]['cell_type'],
                             annotation_column=self.annotations[self.data_selection][annotation]['annotation_column'],
                             mask_toggle=self.mask_toggle, mask_dict=self.mask_config,
                             mask_selection=self.mask_selection,
