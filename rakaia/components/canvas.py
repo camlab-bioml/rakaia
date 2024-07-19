@@ -23,6 +23,13 @@ from rakaia.utils.object import generate_mask_with_cluster_annotations
 from rakaia.utils.shapes import is_cluster_annotation_circle, is_bad_shape
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 
+def set_pixel_ratio(pixel_ratio: Union[int, float]=1) -> Union[int, float]:
+    """
+    Check whether the provided pixel ratio is appropriate (not None and greater than 0)
+    Otherwise, set the default pixel ratio to 1
+    """
+    return pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
+
 class CanvasImage:
     """
     Generates a canvas `go.Figure` with the current selected channels and various UI configurations for masking,
@@ -98,7 +105,7 @@ class CanvasImage:
             self.cur_graph = CanvasLayout(cur_graph).get_fig()
         except (KeyError, TypeError):
             self.cur_graph = cur_graph
-        self.pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
+        self.pixel_ratio = set_pixel_ratio(pixel_ratio)
         self.legend_text = legend_text
         self.toggle_scalebar = toggle_scalebar
         self.legend_size = legend_size
@@ -515,7 +522,7 @@ class CanvasLayout:
         :return:
             go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
-        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
+        pixel_ratio = set_pixel_ratio(pixel_ratio)
         try:
             proportion = float(proportion / pixel_ratio)
         except ZeroDivisionError:
@@ -615,7 +622,7 @@ class CanvasLayout:
         :return:
             go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
-        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
+        pixel_ratio = set_pixel_ratio(pixel_ratio)
         cur_shapes = [shape for shape in self.cur_shapes if \
                       shape not in [None, "None"] and 'type' in shape and shape['type'] \
                       in ['rect', 'path', 'circle'] and not is_bad_shape(shape)]
@@ -691,7 +698,7 @@ class CanvasLayout:
         :return:
             go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
-        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
+        pixel_ratio = set_pixel_ratio(pixel_ratio)
         try:
             proportion = float(proportion / pixel_ratio)
         except ZeroDivisionError:
@@ -749,7 +756,7 @@ class CanvasLayout:
             go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
         # self.figure = strip_invalid_shapes_from_graph_layout(self.figure)
-        pixel_ratio = pixel_ratio if pixel_ratio is not None and pixel_ratio > 0 else 1
+        pixel_ratio = set_pixel_ratio(pixel_ratio)
         for annotations in self.figure['layout']['annotations']:
             # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
             if annotations['y'] == 0.06:
@@ -806,7 +813,7 @@ class CanvasLayout:
         :param cluster_assignments: dictionary of cluster labels corresponding to a hex colour
         :param data_selection: string representation of the current ROI
         :param circle_size: Circle radius for the cluster projection over the mask object
-        :param use_gating: Whether or not to apply gating to the mask
+        :param use_gating: Whether to apply gating to the mask
         :param gating_cell_id_list: Use a list of mask objects to gate the mask
         :param cluster_selection_subset: Pass a subset of cluster categories to show in the mask
 
@@ -825,21 +832,24 @@ class CanvasLayout:
             cluster_frame['cluster'].unique().tolist()
         clusters_to_use = [str(clust) for clust in clusters_to_use]
         for mask_id in ids_use:
-            # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
-            subset = np.where(mask == int(mask_id), int(mask_id), 0)
-            region_props = measure.regionprops(subset)
-            for region in region_props:
-                center = region.centroid
-            annotation = pd.Series(cluster_frame[cluster_frame['cell_id'] == str(mask_id)]['cluster']).to_list()
-            if annotation and str(annotation[0]) in clusters_to_use:
-                annotation = str(annotation[0])
-                # boundary[int(center[0]), int(center[1])] = mask_id
-                shapes.append(
-                    {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',
-                     'x0': (int(center[1]) - circle_size), 'x1': (int(center[1]) + circle_size),
-                     'xref': 'x', 'y0': (int(center[0]) - circle_size), 'y1': (int(center[0]) + circle_size),
-                     'yref': 'y',
-                     'fillcolor': cluster_assignments[data_selection][annotation]})
+            try:
+                annotation = pd.Series(cluster_frame[cluster_frame['cell_id'] == str(mask_id)]['cluster']).to_list()
+                if annotation and str(annotation[0]) in clusters_to_use:
+                    annotation = str(annotation[0])
+                    # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
+                    subset = np.where(mask == int(mask_id), int(mask_id), 0)
+                    region_props = measure.regionprops(subset)
+                    for region in region_props:
+                        center = region.centroid
+                        # boundary[int(center[0]), int(center[1])] = mask_id
+                        shapes.append(
+                            {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',
+                             'x0': (int(center[1]) - circle_size), 'x1': (int(center[1]) + circle_size),
+                             'xref': 'x', 'y0': (int(center[0]) - circle_size), 'y1': (int(center[0]) + circle_size),
+                             'yref': 'y',
+                             'fillcolor': cluster_assignments[data_selection][annotation]})
+            except ValueError:
+                pass
         self.figure['layout']['shapes'] = shapes
         return self.figure
 

@@ -1,12 +1,12 @@
 import os
-import tifffile
 import json
 import shutil
+import ast
+import tifffile
 import numpy as np
 from dash import dcc
 import pandas as pd
 from dash.exceptions import PreventUpdate
-import ast
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.io.session import create_download_dir
 from rakaia.utils.object import (

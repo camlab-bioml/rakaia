@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased
 
-## [0.17.0] - 2024-07-17
+## [0.17.0] - 2024-07-19
 
 ### Added
 
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Rename (rakaia) and code clean (pylint compatibility)
 - modify cache clearing conditions on new app initialization
+- Set gating parameter slider steps smaller by half (0.005)
 
 ### Fixed
 

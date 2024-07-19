@@ -1,13 +1,13 @@
 from pathlib import Path
+from typing import Union
+from functools import partial
+import os
 import numpy as np
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 import pandas as pd
 from PIL import Image
-from typing import Union
-from functools import partial
-import os
 import h5py
 from rakaia.utils.pixel import (
     split_string_at_pattern,
@@ -43,8 +43,7 @@ class FileParser:
     def __init__(self, filepaths: list, array_store_type="float", lazy_load=True,
                  single_roi_parse=True, roi_name=None, internal_name=None, delimiter="+++"):
 
-        if array_store_type not in ["float", "int"]:
-            raise TypeError("The array stored type must be one of float or int")
+        self.check_for_valid_array_type(array_store_type)
         self.filepaths = [str(x) for x in filepaths]
         self.array_store_type = array_store_type
         self.image_dict = {}
@@ -72,9 +71,7 @@ class FileParser:
                     # IMP: split reading a single mcd ROI from the entire mcd, as mcds can contain multiple ROIs
                     # this is currently unique to mcds: all other files have one ROI per file
                     filename, file_extension = os.path.splitext(upload)
-                    if file_extension not in list(self.MATCHES.keys()):
-                        raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
-                                        ".mcd, .tiff, .txt, or .h5")
+                    self.check_for_valid_file_extension(file_extension, upload)
                     if upload.endswith('.mcd') and not lazy_load and single_roi_parse and \
                             None not in (roi_name, internal_name):
                         self.read_single_roi_from_mcd(upload, self.internal_name, self.roi_name)
@@ -83,6 +80,44 @@ class FileParser:
                         getattr(self, self.MATCHES[file_extension])(upload)
                 except OSError:
                     pass
+
+    @staticmethod
+    def check_for_valid_array_type(array_store_type: str):
+        """
+        Check if the `array_store_type` passed is either a float or int string from the CLI options
+        """
+        if array_store_type not in ["float", "int"]:
+            raise TypeError("The array stored type must be one of float or int")
+
+    def check_for_valid_file_extension(self, file_extension: str, upload: str):
+        """
+        Check if the provided file has an appropriate extension
+        """
+        if file_extension not in list(self.MATCHES.keys()):
+            raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
+                            ".mcd, .tiff, .txt, or .h5")
+
+    def append_channel_identifier_to_collection(self, channel_name: str):
+        """
+        Append a unique channel identifier to the parsing collection if it doesn't yet exist.
+        """
+        if channel_name not in self.unique_image_names:
+            self.unique_image_names.append(channel_name)
+
+    def append_channel_identifier_to_channel_list(self, channel_identifier: str):
+        """
+        Append a unique channel identifier to the metadata channel list if it doesn't yet exist.
+        """
+        if channel_identifier not in self.metadata_channels:
+            self.metadata_channels.append(channel_identifier)
+
+    def append_channel_alias_to_label_list(self, channel_identifier: str):
+        """
+        Append a unique channel alias (internal session label) to the channel label list if it doesn't yet exist.
+        """
+        if channel_identifier not in self.metadata_labels:
+            self.metadata_labels.append(channel_identifier)
+
 
     def parse_h5(self, h5py_file):
         """
@@ -111,23 +146,12 @@ class FileParser:
                             self.dataset_information_frame["Panel"].append(f"{len(data_h5[roi].keys())} markers")
                     except KeyError:
                         pass
-                    if channel not in self.unique_image_names:
-                        self.unique_image_names.append(channel)
-                    if channel not in self.metadata_channels:
-                        self.metadata_channels.append(channel)
-                        self.metadata_labels.append(channel)
+                    self.append_channel_identifier_to_collection(channel)
+                    self.append_channel_identifier_to_channel_list(channel)
+                    self.append_channel_alias_to_label_list(channel)
                     self.blend_config[channel] = {}
                     channel_index += 1
-                    for blend_key, blend_val in data_h5[roi][channel].items():
-                        if 'image' not in blend_key:
-                            if blend_val[()] != b'None':
-                                try:
-                                    data_add = blend_val[()].decode("utf-8")
-                                except AttributeError:
-                                    data_add = str(blend_val[()])
-                            else:
-                                data_add = None
-                            self.blend_config[channel][blend_key] = data_add
+                    self.parse_h5_channel_blend_params(data_h5[roi], channel)
         meta_back = pd.DataFrame(data_h5['metadata'])
         for col in meta_back.columns:
             meta_back[col] = meta_back[col].str.decode("utf-8")
@@ -136,6 +160,37 @@ class FileParser:
         except KeyError:
             pass
         self.image_dict['metadata'] = meta_back
+
+    def parse_h5_channel_blend_params(self, h5_roi, channel: str):
+        """
+        Parse the current h5 ROI to extract the blend parameters for one channel
+
+        :return: None
+        """
+        # for blend_key, blend_val in data_h5[roi][channel].items():
+        for blend_key, blend_val in h5_roi[channel].items():
+            if 'image' not in blend_key:
+                if blend_val[()] != b'None':
+                    try:
+                        data_add = blend_val[()].decode("utf-8")
+                    except AttributeError:
+                        data_add = str(blend_val[()])
+                else:
+                    data_add = None
+                self.blend_config[channel][blend_key] = data_add
+
+    def check_for_valid_tiff_panel(self, tiff):
+        """
+        Check if the length of the tiff matches the current imported panel length. Since most tiff files
+        will not contain panel metadata (unless ome), the matching heuristic is length
+
+        :return: None
+        """
+        if not (all(len(value) == len(tiff.pages) for value in list(self.image_dict['metadata'].values()))) or \
+                (self.panel_length is not None and self.panel_length != len(tiff.pages)):
+            raise PanelMismatchError("One or more ROIs parsed from tiff appear to have"
+                                     " different panel lengths. This is currently not supported by rakaia. "
+                                     "Refresh your current session to re-import compatible imaging files.")
 
     def parse_tiff(self, tiff_file, internal_name=None):
         """
@@ -152,11 +207,7 @@ class FileParser:
             # the files have different channels/panels
             # pass if this is the cases
             if len(self.image_dict['metadata']) > 0:
-                if not (all(len(value) == len(tif.pages) for value in list(self.image_dict['metadata'].values()))) or \
-                        (self.panel_length is not None and self.panel_length != len(tif.pages)):
-                    raise PanelMismatchError("One or more ROIs parsed from tiff appear to have"
-                            " different panel lengths. This is currently not supported by rakaia. "
-                            "Refresh your current session to re-import compatible imaging files.")
+                self.check_for_valid_tiff_panel(tif)
             multi_channel_index = 1
             basename = str(Path(tiff_path).stem)
             roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq{str(self.acq_index)}" if \
@@ -177,12 +228,9 @@ class FileParser:
                     self.dataset_information_frame["Panel"].append(
                         f"{len(tif.pages)} markers")
                 multi_channel_index += 1
-                if identifier not in self.metadata_channels:
-                    self.metadata_channels.append(identifier)
-                if identifier not in self.metadata_labels:
-                    self.metadata_labels.append(identifier)
-                if identifier not in self.unique_image_names:
-                    self.unique_image_names.append(identifier)
+                self.append_channel_identifier_to_channel_list(identifier)
+                self.append_channel_alias_to_label_list(identifier)
+                self.append_channel_identifier_to_collection(identifier)
 
             if len(self.image_dict['metadata']) < 1:
                 self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
@@ -193,6 +241,18 @@ class FileParser:
                                                    'rakaia Label']
         self.panel_length = len(tif.pages) if self.panel_length is None else self.panel_length
         self.acq_index += 1
+
+    def check_for_valid_mcd_panel(self, acq, channel_labels):
+        """
+        Check if the mcd acquisition has a panel length that matches the current imported panel.
+
+        :return: None
+        """
+        if len(acq.channel_labels) != len(channel_labels) or \
+                (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
+            raise PanelMismatchError("One or more ROIs parsed from .mcd appear to have"
+                                     " different panel lengths. This is currently not supported by rakaia. "
+                                     "Refresh your current session to re-import compatible imaging files.")
 
     def parse_mcd(self, mcd_filepath):
         """
@@ -224,17 +284,12 @@ class FileParser:
                     else:
                         # for now, just checking the that the length matches is sufficient in case
                         # there are slight spelling errors between mcds with the same panel
-                        if len(acq.channel_labels) != len(channel_labels) or \
-                           (self.panel_length is not None and self.panel_length != len(acq.channel_labels)):
-                            raise PanelMismatchError("One or more ROIs parsed from .mcd appear to have"
-                            " different panel lengths. This is currently not supported by rakaia. "
-                            "Refresh your current session to re-import compatible imaging files.")
+                        self.check_for_valid_mcd_panel(acq, channel_labels)
                     channel_index = 0
                     for channel in acq.channel_names:
                         self.image_dict[roi][channel] = None if self.lazy_load else channel.astype(
                                     set_array_storage_type_from_config(self.array_store_type))
-                        if channel_names[channel_index] not in self.unique_image_names:
-                            self.unique_image_names.append(channel_names[channel_index])
+                        self.append_channel_identifier_to_collection(channel_names[channel_index])
                         # add information about the ROI into the description list
                         if channel_index == 0:
                             dim_width = acq.metadata['MaxX'] if 'MaxX' in acq.metadata else "NA"
@@ -274,6 +329,20 @@ class FileParser:
                                 set_array_storage_type_from_config(self.array_store_type))
                             channel_index += 1
 
+    def check_for_valid_txt_panel(self, txt_channel_names, txt_channel_labels):
+        """
+        Check if the panel length from a .txt file is compatible with the currently imported panel.
+        The current matching heuristic is panel length
+
+        :return: None
+        """
+        if not len(self.metadata_channels) == len(txt_channel_names) or \
+                not len(self.metadata_labels) == len(txt_channel_labels) or \
+                (self.panel_length is not None and self.panel_length != len(txt_channel_names)):
+            raise PanelMismatchError("One or more ROIs parsed from .txt appear to have"
+                                     " different panel lengths. This is currently not supported by rakaia. "
+                                     "Refresh your current session to re-import compatible imaging files.")
+
     def parse_txt(self, txt_filepath, internal_name=None):
         """
         Parse a compatible txt file. Txt files are often used as backup files for individual ROIs generated from
@@ -289,12 +358,7 @@ class FileParser:
             txt_channel_labels = acq_text_read.channel_labels
             # check that the channel names and labels are the same if an upload has already passed
             if len(self.metadata_channels) > 0:
-                if not len(self.metadata_channels) == len(txt_channel_names) or \
-                        not len(self.metadata_labels) == len(txt_channel_labels) or \
-                        (self.panel_length is not None and self.panel_length != len(txt_channel_names)):
-                    raise PanelMismatchError("One or more ROIs parsed from .txt appear to have"
-                            " different panel lengths. This is currently not supported by rakaia. "
-                            "Refresh your current session to re-import compatible imaging files.")
+                self.check_for_valid_txt_panel(txt_channel_names, txt_channel_labels)
             basename = str(Path(txt_filepath).stem)
             roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
                   f"{self.delimiter}{str(self.acq_index)}" if internal_name is None else internal_name
@@ -316,12 +380,9 @@ class FileParser:
                     self.dataset_information_frame["Panel"].append(
                         f"{len(acq_text_read.channel_names)} markers")
                 image_index += 1
-                if identifier not in self.metadata_channels:
-                    self.metadata_channels.append(identifier)
-                if image_label not in self.metadata_labels:
-                    self.metadata_labels.append(image_label)
-                if identifier not in self.unique_image_names:
-                    self.unique_image_names.append(identifier)
+                self.append_channel_identifier_to_channel_list(identifier)
+                self.append_channel_alias_to_label_list(image_label)
+                self.append_channel_identifier_to_collection(identifier)
             if len(self.image_dict['metadata']) < 1:
                 self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
                                            'Channel Name': self.metadata_channels,
@@ -394,8 +455,7 @@ def sparse_array_to_dense(array):
     """
     if issparse(array):
         return array.toarray(order='F')
-    else:
-        return array
+    return array
 
 def convert_between_dense_sparse_array(array, array_type="dense"):
     """
@@ -425,7 +485,6 @@ def populate_alias_dict_from_editable_metadata(metadata: Union[dict, list, pd.Da
             except KeyError:
                 pass
     return alias_dict
-
 
 def check_blend_dictionary_for_blank_bounds_by_channel(blend_dict: dict, channel_selected: str,
                                                        channel_dict: dict, data_selection: str):

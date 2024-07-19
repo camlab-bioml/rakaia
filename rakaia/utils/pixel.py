@@ -282,7 +282,6 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
     """
     Get all the images in a session dictionary from a channel name for the gallery view
     """
-    # TODO: modify this function to accommodate lazy loading
     images = {}
     for roi in list(upload_dict.keys()):
         if 'metadata' not in roi:
@@ -334,7 +333,7 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
 
 def per_channel_intensity_hovertext(channel_list):
     """
-    generate custom hovertext for the annotation canvas that shows the individual pixel intensities of ll
+    Generate custom hover text for the annotation canvas that shows the individual pixel intensities of ll
     channels selected in the hover template. Assumes that the data has been added as customdata through
     np.stack((channels), axis=-1)
     """
@@ -391,8 +390,7 @@ def set_channel_list_order(set_order_clicks, order_row_data, channel_order, curr
         channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for \
                          elem in order_row_data]
         return channel_order
-    else:
-        return []
+    return []
 
 
 def select_random_colour_for_channel(blend_dict, current_channel, default_colours):
@@ -416,7 +414,6 @@ def random_hex_colour_generator(number=10):
     """
     Generate a list of random hex colours. The number provided will be the length of the list
     """
-    #
     r = lambda: random.randint(0, 255)
     colours = []
     index = 0
@@ -429,6 +426,10 @@ def random_hex_colour_generator(number=10):
 
 
 def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
+    """
+    Create a additive blended image array from a list of marker channels
+    By default, return the array as a 32-byte float array before clipping
+    """
     if layer_dict and channel_list:
         image_shape = layer_dict[channel_list[0]].shape
         image = np.zeros(image_shape)

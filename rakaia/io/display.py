@@ -164,8 +164,7 @@ def output_current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_defau
             os.makedirs(dest_dir)
         imwrite(dest_file, canvas_image.astype(np.uint8), photometric='rgb')
         return dest_file
-    else:
-        return None
+    return None
 
 def output_current_canvas_as_html(dest_dir=None, cur_graph=None, canvas_style=None,
                                 roi_name: str=None, delimiter: str="+++",

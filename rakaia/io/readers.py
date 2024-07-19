@@ -25,5 +25,4 @@ class DashUploaderFileReader:
         # IMP: ensure that the progress is up to 100% in the float before beginning to process
         if filenames and float(self.uploader.progress) == self.progress:
             return filenames
-        else:
-            return None
+        return None

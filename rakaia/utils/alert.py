@@ -105,7 +105,9 @@ class ToolTips(BaseModel):
                                       "permit the canvas to fit a larger proportion of the screen. The default is "
                                       "set at 150.",
                       "set-blends": "Save the current canvas channels in a named blend. Blends can be quickly toggled"
-                                    " to compare marker expression across the current ROI."}
+                                    " to compare marker expression across the current ROI.",
+                      "cluster-proj": "IMPORTANT: Using circles for cluster projection for > 1000 mask objects will "
+                                      "lead to slow performance."}
 
 
 class PanelMismatchError(Exception):

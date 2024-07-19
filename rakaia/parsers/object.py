@@ -1,16 +1,18 @@
+from typing import Union
+import re
+import os
+import sys
 import pandas as pd
 from dash.exceptions import PreventUpdate
-import os
 from tifffile import TiffFile
 import numpy as np
 from PIL import Image
 import anndata
-import sys
 from sklearn.preprocessing import StandardScaler
 import scanpy as sc
-from typing import Union
-import re
 import dash
+
+from rakaia.utils.alert import add_warning_to_error_config
 from rakaia.utils.object import (
     set_mandatory_columns,
     convert_mask_to_object_boundary,
@@ -74,8 +76,7 @@ def validate_incoming_measurements_csv(measurements_csv, required_columns=set_ma
             "columns in the CSV, and should link ROI names/masks to quantification results.")
     if not all([column in measurements_csv.columns for column in required_columns]):
         return None, None
-    else:
-        return measurements_csv, None
+    return measurements_csv, None
 
 def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999, drop_cols=False):
     """
@@ -127,13 +128,10 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, use_per
         cols_return = quantification_worksheet.columns if quantification_worksheet is not None else None
         warning_return = dash.no_update
         if warning is not None:
-            if error_config is None:
-                error_config = {"error": None}
-            error_config["error"] = warning
+            error_config = add_warning_to_error_config(error_config, warning)
             warning_return = error_config
         return measurements_return, cols_return, warning_return
     raise PreventUpdate
-
 
 def parse_masks_from_filenames(status):
     filenames = [str(x) for x in status.uploaded_files]
@@ -185,8 +183,7 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
         frame = anndata_obj
     if not all([column in frame.columns for column in required_columns]):
         return None, None
-    else:
-        return frame, None
+    return frame, None
 
 class RestyleDataParser:
     """
@@ -536,6 +533,6 @@ def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: 
     cur_cluster_dict = {} if cur_cluster_dict is None else cur_cluster_dict
     cluster_frame = pd.DataFrame(cluster_frame)
     # for now, use set column names, but expand in the future
-    if all([elem in list(cluster_frame.columns) for elem in ['cell_id', 'cluster']]):
+    if all([elem in list(cluster_frame.columns) for elem in ['cell_id', 'cluster']]) and roi_selection:
         cur_cluster_dict[roi_selection] = cluster_frame
     return cur_cluster_dict

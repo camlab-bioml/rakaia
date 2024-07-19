@@ -1,11 +1,11 @@
-import random
-import numpy as np
-import cv2
-from tifffile import TiffFile
 from typing import Union
 from functools import partial
 import os
 from pathlib import Path
+import random
+import numpy as np
+import cv2
+from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
 from rakaia.utils.pixel import (
     apply_preset_to_array,
@@ -31,7 +31,7 @@ class RegionThumbnail:
     :param rois_exclude: List of ROI identifiers to exclude
     :param predefined_indices: list of indices for ROIS to include, if querying from quantification results
     :param mask_dict: Dictionary of imported mask arrays
-    :param dataset_options: List of ROIs that can be laoded in the current session
+    :param dataset_options: List of ROIs that can be loaded in the current session
     :param query_cell_id_lists: Dictionary of lists of mask object IDs to subset ROI masks
     :param global_apply_filter: Whether a global filter has been applied
     :param global_filter_type: String specifying a global gaussian or median blur
@@ -81,13 +81,13 @@ class RegionThumbnail:
         self.dim_max = dimension_max if (dimension_max and not self.predefined_indices) else 1e6
         self.keyword = roi_keyword.split(",") if (roi_keyword and "," in roi_keyword) else \
             ([roi_keyword] if roi_keyword else None)
-        if self.predefined_indices:
-            self.keyword = None
-        if self.predefined_indices is not None:
-            self.query_selection = predefined_indices
+
+        self.set_keyword_with_defined_indices()
+        self.set_selection_using_defined_indices(predefined_indices)
+
         self.roi_images = {}
-        if predefined_indices is None:
-            random.shuffle(self.file_list)
+        self.shuffle_files_without_defined_indices(predefined_indices)
+
         if self.file_list is not None and len(self.file_list) > 0:
             self.queries_obtained = 0
             for file_path in self.file_list:
@@ -96,6 +96,33 @@ class RegionThumbnail:
                 filename, file_extension = os.path.splitext(file_path)
                 # call the additive thumbnail partial function with the corresponding extension
                 getattr(self, self.MATCHES[file_extension])(file_path)
+
+    def shuffle_files_without_defined_indices(self, predefined_indices):
+        """
+        If predefined indices are not used, shuffle the filenames for a random generation
+
+        :return: None
+        """
+        if predefined_indices is None:
+            random.shuffle(self.file_list)
+
+    def set_keyword_with_defined_indices(self):
+        """
+        Do not use a query keyword if querying from predefined indices
+
+        :return: None
+        """
+        if self.predefined_indices:
+            self.keyword = None
+
+    def set_selection_using_defined_indices(self, predefined_indices):
+        """
+        Set the query selection to the predefined indices, if they exist
+
+        :return: None
+        """
+        if self.predefined_indices is not None:
+            self.query_selection = predefined_indices
 
     def set_mcd_query_selection(self, mcd_slide):
         """
@@ -110,7 +137,7 @@ class RegionThumbnail:
                 self.query_selection = range(0, len(mcd_slide.acquisitions))
             else:
                 self.query_selection = random.sample(range(0,
-                                                           len(mcd_slide.acquisitions)), self.num_queries)
+                                    len(mcd_slide.acquisitions)), self.num_queries)
         elif isinstance(self.query_selection, dict):
             if 'indices' in self.query_selection:
                 self.num_queries = len(self.query_selection['indices'])
@@ -321,6 +348,7 @@ class RegionThumbnail:
     def get_image_dict(self) -> dict:
         """
         Get the dictionary of ROI thumbnail images
+
         :return: Dictionary where keys are ROI identifiers, and values are the blended images for each thumbnail.
         """
         return self.roi_images if len(self.roi_images) > 0 else None

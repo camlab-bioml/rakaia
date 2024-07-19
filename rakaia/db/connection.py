@@ -80,7 +80,7 @@ class AtlasDatabaseConnection:
         Important: will overwrite any previous configs from the user with the same name
 
         :param config_name: User set name of the blend config
-        :param blend_dict: DIctionary of current channel blend parameters
+        :param blend_dict: Dictionary of current channel blend parameters
         :param selected_channel_list: List of channels in the current blend
         :param global_apply_filter: Whether or not a global filter has been applied
         :param global_filter_type: String specifying a global gaussian or median blur
@@ -93,7 +93,7 @@ class AtlasDatabaseConnection:
         :param mask_toggle: Whether to show the mask over the channel blend
         :param mask_level: Set opacity of mask relative to the blend image. Takes a value between 0 and 100
         :param mask_boundary: Whether to include the object boundaries in the mask projection
-        :mask_hover: Whether to include the mask object ID in the hover template
+        :param mask_hover: Whether to include the mask object ID in the hover template
         :return: None
         """
         # delete any configs that match the name provided (overwrite)

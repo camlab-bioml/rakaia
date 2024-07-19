@@ -499,7 +499,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')
-
     def import_point_annotations_from_drag_and_drop(status: du.UploadStatus):
         """
         Import a CSV of point annotations to re-render on the canvas
@@ -514,7 +513,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('uploads_cluster', 'data', allow_duplicate=True),
                  id='upload-cluster-annotations')
-
     def get_filenames_from_cluster_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
         if files is not None: return files
@@ -525,9 +523,8 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  Input('uploads_cluster', 'data'),
                  State('imported-cluster-frame', 'data'),
                  State('data-collection', 'value'))
-
     def get_cluster_assignment_upload_from_drag_and_drop(uploads, cur_clusters, data_selection):
-        if uploads:
+        if uploads and data_selection:
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
             pd.read_csv(uploads[0])), key="cluster_assignments", use_unique_key=OVERWRITE)
         raise PreventUpdate

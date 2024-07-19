@@ -1,7 +1,6 @@
 import pandas as pd
 from dash import html
-from rakaia.utils.pixel import (
-    glasbey_palette)
+from rakaia.utils.pixel import glasbey_palette
 
 def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_cluster_dict: dict=None,
                                           roi_selection: str=None, cluster_id_col: str='cluster'):

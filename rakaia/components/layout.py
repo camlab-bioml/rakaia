@@ -898,7 +898,7 @@ def register_app_layout(config, cache_dest):
                                                 html.Br(),
                                                 html.Br(),
                                                 html.Div([
-                                                    dcc.RangeSlider(0, 1, 0.01, value=[0, 1],
+                                                    dcc.RangeSlider(0, 1, 0.005, value=[0, 1],
                                                                     marks=dict(
                                                                         [(i, str(i)) for i in [0, 0.25, 0.5, 0.75, 1]]),
                                                                     id='gating-slider', allowCross=False,
@@ -1140,7 +1140,14 @@ def register_app_layout(config, cache_dest):
                                 style={"margin-top": "7.5px", "margin-left": "15px", "accent-color": DEFAULT_WIDGET_COLOUR}),
                                 daq.ToggleSwitch(label='Clustering in legend',
                                     id='cluster-annotations-legend', labelPosition='bottom',
-                                    color=DEFAULT_WIDGET_COLOUR, style={"margin-left": "15px", "margin-right": "15px", "margin-top": "10px"})],
+                                    color=DEFAULT_WIDGET_COLOUR, style={"margin-left": "15px",
+                                    "margin-right": "15px", "margin-top": "10px"}),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-question",
+                                    style={"display": "inline-block", "margin-right": "7.5px",
+                                        "margin-top": "-5px"})], style={"display": "flex"}),
+                                    id="cluster-proj-info", className="mb-3", color=None, n_clicks=0,
+                                    style={"width": "20%", "margin-top": "10px", "margin-left": "12.5px"}),
+                                dbc.Tooltip(TOOLTIPS['cluster-proj'], target="cluster-proj-info", placement='bottom')],
                                 style={"display": 'flex', 'margin-left': '10px', 'margin-top': '7.5px'}),
                                 html.Br(),
                                 dbc.Row(children=[
