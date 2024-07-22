@@ -1,5 +1,15 @@
+import os
+import uuid
 import dash
 import pandas as pd
+from dash import dcc
+import matplotlib
+from werkzeug.exceptions import BadRequest
+import dash_uploader as du
+from dash_extensions.enrich import Output, Input, State
+from dash import ctx
+from dash.exceptions import PreventUpdate
+import plotly.graph_objs as go
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.parsers.object import (
     RestyleDataParser,
@@ -10,7 +20,8 @@ from rakaia.parsers.object import (
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    object_id_list_from_gating, cluster_annotation_frame_import)
+    object_id_list_from_gating)
+from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
@@ -30,24 +41,19 @@ from rakaia.io.annotation import AnnotationMaskWriter, export_point_annotations_
 from rakaia.inputs.loaders import adjust_option_height_from_list_length
 from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.io.readers import DashUploaderFileReader
-import os
 from rakaia.utils.roi import generate_dict_of_roi_cell_ids
-from dash import dcc
-import matplotlib
-from werkzeug.exceptions import BadRequest
-import dash_uploader as du
-from dash_extensions.enrich import Output, Input, State
-from dash import ctx
-from dash.exceptions import PreventUpdate
-import plotly.graph_objs as go
 from rakaia.io.session import SessionServerside
-import uuid
 from rakaia.utils.session import non_truthy_to_prevent_update
-from rakaia.utils.cluster import assign_colours_to_cluster_annotations, cluster_label_children
+from rakaia.utils.cluster import (
+    assign_colours_to_cluster_annotations,
+    cluster_label_children,
+    cluster_annotation_frame_import,
+    set_cluster_col_dropdown,
+    set_default_cluster_col)
 from rakaia.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
-    gating_label_children, mask_object_counter_preview)
+    gating_label_children, mask_object_counter_preview, DistributionTableColumns)
 
 def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -83,7 +89,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('umap-projection', 'data'),
                  id='upload-umap-coordinates')
-
     def get_umap_upload_from_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
         if files:
@@ -204,7 +209,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Add an annotation column to the quantification frame using interactive UMAP subsetting. The annotation will
         be applied to the current cells in the UMAP frame
         """
-        if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation > 0:
+        if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation:
             return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
                 pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col, annot_value).to_dict(
                 orient='records'), key="quantification_dict", use_unique_key=OVERWRITE)
@@ -212,7 +217,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('mask-uploads', 'data'),
                  id='upload-mask')
-
     def return_mask_upload(status: du.UploadStatus):
         return parse_masks_from_filenames(status)
 
@@ -346,13 +350,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('global-filter-type', 'value'),
         State("global-kernel-val-filter", 'value'),
         State("global-sigma-val-filter", 'value'))
-    def download_annotations_pdf(n_clicks, annotations_dict, canvas_layers, data_selection, mask_config, aliases,
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
+    def download_annotations_pdf(download_pdf, annotations_dict, canvas_layers, data_selection, mask_config, aliases,
                 blend_dict, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
-        if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection):
-            dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-            if not os.path.exists(dest_path): os.makedirs(dest_path)
-            return dcc.send_file(non_truthy_to_prevent_update(AnnotationPDFWriter(annotations_dict, canvas_layers,
-                data_selection, mask_config, aliases, dest_path, "annotations.pdf", blend_dict, global_apply_filter,
+        if download_pdf and None not in (annotations_dict, canvas_layers, data_selection):
+            return dcc.send_file(non_truthy_to_prevent_update(AnnotationPDFWriter(download_pdf, annotations_dict, canvas_layers,
+                data_selection, mask_config, aliases, "annotations.pdf", blend_dict, global_apply_filter,
                 global_filter_type, global_filter_val, global_filter_sigma).generate_annotation_pdf()), type="application/pdf")
         raise PreventUpdate
 
@@ -366,27 +369,25 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-dict', 'data'),
         State('apply-mask', 'value'),
         State('mask-options', 'value'))
-    def download_annotations_masks(n_clicks, annotations_dict, canvas_layers,
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads', 'annotation_masks'))
+    def download_annotations_masks(download_mask, annotations_dict, canvas_layers,
                                  data_selection, image_dict, mask_dict, apply_mask, mask_selection):
-        if n_clicks > 0 and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
+        if download_mask and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
             first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
-            dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads', 'annotation_masks')
-            if not os.path.exists(dest_path): os.makedirs(dest_path)
             # check that the mask is compatible with the current image
             if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
                                                                                 mask_dict[mask_selection]['raw']):
                 mask_used = mask_dict[mask_selection]['raw']
             else:
                 mask_used = None
-            return dcc.send_file(AnnotationMaskWriter(annotations_dict, dest_path, data_selection,
+            return dcc.send_file(AnnotationMaskWriter(download_mask, annotations_dict, data_selection,
                                 (first_image.shape[0], first_image.shape[1]), mask_used).write_annotation_masks())
         raise PreventUpdate
 
     @dash_app.callback(
         Output('annotation_canvas', 'figure', allow_duplicate=True),
         Output('session_alert_config', 'data', allow_duplicate=True),
-        # Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
         Input("clear-region-annotation-shapes", "n_clicks"),
         State('annotation_canvas', 'figure'),
         State('annotation_canvas', 'relayoutData'),
@@ -394,7 +395,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def clear_canvas_shapes(n_clicks, cur_canvas, canvas_layout, error_config):
         """
         Clear the current canvas of any shapes that are not associated with the legend or scalebar
-        Important: requires that the current dragmode be set to zoom or pan to remove any shapes in the current
+        Important: requires that the current drag mode be set to zoom or pan to remove any shapes in the current
         canvas layout
         """
         return callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout, error_config)
@@ -413,7 +414,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('cur-umap-subset-category-counts', 'data'),
                        prevent_initial_call=True)
     def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
-        columns = [{'id': p, 'name': p, 'editable': False} for p in ["Value", "Counts", "Proportion"]]
+        columns = [{'id': p, 'name': p, 'editable': False} for p in DistributionTableColumns.columns]
         if None not in (quantification_dict, umap_variable):
             return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), columns
         return pd.DataFrame({}).to_dict(orient="records"), columns
@@ -520,13 +521,18 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
                  Output('imported-cluster-frame', 'data', allow_duplicate=True),
+                 Output('cluster-col', 'options'),
                  Input('uploads_cluster', 'data'),
                  State('imported-cluster-frame', 'data'),
                  State('data-collection', 'value'))
     def get_cluster_assignment_upload_from_drag_and_drop(uploads, cur_clusters, data_selection):
+        """
+        Parse a frame of cluster mask object projections in CSV format
+        """
         if uploads and data_selection:
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
-            pd.read_csv(uploads[0])), key="cluster_assignments", use_unique_key=OVERWRITE)
+            pd.read_csv(uploads[0])), key="cluster_assignments", use_unique_key=OVERWRITE), \
+                set_cluster_col_dropdown(pd.read_csv(uploads[0]))
         raise PreventUpdate
 
     @dash_app.callback(
@@ -534,56 +540,66 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 Output('cluster-label-list', 'options'),
                 Output('cluster-label-selection', 'options'),
                 Output('cluster-label-selection', 'value'),
-                Input('imported-cluster-frame', 'data'),
+                Input('cluster-col', 'value'),
+                State('imported-cluster-frame', 'data'),
                 State('data-collection', 'value'),
                 State('cluster-colour-assignments-dict', 'data'))
-    def assign_cluster_colors(cluster_frame, data_selection, cur_cluster_dict):
-        if None not in (cluster_frame, data_selection):
-            default_colors, options = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
+    def assign_cluster_colors(cluster_cat, cluster_frame, data_selection, cur_cluster_dict):
+        """
+        Assign colors to cluster values from a selected cluster category
+        """
+        if cluster_cat and cluster_frame and data_selection and data_selection in cluster_frame:
+            default_colors, options = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection, cluster_cat)
             return default_colors, options, options, options
-        raise PreventUpdate
+        return dash.no_update, [], [], []
 
     @dash_app.callback(
         Output('cluster-label-selection', 'value', allow_duplicate=True),
         Input('toggle-clust-selection', 'value'),
         State('cluster-label-selection', 'options'))
     def generate_cluster_colour_assignment(toggle_clust_selection, clust_options):
+        """
+        Toggle the options selectable for a specific cluster category
+        """
         return clust_options if toggle_clust_selection else []
 
     @dash_app.callback(Input('data-collection', 'value'),
                        State('cluster-colour-assignments-dict', 'data'),
-                       Output('cluster-label-list', 'options', allow_duplicate=True),
-                       Output('cluster-label-selection', 'options', allow_duplicate=True),
-                       Output('cluster-label-selection', 'value', allow_duplicate=True))
+                       Output('cluster-col', 'options', allow_duplicate=True),
+                       Output('cluster-col', 'value', allow_duplicate=True))
     def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame):
-        if None not in (data_selection, cluster_frame) and data_selection in cluster_frame.keys():
-            return list(cluster_frame[data_selection].keys()), list(cluster_frame[data_selection].keys()), \
-                list(cluster_frame[data_selection].keys())
-        return [], [], None
+        """
+        Update the cluster categories selectable on an ROI change
+        """
+        if cluster_frame and data_selection and data_selection in cluster_frame.keys():
+            return list(cluster_frame[data_selection].keys()), set_default_cluster_col(cluster_frame, data_selection)
+        return [], None
 
     @dash_app.callback(Output('cluster-assignments', 'children', allow_duplicate=True),
                        Input('cluster-colour-assignments-dict', 'data'),
-                       Input('data-collection', 'value'))
-    def render_cluster_colour_legend(cluster_assignments_dict, data_selection):
+                       Input('data-collection', 'value'),
+                       State('cluster-col', 'value'))
+    def render_cluster_colour_legend(cluster_assignments_dict, data_selection, cluster_cat):
         """
-        render the html H6 html span legend for the cluster annotation colours
+        Render the html H6 html span legend for the cluster annotation colours
         """
-        if None not in (cluster_assignments_dict, data_selection):
-            return cluster_label_children(data_selection, cluster_assignments_dict)
+        if cluster_assignments_dict and data_selection and cluster_cat:
+            return cluster_label_children(data_selection, cluster_assignments_dict, cluster_cat)
         raise PreventUpdate
 
     @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
                        Input('cluster-color-picker', 'value'),
                        State('cluster-label-list', 'value'),
                        State('data-collection', 'value'),
-                       State('cluster-colour-assignments-dict', 'data'))
-    def assign_colour_to_cluster_label(colour_selection, cluster_selection, data_selection, clust_dict):
+                       State('cluster-colour-assignments-dict', 'data'),
+                       State('cluster-col', 'value'))
+    def assign_colour_to_cluster_label(colour_selection, cluster_selection, data_selection, clust_dict, cluster_cat):
         """
         Assign the designated colour from the colour picker to the selected cluster label
         """
-        if None not in (colour_selection, cluster_selection, data_selection, clust_dict):
+        if colour_selection and data_selection and clust_dict and cluster_cat and cluster_selection is not None:
             try:
-                clust_dict[data_selection][cluster_selection] = colour_selection['hex']
+                clust_dict[data_selection][cluster_cat][cluster_selection] = colour_selection['hex']
                 return clust_dict
             except KeyError: raise PreventUpdate
         raise PreventUpdate
@@ -592,7 +608,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('cluster-label-collapse', 'is_open'),
         [Input('toggle-cluster-labels', 'n_clicks')],
         [State('cluster-label-collapse', 'is_open')])
-
     def toggle_pixel_hist_collapse(n, is_open):
         return not is_open if n else is_open
 

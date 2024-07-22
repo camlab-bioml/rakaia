@@ -1,5 +1,9 @@
 import dash
 import pandas as pd
+from dash import ALL
+from dash_extensions.enrich import Output, State, Input
+from dash import ctx
+from dash.exceptions import PreventUpdate
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import generate_roi_query_gallery_children
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary
@@ -7,10 +11,6 @@ from rakaia.utils.quantification import (
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi)
 from rakaia.utils.object import validate_mask_shape_matches_image
-from dash import ALL
-from dash_extensions.enrich import Output, State, Input
-from dash import ctx
-from dash.exceptions import PreventUpdate
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list

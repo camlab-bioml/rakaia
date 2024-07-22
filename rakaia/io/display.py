@@ -103,7 +103,7 @@ class RegionSummary:
                             region.append(region_index)
                     region_index += 1
 
-                # TODO: evaluate if this exception catch actually works, since there is already one in the region child classes
+                # exception may not be necessary as there are already catches in the child classes
                 except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
                         _ArrayMemoryError, KeyError):
                     pass
@@ -234,7 +234,6 @@ class FullScreenCanvas:
     def get_canvas_layout(self):
         return self.canvas_layout
 
-# TODO: work on the annotations scale relative to the background image
 # def plotly_fig2array(fig, array):
 #     # convert Plotly fig to an array
 #     ratio = 0.00125 * (array.shape[1] / array.shape[0]) * array.shape[1]

@@ -7,7 +7,7 @@ def test_output_annotations_masks(annotation_hash_filtered):
     with tempfile.TemporaryDirectory() as tmpdirname:
         assert not os.path.exists(os.path.join(tmpdirname, "annotation_masks.zip"))
         canvas_mask = np.full((600, 600), 7)
-        output_dir = AnnotationMaskWriter(annotation_hash_filtered, tmpdirname,
+        output_dir = AnnotationMaskWriter(tmpdirname, annotation_hash_filtered,
                                                  'Patient1+++slide0+++pos1_1', (600, 600),
                                                  canvas_mask=canvas_mask).write_annotation_masks()
         assert os.path.exists(os.path.join(output_dir))

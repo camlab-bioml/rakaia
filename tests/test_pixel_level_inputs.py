@@ -141,14 +141,16 @@ def test_generate_legend_text_clustering(channel_hash_2):
     blend_dict = create_new_blending_dict(channel_hash_2)
     channel_order = list(blend_dict.keys())
     aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto"}
-    annot_dict = {"experiment0+++slide0+++acq0": {"cell_type_1": '#00FF66', "cell_type_2": "5500FF",
-                                                  "cell_type_3": "FF009A"}}
+    annot_dict = {"experiment0+++slide0+++acq0": {"type": {"cell_type_1": '#00FF66', "cell_type_2": "5500FF",
+                                                  "cell_type_3": "FF009A"}}}
     legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
-                                              True, annot_dict, "experiment0+++slide0+++acq0")
+                                              True, annot_dict, "experiment0+++slide0+++acq0",
+                                              cluster_id_col="type")
     assert legend_text == '<span style="color:#00FF66">cell_type_1</span><br><span style="color:5500FF">' \
                           'cell_type_2</span><br><span style="color:FF009A">cell_type_3</span><br>'
     assert not generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
-                                              True, annot_dict, "experiment0+++slide0+++acq1")
+                                              True, annot_dict, "experiment0+++slide0+++acq1",
+                                           cluster_id_col="type")
 
 
 def test_register_x_axis_placement_scalebar():

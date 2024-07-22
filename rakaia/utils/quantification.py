@@ -9,10 +9,16 @@ from typing import Union
 from rakaia.utils.object import validate_mask_shape_matches_image
 from rakaia.utils.pixel import split_string_at_pattern
 
+class DistributionTableColumns:
+    """
+    Define the basic columns for the quantification distribution table generated with UMAP interactivity
+    """
+    columns = ["Value", "Counts", "Proportion"]
+
 def mask_object_counter_preview(mask_dict: dict=None, mask_selection: str=None):
     """
     Generate a string preview of the number of objects in a current mask, used in the quantification modal
-    Returns a string that is compatible as an a html.B child, or an empty list of the required inputs do not exist
+    Returns a string that is compatible as a html.B child, or an empty list of the required inputs do not exist
     """
     if mask_dict and mask_selection and mask_selection in mask_dict:
         try:

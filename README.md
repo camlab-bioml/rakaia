@@ -129,12 +129,8 @@ found [here](https://camlab-bioml.github.io/rakaia-doc/docs/installation)
 
 From rakaia v0.12.0, users can use a registered mongoDB account for the
 `rakaia-db` mongoDB instance to import, save, and remove past saved configurations.
-Login information for the shared lab account is as follows:
-
-```commandline
-username: jacksonlab
-password: rakaia-user
-```
+Please reach out to mwatson@lunenfeld.ca to request access to existing databases or to receive
+information on configuring custom database instances.
 
 ## For developers
 

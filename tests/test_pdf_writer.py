@@ -24,8 +24,8 @@ def test_output_annotations_pdf(svgpath):
         layers_dict = {"exp1+++slide0+++roi_1":
                            {"channel_1": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}
         aliases = {"channel_1": "channel_1"}
-        output_pdf = AnnotationPDFWriter(annotations_dict, layers_dict, data_selection,
-                    mask_config=None, aliases=aliases, dest_dir=tmpdirname).generate_annotation_pdf()
+        output_pdf = AnnotationPDFWriter(tmpdirname, annotations_dict, layers_dict, data_selection,
+                    mask_config=None, aliases=aliases).generate_annotation_pdf()
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)
@@ -45,8 +45,8 @@ def test_output_annotations_pdf(svgpath):
                                                            'mask_blending_level': 35,
                                                            'add_mask_boundary': True}}}
 
-        output_pdf = AnnotationPDFWriter(annotations_dict, layers_dict, data_selection,
-                    mask_config=mask_config, aliases=aliases, dest_dir=tmpdirname).generate_annotation_pdf()
+        output_pdf = AnnotationPDFWriter(tmpdirname, annotations_dict, layers_dict, data_selection,
+                    mask_config=mask_config, aliases=aliases).generate_annotation_pdf()
 
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
@@ -68,8 +68,8 @@ def test_output_annotations_pdf(svgpath):
                                                           'mask_blending_level': 35,
                                                           'add_mask_boundary': True}}}
 
-        output_pdf = AnnotationPDFWriter(annotations_dict, layers_dict, data_selection,
-                    mask_config=None, aliases=aliases, dest_dir=tmpdirname).generate_annotation_pdf()
+        output_pdf = AnnotationPDFWriter(tmpdirname, annotations_dict, layers_dict, data_selection,
+                    mask_config=None, aliases=aliases).generate_annotation_pdf()
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)
@@ -78,15 +78,15 @@ def test_output_annotations_pdf(svgpath):
 
         blend_dict = {"channel_1": {'color': '#FFFFFF'}}
 
-        output_pdf = AnnotationPDFWriter(annotations_dict, layers_dict, data_selection,
-                    mask_config=mask_config, aliases=aliases, dest_dir=tmpdirname,
+        output_pdf = AnnotationPDFWriter(tmpdirname, annotations_dict, layers_dict, data_selection,
+                    mask_config=mask_config, aliases=aliases,
                     blend_dict=blend_dict).generate_annotation_pdf()
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)
 
         assert not os.path.exists(output_pdf)
-        assert AnnotationPDFWriter({"exp1+++slide0+++roi_1": {}}, layers_dict, data_selection,
-                    mask_config=mask_config, aliases=aliases, dest_dir=tmpdirname,
+        assert AnnotationPDFWriter(tmpdirname, {"exp1+++slide0+++roi_1": {}}, layers_dict, data_selection,
+                    mask_config=mask_config, aliases=aliases,
                     blend_dict=blend_dict).generate_annotation_pdf() is None
         assert not os.path.exists(output_pdf)

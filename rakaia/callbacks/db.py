@@ -1,11 +1,11 @@
 import dash
 from dash_extensions.enrich import Output, Input, State
-from rakaia.db.connection import AtlasDatabaseConnection
 from dash.exceptions import PreventUpdate
-from rakaia.utils.db import preview_dataframe_from_db_config_list
 import pandas as pd
 from dash import ctx
 from rakaia.io.session import SessionServerside
+from rakaia.db.connection import AtlasDatabaseConnection
+from rakaia.utils.db import preview_dataframe_from_db_config_list
 
 def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """

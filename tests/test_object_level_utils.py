@@ -327,7 +327,8 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
     cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
-    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict)
+    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                              obj_id_col="object_id")
     assert np.array_equal(with_annotations[532, 457], np.array([250, 228, 176]))
     assert with_annotations.shape == (mask.shape[0], mask.shape[1], 3)
     # assert where type 1 is
@@ -339,7 +340,7 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
 
     # run without keeping the cells that are not annotated
     with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
-                                                              retain_objs=False)
+                                                              retain_objs=False, obj_id_col="object_id")
     # assert that where cells were before, there is nothing
     assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
 
@@ -349,13 +350,13 @@ def test_apply_cluster_annotations_with_gating(get_current_dir):
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
     gating_list = list(range(125, 175))
     with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
-                                                              use_gating_subset=True, gating_subset_list=gating_list)
+                    use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id")
     # assert that a position where the cell is not gated, is blank
     assert np.array_equal(with_annotations[532, 457], np.array([0, 0, 0]))
     fake_frame = pd.DataFrame({"missing_key": [1, 2, 3, 4, 5],
                                "cluster": ["immune"] * 5})
     assert generate_mask_with_cluster_annotations(mask, cluster_assignments, fake_frame,
-        use_gating_subset=True, gating_subset_list=gating_list) is None
+        use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id") is None
 
 
 def test_remove_latest_annotation():

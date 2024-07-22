@@ -231,7 +231,8 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
 
 def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
                                 use_cluster_annotations=False, cluster_colour_dict: dict=None,
-                                data_selection: str=None, cluster_selection_subset: list=None):
+                                data_selection: str=None, cluster_selection_subset: list=None,
+                                cluster_id_col: str="cluster"):
     """
     Generate the string annotation text for a canvas based on the channels and selected colour of the channel
     """
@@ -249,14 +250,14 @@ def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legen
                                     f'{blend_colour_dict[image]["color"]}"' \
                                     f'>{label}{gap}</span>{line_break}'
                 aliases_used.append(label)
-    elif use_cluster_annotations and cluster_colour_dict:
+    elif use_cluster_annotations and cluster_colour_dict and cluster_id_col:
         try:
             clusters_to_use = [str(select) for select in cluster_selection_subset] if \
-                cluster_selection_subset is not None else list(cluster_colour_dict[data_selection].keys())
+                cluster_selection_subset is not None else list(cluster_colour_dict[data_selection][cluster_id_col].keys())
             # these will automatically be unique
             for clust in clusters_to_use:
                 legend_text = legend_text + f'<span style="color:' \
-                                        f'{cluster_colour_dict[data_selection][clust]}"' \
+                                        f'{cluster_colour_dict[data_selection][cluster_id_col][clust]}"' \
                                         f'>{clust}{gap}</span>{line_break}'
         except KeyError:
             pass

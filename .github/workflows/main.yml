@@ -39,6 +39,8 @@ jobs:
         run: pip install -r requirements.txt
       - name: Install rakaia through pip after dependencies
         run: pip install -e .
+      - name: Check installed rakaia version
+        run: rakaia -v
       - name: Run pytest for rakaia
         shell: bash -l {0}
         run: pytest --headless --cov=rakaia

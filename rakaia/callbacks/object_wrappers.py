@@ -3,6 +3,8 @@ from typing import Union
 import ast
 import dash
 import pandas as pd
+from dash.exceptions import PreventUpdate
+import plotly.graph_objs as go
 from rakaia.io.session import SessionServerside
 from rakaia.utils.object import (
     populate_object_annotation_column_from_bounding_box,
@@ -12,10 +14,8 @@ from rakaia.utils.object import (
     remove_annotation_entry_by_indices)
 from rakaia.utils.pixel import get_bounding_box_for_svgpath
 from rakaia.components.canvas import CanvasLayout
-from dash.exceptions import PreventUpdate
 from rakaia.utils.alert import AlertMessage
 from rakaia.utils.shapes import filter_annotation_shapes
-import plotly.graph_objs as go
 
 class AnnotationQuantificationMerge:
     """

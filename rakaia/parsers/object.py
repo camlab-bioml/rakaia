@@ -194,7 +194,7 @@ class RestyleDataParser:
     Returns a tuple of two lists: a list of subtypes in string form to retain from the graph,
     and a list of the indices of those subtypes relative to the list of subtypes for a specific category
 
-    :param resyledata: Dictionary from the UMAP `go.Figure` object specifying legend category interaction
+    :param restyledata: Dictionary from the UMAP `go.Figure` object specifying legend category interaction
     :param quantification_frame: dictionary of `pd.DataFrame` for quantified mask objects
     :param umap_col_annotation: The current UMAP overlay category (found in `quantification_frame`).
     :param existing_categories: List of any previously selected variables in the current UMAP overlay category
@@ -527,12 +527,3 @@ def object_id_list_from_gating(gating_dict: dict, gating_selection: list,
     else:
         cell_ids = []
     return cell_ids
-
-def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: str=None, cluster_frame:
-                                    Union[pd.DataFrame, dict]=None):
-    cur_cluster_dict = {} if cur_cluster_dict is None else cur_cluster_dict
-    cluster_frame = pd.DataFrame(cluster_frame)
-    # for now, use set column names, but expand in the future
-    if all([elem in list(cluster_frame.columns) for elem in ['cell_id', 'cluster']]) and roi_selection:
-        cur_cluster_dict[roi_selection] = cluster_frame
-    return cur_cluster_dict

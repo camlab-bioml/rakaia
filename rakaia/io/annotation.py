@@ -29,7 +29,7 @@ class AnnotationRegionWriter:
     :param mask_dict: Dictionary of the imported mask options
     :param delimiter: String expression on which to split the `data_selection` parameter into the filename, slide
     identifier, and ROI name
-    :param use_roi_name: Whether or not to use the ROI name identifier in the column output
+    :param use_roi_name: Whether to use the ROI name identifier in the column output
     :return: None
     """
     def __init__(self, annotation_dict: dict, data_selection: str, mask_dict: dict, delimiter: str="+++",
@@ -88,10 +88,10 @@ class AnnotationMaskWriter:
     :param canvas_mask: numpy array of the current mask applied to the canvas
     :return: None
     """
-    def __init__(self, annotation_dict: dict, output_dir: str=None, data_selection: str=None,
+    def __init__(self, dest_dir: str=None, annotation_dict: dict=None, data_selection: str=None,
                  mask_shape: tuple=None, canvas_mask: np.ndarray=None):
         self.annotation_dict = annotation_dict
-        self.dest_dir = os.path.join(output_dir, "annotation_masks") if output_dir is not None else None
+        self.dest_dir = os.path.join(dest_dir, "annotation_masks") if dest_dir is not None else None
         self.data_selection = data_selection
         self.mask_shape = mask_shape
         self.mask = canvas_mask

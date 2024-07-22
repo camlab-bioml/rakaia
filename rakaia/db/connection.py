@@ -13,7 +13,7 @@ class AtlasDatabaseConnection:
     The client should have the following configurations: a database corresponding to the `database_name` i.e. `rakaia`,
     and inside the database, a collection corresponding to the `blend_collection_name` i.e. `blend_config`
 
-    :param connection_string: MongoDB/Atlas copatible connection string to a cloud database
+    :param connection_string: MongoDB/Atlas compatible connection string to a cloud database
     :param username: Username
     :param password: User password
     :param database_name: Name of the database to connect to in the project specified by `connection_string`

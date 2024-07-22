@@ -1,11 +1,10 @@
 from typing import Union
+from pathlib import Path
 import dash
 import os
 from dash import html
 import plotly.graph_objs as go
-
 from rakaia.utils.alert import AlertMessage
-from pathlib import Path
 
 GLOBAL_FILTER_KEYS = ["global_apply_filter", "global_filter_type", "global_filter_val", "global_filter_sigma"]
 

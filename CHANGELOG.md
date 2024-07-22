@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - sphinx docstrings for classes
+- Dropdown to enable multiple cluster annotation import and toggle
 
 ### Changed
 

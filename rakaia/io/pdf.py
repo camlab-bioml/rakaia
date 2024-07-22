@@ -29,10 +29,10 @@ class AnnotationPDFWriter:
     :param global_filter_sigma: If global gaussian blur is applied, set the sigma value
     :return: None
     """
-    def __init__(self, annotations_dict, canvas_layers: dict, data_selection: str, mask_config: dict,
-                                    aliases: dict, dest_dir:str=None, output_file="annotations.pdf", blend_dict=None,
-                                    global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                                    global_filter_sigma=1):
+    def __init__(self, dest_dir:str=None, annotations_dict: dict=None, canvas_layers: dict=None,
+                 data_selection: str=None, mask_config: dict=None,
+                 aliases: dict=None, output_file="annotations.pdf", blend_dict=None,
+                 global_apply_filter=False, global_filter_type="median", global_filter_val=3, global_filter_sigma=1):
         self.annotations_dict = annotations_dict
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection

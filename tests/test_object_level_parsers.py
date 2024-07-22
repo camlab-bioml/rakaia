@@ -27,8 +27,7 @@ from rakaia.parsers.object import (
     validate_quantification_from_anndata,
     return_umap_dataframe_from_quantification_dict,
     object_id_list_from_gating,
-    cluster_annotation_frame_import, is_steinbock_intensity_anndata
-)
+    is_steinbock_intensity_anndata)
 from pandas.testing import assert_frame_equal
 import anndata as adata
 
@@ -304,17 +303,6 @@ def test_gating_cell_ids(get_current_dir):
                                "description": ["roi", "roi", "roi", "roi", "roi"]})
     assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
                                       intersection=True) == []
-
-def test_populating_cluster_annotation_dict():
-    cluster_frame = pd.DataFrame({"cell_id": [1, 2, 3, 4, 5],
-                                 "cluster": ["immune"] * 5})
-    session_cluster_dict = cluster_annotation_frame_import(None, "roi_1", cluster_frame)
-    assert_frame_equal(cluster_frame, session_cluster_dict['roi_1'])
-    malformed = pd.DataFrame({"col_1": [1, 2, 3, 4, 5],
-                                  "col_2": ["immune"] * 5})
-    session_cluster_dict = cluster_annotation_frame_import(session_cluster_dict, "roi_2", malformed)
-    assert "roi_2" not in session_cluster_dict.keys()
-    assert "roi_1" in session_cluster_dict.keys()
 
 def test_match_steinbock_mask_name_to_roi():
     assert match_steinbock_mask_name_to_mcd_roi("patient1_003", "pos_1_3_3") == "patient1_003"
