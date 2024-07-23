@@ -12,7 +12,7 @@ from rakaia.utils.object import (
     populate_obj_annotation_column_from_clickpoint,
     subset_measurements_by_point,
     generate_greyscale_grid_array,
-    identify_column_matching_roi_to_quantification,
+    match_roi_identifier_to_quantification,
     populate_quantification_frame_column_from_umap_subsetting,
     generate_mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
@@ -263,24 +263,24 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
 
     dataset_options = ["roi_1", "mcd1+++slide0+++Dilution_series_1_1", "roi_3"]
     data_selection = "mcd1+++slide0+++Dilution_series_1_1"
-    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
+    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options)
     assert name == "mcd1_2"
     assert column == "sample"
-    assert identify_column_matching_roi_to_quantification(data_selection, measurements, [])== (None, None)
-    assert identify_column_matching_roi_to_quantification("fake+++slide0+++fake_acq",
-                                                          measurements, dataset_options) == (None, None)
+    assert match_roi_identifier_to_quantification(data_selection, measurements, []) == (None, None)
+    assert match_roi_identifier_to_quantification("fake+++slide0+++fake_acq",
+                                                  measurements, dataset_options) == (None, None)
 
 
     measurements.rename(columns={"sample": "description"}, inplace=True)
     dataset_options = ["roi_1", "mcd1+++slide0+++Dilution_series_1_1", "roi_3"]
     data_selection = "mcd1+++slide0+++Dilution_series_1_1"
-    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
+    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options)
     assert name == "Dilution_series_1_1"
     assert column == "description"
 
     dataset_options = ["roi_1", "mcd1+++slide0+++roi_1", "roi_3"]
     data_selection = "mcd1+++slide0+++roi_1"
-    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options)
+    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options)
     assert name is None
     assert column is None
     # from steinbock
@@ -288,8 +288,8 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     data_selection = "test---slide0---chr10-h54h54-Gd158_2_18"
     dataset_options = ["test---slide0---chr10-h54h54-Gd158_2_18"]
     measurements = parse_quantification_sheet_from_h5ad((os.path.join(get_current_dir, "from_steinbock.h5ad")))
-    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options,
-                                                                  delimiter="---", mask_name=mask_option)
+    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options,
+                                                          delimiter="---", mask_name=mask_option)
     assert name == "chr10-h54h54-Gd158_2_18"
     assert column == "description"
 
@@ -299,8 +299,8 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     measurements = pd.DataFrame({"chan_1": [1, 2, 3, 4, 5],
                                  "description": mask_option,
                                  "cell_id": [1, 2, 3, 4, 5]})
-    name, column = identify_column_matching_roi_to_quantification(data_selection, measurements, dataset_options,
-                                                                  delimiter="---", mask_name=mask_option)
+    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options,
+                                                          delimiter="---", mask_name=mask_option)
     assert name == mask_option
 
 def test_annotation_column_from_umap_(get_current_dir):

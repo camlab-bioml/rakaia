@@ -83,7 +83,6 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 rois_exclude, row_children = rois_exclude, existing_gallery
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
-            # TODO: add input here to show different saved blends in the region gallery
             currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries),
             rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,

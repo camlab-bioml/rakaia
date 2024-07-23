@@ -1,11 +1,11 @@
 import os
 import json
 import h5py
+from typing import Union
+from pydantic import BaseModel
 import pandas as pd
 import numpy as np
 from dash_extensions.enrich import Serverside
-from typing import Union
-from pydantic import BaseModel
 from rakaia.utils.pixel import path_to_mask
 
 class SessionTheme(BaseModel):
@@ -131,17 +131,16 @@ def panel_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
     """
     try:
         current_blend = current_blend if isinstance(current_blend, list) else list(current_blend.keys())
-        return None not in (current_blend, new_blend) and all([
-            elem in new_blend['channels'] for elem in current_blend])
-        # len(current_blend) == len(new_blend['channels'])
+        return None not in (current_blend, new_blend) and all(
+            elem in new_blend['channels'] for elem in current_blend)
     except (KeyError, TypeError):
         return False
 
 def all_roi_match(current_blend: Union[dict, None], new_blend: Union[dict, None], image_dict: Union[dict, None],
                   delimiter: str="+++"):
     try:
-        return current_blend is None and new_blend is not None and all([len(image_dict[roi]) == \
-                        len(new_blend['channels']) for roi in image_dict.keys() if delimiter in roi])
+        return current_blend is None and new_blend is not None and all(len(image_dict[roi]) == \
+                        len(new_blend['channels']) for roi in image_dict.keys() if delimiter in roi)
     except (KeyError, TypeError):
         return False
 

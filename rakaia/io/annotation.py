@@ -240,7 +240,5 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
             frame = pd.DataFrame(points)
             out_name = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else ""
             return dcc.send_data_frame(frame.to_csv, f"{out_name}_points.csv", index=False)
-        else:
-            raise PreventUpdate
-    else:
         raise PreventUpdate
+    raise PreventUpdate

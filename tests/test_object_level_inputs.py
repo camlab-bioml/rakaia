@@ -99,7 +99,7 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
     umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
     zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
     category_column = "sample"
-    interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, {}, "mean",
+    interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean", {},
                                                                                 {}, umap_dict, zoom_keys, None,
                                                                                 category_column=category_column)
     assert '(244 cells)' in interactive_umap['layout']['title']['text']
@@ -111,8 +111,8 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
     # assert '(61 cells)' in interactive_umap['layout']['title']['text']
     umap_dict = {"UMAP1": list(range(900)), "UMAP2": list(range(900))}
     subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
-    interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, subset_layout,
-                                                                                "mean", subset_layout,
+    interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean",
+                                                                                       subset_layout,
                                                                                 umap_dict, zoom_keys,
                                                                                 "umap-plot", category_subset=["test_1"],
                                                                                 category_column="sample",
@@ -121,13 +121,12 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
     assert '(0 cells)' in interactive_umap['layout']['title']['text']
 
     with pytest.raises(PreventUpdate):
-        generate_expression_bar_plot_from_interactive_subsetting(None, subset_layout,
+        generate_expression_bar_plot_from_interactive_subsetting(None,
                                                                  "mean", subset_layout,
                                                                  umap_dict, zoom_keys,
                                                                  "umap-plot", category_subset=["test_1"],
                                                                  category_column="sample",
                                                                  cols_drop=['sample'])
-
 
 def test_quantification_heatmap(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

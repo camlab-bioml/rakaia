@@ -1,8 +1,8 @@
+from typing import Union
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.collection import Collection
 from pymongo.errors import ConfigurationError
-from typing import Union
 from rakaia.utils.db import format_blend_config_document_for_insert
 
 class AtlasDatabaseConnection:
@@ -97,8 +97,8 @@ class AtlasDatabaseConnection:
         :return: None
         """
         # delete any configs that match the name provided (overwrite)
-        delete = self.blend_collection.delete_many({"user": self.username, "name": config_name})
-        insert = self.blend_collection.insert_one(format_blend_config_document_for_insert(
+        self.blend_collection.delete_many({"user": self.username, "name": config_name})
+        self.blend_collection.insert_one(format_blend_config_document_for_insert(
             self.username, config_name, blend_dict, selected_channel_list, global_apply_filter,
                                     global_filter_type, global_filter_val, global_filter_sigma, data_selection,
                                     cluster_assignments, alias_dict, gating_dict,
@@ -115,7 +115,7 @@ class AtlasDatabaseConnection:
         """
         Remove a document by the `name` key of the document
         """
-        delete = self.blend_collection.delete_many({"user": self.username, "name": config_name})
+        self.blend_collection.delete_many({"user": self.username, "name": config_name})
 
     def close(self):
         """

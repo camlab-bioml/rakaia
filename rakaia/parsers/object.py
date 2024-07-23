@@ -69,12 +69,12 @@ def validate_incoming_measurements_csv(measurements_csv, required_columns=set_ma
     Validate an incoming measurements CSV against the current canvas, and ensure that it has the required
     information columns
     """
-    if not any([column in measurements_csv.columns for column in QuantificationColumns().identifiers]):
+    if not any(column in measurements_csv.columns for column in QuantificationColumns().identifiers):
         raise QuantificationFormatError(
             "The imported quantification results are missing at least one of the following:\n"
             "`sample` or `description`, which should immediately follow the channel "
             "columns in the CSV, and should link ROI names/masks to quantification results.")
-    if not all([column in measurements_csv.columns for column in required_columns]):
+    if not all(column in measurements_csv.columns for column in required_columns):
         return None, None
     return measurements_csv, None
 
@@ -181,7 +181,7 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
         frame = pd.DataFrame(obj.obs)
     else:
         frame = anndata_obj
-    if not all([column in frame.columns for column in required_columns]):
+    if not all(column in frame.columns for column in required_columns):
         return None, None
     return frame, None
 
@@ -294,8 +294,6 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
     Returns a tuple: a dictionary of subtype keys, and a dictionary of frequency counts for those keys
     from the quantification results
     """
-    # merged = pd.concat([subset_frame, pd.DataFrame(quantification_dict)], axis=1,
-    #                    join="inner").reset_index(drop=True)
     merged = pd.DataFrame(quantification_dict).iloc[list(subset_frame.index.values)]
     if 'description' in list(merged.columns):
         indices_query = {'names': list(merged['description'].value_counts().to_dict().keys())}

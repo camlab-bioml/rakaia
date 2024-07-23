@@ -46,7 +46,7 @@ class RegionSummary:
 
         # if zoom is used
         if ('shapes' not in self.graph_layout or len(self.graph_layout['shapes']) <= 0) and \
-             all([elem in self.graph_layout for elem in self.zoom_keys]):
+             all(elem in self.graph_layout for elem in self.zoom_keys):
             self.compute_statistics_rectangle(reg_type="zoom", redrawn=False)
         # if zoom isn't used, then iterate the shapes from the graph component instead of the layout.
         # Allows to get all shapes even if one was edited

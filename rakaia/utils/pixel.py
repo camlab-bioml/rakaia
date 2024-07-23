@@ -65,8 +65,7 @@ def generate_default_swatches(config):
             config['swatches'] is not None else DEFAULTS
             swatches = swatches if len(swatches) > 0 else DEFAULTS
             return swatches
-        else:
-            return DEFAULTS
+        return DEFAULTS
     except KeyError:
         return DEFAULTS
 
@@ -89,10 +88,9 @@ def recolour_greyscale(array, colour):
         converted = ne.evaluate("new_array * image / 255")
         return converted.astype(np.uint8)
 
-    else:
-        image = Image.fromarray(array)
-        image = image.convert('RGB')
-        return np.array(image)
+    image = Image.fromarray(array)
+    image = image.convert('RGB')
+    return np.array(image)
 
 def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
     """
@@ -252,7 +250,7 @@ def upper_bound_for_range_slider(array):
 
 def apply_preset_to_array(array, preset):
     preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
-    if isinstance(preset, dict) and all([elem in preset.keys() for elem in preset_keys]):
+    if isinstance(preset, dict) and all(elem in preset.keys() for elem in preset_keys):
         array = filter_by_upper_and_lower_bound(array, preset['x_lower_bound'], preset['x_upper_bound'])
         if preset['filter_type'] == "median" and preset['filter_val'] is not None and \
                 int(preset['filter_val']) >= 1:
@@ -270,7 +268,7 @@ def apply_preset_to_blend_dict(blend_dict, preset_dict):
     """
     Populate the blend dict from a preset dict
     """
-    if not all([key in blend_dict.keys() for key in preset_dict.keys()]): raise AssertionError
+    if not all(key in blend_dict.keys() for key in preset_dict.keys()): raise AssertionError
     for key, value in preset_dict.items():
         # do not change the color from a preset
         if key != "color":
@@ -300,8 +298,8 @@ def validate_incoming_metadata_table(metadata, upload_dict):
     - have a column named "Column Label" that can be copied for editing
     """
     if isinstance(metadata, pd.DataFrame) and "Channel Label" in metadata.columns and upload_dict is not None and \
-        all([len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if \
-             roi not in ['metadata', 'metadata_columns']]):
+        all(len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if \
+             roi not in ['metadata', 'metadata_columns']):
         return metadata
     return None
 
@@ -312,7 +310,8 @@ def create_new_coord_bounds(window_dict, x_request, y_request):
     and the requested coordinate is approximately the middle of the new window
     """
     try:
-        if not all([value is not None for value in window_dict.values()]): raise AssertionError
+        if not all(value is not None for value in window_dict.values()):
+            raise AssertionError
         # first cast the bounds as int, then cast as floats and add significant digits
         # 634.5215773809524
         x_request = float(x_request) + 0.000000000000
@@ -368,8 +367,7 @@ def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_select
         cur_dataset_preview = [elem for elem in cur_dataset_preview if elem['ROI'] != cur_data_selection] if \
             cur_dataset_preview else dash.no_update
         return return_list, None, [], None, cur_dataset_preview
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 def set_channel_list_order(set_order_clicks, order_row_data, channel_order, current_blend, aliases, triggered_id):
     """
@@ -401,7 +399,7 @@ def select_random_colour_for_channel(blend_dict, current_channel, default_colour
     for default in default_colours:
         # check if any of the colours have been used yet. if not, select the next available
         # only updates a channel if the default is None or white (#FFFFFF), which implies the defaults
-        if not any([channel['color'] == default for channel in blend_dict.values()]) and \
+        if not any(channel['color'] == default for channel in blend_dict.values()) and \
                 blend_dict[current_channel]['color'] in ['#FFFFFF', None, '#ffffff']:
             blend_dict[current_channel]['color'] = default
             break
@@ -414,11 +412,11 @@ def random_hex_colour_generator(number=10):
     """
     Generate a list of random hex colours. The number provided will be the length of the list
     """
-    r = lambda: random.randint(0, 255)
+    rgen = lambda: random.randint(0, 255)
     colours = []
     index = 0
     while index < number:
-        colour = '#%02X%02X%02X' % (r(), r(), r())
+        colour = '#%02X%02X%02X' % (rgen(), rgen(), rgen())
         if colour not in colours:
             colours.append(colour)
             index += 1
@@ -581,7 +579,6 @@ class MarkerCorrelation:
         self.target_proportion_relative = None
 
         if image_dict is not None and roi_selection in image_dict and target_channel in image_dict[roi_selection]:
-            # TODO: add in validation parse for checking the ROI images to the mask dimensions
             self.image_dict = image_dict
             self.roi_selection = roi_selection
             self.target_threshold = target_threshold
@@ -623,7 +620,7 @@ class MarkerCorrelation:
         :return: tuple of Sorted high and low bounds for both x and y axes.
         """
         keys_required = RectangularKeys().keys["zoom"]
-        if bounds and isinstance(bounds, dict) and all([elem in keys_required for elem in bounds.keys()]):
+        if bounds and isinstance(bounds, dict) and all(elem in keys_required for elem in bounds.keys()):
             return high_low_values_from_zoom_layout(bounds, cast_type=int)
         return None
 

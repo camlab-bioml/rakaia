@@ -1,6 +1,6 @@
+from typing import Union
 import pandas as pd
 from rakaia.io.session import JSONSessionDocument
-from typing import Union
 
 def match_db_config_to_request_str(db_config_list: list, db_config_selection: str):
     """
@@ -48,7 +48,6 @@ def preview_dataframe_from_db_config_list(config_list):
                 label = result['channels'][channel]['alias']
             except KeyError:
                 label = channel
-            # TODO: use the label alias instead of the internal label for better readability
             delimiter_channel = " \\\n " if selected_index < (len(result['config']['blend']) - 1) else ""
             selected_channels = selected_channels + str(label) + delimiter_channel
             selected_index += 1

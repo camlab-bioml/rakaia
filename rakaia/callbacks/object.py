@@ -25,7 +25,7 @@ from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
-    identify_column_matching_roi_to_quantification,
+    match_roi_identifier_to_quantification,
     validate_mask_shape_matches_image,
     quantification_distribution_table, custom_gating_id_list)
 from rakaia.inputs.object import (
@@ -317,7 +317,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # annotations[data_selection] = {}
             else:
                 indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
-            sample_name, id_column = identify_column_matching_roi_to_quantification(
+            sample_name, id_column = match_roi_identifier_to_quantification(
             data_selection, quantification_frame, data_dropdown_options, delimiter, mask_selection)
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
                 annotations = reset_annotation_import(annotations, data_selection, app_config, False)

@@ -1,11 +1,11 @@
 from typing import Union
-import pandas as pd
 import re
+from pydantic import BaseModel
+import pandas as pd
 from dash.exceptions import PreventUpdate
 from PIL import Image
 import numpy as np
 from skimage.segmentation import find_boundaries
-from pydantic import BaseModel
 import scipy
 from rakaia.utils.pixel import (
     path_to_mask,
@@ -240,8 +240,8 @@ def populate_obj_annotation_column_from_clickpoint(measurements, coord_dict=None
         if coord_dict is None:
             coord_dict = {"x_min": "x_min", "x_max": "x_max", "y_min": "y_min", "y_max": "y_max"}
 
-        x = values_dict['points'][0]['x']
-        y = values_dict['points'][0]['y']
+        x_coord = values_dict['points'][0]['x']
+        y_coord = values_dict['points'][0]['y']
 
         obj_type = obj_type if not remove else default_val
 
@@ -249,7 +249,7 @@ def populate_obj_annotation_column_from_clickpoint(measurements, coord_dict=None
 
             # get the object ID at that position to match
             mask_used = mask_dict[mask_selection]['raw']
-            obj_id = mask_used[y, x].astype(int)
+            obj_id = mask_used[y_coord, x_coord].astype(int)
             obj_id = int(obj_id[0]) if isinstance(obj_id, np.ndarray) else obj_id
 
             measurements[annotation_column] = np.where((measurements[obj_identifier]== obj_id) &
@@ -257,13 +257,13 @@ def populate_obj_annotation_column_from_clickpoint(measurements, coord_dict=None
                                                    measurements[annotation_column])
         else:
             measurements[annotation_column] = np.where((measurements[str(f"{coord_dict['x_min']}")] <=
-                                                        float(x)) &
+                                                        float(x_coord)) &
                                                (measurements[str(f"{coord_dict['x_max']}")] >=
-                                                float(x)) &
+                                                float(x_coord)) &
                                                (measurements[str(f"{coord_dict['y_min']}")] <=
-                                                float(y)) &
+                                                float(y_coord)) &
                                                (measurements[str(f"{coord_dict['y_max']}")] >=
-                                                float(y)) &
+                                                float(y_coord)) &
                                                 (measurements['sample'] == sample),
                                                         obj_type,
                                                     measurements[annotation_column])
@@ -371,11 +371,11 @@ def is_steinbock_intensity_anndata(adata):
     - An 'Image' parameter in obs that contains the tiff information
     """
     return 'Image' in adata.obs and 'image_acquisition_description' in adata.obs and \
-        all(['.tiff' in elem for elem in adata.obs['Image'].to_list()]) and \
-      all(['Object' in elem for elem in adata.obs.index])
+        all('.tiff' in elem for elem in adata.obs['Image'].to_list()) and \
+      all('Object' in elem for elem in adata.obs.index)
 
-def identify_column_matching_roi_to_quantification(data_selection, quantification_frame, dataset_options,
-                                                   delimiter: str="+++", mask_name: str=None):
+def match_roi_identifier_to_quantification(data_selection, quantification_frame, dataset_options,
+                                           delimiter: str="+++", mask_name: str=None):
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is

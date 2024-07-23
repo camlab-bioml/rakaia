@@ -71,13 +71,13 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     if drop_cols:
         measurements = drop_columns_from_measurements_csv(measurements)
     if cols_include is not None and len(cols_include) > 0 and \
-            all([elem in measurements.columns for elem in cols_include]):
+            all(elem in measurements.columns for elem in cols_include):
         measurements = measurements[cols_include]
     # add a string to the title if subsampling is used
     total_objects = len(measurements)
+    # default subset value is 50,000, for some reason the chart doesn't render properly after this many elements
     if subset_val is not None and isinstance(subset_val, int) and subset_val < len(measurements):
         measurements = measurements.sample(n=subset_val).reset_index(drop=True)
-    # TODO: figure out why the colour bars won't render after a certain number of dataframe elements
     array_measure = np.array(measurements)
     zmax = 1 if np.max(array_measure) <= 1 else np.max(array_measure)
     fig = go.Figure(px.imshow(array_measure, x=measurements.columns, y=measurements.index,
@@ -137,7 +137,7 @@ def patch_umap_figure(quantification_dict: Union[pd.DataFrame, dict], channel_ov
                                                  channel_overlay + '=%{marker.color}<extra></extra>'
     return patched_figure
 
-def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, canvas_layout, mode_value,
+def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, mode_value,
                                                umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
                                                 category_column=None, category_subset=None):
     if quantification_dict is not None and len(quantification_dict) > 0:
@@ -149,7 +149,7 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
             frame = drop_columns_from_measurements_csv(frame)
         if triggered_id in ["umap-plot", "umap-projection-options", "quantification-bar-mode"] and \
                 umap_layout is not None and \
-                all([key in umap_layout for key in zoom_keys]):
+                all(key in umap_layout for key in zoom_keys):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
                                                                            pd.DataFrame(embeddings,
                                                                                         columns=['UMAP1', 'UMAP2']),
@@ -186,7 +186,7 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         if normalize:
             frame = ((frame - frame.min()) / (frame.max() - frame.min()))
         if umap_layout is not None and \
-                all([key in umap_layout for key in zoom_keys]):
+                all(key in umap_layout for key in zoom_keys):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
                         pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2']), umap_layout)
         else:

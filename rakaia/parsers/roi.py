@@ -5,6 +5,7 @@ from pathlib import Path
 import random
 import numpy as np
 import cv2
+from readimc.data import Slide, Acquisition
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
 from rakaia.utils.pixel import (
@@ -79,7 +80,7 @@ class RegionThumbnail:
         # do not use the dimension limit if querying from the quantification
         self.dim_min = dimension_min if (dimension_min and not self.predefined_indices) else 0
         self.dim_max = dimension_max if (dimension_max and not self.predefined_indices) else 1e6
-        self.keyword = roi_keyword.split(",") if (roi_keyword and "," in roi_keyword) else \
+        self.keyword = [word.strip() for word in roi_keyword.split(",")] if (roi_keyword and "," in roi_keyword) else \
             ([roi_keyword] if roi_keyword else None)
 
         self.set_keyword_with_defined_indices()
@@ -124,12 +125,13 @@ class RegionThumbnail:
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
 
-    def set_mcd_query_selection(self, mcd_slide):
+    def set_mcd_query_selection(self, mcd_slide, queries_by_name: list=None):
         """
         Set the mcd query selection for one or multiple mcd files. Will check the number of queries requested
         against the number of ROIs inside an mcd slide.
 
         :param mcd_slide: `Slide` object inside an mcd file
+        :param queries_by_name: An existing list of mcd slide queries. Useful for when multiple mcd files are queried
         :return: None
         """
         if self.predefined_indices is None:
@@ -141,15 +143,14 @@ class RegionThumbnail:
         elif isinstance(self.query_selection, dict):
             if 'indices' in self.query_selection:
                 self.num_queries = len(self.query_selection['indices'])
-                self.query_selection = [i for i in self.query_selection['indices'] if \
+                self.query_selection = [int(i) for i in self.query_selection['indices'] if \
                                         len(mcd_slide.acquisitions) > i >= 0]
             elif 'names' in self.query_selection:
-                acq_names = [f"{str(acq.description)}_{str(acq.id)}" for acq in mcd_slide.acquisitions]
                 self.num_queries = len(self.query_selection['names'])
-                try:
-                    self.query_selection = [acq_names.index(name) for name in self.query_selection['names']]
-                except ValueError:
-                    self.query_selection = []
+                queries_by_name = [] if queries_by_name is None else queries_by_name
+                for name in self.query_selection['names']:
+                    queries_by_name.append(str(name))
+                self.query_selection = queries_by_name
 
     def roi_within_dimension_threshold(self, roi_height, roi_width) -> bool:
         """
@@ -157,6 +158,28 @@ class RegionThumbnail:
         """
         return (roi_height >= self.dim_min and roi_width >= self.dim_min) and \
                 (roi_height <= self.dim_max and roi_width <= self.dim_max)
+
+    @staticmethod
+    def set_mcd_acquisition_from_query(slide_inside: Slide, query: Union[int, str]) -> Union[Acquisition, None]:
+        """
+        Set the slide acquisition from th query from either an integer based index, or an acquisition name.
+        Using acquisition string descriptions for querying permits retrieval of ROIs across multiple MCd files
+        from a common quantification dataset.
+
+        :param slide_inside: Current MCD slide
+        :param query: The integer index for the acquisition in the current slide, or a query string name to match
+        an acquisition description
+        :return: Slide acquisition to read for thumbnail generation.
+        """
+        if isinstance(query, int):
+            acq = slide_inside.acquisitions[query]
+        else:
+            try:
+                acq_list = [f"{acq.description}_{acq.id}" for acq in slide_inside.acquisitions]
+                acq = slide_inside.acquisitions[acq_list.index(query)]
+            except (KeyError, TypeError, IndexError, ValueError):
+                return None
+        return acq
 
     def additive_thumbnail_from_mcd(self, file_path):
         """
@@ -166,13 +189,14 @@ class RegionThumbnail:
         :return: None
         """
         basename = str(Path(file_path).stem)
+        queries_by_name = []
         with MCDFile(file_path) as mcd_file:
             slide_index = 0
             for slide_inside in mcd_file.slides:
-                self.set_mcd_query_selection(slide_inside)
+                self.set_mcd_query_selection(slide_inside, queries_by_name)
                 for query in self.query_selection:
                     try:
-                        acq = slide_inside.acquisitions[query]
+                        acq = self.set_mcd_acquisition_from_query(slide_inside, query)
                         roi_identifier = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
                            f"{str(acq.description)}_{str(acq.id)}"
                         if self.roi_keyword_in_roi_identifier(roi_identifier) and roi_identifier \
@@ -213,7 +237,7 @@ class RegionThumbnail:
                                     self.query_selection.append(additional_query)
                                     # self.num_queries += 1
                                     break
-                    except OSError:
+                    except (OSError, ValueError, IndexError, KeyError, AttributeError):
                         pass
                     if len(self.roi_images) >= self.num_queries:
                         break
@@ -361,5 +385,5 @@ class RegionThumbnail:
         :Return: bool indicating keyword presence of not.
         """
         if roi_identifier and self.keyword:
-                return any([elem in roi_identifier for elem in self.keyword])
+                return any(elem in roi_identifier for elem in self.keyword)
         return True

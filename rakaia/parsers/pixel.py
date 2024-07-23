@@ -400,7 +400,7 @@ class FileParser:
         :return: `pd.DataFrame` listing parsed ROIsw with their dimensions and panel length.
         """
         if isinstance(self.dataset_information_frame, dict) and \
-                all([len(col) > 0 for col in self.dataset_information_frame.values()]) or \
+                all(len(col) > 0 for col in self.dataset_information_frame.values()) or \
                 isinstance(self.dataset_information_frame, pd.DataFrame) and len(self.dataset_information_frame) > 0:
             return self.dataset_information_frame
         raise NoAcquisitionsParsedError(f"No acquisitions were successfully parsed from the following files: \n"

@@ -46,7 +46,7 @@ def adjust_option_height_from_list_length(list_options, dropdown_type="image"):
     Ensures that long strings in `dcc.Dropdown` menus are sufficiently spaced vertically for readability
     """
     char_limits = {"image": 50, "mask": 40}
-    if any([len(elem) >= char_limits[dropdown_type] for elem in list_options]):
+    if any(len(elem) >= char_limits[dropdown_type] for elem in list_options):
         height_update = 100
     else:
         height_update = 50

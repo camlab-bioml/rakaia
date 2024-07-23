@@ -1,8 +1,8 @@
+import math
 import dash_bootstrap_components as dbc
 from dash import html
 from PIL import Image
 import numpy as np
-import math
 from rakaia.utils.pixel import (
     resize_for_canvas,
     get_default_channel_upper_bound_by_percentile,
@@ -17,14 +17,14 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
     row_children = []
     if gallery_dict is not None and len(gallery_dict) > 0:
         for key, value in gallery_dict.items():
-            if all([elem in canvas_layout for elem in zoom_keys]) and toggle_gallery_zoom:
+            if all(elem in canvas_layout for elem in zoom_keys) and toggle_gallery_zoom:
                 x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
                 x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
                 y_range_low = math.floor(int(canvas_layout['yaxis.range[1]']))
                 y_range_high = math.floor(int(canvas_layout['yaxis.range[0]']))
                 try:
-                    if not x_range_high >= x_range_low: raise AssertionError
-                    if not y_range_high >= y_range_low: raise AssertionError
+                    if not (x_range_high >= x_range_low) or not (y_range_high >= y_range_low):
+                        raise AssertionError
                     image_render = value[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                             range(int(x_range_low), int(x_range_high), 1))]
                 except IndexError:

@@ -1,13 +1,13 @@
+from typing import Union
+from copy import deepcopy
 import dash
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import dcc, html
 import plotly.graph_objs as go
 import dash_draggable
 import cv2
-from typing import Union
 from plotly.graph_objs.layout import XAxis, YAxis
 import dash_bootstrap_components as dbc
-from copy import deepcopy
 import numpy as np
 from PIL import Image
 import plotly.express as px
@@ -220,14 +220,12 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
     """
     if float(max_value) <= 1.0:
         return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 25), 2))
-    else:
-        # set the default number of tick marks to 4
-        # if the maximum value is less than 3, reduce the number of ticks accordingly
-        if int(max_value) < 3:
-            num_ticks = int(max_value) + 1
+    # set the default number of tick marks to 4
+    # if the maximum value is less than 3, reduce the number of ticks accordingly
+    elif int(max_value) < 3:
+        num_ticks = int(max_value) + 1
         # sets the dictionary for the string and int values to be shown in the pixel intensity range slider
-        return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1
-
+    return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1
 
 def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
                                 use_cluster_annotations=False, cluster_colour_dict: dict=None,
@@ -343,8 +341,7 @@ def set_canvas_viewport(size_slider_val: Union[float, int]=None,
     try:
         if cur_canvas_layout['height'] != f'{height}vh' and cur_canvas_layout['width'] != f'{width}vh':
             return {'width': f'{width}vh', 'height': f'{height}vh'}
-        else:
-            raise PreventUpdate
+        raise PreventUpdate
     except KeyError:
         return {'width': f'{width}vh', 'height': f'{height}vh'}
 

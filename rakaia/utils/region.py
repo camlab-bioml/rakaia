@@ -1,4 +1,7 @@
 import math
+from typing import Union
+import ast
+from pydantic import BaseModel
 from rakaia.utils.object import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box)
@@ -7,9 +10,6 @@ from rakaia.utils.pixel import (
     get_area_statistics_from_closed_path,
     get_bounding_box_for_svgpath,
     RectangularKeys)
-from pydantic import BaseModel
-from typing import Union
-import ast
 
 class ChannelRegion:
     """
@@ -74,7 +74,7 @@ class RectangleRegion(ChannelRegion):
             self.required_keys = self.key_dict[self.type]
         self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
         if all([elem in self.coordinate_dict] for elem in self.required_keys) and \
-                all([elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)]):
+                all(elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)):
             x_range_low = min(math.ceil(int(self.coordinate_dict[self.required_keys[0]])),
                               math.ceil(int(self.coordinate_dict[self.required_keys[1]])))
             x_range_high = max(math.ceil(int(self.coordinate_dict[self.required_keys[0]])),

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased
 
-## [0.17.0] - 2024-07-19
+## [0.17.0] - 2024-07-23
 
 ### Added
 
@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Proper mass deletion of annotations across multiple categories
+- Make ROI querying from quantification work across multiple MCDs
 
 ## [0.16.0] - 2024-07-09
 
