@@ -1,7 +1,7 @@
 import numpy as np
 from PIL import Image
 import os
-from ccramic.utils.quantification import (
+from rakaia.utils.quantification import (
     quantify_one_channel,
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi,

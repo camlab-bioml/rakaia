@@ -2,7 +2,12 @@ import os
 import dash
 import pytest
 import plotly
-from ccramic.utils.pixel import (
+from dash.exceptions import PreventUpdate
+import pandas as pd
+from rakaia.parsers.pixel import create_new_blending_dict
+from PIL import Image
+import numpy as np
+from rakaia.utils.pixel import (
     recolour_greyscale,
     apply_preset_to_array,
     resize_for_canvas,
@@ -37,11 +42,6 @@ from ccramic.utils.pixel import (
     glasbey_palette,
     layers_exist,
     add_saved_blend)
-from dash.exceptions import PreventUpdate
-import pandas as pd
-from ccramic.parsers.pixel import create_new_blending_dict
-from PIL import Image
-import numpy as np
 
 def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")

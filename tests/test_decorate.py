@@ -1,4 +1,4 @@
-from ccramic.utils.decorator import (
+from rakaia.utils.decorator import (
     time_taken_callback,
     DownloadDirGenerator)
 import os

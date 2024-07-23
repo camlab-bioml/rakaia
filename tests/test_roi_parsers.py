@@ -1,7 +1,7 @@
 import os
-from ccramic.parsers.roi import RegionThumbnail
+from rakaia.parsers.roi import RegionThumbnail
 import numpy as np
-from ccramic.parsers.pixel import (
+from rakaia.parsers.pixel import (
     FileParser,
     create_new_blending_dict)
 import random
@@ -41,7 +41,7 @@ def test_roi_query_parser(get_current_dir):
     assert len(roi_query) == 1
 
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
-                                [dataset_exclude], roi_keyword="Xylene,HIER").get_image_dict()
+                                [dataset_exclude], roi_keyword="Xylene, HIER").get_image_dict()
     assert len(roi_query) == 2
 
     # assert a key error on an improperly configured session config
@@ -105,6 +105,12 @@ def test_roi_query_parser_predefined(get_current_dir):
                                                      predefined_indices=defined_names).get_image_dict()
     assert len(roi_query) == 1
     assert dataset_selection in roi_query.keys()
+
+    #define a bad ROI name
+
+    roi_query_null = RegionThumbnail(session_config, blend_dict, channels, 4, [],
+                                predefined_indices={'names': ['no_exist']}).get_image_dict()
+    assert roi_query_null is None
 
     mask_roi_dict = {"PAP_1_mask": {"boundary": np.full((100, 100, 3), 7), "raw": np.full((100, 100), 7)},
                      "HIER_2_mask": {"boundary": np.full((100, 100, 3), 0)},

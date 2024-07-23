@@ -1,6 +1,6 @@
 
 import dash_uploader as du
-from ccramic.io.readers import DashUploaderFileReader
+from rakaia.io.readers import DashUploaderFileReader
 
 def test_drag_drop_readers():
 

@@ -1,7 +1,7 @@
 import dash_core_components as dcc
 import numpy as np
 import plotly.express as px
-from ccramic.inputs.loaders import (
+from rakaia.inputs.loaders import (
     wrap_child_in_loading,
     previous_roi_trigger,
     next_roi_trigger,

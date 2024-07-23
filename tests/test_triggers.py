@@ -1,4 +1,4 @@
-from ccramic.callbacks.triggers import (
+from rakaia.callbacks.triggers import (
     new_roi_same_dims,
     no_canvas_mask,
     global_filter_disabled,

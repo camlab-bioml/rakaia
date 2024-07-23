@@ -12,17 +12,17 @@
 #
 import os
 import sys
-sys.path.insert(0, os.path.abspath('../../ccramic/'))
+sys.path.insert(0, os.path.abspath('../../rakaia/'))
 
 
 # -- Project information -----------------------------------------------------
 
-project = 'ccramic'
+project = 'rakaia'
 copyright = '2024, Matthew Watson'
 author = 'Matthew Watson'
 
 # The full version, including alpha/beta/rc tags
-release = '0.16.0'
+release = '0.17.0'
 
 
 # -- General configuration ---------------------------------------------------
@@ -32,6 +32,9 @@ release = '0.16.0'
 # ones.
 extensions = ['sphinx.ext.autodoc'
 ]
+
+#
+# master_doc = 'index'
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

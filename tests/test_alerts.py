@@ -1,4 +1,4 @@
-from ccramic.utils.alert import (
+from rakaia.utils.alert import (
     AlertMessage, file_import_message,
     DataImportTour,
     ToolTips,

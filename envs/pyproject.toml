@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "ccramic"
+name = "rakaia"
 version = "0.13.0"
 description = "Fast in-browser analysis of multiplexed imaging datasets"
 authors = ["Matt Watson <mwatson@lunenfeld.ca>"]

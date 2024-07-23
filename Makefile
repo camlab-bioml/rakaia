@@ -2,7 +2,7 @@ SHELL=bash
 python=python
 pip=pip
 tests=./tests
-version:=$(shell $(python) ccramic/wsgi.py -v)
+version:=$(shell $(python) rakaia/wsgi.py -v)
 
 prepare:
 	$(pip) install -r requirements.txt
@@ -11,7 +11,7 @@ develop:
 	$(pip) install -e .
 
 clean_develop:
-	- $(pip) uninstall -y ccramic
+	- $(pip) uninstall -y rakaia
 	- rm -rf *.egg-info
 
 clean_sdist:

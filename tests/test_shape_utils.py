@@ -1,4 +1,4 @@
-from ccramic.utils.shapes import (
+from rakaia.utils.shapes import (
     is_bad_shape,
     is_cluster_annotation_circle,
     filter_annotation_shapes)

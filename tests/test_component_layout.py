@@ -1,4 +1,4 @@
-from ccramic.components.layout import register_app_layout
+from rakaia.components.layout import register_app_layout
 from dash import html
 
 def test_register_component_layout():

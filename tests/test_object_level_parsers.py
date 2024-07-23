@@ -7,7 +7,7 @@ import os
 import numpy as np
 import re
 from dash.exceptions import PreventUpdate
-from ccramic.parsers.object import (
+from rakaia.parsers.object import (
     validate_incoming_measurements_csv,
     QuantificationFormatError,
     filter_measurements_csv_by_channel_percentile,
@@ -17,7 +17,7 @@ from ccramic.parsers.object import (
     read_in_mask_array_from_filepath,
     set_columns_to_drop,
     set_mandatory_columns,
-    parse_cell_subtypes_from_restyledata,
+    RestyleDataParser,
     parse_roi_query_indices_from_quantification_subset,
     match_steinbock_mask_name_to_mcd_roi,
     match_mask_name_to_quantification_sheet_roi,
@@ -27,8 +27,7 @@ from ccramic.parsers.object import (
     validate_quantification_from_anndata,
     return_umap_dataframe_from_quantification_dict,
     object_id_list_from_gating,
-    cluster_annotation_frame_import, is_steinbock_intensity_anndata
-)
+    is_steinbock_intensity_anndata)
 from pandas.testing import assert_frame_equal
 import anndata as adata
 
@@ -136,18 +135,18 @@ def test_parse_restyledata_from_legend_change():
     restyle_1 = [{'visible': ['legendonly', True, 'legendonly', 'legendonly', 'legendonly', 'legendonly', 'legendonly']},
                  [0, 1, 2, 3, 4, 5, 6]]
 
-    types_return_1 = parse_cell_subtypes_from_restyledata(restyle_1, test_frame, "category", None)
+    types_return_1 = RestyleDataParser(restyle_1, test_frame, "category", None).get_callback_structures()
     assert types_return_1 == (['two'], [1])
 
     restyle_2 = [{'visible': [True]}, [6]]
-    types_return_2 = parse_cell_subtypes_from_restyledata(restyle_2, test_frame, "category", [1])
+    types_return_2 = RestyleDataParser(restyle_2, test_frame, "category", [1]).get_callback_structures()
     assert types_return_2 == (['two', 'seven'], [1, 6])
 
     restyle_3 = [{'visible': ['legendonly']}, [3]]
-    types_return_3 = parse_cell_subtypes_from_restyledata(restyle_3, test_frame, "category", [0, 1, 2, 3])
+    types_return_3 = RestyleDataParser(restyle_3, test_frame, "category", [0, 1, 2, 3]).get_callback_structures()
     assert types_return_3 == (['one', 'two', 'three'], [0, 1, 2])
-    assert parse_cell_subtypes_from_restyledata([{'visible': ['legendonly']}, [0]],
-                                                test_frame, "category", [0, 1, 2, 3]) == (None, None)
+    assert RestyleDataParser([{'visible': ['legendonly']}, [0]],
+        test_frame, "category", [0, 1, 2, 3]).get_callback_structures() == (None, None)
 
 def test_valid_parse_for_indices_for_query(get_current_dir):
     """
@@ -180,9 +179,11 @@ def test_mask_match_to_roi_name():
     assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1_mask"
 
     dataset_options = ["round_1", "round_2", "round_3", "round_4"]
-    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
+    mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
 
     assert match_mask_name_with_roi("round_3", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+    # Expect an index error on the second mask name as it's malformed
+    assert not match_mask_name_with_roi("round_2", mask_options, dataset_options)
 
     dataset_options = ["round_1", "round_2", "MCD1+++slide0+++roi_1", "round_4"]
     mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
@@ -242,8 +243,8 @@ def test_match_mask_name_to_quantification_sheet_roi():
 
 def test_validate_xy_coordinates_for_image():
     image = np.full((1000, 100, 3), 255)
-    assert validate_coordinate_set_for_image(x=10, y=10, image=image)
-    assert not validate_coordinate_set_for_image(x=101, y=10, image=image)
+    assert validate_coordinate_set_for_image(x_coord=10, y_coord=10, image=image)
+    assert not validate_coordinate_set_for_image(x_coord=101, y_coord=10, image=image)
     assert not validate_coordinate_set_for_image()
 
 def test_parse_quantification_sheet_from_anndata(get_current_dir):
@@ -302,17 +303,6 @@ def test_gating_cell_ids(get_current_dir):
                                "description": ["roi", "roi", "roi", "roi", "roi"]})
     assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
                                       intersection=True) == []
-
-def test_populating_cluster_annotation_dict():
-    cluster_frame = pd.DataFrame({"cell_id": [1, 2, 3, 4, 5],
-                                 "cluster": ["immune"] * 5})
-    session_cluster_dict = cluster_annotation_frame_import(None, "roi_1", cluster_frame)
-    assert_frame_equal(cluster_frame, session_cluster_dict['roi_1'])
-    malformed = pd.DataFrame({"col_1": [1, 2, 3, 4, 5],
-                                  "col_2": ["immune"] * 5})
-    session_cluster_dict = cluster_annotation_frame_import(session_cluster_dict, "roi_2", malformed)
-    assert "roi_2" not in session_cluster_dict.keys()
-    assert "roi_1" in session_cluster_dict.keys()
 
 def test_match_steinbock_mask_name_to_roi():
     assert match_steinbock_mask_name_to_mcd_roi("patient1_003", "pos_1_3_3") == "patient1_003"

@@ -2,8 +2,8 @@ import os
 
 import pytest
 
-from ccramic.utils.session import (
-    remove_ccramic_caches,
+from rakaia.utils.session import (
+    remove_rakaia_caches,
     non_truthy_to_prevent_update,
     validate_session_upload_config,
     channel_dropdown_selection)
@@ -15,14 +15,14 @@ def test_session_cache_clearing():
     with tempfile.TemporaryDirectory() as tmpdirname:
         if not os.path.isdir(os.path.join(tmpdirname, unique_id)):
             os.mkdir(os.path.join(tmpdirname, unique_id))
-        if not os.path.isdir(os.path.join(tmpdirname, unique_id, 'ccramic_cache')):
-            os.mkdir(os.path.join(tmpdirname, unique_id, 'ccramic_cache'))
+        if not os.path.isdir(os.path.join(tmpdirname, unique_id, 'rakaia_cache')):
+            os.mkdir(os.path.join(tmpdirname, unique_id, 'rakaia_cache'))
         if not os.path.isdir(os.path.join(tmpdirname, unique_id, 'different_directory')):
             os.mkdir(os.path.join(tmpdirname, unique_id, 'different_directory'))
-        assert os.path.isdir(os.path.join(tmpdirname, unique_id, 'ccramic_cache'))
+        assert os.path.isdir(os.path.join(tmpdirname, unique_id, 'rakaia_cache'))
         assert os.path.isdir(os.path.join(tmpdirname, unique_id, 'different_directory'))
-        remove_ccramic_caches(tmpdirname)
-        assert not os.path.isdir(os.path.join(tmpdirname, unique_id, 'ccramic_cache'))
+        remove_rakaia_caches(tmpdirname)
+        assert not os.path.isdir(os.path.join(tmpdirname, unique_id, 'rakaia_cache'))
         # assert os.path.isdir(os.path.join(tmpdirname, unique_id, 'different_directory'))
 
 def test_non_truthy_to_update_prevention():

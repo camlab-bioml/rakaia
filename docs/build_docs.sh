@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
-sphinx-apidoc -o ./source ../ccramic/
+rm -r build/
+rm source/rakaia*.rst
+sphinx-apidoc -o ./source ../rakaia/
 make html
