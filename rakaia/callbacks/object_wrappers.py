@@ -133,7 +133,6 @@ class AnnotationQuantificationMerge:
                 mask_array=self.mask_config[self.mask_selection]["raw"], svgpath=annotation)
         return objects_included
 
-
     def populate_quantification_from_zoom(self, annotation):
         """
         Populate the quantification frame annotation category from a zoom window annotation

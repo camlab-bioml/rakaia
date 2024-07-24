@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased
 
+## [0.18.0] - 2024-07-24
+
+### Added
+
+- Ability to transfer quantification columns to cluster projection per ROI
+
 ## [0.17.0] - 2024-07-23
 
 ### Added

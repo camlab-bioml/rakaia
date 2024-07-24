@@ -1158,7 +1158,7 @@ def register_app_layout(config, cache_dest):
                                     placeholder='Select cluster category', style={"width": "90%", "float": "center"}),
                                 html.Br(),
                                 dbc.Row(children=[
-                                    dbc.Col(width = 6, children=[
+                                    dbc.Col(width=6, children=[
                                         dcc.Dropdown(id='cluster-label-list', multi=False, options=[],
                                                      style={'width': '100%', 'margin-top': '10px', "margin-left": "5px"},
                                                      placeholder='Change cluster colors'),
@@ -1357,6 +1357,9 @@ def register_app_layout(config, cache_dest):
                                         style={"width": "55%", "margin-right": "10px", "height": "100%",
                                                "margin-top": "5px"}),
                                         dbc.Button("Annotate UMAP", id="create-annotation-umap",
+                                            className="me-1", style={"margin-top": "10px",
+                                            "background-color": DEFAULT_WIDGET_COLOUR}),
+                                        dbc.Button("Current overlay -> Cluster", id="overlay-to-clust",
                                             className="me-1", style={"margin-top": "10px",
                                             "background-color": DEFAULT_WIDGET_COLOUR}),
                                         ]),

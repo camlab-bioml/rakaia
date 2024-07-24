@@ -390,7 +390,7 @@ def match_roi_identifier_to_quantification(data_selection, quantification_frame,
             return acq, 'description'
         # use experiment name if coming from tiff
         elif exp and (exp in quantification_frame['description'].tolist()) or (mask_name and exp in mask_name):
-            return mask_name if exp in mask_name else exp, 'description'
+            return mask_name if (mask_name and exp in mask_name) else exp, 'description'
         return None, None
     elif 'sample' in quantification_frame.columns:
         if mask_name and match_steinbock_mask_name_to_mcd_roi(mask_name, acq) or (mask_name == acq):

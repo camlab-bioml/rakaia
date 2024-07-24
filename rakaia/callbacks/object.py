@@ -49,7 +49,7 @@ from rakaia.utils.cluster import (
     cluster_label_children,
     cluster_annotation_frame_import,
     set_cluster_col_dropdown,
-    set_default_cluster_col)
+    set_default_cluster_col, QuantificationClusterMerge)
 from rakaia.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
@@ -681,3 +681,18 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key= OVERWRITE), \
                 gating_label_children(True, gating_dict, cur_gate_selection, id_list), reset_custom_gate_slider(ctx.triggered_id)
         return [] if gating_dict is not None else dash.no_update, [], dash.no_update if cur_gate_selection else False
+
+    @dash_app.callback(Output('imported-cluster-frame', 'data', allow_duplicate=True),
+                       Output('cluster-col', 'options', allow_duplicate=True),
+                       Input('overlay-to-clust', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('quantification-dict', 'data'),
+                       State('dataset-delimiter', 'value'),
+                       State('umap-projection-options', 'value'),
+                       State('imported-cluster-frame', 'data'),
+                       State('mask-options', 'value'))
+    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask):
+        if transfer and roi_selection and quant_dict and delimiter and overlay:
+            clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask).get_cluster_frame()
+            return SessionServerside(clust, key="cluster_assignments", use_unique_key=OVERWRITE), set_cluster_col_dropdown(clust[roi_selection])
+        raise PreventUpdate

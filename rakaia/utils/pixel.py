@@ -408,15 +408,21 @@ def select_random_colour_for_channel(blend_dict, current_channel, default_colour
 def glasbey_palette(palette_length=10):
     return glasbey.create_palette(palette_length)
 
+
+def random_8_byte_int():
+    """
+    Return a random number in the 8 byte range. Used for random hex color generation
+    """
+    return random.randint(0, 255)
+
 def random_hex_colour_generator(number=10):
     """
     Generate a list of random hex colours. The number provided will be the length of the list
     """
-    rgen = lambda: random.randint(0, 255)
     colours = []
     index = 0
     while index < number:
-        colour = '#%02X%02X%02X' % (rgen(), rgen(), rgen())
+        colour = '#%02X%02X%02X' % (random_8_byte_int(), random_8_byte_int(), random_8_byte_int())
         if colour not in colours:
             colours.append(colour)
             index += 1

@@ -53,7 +53,6 @@ def test_layer_condition():
     assert not layers_exist({"roi_1": {"channel_1": None}}, "roi_2")
 
 def test_identify_rgb_codes():
-    # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string
     assert is_rgb_color('#FAF0E6')
     assert not is_rgb_color('#FAF0')
     assert not is_rgb_color('#NotRgb')
