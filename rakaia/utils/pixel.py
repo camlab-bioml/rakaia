@@ -149,11 +149,6 @@ def get_area_statistics_from_closed_path(array, svgpath):
     return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array]), \
         np.sum(array[masked_array])
 
-
-# def convert_to_below_255(array):
-#     return array if np.max(array) < 65000 else (array // 256).astype(np.uint8)
-
-
 def resize_for_canvas(image, basewidth=400, return_array=True):
     image = Image.fromarray(image.astype(np.uint8)) if isinstance(image, np.ndarray) else image
     wpercent = (basewidth / float(image.size[0]))

@@ -7,11 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased
 
-## [0.18.0] - 2024-07-24
+## [0.18.0] - 2024-07-25
 
 ### Added
 
 - Ability to transfer quantification columns to cluster projection per ROI
+
+### Fixed
+
+- Check for signal retention for channel gallery thumbnails after `Image.Resampling.LANCZOS` down-sampling
 
 ## [0.17.0] - 2024-07-23
 

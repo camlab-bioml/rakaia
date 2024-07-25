@@ -1,4 +1,5 @@
 import math
+from typing import Union
 import dash_bootstrap_components as dbc
 from dash import html
 from PIL import Image
@@ -8,9 +9,26 @@ from rakaia.utils.pixel import (
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array)
 
+def set_gallery_thumbnail_from_signal_retention(original_image: np.array, downsampled_image: np.array,
+                                                alternate_image: np.array,
+                                                signal_ratio: Union[int, float],
+                                                resize_signal_retention_threshold: Union[int, float]=0.75,
+                                                resize_dimension_threshold: int=3000):
+    """
+    Set a thumbnail for a channel image based on the dimensions and signal retained from the down-sampled resize
+    If the signal lost if sufficiently high and the image is below a certain size, return the original image. Otherwise,
+    use the down-sampled image
+    Dimension threshold is to prevent very large images from being used as thumbnails
+    """
+    return downsampled_image if (signal_ratio > resize_signal_retention_threshold or
+                                    any(size > resize_dimension_threshold for size in
+                                        original_image.shape)) else alternate_image
+
 def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
                                            preset_selection, preset_dict, aliases, nclicks_preset,
-                                           toggle_gallery_zoom=False, toggle_scaling_gallery=False):
+                                           toggle_gallery_zoom=False, toggle_scaling_gallery=False,
+                                           resize_signal_retention_threshold: float=0.75,
+                                           resize_dimension_threshold: int=3000):
     """
     Generate the children for the image gallery comprised of the single channel images for one ROI
     """
@@ -46,6 +64,13 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
             if None not in (preset_selection, preset_dict) and nclicks_preset > 0:
                 image_render = apply_preset_to_array(image_render, preset_dict[preset_selection])
 
+            ratio = float(np.mean(image_render) / np.mean(value))
+            # use the down-sampled image if the single retention is high enough, or
+            # if the image is large (large images take longer to render in the DOM)
+            image_render = set_gallery_thumbnail_from_signal_retention(value, image_render,
+                                                apply_preset_to_array(value, blend_colour_dict[key]).astype(
+                                                np.uint8), ratio, resize_signal_retention_threshold,
+                                                                       resize_dimension_threshold)
             label = aliases[key] if aliases is not None and key in aliases.keys() else key
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
                                                                 dbc.Button(children=html.Span(

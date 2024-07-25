@@ -1,7 +1,36 @@
 import numpy as np
-from rakaia.io.gallery import generate_roi_query_gallery_children, generate_channel_tile_gallery_children
+from rakaia.io.gallery import (
+    generate_roi_query_gallery_children,
+    generate_channel_tile_gallery_children,
+    set_gallery_thumbnail_from_signal_retention)
+from rakaia.utils.pixel import resize_for_canvas
 import dash_bootstrap_components as dbc
+from numpy.testing import assert_array_equal
 
+def test_channel_thumbnail_signal_retention():
+    # if the signal kept is low, keep the original array
+    original_image = np.zeros((2500, 2500))
+    original_image.fill(10000)
+    downsampled = resize_for_canvas(original_image)
+    array_use = set_gallery_thumbnail_from_signal_retention(original_image, downsampled, original_image,
+                                                            (np.mean(downsampled) / np.mean(original_image)))
+    assert_array_equal(array_use, original_image)
+
+    # signal retained is high enough
+    original_image = np.zeros((2500, 2500))
+    original_image.fill(100)
+    downsampled = resize_for_canvas(original_image)
+    array_use = set_gallery_thumbnail_from_signal_retention(original_image, downsampled, original_image,
+                                                            (np.mean(downsampled) / np.mean(original_image)))
+    assert_array_equal(array_use, downsampled)
+
+    # dimension is too large so use the down-sample
+    original_image = np.zeros((5000, 5000))
+    original_image.fill(10)
+    downsampled = resize_for_canvas(original_image)
+    array_use = set_gallery_thumbnail_from_signal_retention(original_image, downsampled, original_image,
+                                                            (np.mean(downsampled) / np.mean(original_image)))
+    assert_array_equal(array_use, downsampled)
 
 def test_generate_channel_gallery_children():
     """
