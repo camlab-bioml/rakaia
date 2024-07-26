@@ -223,7 +223,7 @@ class FileParser:
                 if multi_channel_index == 1:
                     self.dataset_information_frame["ROI"].append(str(roi))
                     self.dataset_information_frame["Dimensions"].append(
-                        f"{page.asarray().shape[1]}x" \
+                        f"{page.asarray().shape[1]}x"
                         f"{page.asarray().shape[0]}")
                     self.dataset_information_frame["Panel"].append(
                         f"{len(tif.pages)} markers")
@@ -433,7 +433,7 @@ def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_c
     """
     Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
     """
-    #IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
+    # IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
     # is already contained in the dictionary
     split = split_string_at_pattern(dataset_selection, pattern=delimiter)
     basename, slide, acq_name = split[0], split[1], split[2]

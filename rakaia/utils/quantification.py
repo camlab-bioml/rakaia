@@ -1,3 +1,4 @@
+from typing import Union
 import numpy as np
 import pandas as pd
 from dash import html
@@ -5,7 +6,6 @@ from steinbock.measurement.intensities import (
     IntensityAggregation,
     measure_intensites)
 from steinbock.measurement.regionprops import measure_regionprops
-from typing import Union
 from rakaia.utils.object import validate_mask_shape_matches_image
 from rakaia.utils.pixel import split_string_at_pattern
 
@@ -50,8 +50,7 @@ def quantify_one_channel(image, mask):
             # IMP: only apply the offset in the positions, not for the actual cell id
             expr_mat[:, int(cell - offset)] = np.mean(image[is_cell])
         return expr_mat
-    else:
-        return None
+    return None
 
 def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, channels_to_quantify, aliases=None,
                                        dataset_options=None, delimiter: str="+++", mask_name: str=None):
@@ -105,11 +104,9 @@ def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_s
             return pd.concat([existing_frame, new_frame], axis=0, ignore_index=True)
         else:
             return new_frame
-    else:
-        if empty_master_frame and not empty_new_frame:
-            return new_frame
-        else:
-            return existing_frame
+    if empty_master_frame and not empty_new_frame:
+        return new_frame
+    return existing_frame
 
 
 def populate_gating_dict_with_default_values(current_gate_dict: dict=None, parameter_list: list=None):
@@ -156,7 +153,7 @@ def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
         if object_id_list is not None and isinstance(object_id_list, list):
             children.append(html.Span(f"{len(object_id_list)} objects"))
         return children
-    elif from_custom_list and object_id_list:
+    if from_custom_list and object_id_list:
         children = [html.B("Gating (custom ID list)\n",
                            style={"color": "black"}), html.Br(),
                     html.Span(f"{len(object_id_list)} objects")]

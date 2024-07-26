@@ -51,8 +51,8 @@ class AtlasDatabaseConnection:
                 new_collection else new_collection
             self.client.admin.command('ping')
             return True, f"Connection to database: {self.database.name} successful"
-        except (AttributeError, ConfigurationError, Exception) as e:
-            return False, f"Connection to database: {self.database.name} failed: \n {e}"
+        except (AttributeError, ConfigurationError, Exception) as except_db:
+            return False, f"Connection to database: {self.database.name} failed: \n {except_db}"
 
     def blend_configs_by_user(self, user_key="user", id_key="name") -> tuple:
         """

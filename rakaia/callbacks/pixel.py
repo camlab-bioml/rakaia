@@ -28,14 +28,13 @@ from rakaia.parsers.pixel import (
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel, check_empty_missing_layer_dict)
 from rakaia.utils.decorator import (
-    time_taken_callback,
+    # time_taken_callback,
     DownloadDirGenerator)
 from rakaia.utils.pixel import (
     delete_dataset_option_from_list_interactively,
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array,
     recolour_greyscale,
-    resize_for_canvas,
     select_random_colour_for_channel,
     apply_preset_to_blend_dict,
     filter_by_upper_and_lower_bound,
@@ -58,7 +57,9 @@ from rakaia.io.display import (
     FullScreenCanvas,
     generate_preset_options_preview_text,
     annotation_preview_table, timestamp_download_child)
-from rakaia.io.gallery import generate_channel_tile_gallery_children
+from rakaia.io.gallery import (
+    generate_channel_tile_gallery_children,
+    replace_channel_gallery_aliases)
 from rakaia.parsers.object import match_mask_name_with_roi
 from rakaia.utils.graph import strip_invalid_shapes_from_graph_layout
 from rakaia.inputs.loaders import (
@@ -1184,7 +1185,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('image-gallery-row', 'children'),
                        Input('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
-                       Input('annotation_canvas', 'relayoutData'),
+                       State('annotation_canvas', 'relayoutData'),
                        Input('toggle-gallery-zoom', 'value'),
                        State('preset-options', 'value'),
                        State('image_presets', 'data'),
@@ -1197,10 +1198,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_config', 'data'),
                        State('dataset-delimiter', 'value'),
                        State('data-collection', 'options'),
+                       State('image-gallery-row', 'children'),
+                       Input('chan-gallery-zoom-update', 'n_clicks'),
                        prevent_initial_call=True)
     def create_channel_tile_gallery_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
-                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
-                          blend_colour_dict, toggle_scaling_gallery, session_config, delimiter, options):
+                        preset_selection, preset_dict, view_by_channel, channel_selected, aliases, nclicks,
+                          blend_colour_dict, toggle_scaling_gallery, session_config, delimiter, options, cur_gal, update_zoom):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
@@ -1208,40 +1211,41 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         try:
             # do not update if the canvas triggers, but gallery zoom is not enabled
-            zoom_not_needed = ctx.triggered_id == 'annotation_canvas' and not toggle_gallery_zoom
+            zoom_not_needed = ctx.triggered_id == 'chan-gallery-zoom-update' and not toggle_gallery_zoom
             data_there = data_selection in gallery_data.keys() and all([elem is not None for elem in gallery_data[data_selection].values()])
             no_channel = ctx.triggered_id == "unique-channel-list" and not view_by_channel
             if data_there and not zoom_not_needed and not no_channel:
-                # maintain the original order of channels that is dictated by the metadata
-                # decide if channel view or ROI view is selected
-                if view_by_channel and channel_selected is not None:
-                    views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 1000000,
-                            delimiter=delimiter, use_greyscale=True, dataset_options=options).get_image_dict()
-                    if toggle_scaling_gallery:
-                        try:
-                            blend_colour_dict = check_blend_dictionary_for_blank_bounds_by_channel(
-                                blend_colour_dict, channel_selected, gallery_data, data_selection)
-                            views = {key: apply_preset_to_array(resize_for_canvas(value),
-                                    blend_colour_dict[channel_selected]) for key, value in views.items()}
-                        except KeyError:
-                            pass
+                # if the aliases are changed but the gallery exists, just update the labels in the DOM without re-rendering
+                if ctx.triggered_id == "alias-dict" and cur_gal and len(cur_gal) == len(aliases):
+                    return replace_channel_gallery_aliases(cur_gal, aliases)
                 else:
-                    views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
-
-                if views is not None:
-                    row_children = generate_channel_tile_gallery_children(views, canvas_layout, ZOOM_KEYS, blend_colour_dict,
-                        preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery)
-                else:
-                    row_children = []
-                return row_children
+                    # maintain the original order of channels that is dictated by the metadata
+                    # decide if channel view or ROI view is selected
+                    if view_by_channel:
+                        views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 1000000, delimiter=delimiter,
+                        use_greyscale=True, dataset_options=options, single_channel_view=True).get_image_dict()
+                        if toggle_scaling_gallery:
+                            try:
+                                blend_colour_dict = check_blend_dictionary_for_blank_bounds_by_channel(
+                                    blend_colour_dict, channel_selected, gallery_data, data_selection)
+                                views = {key: apply_preset_to_array(value, blend_colour_dict[channel_selected]) for
+                                         key, value in views.items()}
+                            except KeyError: pass
+                    else:
+                        views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
+                    toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
+                    row_children = generate_channel_tile_gallery_children(views, canvas_layout, ZOOM_KEYS,
+                        blend_colour_dict, preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom,
+                        toggle_scaling_gallery, 0.75, 3000, channel_selected if (view_by_channel and
+                        channel_selected) else None) if views else []
+                    return row_children
             raise PreventUpdate
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError):
             raise PreventUpdate
 
     @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
     def serve_static(path):
-        return flask.send_from_directory(
-            os.path.join(tmpdirname, str(authentic_id), 'downloads'), path, as_attachment=True)
+        return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id), 'downloads'), path, as_attachment=True)
 
     @dash_app.callback(Output('blend-options-ag-grid', 'rowData'),
                        Output('blend-options-ag-grid', 'defaultColDef'),
@@ -1286,8 +1290,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Reset the pixel histogram and range slider on a new dataset selection
         """
         if currently_in_blend is not None:
-            fig = reset_pixel_histogram()
-            return fig, [None, None]
+            return reset_pixel_histogram(), [None, None]
         raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
@@ -1929,7 +1932,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         disabled_next = True if cur_options and cur_options[-1] == cur_data_selection else False
         return disabled_prev, disabled_next
 
-
     @dash_app.callback(
         Output('image_layers', 'value', allow_duplicate=True),
         Output('main-tabs', 'active_tab'),
@@ -1937,16 +1939,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('image_layers', 'options'),
         State('image_layers', 'value'),
         State('alias-dict', 'data'),
+        State('main-tabs', 'active_tab'),
         prevent_initial_call=True)
-    def add_channel_layer_through_gallery_click(value, layer_options, current_blend, aliases):
-        if not all([elem is None for elem in value]) and None not in (layer_options, current_blend, aliases):
-            values = [i["value"] for i in layer_options]
+    def add_channel_layer_through_gallery_click(value, layer_options, current_blend, aliases, active_tab):
+        """
+        Add a channel from the channel thumbnail gallery with component pattern matching.
+        Ensure that the gallery tab is active for a switch to occur.
+        """
+        if not all([elem is None for elem in value]) and None not in (layer_options, current_blend, aliases) and \
+                active_tab == 'gallery-tab':
             index_from = ctx.triggered_id["index"]
-            if index_from in values and index_from not in current_blend:
+            if index_from in [i["value"] for i in layer_options] and index_from not in current_blend:
                 current_blend.append(index_from)
                 return current_blend, "pixel-analysis"
-            else:
-                raise PreventUpdate
+            raise PreventUpdate
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1975,7 +1981,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('tour_component', 'isOpen'),
                        Input('dash-import-tour', 'n_clicks'),
                        prevent_initial_call=True)
-
     def open_tour_guide(activate_tour):
         """
         Toggle open the import tour if requested
@@ -2005,14 +2010,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return marker_correlation_children(target_mask, prop, target_baseline, pearson)
         return []
 
-    # @dash_app.callback(Output('inputs-offcanvas', 'style'),
-    #                    Input('data-import-tab-size', 'value'),
-    #                    State('inputs-offcanvas', 'style'),
-    #                    prevent_initial_call=True)
-    #
-    # def adjust_data_import_tab_size(offcanvas_size, current_style):
-    #     if offcanvas_size and current_style and 'width' in current_style: current_style['width'] = f"{offcanvas_size}%"
-    #     return current_style if offcanvas_size else dash.no_update
 
     @dash_app.callback(Output('saved-blends', 'data'),
                        Output('saved-blend-options', 'options'),

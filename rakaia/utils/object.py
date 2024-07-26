@@ -47,8 +47,9 @@ def set_mandatory_columns(only_sample=True):
     return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
 def get_min_max_values_from_zoom_box(coord_dict):
-    if not all([elem in coord_dict.keys() for elem in \
-                    ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']]): return None
+    if not all(elem in coord_dict.keys() for elem in
+                    ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']):
+        return None
     x_min = min(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
     x_max = max(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
     y_min = min(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
@@ -56,8 +57,9 @@ def get_min_max_values_from_zoom_box(coord_dict):
     return x_min, x_max, y_min, y_max
 
 def get_min_max_values_from_rect_box(coord_dict):
-    if not all([elem in coord_dict.keys() for elem in \
-                    ['x0', 'x1', 'y0', 'y1']]): return None
+    if not all(elem in coord_dict.keys() for elem in
+                    ['x0', 'x1', 'y0', 'y1']):
+        return None
     x_min = min(coord_dict['x0'], coord_dict['x1'])
     x_max = max(coord_dict['x0'], coord_dict['x1'])
     y_min = min(coord_dict['y0'], coord_dict['y1'])
@@ -147,10 +149,9 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
                 error_config["error"] = "Warning: the current mask does not have " \
                                     "the same dimensions as the current ROI."
                 return error_config, None
-            else:
-                raise PreventUpdate
-        except KeyError:
             raise PreventUpdate
+        except KeyError as exc:
+            raise PreventUpdate from exc
     raise PreventUpdate
 
 def subset_measurements_by_object_graph_box(measurements, coordinates_dict):

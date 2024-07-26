@@ -378,9 +378,9 @@ def set_channel_list_order(set_order_clicks, order_row_data, channel_order, curr
         # make sure to remove any channels that are no longer selected while maintaining order
         return [elem for elem in channel_order if elem in current_blend]
     # option 2: if a unique order is set by the draggable grid
-    elif triggered_id == "set-sort" and order_row_data is not None and set_order_clicks > 0:
+    if triggered_id == "set-sort" and order_row_data is not None and set_order_clicks > 0:
         # imp: when taking the order from the dash grid, these are the values, so need to convert back to keys
-        channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for \
+        channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for
                          elem in order_row_data]
         return channel_order
     return []

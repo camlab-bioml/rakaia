@@ -1207,7 +1207,7 @@ def register_app_layout(config, cache_dest):
 
                             ),
 
-                        ],width=3),
+                        ], width=3),
 
                     ])])]),
 
@@ -1217,7 +1217,10 @@ def register_app_layout(config, cache_dest):
                             html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR,
                                 style={"margin-right": "15px", "margin-top": "10px", "textAlign": "center"}),
-                                    daq.ToggleSwitch(label='Use default scaling for preview',
+                                      dbc.Button("Update from zoom", id="chan-gallery-zoom-update",
+                                                 className="mb-3", color='dark', n_clicks=0, outline=True,
+                                                 style={"margin-top": "10px", "height": "50%"}),
+                                    daq.ToggleSwitch(label='Default scaling',
                                                      value=True,
                                                              id='default-scaling-gallery', labelPosition='bottom',
                                                              color=DEFAULT_WIDGET_COLOUR, style={"margin-left": "15px",

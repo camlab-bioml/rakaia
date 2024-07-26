@@ -9,11 +9,34 @@ from rakaia.utils.pixel import (
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array)
 
+def replace_channel_gallery_aliases(child, aliases_dict):
+    """
+    Recursively traverse the existing channel gallery and change the channel labels based
+    on the alias dictionary
+    """
+    # if a channel bold label is found, update the alias
+    if isinstance(child, dict) and 'children' in child and 'className' in child and \
+            child['className'] == 'card-text' and 'id' in child and child['id'] in aliases_dict.keys():
+        child['children'] = aliases_dict[child['id']]
+    # if a channel hover tip is found, update the hover text with the alias
+    if isinstance(child, dict) and 'children' in child and 'target' in child and \
+            'index' in child['target'] and child['target']['index'] in aliases_dict.keys():
+        child['children'] = f"Add {aliases_dict[child['target']['index']]} to canvas"
+    else:
+        if isinstance(child, dict):
+            for value in child.values():
+                replace_channel_gallery_aliases(value, aliases_dict)
+        elif isinstance(child, list):
+            for value in child:
+                replace_channel_gallery_aliases(value, aliases_dict)
+    return child
+
+
 def set_gallery_thumbnail_from_signal_retention(original_image: np.array, downsampled_image: np.array,
                                                 alternate_image: np.array,
                                                 signal_ratio: Union[int, float],
-                                                resize_signal_retention_threshold: Union[int, float]=0.75,
-                                                resize_dimension_threshold: int=3000):
+                                                resize_signal_retention_threshold: Union[int, float] = 0.75,
+                                                resize_dimension_threshold: int = 3000):
     """
     Set a thumbnail for a channel image based on the dimensions and signal retained from the down-sampled resize
     If the signal lost if sufficiently high and the image is below a certain size, return the original image. Otherwise,
@@ -21,20 +44,22 @@ def set_gallery_thumbnail_from_signal_retention(original_image: np.array, downsa
     Dimension threshold is to prevent very large images from being used as thumbnails
     """
     return downsampled_image if (signal_ratio > resize_signal_retention_threshold or
-                                    any(size > resize_dimension_threshold for size in
-                                        original_image.shape)) else alternate_image
+                                 any(size > resize_dimension_threshold for size in
+                                     original_image.shape)) else alternate_image
 
 def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
                                            preset_selection, preset_dict, aliases, nclicks_preset,
                                            toggle_gallery_zoom=False, toggle_scaling_gallery=False,
-                                           resize_signal_retention_threshold: float=0.75,
-                                           resize_dimension_threshold: int=3000):
+                                           resize_signal_retention_threshold: float = 0.75,
+                                           resize_dimension_threshold: int = 3000,
+                                           single_channel_identifier: str=None):
     """
     Generate the children for the image gallery comprised of the single channel images for one ROI
     """
     row_children = []
     if gallery_dict is not None and len(gallery_dict) > 0:
         for key, value in gallery_dict.items():
+            channel_key = single_channel_identifier if single_channel_identifier else key
             if all(elem in canvas_layout for elem in zoom_keys) and toggle_gallery_zoom:
                 x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
                 x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
@@ -44,7 +69,7 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
                     if not (x_range_high >= x_range_low) or not (y_range_high >= y_range_low):
                         raise AssertionError
                     image_render = value[np.ix_(range(int(y_range_low), int(y_range_high), 1),
-                                            range(int(x_range_low), int(x_range_high), 1))]
+                                                range(int(x_range_low), int(x_range_high), 1))]
                 except IndexError:
                     image_render = value
             else:
@@ -55,10 +80,10 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
                         blend_colour_dict[key]['x_lower_bound'] = 0
                     if blend_colour_dict[key]['x_upper_bound'] is None:
                         blend_colour_dict[key]['x_upper_bound'] = \
-                                get_default_channel_upper_bound_by_percentile(
-                            value)
+                            get_default_channel_upper_bound_by_percentile(
+                                value)
                     image_render = apply_preset_to_array(image_render,
-                                                     blend_colour_dict[key])
+                                                         blend_colour_dict[channel_key])
                 except (KeyError, TypeError):
                     pass
             if None not in (preset_selection, preset_dict) and nclicks_preset > 0:
@@ -67,12 +92,15 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
             ratio = float(np.mean(image_render) / np.mean(value))
             # use the down-sampled image if the single retention is high enough, or
             # if the image is large (large images take longer to render in the DOM)
-            image_render = set_gallery_thumbnail_from_signal_retention(value, image_render,
-                                                apply_preset_to_array(value, blend_colour_dict[key]).astype(
-                                                np.uint8), ratio, resize_signal_retention_threshold,
-                                                                       resize_dimension_threshold)
+            try:
+                image_render = set_gallery_thumbnail_from_signal_retention(value, image_render,
+                                        apply_preset_to_array(value, blend_colour_dict[channel_key]).astype(
+                                        np.uint8), ratio, resize_signal_retention_threshold,
+                                        resize_dimension_threshold)
+            except KeyError:
+                pass
             label = aliases[key] if aliases is not None and key in aliases.keys() else key
-            row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
+            row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text", id=key),
                                                                 dbc.Button(children=html.Span(
                                                                     [html.I(className="fa-solid fa-plus-circle",
                                                                             style={"display": "inline-block",
@@ -87,11 +115,14 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
                                                                     style={"padding": "5px",
                                                                            "margin-left": "10px",
                                                                            "margin-top": "2.5px"}),
-                                dbc.Tooltip(f'Add {label} to canvas', target={'type': 'gallery-channel', 'index': key}),
+                                                                dbc.Tooltip(f'Add {label} to canvas',
+                                                                            target={'type': 'gallery-channel',
+                                                                                    'index': key}),
                                                                 ]),
-                                              dbc.CardImg(src=Image.fromarray(image_render).convert('RGB'),
-                                                          bottom=True)]), width=3))
+                                                  dbc.CardImg(src=Image.fromarray(image_render).convert('RGB'),
+                                                              bottom=True)]), width=3))
     return row_children
+
 
 def generate_roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_ratio_tall=0.9):
     """
@@ -108,20 +139,22 @@ def generate_roi_query_gallery_children(image_dict, col_width=4, max_size=28, ma
             aspect_ratio = int(value.shape[1]) / int(value.shape[0])
             # implement a cap on very tall images to avoid a lot of white space
             if aspect_ratio < max_aspect_ratio_tall:
-                style = {"height": f"{max_size}rem", "width": f"{max_size * aspect_ratio}rem", "justifyContent": "center"}
+                style = {"height": f"{max_size}rem", "width": f"{max_size * aspect_ratio}rem",
+                         "justifyContent": "center"}
             else:
                 style = None
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                                                            dbc.Button("Load",
-                                                                                  id={'type': 'data-query-gallery',
-                                                                                      'index': key},
-                                                                                  outline=True, color="dark",
-                                                                                  className="me-1", size="sm",
-                                                                       style={"padding": "5px",
-                                                                              "margin-left": "10px",
-                                                                              "margin-top": "2.5px"})]),
-                                              dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
-                                                          bottom=True, style=style, className='align-self-center')]),
-                                    width=col_width))
+                                                                dbc.Button("Load",
+                                                                           id={'type': 'data-query-gallery',
+                                                                               'index': key},
+                                                                           outline=True, color="dark",
+                                                                           className="me-1", size="sm",
+                                                                           style={"padding": "5px",
+                                                                                  "margin-left": "10px",
+                                                                                  "margin-top": "2.5px"})]),
+                                                  dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
+                                                              bottom=True, style=style,
+                                                              className='align-self-center')]),
+                                        width=col_width))
             roi_list.append(key)
     return row_children, roi_list

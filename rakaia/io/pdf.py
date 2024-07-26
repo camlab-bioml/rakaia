@@ -85,13 +85,11 @@ class AnnotationPDFWriter:
                         # first value is the width, second is the height
                         fig = plt.figure(figsize=(width, height))
                         fig.tight_layout()
-                        # ax = fig.add_subplot(111)
-                        # plt.axes((.1, .4, .8, .5))
-                        ax = fig.add_axes((0, .4, 1, 0.5))
-                        ax.imshow(region, interpolation='nearest')
-                        ax.set_title(value['title'], fontsize=(width + 10))
-                        ax.set_xticks([])
-                        ax.set_yticks([])
+                        axes = fig.add_axes((0, .4, 1, 0.5))
+                        axes.imshow(region, interpolation='nearest')
+                        axes.set_title(value['title'], fontsize=(width + 10))
+                        axes.set_xticks([])
+                        axes.set_yticks([])
                         x_dims = float(x_max) - float(x_min)
                         y_dims = float(y_max) - float(y_min)
                         patches = self.pdf_patches_legend(value)
@@ -101,12 +99,6 @@ class AnnotationPDFWriter:
                         text_offset = .3 if height < 25 else .2
                         fig.text(.15, text_offset, description, fontsize=width)
                         fig.legend(handles=patches, fontsize=width, title='Channel List', title_fontsize=(width + 5))
-                        # ax.set_xlabel(description, fontsize=25)
-                        # y_offset = 0.95
-                        # plt.figtext(0.01, 1, "Channels", size=16)
-                        # for channel in channel_list:
-                        #     plt.figtext(0.01, y_offset, channel, size=14)
-                        #     y_offset -= 0.05
                         pdf.savefig()
             return self.filepath
         return None

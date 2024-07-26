@@ -43,6 +43,7 @@ class RegionThumbnail:
     :param dimension_min: Minimum dimension in pixels for an ROI thumbnail to be generated.
     :param dimension_max: Maximum dimension in pixels for an ROI thumbnail to be generated.
     :param roi_keyword: String keyword used to search for ROI names.
+    :param single_channel_view: Whether the thumbnail should be used to preview a single greyscale channel thumbnail.
     """
     # define string attribute matches for the partial
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt"}
@@ -53,7 +54,8 @@ class RegionThumbnail:
                         global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
                         dimension_min: Union[int, float, None]=None,
                         dimension_max: Union[int, float, None]=None,
-                        roi_keyword: str=None):
+                        roi_keyword: str=None,
+                        single_channel_view: bool=False):
         self.mcd = partial(self.additive_thumbnail_from_mcd)
         self.tiff = partial(self.additive_thumbnail_from_tiff)
         self.txt = partial(self.additive_thumbnail_from_txt)
@@ -77,6 +79,7 @@ class RegionThumbnail:
         self.delimiter = delimiter
         self.query_selection = None
         self.use_greyscale = use_greyscale
+        self.single_channel_view = single_channel_view
         # do not use the dimension limit if querying from the quantification
         self.dim_min = dimension_min if (dimension_min and not self.predefined_indices) else 0
         self.dim_max = dimension_max if (dimension_max and not self.predefined_indices) else 1e6
@@ -274,11 +277,15 @@ class RegionThumbnail:
                         channel_name = str(f"channel_{channel_index}")
                         if channel_name in self.currently_selected_channels and \
                                 channel_name in self.blend_dict.keys():
-                            with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
-                                                                self.blend_dict[channel_name])
-                            colour_use = self.blend_dict[channel_name]['color'] if not \
-                                self.use_greyscale else '#FFFFFF'
-                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
+                            if not self.single_channel_view:
+                                with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
+                                                                    self.blend_dict[channel_name])
+                                colour_use = self.blend_dict[channel_name]['color'] if not \
+                                    self.use_greyscale else '#FFFFFF'
+                                recoloured = np.array(recolour_greyscale(with_preset.astype(np.uint8),
+                                                                             colour_use)).astype(np.float32)
+                            else:
+                                recoloured = convert_rgb_to_greyscale(page.asarray())
                             acq_image.append(recoloured)
                         channel_index += 1
                     self.process_additive_image(acq_image, label)
@@ -308,7 +315,7 @@ class RegionThumbnail:
                         if channel_name in self.currently_selected_channels and \
                                 channel_name in self.blend_dict.keys():
                             with_preset = apply_preset_to_array(image,
-                                                                self.blend_dict[channel_name])
+                                        self.blend_dict[channel_name])
                             colour_use = self.blend_dict[channel_name]['color'] if not \
                                 self.use_greyscale else '#FFFFFF'
                             recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
@@ -338,34 +345,35 @@ class RegionThumbnail:
         :param label: Image label to be displayed above the thumbnail.
         :return: None
         """
-        if len(self.roi_images) < self.num_queries:
-            matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
+        if len(self.roi_images) < self.num_queries and image_list:
             summed_image = sum([image for image in image_list]).astype(np.float32)
-            summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,
-                                                 self.global_filter_type, self.global_filter_val,
-                                                 self.global_filter_sigma)
-            summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
-            # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
-            if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
-                    validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]):
-                # requires reverse matching the sample or description to the ROI name in the app
-                # if the query cell is list exists, subset the mask
-                if self.query_cell_id_lists is not None:
-                    sam_names = list(self.query_cell_id_lists.keys())
-                    # match the sample name in te quant sheet to the matched mask name
-                    # logic here should be flexible with different mask and sample names in the quantification sheet
-                    sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
-                    if sam_name is not None:
-                        mask_to_use = subset_mask_outline_using_cell_id_list(
-                            self.mask_dict[matched_mask]["raw"], self.mask_dict[matched_mask]["raw"],
-                            self.query_cell_id_lists[sam_name])
+            if not self.single_channel_view:
+                matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
+                summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,
+                                                     self.global_filter_type, self.global_filter_val,
+                                                     self.global_filter_sigma)
+                summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
+                # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
+                if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
+                        validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]):
+                    # requires reverse matching the sample or description to the ROI name in the app
+                    # if the query cell is list exists, subset the mask
+                    if self.query_cell_id_lists is not None:
+                        sam_names = list(self.query_cell_id_lists.keys())
+                        # match the sample name in te quant sheet to the matched mask name
+                        # logic here should be flexible with different mask and sample names in the quantification sheet
+                        sam_name = match_mask_name_to_quantification_sheet_roi(matched_mask, sam_names)
+                        if sam_name is not None:
+                            mask_to_use = subset_mask_outline_using_cell_id_list(
+                                self.mask_dict[matched_mask]["raw"], self.mask_dict[matched_mask]["raw"],
+                                self.query_cell_id_lists[sam_name])
+                        else:
+                            mask_to_use = self.mask_dict[matched_mask]["boundary"]
                     else:
                         mask_to_use = self.mask_dict[matched_mask]["boundary"]
-                else:
-                    mask_to_use = self.mask_dict[matched_mask]["boundary"]
-                mask_to_use = np.where(mask_to_use > 0, 255, 0)
-                summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
-                                               mask_to_use.astype(np.uint8), 1, 0).astype(np.uint8)
+                    mask_to_use = np.where(mask_to_use > 0, 255, 0)
+                    summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
+                                                   mask_to_use.astype(np.uint8), 1, 0).astype(np.uint8)
             self.roi_images[label] = summed_image
             self.queries_obtained += 1
 
@@ -385,5 +393,5 @@ class RegionThumbnail:
         :Return: bool indicating keyword presence of not.
         """
         if roi_identifier and self.keyword:
-                return any(elem in roi_identifier for elem in self.keyword)
+            return any(elem in roi_identifier for elem in self.keyword)
         return True

@@ -719,7 +719,7 @@ class CanvasLayout:
                 x_range_low = 0
                 # use different variables depending on how the ranges are written in the dict
                 # IMP: the variables will be written differently after a tab change
-                if 'xaxis.range[0]' and 'xaxis.range[1]' in current_graph_layout:
+                if all(axis in current_graph_layout for axis in ['xaxis.range[0]', 'xaxis.range[1]']):
                     high = max(current_graph_layout['xaxis.range[1]'],
                                current_graph_layout['xaxis.range[0]'])
                     low = min(current_graph_layout['xaxis.range[1]'],

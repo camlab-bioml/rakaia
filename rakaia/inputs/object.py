@@ -1,4 +1,5 @@
 from typing import Union
+from functools import partial
 import dash
 import pandas as pd
 from dash import Patch
@@ -7,7 +8,6 @@ import plotly.express as px
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 import numpy as np
-from functools import partial
 from rakaia.parsers.object import drop_columns_from_measurements_csv
 from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
 

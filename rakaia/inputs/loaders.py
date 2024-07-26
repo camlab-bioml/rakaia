@@ -1,6 +1,6 @@
+from typing import Union
 from dash import dcc
 from rakaia.io.session import SessionTheme
-from typing import Union
 from rakaia.utils.pixel import split_string_at_pattern
 
 

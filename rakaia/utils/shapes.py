@@ -24,6 +24,6 @@ def filter_annotation_shapes(canvas: Union[dict, go.Figure]):
     if 'layout' in canvas and 'shapes' in canvas['layout']:
         for shape in canvas['layout']['shapes']:
             if shape is not None and ('type' in shape and shape['type'] not in
-                                          ['rect', 'path', 'circle'] and not is_bad_shape(shape)):
-                    new_shapes.append(shape)
+                                      ['rect', 'path', 'circle'] and not is_bad_shape(shape)):
+                new_shapes.append(shape)
     return new_shapes

@@ -159,10 +159,10 @@ class AnnotationPreviewGenerator:
         """
         if annot_type == "point":
             return self.generate_point_preview(annot_key)
-        elif annot_type == "gate":
+        if annot_type == "gate":
             # if use gating, simply add the number of cells
             return f"{len(annot_key)} cells"
-        elif annot_type in ['zoom', 'rect', 'path']:
+        if annot_type in ['zoom', 'rect', 'path']:
             return self.generate_region_preview(annot_key, annot_type)
         return None
 

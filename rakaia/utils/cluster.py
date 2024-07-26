@@ -76,7 +76,7 @@ def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: 
     cur_cluster_dict = {} if not cur_cluster_dict else cur_cluster_dict
     cluster_frame = pd.DataFrame(cluster_frame)
     # for now, use set column names, but expand in the future
-    if any([elem in list(cluster_frame.columns) for elem in ClusterIdentifiers.id_cols]) and roi_selection:
+    if any(elem in list(cluster_frame.columns) for elem in ClusterIdentifiers.id_cols) and roi_selection:
         cur_cluster_dict[roi_selection] = cluster_frame
     return cur_cluster_dict if len(cur_cluster_dict) > 0 else None
 
