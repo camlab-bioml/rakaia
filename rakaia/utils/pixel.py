@@ -100,9 +100,9 @@ def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low,
     try:
         subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-        return np.average(subset), np.max(subset), np.min(subset), np.sum(subset)
+        return np.average(subset), np.max(subset), np.min(subset), np.median(subset), np.std(subset), np.sum(subset)
     except IndexError:
-        return None, None, None
+        return None, None, None, None, None
 
 def path_to_indices(path):
     """From SVG path to numpy array of coordinates, each row being a (row, col) point
@@ -147,7 +147,7 @@ def get_area_statistics_from_closed_path(array, svgpath):
     masked_array = path_to_mask(svgpath, array.shape)
     # masked_subset_data = ma.array(array, mask=masked_array)
     return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array]), \
-        np.sum(array[masked_array])
+        np.median(array[masked_array]), np.std(array[masked_array]), np.sum(array[masked_array])
 
 def resize_for_canvas(image, basewidth=400, return_array=True):
     image = Image.fromarray(image.astype(np.uint8)) if isinstance(image, np.ndarray) else image
@@ -432,7 +432,7 @@ def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
     if layer_dict and channel_list:
         image_shape = layer_dict[channel_list[0]].shape
         image = np.zeros(image_shape)
-        channel_list  = [channel for channel in channel_list if channel in layer_dict.keys()]
+        channel_list = [channel for channel in channel_list if channel in layer_dict.keys()]
         if channel_list:
             for elem in channel_list:
                 blend = layer_dict[elem]
@@ -491,7 +491,7 @@ def channel_filter_matches(current_blend_dict: dict, channel: str, filter_chosen
     Evaluates whether the current channel's filters match the filter parameters currently
     set in the session
     """
-    return  current_blend_dict[channel]['filter_type'] == filter_name and \
+    return current_blend_dict[channel]['filter_type'] == filter_name and \
             current_blend_dict[channel]['filter_val'] == filter_value and \
             current_blend_dict[channel]['filter_sigma'] == filter_sigma and \
             len(filter_chosen) > 0

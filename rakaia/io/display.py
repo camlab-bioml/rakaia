@@ -11,9 +11,19 @@ from plotly.graph_objs import XAxis, YAxis
 from rakaia.utils.region import (
     RectangleRegion,
     FreeFormRegion,
-    AnnotationPreviewGenerator)
+    AnnotationPreviewGenerator,
+    RegionStatisticGroups)
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.components.canvas import CanvasLayout
+
+def generate_empty_region_table():
+    """
+    Generate a dictionary representation of an empty pandas Dataframe for channel region summaries
+    """
+    layers = {}
+    for key in list(RegionStatisticGroups.columns):
+        layers[key] = []
+    return pd.DataFrame(layers).to_dict(orient='records')
 
 class RegionSummary:
     """
@@ -39,11 +49,9 @@ class RegionSummary:
         self.data_selection = data_selection
         self.aliases = aliases_dict
         # these are the zoom keys by default
-        self.zoom_keys  = ('xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]')
+        self.zoom_keys = ('xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]')
         self.selected_channels = layers
-        self.summary_frame = pd.DataFrame({'Channel': [], 'Mean': [], 'Max': [],
-                             'Min': [], 'Total': []}).to_dict(orient='records')
-
+        self.summary_frame = generate_empty_region_table()
         # if zoom is used
         if ('shapes' not in self.graph_layout or len(self.graph_layout['shapes']) <= 0) and \
              all(elem in self.graph_layout for elem in self.zoom_keys):
@@ -65,6 +73,8 @@ class RegionSummary:
         mean_panel = []
         max_panel = []
         min_panel = []
+        median_panel = []
+        std_panel = []
         total_panel = []
         aliases = []
         region = []
@@ -88,6 +98,8 @@ class RegionSummary:
                             mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                             max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                             min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                            median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
+                            std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
                             total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
                             aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                             region.append(region_index)
@@ -98,6 +110,8 @@ class RegionSummary:
                             mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
                             max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
                             min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                            median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
+                            std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
                             total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
                             aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                             region.append(region_index)
@@ -109,7 +123,7 @@ class RegionSummary:
                     pass
 
             layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
-                          'Total': total_panel, 'Region': region}
+                          'Median': median_panel, 'SD': std_panel, 'Total': total_panel, 'Region': region}
             self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
     def compute_statistics_rectangle(self, reg_type="zoom", redrawn=False):
@@ -124,6 +138,8 @@ class RegionSummary:
             mean_panel = []
             max_panel = []
             min_panel = []
+            median_panel = []
+            std_panel = []
             total_panel = []
             aliases = []
 
@@ -133,11 +149,13 @@ class RegionSummary:
                 mean_panel.append(round(float(region.compute_pixel_mean()), 2))
                 max_panel.append(round(float(region.compute_pixel_max()), 2))
                 min_panel.append(round(float(region.compute_pixel_min()), 2))
+                median_panel.append(round(float(region.compute_pixel_median()), 2))
+                std_panel.append(round(float(region.compute_pixel_dev()), 2))
                 total_panel.append(round(float(region.compute_integrated_signal()), 2))
                 aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
 
             layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
-                          'Total': total_panel}
+                          'Median': median_panel, 'SD': std_panel, 'Total': total_panel}
             self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
         except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
@@ -233,16 +251,6 @@ class FullScreenCanvas:
 
     def get_canvas_layout(self):
         return self.canvas_layout
-
-# def plotly_fig2array(fig, array):
-#     # convert Plotly fig to an array
-#     ratio = 0.00125 * (array.shape[1] / array.shape[0]) * array.shape[1]
-#     fig['layout']['annotations'][0]['font']['size'] = int(fig['layout']['annotations'][0]['font']['size'] * ratio)
-#     fig['layout']['annotations'][1]['font']['size'] = int(fig['layout']['annotations'][1]['font']['size'] * ratio)
-#     fig_bytes = fig.to_image(format="webp", width=array.shape[1], height=array.shape[0], scale=5)
-#     buf = io.BytesIO(fig_bytes)
-#     img = Image.open(buf)
-#     return np.array(Image.fromarray(np.asarray(img)).convert('RGB')).astype(np.uint8)
 
 def generate_preset_options_preview_text(preset_dict: dict=None):
     """

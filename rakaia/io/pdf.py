@@ -1,4 +1,5 @@
 import os
+from typing import Union
 from matplotlib.backends.backend_pdf import PdfPages
 import numpy as np
 import cv2
@@ -23,7 +24,7 @@ class AnnotationPDFWriter:
     param dest_dir: Output directory for the PDF
     :param output_file: Filename output for the PDF
     :param blend_dict: Dictionary of the blend parameters for the channel panel
-    :param global_apply_filter: Whether or not a global filter has been applied
+    :param global_apply_filter: Whether a global filter (gaussian or median blur) has been applied
     :param global_filter_type: String specifying a global gaussian or median blur
     :param global_filter_val: Kernel size for the global gaussian or median blur
     :param global_filter_sigma: If global gaussian blur is applied, set the sigma value
@@ -48,6 +49,25 @@ class AnnotationPDFWriter:
         self.global_filter_val = global_filter_val
         self.global_filter_sigma = global_filter_sigma
 
+    @staticmethod
+    def set_region_bounds(key: Union[str, dict, list], region: dict):
+        """
+        Set the region boundaries based on the type of region annotation. Regions drawn for PDF are
+        always convex (rectangular) based on min-max values for each axis.
+
+        :param key: The string or dictionary tuple defining the contents and identity of the annotation
+        :param region: The dictionary of values associated with the region annotation parameters
+        :return: Tuple of min and max values for both the x and y-axis
+        """
+        x_min, x_max, y_min, y_max = None, None, None, None
+        if region['type'] == "zoom":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
+        elif region['type'] == "rect":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
+        elif region['type'] == "path":
+            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
+        return x_min, x_max, y_min, y_max
+
     def generate_annotation_pdf(self):
         """
         Write the annotation PDF to file
@@ -58,16 +78,11 @@ class AnnotationPDFWriter:
             with PdfPages(self.filepath) as pdf:
                 for key, value in self.annotations_dict.items():
                     if value['type'] in ['zoom', 'rect', 'path']:
-                        # the key is the tuple of the coordinates or the svgpath
-                        if value['type'] == "zoom":
-                            x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
-                        elif value['type'] == "rect":
-                            x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
-                        elif value['type'] == "path":
-                            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
+                        # the key is the tuple of the coordinates or the svg path
+                        x_min, x_max, y_min, y_max = self.set_region_bounds(key, value)
                         try:
-                            image = sum([np.asarray(self.canvas_layers[self.data_selection][elem]).astype(np.float32) for \
-                             elem in value['channels'] if \
+                            image = sum([np.asarray(self.canvas_layers[self.data_selection][elem]).astype(np.float32) for
+                             elem in value['channels'] if
                              elem in self.canvas_layers[self.data_selection].keys()]).astype(np.float32)
                             image = apply_filter_to_array(image, self.global_apply_filter, self.global_filter_type,
                                                           self.global_filter_val,

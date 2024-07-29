@@ -140,7 +140,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if frame is not None:
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
-                    # also return the current count of the umap category selected to update the distribution table
+                # also return the current count of the umap category selected to update the distribution table
                 if umap_layout is not None:
                     merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
                     cell_id_dict = generate_dict_of_roi_cell_ids(merged)
@@ -314,7 +314,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             remove = ctx.triggered_id in ["delete-annotation-tabular", "clear-annotation_dict"]
             if ctx.triggered_id == "clear-annotation_dict" and data_selection in annotations:
                 indices_remove = [int(i) for i in range(len(annotations[data_selection].keys()))]
-                # annotations[data_selection] = {}
             else:
                 indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
             sample_name, id_column = match_roi_identifier_to_quantification(
@@ -334,7 +333,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_quantification_with_annotations(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-annotations":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "measurements.csv", index = False)
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "measurements.csv", index=False)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -465,7 +464,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if execute_download > 0 and umap_projection is not None:
             return dcc.send_data_frame(pd.DataFrame(umap_projection, columns=['UMAP1', 'UMAP2']).to_csv,
-                                "umap_coordinates.csv", index=False)
+                                       "umap_coordinates.csv", index=False)
         raise PreventUpdate
 
     @dash_app.callback(

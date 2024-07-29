@@ -7,11 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.18.0] - 2024-07-26
+## [0.18.0] - 2024-07-29
 
 ### Added
 
 - Ability to transfer quantification columns to cluster projection per ROI
+- Median and standard deviation to region summary #107
+- Ability to toggle side placement of canvas tools sidebar #108
 
 ### Fixed
 
@@ -22,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Recursively go through channel gallery children on label changes instead of re-rendering all components
 - Do not update channel gallery on zoom automatically: use button trigger to update
+- Canvas mode bar moved to center #108
 
 ## [0.17.0] - 2024-07-23
 
