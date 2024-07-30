@@ -517,7 +517,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             all_layers = check_empty_missing_layer_dict(all_layers, data_selection)
             for elem in add_to_layer:
                 # if the selected channel doesn't have a config yet, create one either from scratch or a preset
-                if elem not in current_blend_dict.keys() and not preset_selection:
+                if elem not in current_blend_dict.keys() and not preset_selection and uploaded_w_data:
                     current_blend_dict[elem] = {'color': '#FFFFFF', 'x_lower_bound': 0, 'x_upper_bound':
                         get_default_channel_upper_bound_by_percentile(uploaded_w_data[data_selection][elem]),
                                                 'filter_type': None, 'filter_val': None, 'filter_sigma': None}
@@ -662,7 +662,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def set_blend_options_for_layer_with_bool_filter(layer, uploaded, current_blend_dict, data_selection,
                                                      all_layers, filter_chosen, filter_name, filter_value, filter_sigma,
                                                      cur_layers, blend_options, session_vars):
-
         only_options_changed = False
         if None not in (ctx.triggered, session_vars):
             only_options_changed = channel_already_added(ctx.triggered_id, ctx.triggered, session_vars)

@@ -98,7 +98,7 @@ class AnnotationQuantificationMerge:
 
         :return: None
         """
-        if self.remove and self.annotations[self.data_selection]:
+        if self.remove and self.data_selection in self.annotations and self.annotations[self.data_selection]:
             # set the ids for the indices to remove
             if not self.indices_remove:
                 last = list(self.annotations[self.data_selection].keys())[-1]

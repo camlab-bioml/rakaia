@@ -47,6 +47,8 @@ def set_gallery_thumbnail_from_signal_retention(original_image: np.array, downsa
                                  any(size > resize_dimension_threshold for size in
                                      original_image.shape)) else alternate_image
 
+# IMP: specifying n_clicks on button addition can trigger an erroneous selection
+# https://github.com/facultyai/dash-bootstrap-components/issues/1047
 def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
                                            preset_selection, preset_dict, aliases, nclicks_preset,
                                            toggle_gallery_zoom=False, toggle_scaling_gallery=False,

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.18.0] - 2024-07-29
+## [0.18.0] - 2024-07-30
 
 ### Added
 
@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Check for signal retention for channel gallery thumbnails after `Image.Resampling.LANCZOS` down-sampling
 - Don't enable zoom on channel-wise gallery due to varying ROI dimensions
+- Add panel length check in addition to key match for JSON, db config updates
 
 ### Changed
 

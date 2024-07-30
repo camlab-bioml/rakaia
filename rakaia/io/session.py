@@ -132,7 +132,7 @@ def panel_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
     try:
         current_blend = current_blend if isinstance(current_blend, list) else list(current_blend.keys())
         return None not in (current_blend, new_blend) and all(
-            elem in new_blend['channels'] for elem in current_blend)
+            elem in new_blend['channels'] for elem in current_blend) and len(new_blend['channels']) == len(current_blend)
     except (KeyError, TypeError):
         return False
 

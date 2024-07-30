@@ -1,6 +1,6 @@
 # rakaia
 
-rakaia: Analyze multiplexed imaging datasets interactively and quickly.
+rakaia: Large scale multiplex image analysis in the browser
 
 <p align="center">
     <img src="man/assets/app-preview.png">
