@@ -36,7 +36,7 @@ def init_dashboard(server, authentic_id, config=None):
             cache_dest = os.path.join(str(tempfile.gettempdir()), authentic_id, "rakaia_cache")
 
         if os.path.exists(cache_dest):
-            shutil.rmtree(cache_dest)
+            shutil.rmtree(cache_dest, ignore_errors=True)
 
         backend_dir = FileSystemBackend(cache_dir=cache_dest)
         dash_app = DashProxy(__name__,
@@ -57,7 +57,7 @@ def init_dashboard(server, authentic_id, config=None):
         # https://github.com/fohrloop/dash-uploader/blob/dev/docs/dash-uploader.md#4-custom-handling-of-http-requests
         du.configure_upload(dash_app, cache_dest)
 
-    #for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
+    # for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
     # useful when serverside components can cache large stores much more effectively
 
     # VALID_USERNAME_PASSWORD_PAIRS = {

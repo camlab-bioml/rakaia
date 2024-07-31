@@ -56,7 +56,7 @@ class AnnotationRegionWriter:
         dest_file = f"{self.out_name}_regions.csv" if self.out_name else dest_file
         self.filepath = str(os.path.join(dest_dir, dest_file))
         if self.roi_selection in self.annotation_dict.keys() and \
-            len(self.annotation_dict[self.roi_selection].items()) > 0:
+                len(self.annotation_dict[self.roi_selection].items()) > 0:
             for key, value in self.annotation_dict[self.roi_selection].items():
                 objects_included = []
                 # for now, just use svg paths to extract mask object annotation
@@ -86,10 +86,11 @@ class AnnotationMaskWriter:
     :param data_selection: String representation of the current session ROI
     :param mask_shape: Tuple of the current mask dimensions
     :param canvas_mask: numpy array of the current mask applied to the canvas
+    :param auto_create_dir: Whether to generate the output directory on initialization. Default is True
     :return: None
     """
     def __init__(self, dest_dir: str=None, annotation_dict: dict=None, data_selection: str=None,
-                 mask_shape: tuple=None, canvas_mask: np.ndarray=None):
+                 mask_shape: tuple=None, canvas_mask: np.ndarray=None, auto_create_dir: bool=True):
         self.annotation_dict = annotation_dict
         self.dest_dir = os.path.join(dest_dir, "annotation_masks") if dest_dir is not None else None
         self.data_selection = data_selection
@@ -97,6 +98,7 @@ class AnnotationMaskWriter:
         self.mask = canvas_mask
         self.cell_class_arrays = {}
         self.cell_class_ids = {}
+        self.auto_create_dir = auto_create_dir
 
     def create_dir(self):
         """
@@ -104,8 +106,9 @@ class AnnotationMaskWriter:
 
         :return: None
         """
-        if os.path.exists(self.dest_dir) and os.access(os.path.dirname(self.dest_dir), os.R_OK):
-            shutil.rmtree(os.path.dirname(self.dest_dir))
+        if os.path.exists(self.dest_dir) and os.access(os.path.dirname(self.dest_dir), os.R_OK) and \
+                self.auto_create_dir:
+            shutil.rmtree(os.path.dirname(self.dest_dir), ignore_errors=True)
         if not os.path.exists(self.dest_dir):
             os.makedirs(self.dest_dir)
 

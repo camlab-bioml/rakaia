@@ -48,7 +48,7 @@ from rakaia.utils.pixel import (
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
     MarkerCorrelation, high_low_values_from_zoom_layout, layers_exist, add_saved_blend)
-from rakaia.utils.session import validate_session_upload_config, channel_dropdown_selection
+from rakaia.utils.session import validate_session_upload_config, channel_dropdown_selection, sleep_on_small_roi
 from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 from rakaia.io.display import (
     RegionSummary,
@@ -303,6 +303,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         # get the first image in the ROI and check the dimensions
                         first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
+                        # add a pause if the roi is really small to allow a full canvas update
+                        sleep_on_small_roi(dim_return)
                         # if the new dimensions match, do not update the canvas child to preserve the ui revision state
                         if new_roi_same_dims(ctx.triggered_id, cur_dimensions, first_image):
                             canvas_return = dash.no_update

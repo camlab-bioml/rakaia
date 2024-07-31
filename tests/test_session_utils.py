@@ -1,12 +1,13 @@
 import os
-
+import time
+import numpy as np
 import pytest
-
 from rakaia.utils.session import (
     remove_rakaia_caches,
     non_truthy_to_prevent_update,
     validate_session_upload_config,
-    channel_dropdown_selection)
+    channel_dropdown_selection,
+    sleep_on_small_roi)
 import tempfile
 from dash.exceptions import PreventUpdate
 
@@ -23,7 +24,6 @@ def test_session_cache_clearing():
         assert os.path.isdir(os.path.join(tmpdirname, unique_id, 'different_directory'))
         remove_rakaia_caches(tmpdirname)
         assert not os.path.isdir(os.path.join(tmpdirname, unique_id, 'rakaia_cache'))
-        # assert os.path.isdir(os.path.join(tmpdirname, unique_id, 'different_directory'))
 
 def test_non_truthy_to_update_prevention():
     real_string = "this is real"
@@ -51,3 +51,15 @@ def test_generate_channel_dropdowns():
                        {'label': 'Histone', 'value': 'In113'}]
     assert not channel_dropdown_selection(None, names)
     assert not channel_dropdown_selection({}, {})
+
+def test_roi_pause():
+    small_roi = np.zeros((350, 350))
+    start = time.time()
+    sleep_on_small_roi(small_roi.shape)
+    end = time.time()
+    assert (end - start) >= 2.00
+    larger_roi = np.zeros((401, 401))
+    start = time.time()
+    sleep_on_small_roi(larger_roi.shape)
+    end = time.time()
+    assert (end - start) < 2.00

@@ -381,7 +381,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             else:
                 mask_used = None
             return dcc.send_file(AnnotationMaskWriter(download_mask, annotations_dict, data_selection,
-                                (first_image.shape[0], first_image.shape[1]), mask_used).write_annotation_masks())
+                (first_image.shape[0], first_image.shape[1]), mask_used, False).write_annotation_masks())
         raise PreventUpdate
 
     @dash_app.callback(
