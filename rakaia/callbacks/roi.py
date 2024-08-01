@@ -74,8 +74,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (currently_selected, data_selection, blend_colour_dict,
                         session_config) and not quant_empty and len(currently_selected) > 0:
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
-                rois_decided = query_from_quantification
-                rois_exclude, row_children = [], []
+                rois_decided, rois_exclude, row_children = query_from_quantification, [], []
             else:
                 rois_decided, row_children = None, None
             # if the query is being extended, append on top of the existing gallery

@@ -44,6 +44,7 @@ class RegionThumbnail:
     :param dimension_max: Maximum dimension in pixels for an ROI thumbnail to be generated.
     :param roi_keyword: String keyword used to search for ROI names.
     :param single_channel_view: Whether the thumbnail should be used to preview a single greyscale channel thumbnail.
+    :return: None
     """
     # define string attribute matches for the partial
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt"}

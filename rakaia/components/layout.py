@@ -540,7 +540,7 @@ def register_app_layout(config, cache_dest):
                                         html.Br(),
                                             html.Div([
                                                 dcc.Slider(50, 150, 2.5, value=100, id='annotation-canvas-size',
-                                                           # persistence=config['persistence'], persistence_type='local',
+                                                           persistence=config['persistence'], persistence_type='local',
                                                            marks={50: 'small', 100: 'default', 150: 'large'})],
                                                 style={"width": "45vh", "height": "10%", "padding": "0px",
                                                        "margin-bottom": "-2px", "float": "right", "color": "#FFFFFF"}),
@@ -1048,7 +1048,7 @@ def register_app_layout(config, cache_dest):
                                 html.Div([
                                 dcc.Checklist(options=[' Overlay grid'], value=[], id="overlay-grid-canvas",
                                         style={"margin-top": "12px", "accent-color": DEFAULT_WIDGET_COLOUR}),
-                                dcc.Checklist(options=[' Add circle on click'], value=[' add circle on click'],
+                                dcc.Checklist(options=[' Add circle on click'], value=[' Add circle on click'],
                                         id="click-annotation-add-circle", style={"margin-top": "12px", "margin-left": "30px",
                                                             "accent-color": DEFAULT_WIDGET_COLOUR}),
                                 ], style={"display": "flex", "float": "center", "justifyContent": "center",

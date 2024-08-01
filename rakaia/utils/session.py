@@ -50,3 +50,13 @@ def sleep_on_small_roi(roi_dimensions: tuple=None, dim_threshold: Union[int, flo
     """
     if roi_dimensions and all(dim <= dim_threshold for dim in roi_dimensions):
         time.sleep(seconds_pause)
+
+def set_data_selection_after_import(roi_options: Union[list, None]=None, cur_data_selection: Union[str, None]=None):
+    """
+    Set the current ROI selection after file import. Will evaluate whether a selection has already been made or not.
+    """
+    if cur_data_selection and roi_options and cur_data_selection in roi_options:
+        return cur_data_selection
+    if roi_options:
+        return roi_options[0]
+    return None

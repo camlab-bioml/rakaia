@@ -16,11 +16,11 @@ from rakaia.utils.pixel import split_string_at_pattern, get_first_image_from_roi
 from rakaia.utils.object import convert_mask_to_object_boundary
 
 
-def default_canvas_margins():
+def default_canvas_margins() -> dict:
     """
     Define the default margins for the canvas `go.Figure` as a dictionary
-    Returns:
-        Dictionary with margin elements as keys, compatible with `plotly.go` figures
+
+    :return: Dictionary with margin elements as keys, compatible with `plotly.go` figures
     """
     return dict(l=1.5, r=1.5, b=25, t=35, pad=0)
 
@@ -74,7 +74,7 @@ def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=80
     """
     Wrap the annotation canvas in a dcc.Loading screen if the dimensions of the image are larger than the threshold
     or
-    if hovertext is used (slows down the canvas considerably)
+    if hover text is used (slows down the canvas considerably)
     """
     # conditions for wrapping the canvas
     large_image = image is not None and (int(image.shape[0] * image.shape[1]) > size_threshold)
@@ -183,6 +183,10 @@ def get_additive_image_with_masking(currently_selected, data_selection, canvas_l
 
 
 def add_local_file_dialog(use_local_dialog=False, input_id="local-dialog-file"):
+    """
+    Add a button to open a local file dialog using `wx`. Toggleable as wx python is not compatible
+    on all OS due to threading constraints
+    """
     if use_local_dialog:
         return dbc.Button(children=html.Span([html.I(className="fa-regular fa-folder-open",
                                                      style={"display": "inline-block", "margin-right": "7.5px",

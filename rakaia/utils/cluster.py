@@ -48,6 +48,12 @@ class QuantificationClusterMerge:
             self.set_new_cluster_frame(subset)
 
     def set_new_cluster_frame(self, new_clust: Union[dict, pd.DataFrame]):
+        """
+        Set the new cluster frame based on the presence of an existing frame
+
+        :param new_clust: Cluster frame to replace or merge with existing results
+        :return: None
+        """
         # if no cluster frame, make a new one
         if not self._cluster_frame or self.roi_selection not in self._cluster_frame:
             self._cluster_frame[self.roi_selection] = new_clust

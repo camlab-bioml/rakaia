@@ -210,7 +210,7 @@ class FileParser:
                 self.check_for_valid_tiff_panel(tif)
             multi_channel_index = 1
             basename = str(Path(tiff_path).stem)
-            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq{str(self.acq_index)}" if \
+            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq" if \
                 internal_name is None else internal_name
             # treat each tiff as its own ROI and increment the acq index for each one
             self.image_dict[roi] = {}
@@ -361,7 +361,7 @@ class FileParser:
                 self.check_for_valid_txt_panel(txt_channel_names, txt_channel_labels)
             basename = str(Path(txt_filepath).stem)
             roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
-                  f"{self.delimiter}{str(self.acq_index)}" if internal_name is None else internal_name
+                  f"{self.delimiter}acq" if internal_name is None else internal_name
             self.image_dict[roi] = {}
             if not self.lazy_load:
                 acq = acq_text_read.read_acquisition(strict=False)
@@ -466,6 +466,9 @@ def convert_between_dense_sparse_array(array, array_type="dense"):
     return csc_matrix(sparse_array_to_dense(array)) if array_type == "sparse" else sparse_array_to_dense(array)
 
 def convert_rgb_to_greyscale(array: Union[np.array, np.ndarray]):
+    """
+    Convert an RGB image to greyscale based on the array shape (number of channels/dimensions).
+    """
     if len(array.shape) >= 3:
         return np.array(Image.fromarray(array.astype(np.uint8)).convert('L')).astype(np.float32)
     return array

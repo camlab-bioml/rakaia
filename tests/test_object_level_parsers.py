@@ -28,7 +28,6 @@ from rakaia.parsers.object import (
     return_umap_dataframe_from_quantification_dict,
     object_id_list_from_gating,
     is_steinbock_intensity_anndata)
-from pandas.testing import assert_frame_equal
 import anndata as adata
 
 def test_validation_of_measurements_csv(get_current_dir):
@@ -42,7 +41,6 @@ def test_validation_of_measurements_csv(get_current_dir):
     measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'], axis=1)
     with pytest.raises(QuantificationFormatError):
         validate_incoming_measurements_csv(measurements_bad)
-
     valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None
     assert err is None
@@ -105,7 +103,6 @@ def test_parse_mask_filenames():
 
 def test_read_in_mask_from_filepath(get_current_dir):
     masks_dict = {"mask": os.path.join(get_current_dir, "mask.tiff")}
-    #TODO: validate the read_in_mask_array_from_filepath function
     mask_return = read_in_mask_array_from_filepath(masks_dict, "mask", 1, None, True)
     assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
     assert isinstance(mask_return[1], list)
@@ -113,7 +110,6 @@ def test_read_in_mask_from_filepath(get_current_dir):
 
     masks_dict_2 = {"mask_1": os.path.join(get_current_dir, "mask.tiff"),
                     "mask_2": os.path.join(get_current_dir, "mask.tiff")}
-    # TODO: validate the read_in_mask_array_from_filepath function
     mask_return = read_in_mask_array_from_filepath(masks_dict_2, "mask", 1, None, False)
     assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
     assert isinstance(mask_return[1], list)
@@ -122,7 +118,7 @@ def test_read_in_mask_from_filepath(get_current_dir):
 def test_return_proper_cols_remove_validate():
     assert 'cell_id' in set_columns_to_drop()
     assert 'x_min' in set_columns_to_drop()
-    assert not 'x_min' in set_mandatory_columns()
+    assert 'x_min' not in set_mandatory_columns()
     assert len(set_columns_to_drop()) != len(set_mandatory_columns())
 
 def test_parse_restyledata_from_legend_change():

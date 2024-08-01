@@ -12,6 +12,7 @@ from sklearn.preprocessing import StandardScaler
 import scanpy as sc
 import dash
 
+from rakaia.io.readers import DashUploaderFileReader
 from rakaia.utils.alert import add_warning_to_error_config
 from rakaia.utils.object import (
     set_mandatory_columns,
@@ -25,14 +26,20 @@ from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.io.session import SessionServerside
 
 def drop_columns_from_measurements_csv(measurements_csv):
+    """
+    Drop the columns that succeed the sample identifier in a measurements data frame so that
+    the only channels that remain correponding to marker/channel summarized expression by segmented object.
+    """
     cols_to_drop = set_columns_to_drop(measurements_csv)
     for col in cols_to_drop:
         if col in measurements_csv.columns:
             measurements_csv = pd.DataFrame(measurements_csv).drop(col, axis=1)
     return measurements_csv
 
-def return_umap_dataframe_from_quantification_dict(quantification_dict, current_umap=None, drop_col=True,
-                                                   rerun=True, unique_key_serverside=True,
+def return_umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame],
+                                                   current_umap: Union[dict, pd.DataFrame]=None,
+                                                   drop_col: bool=True,
+                                                   rerun: bool=True, unique_key_serverside: bool=True,
                                                    cols_include: list=None):
     """
     Generate a UMAP coordinate frame from a data frame of channel expression
@@ -99,10 +106,13 @@ def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999
     return pd.DataFrame(filtered)
 
 def get_quantification_filepaths_from_drag_and_drop(status):
-    filenames = [str(x) for x in status.uploaded_files]
+    """
+    Parse a list of imported filepaths corresponding to quantification data frames
+    """
+    filenames = DashUploaderFileReader(status).return_filenames()
     session_config = {'uploads': []}
     # IMP: ensure that the progress is up to 100% in the float before beginning to process
-    if filenames and float(status.progress) == 1.0:
+    if filenames:
         for file in filenames:
             session_config['uploads'].append(file)
         return session_config
@@ -134,9 +144,12 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, use_per
     raise PreventUpdate
 
 def parse_masks_from_filenames(status):
-    filenames = [str(x) for x in status.uploaded_files]
+    """
+    Parse a list of filepaths corresponding to segmentation masks for import.
+    """
     masks = {}
-    if status.progress == 1.0:
+    filenames = DashUploaderFileReader(status).return_filenames()
+    if filenames:
         for mask_file in filenames:
             default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
             masks[default_mask_name] = mask_file
@@ -146,6 +159,10 @@ def parse_masks_from_filenames(status):
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                      set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):
+    """
+    Read a single mask from tiff into a single-page numpy array. The dictionary holding the mask will save the raw
+    array, as well as the object boundary array and hover template containing the integer identifiers for each object.
+    """
     single_upload = len(mask_uploads) == 1 and set_mask > 0
     multi_upload = len(mask_uploads) > 1
     if single_upload or multi_upload:
@@ -167,7 +184,7 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                             convert_mask_to_object_boundary(page.asarray().astype(np.uint32))).convert('RGB'))
                     mask_name_use = single_mask_name if single_mask_name is not None else mask_name
                     cur_mask_dict[mask_name_use] = {"array": mask_import, "boundary": boundary_import,
-                                                   "hover": page.asarray().reshape((page.asarray().shape[0],
+                                                       "hover": page.asarray().reshape((page.asarray().shape[0],
                                                                                     page.asarray().shape[1], 1)),
                                                    "raw": page.asarray()}
         return SessionServerside(cur_mask_dict, key="mask-dict",
@@ -176,6 +193,9 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
 
 
 def validate_quantification_from_anndata(anndata_obj, required_columns=set_mandatory_columns()):
+    """
+    Validate that an anndata object contains the required columns for quantification parsing and analysis.
+    """
     if isinstance(anndata_obj, str):
         obj = anndata.read_h5ad(anndata_obj)
         frame = pd.DataFrame(obj.obs)
@@ -242,7 +262,7 @@ class RestyleDataParser:
 
     def ignore_selected_index(self):
         """
-        :return: If the retyledata ignores the currently selected index
+        :return: If the restyledata ignores the currently selected index
         """
         return self.restyledata[0]['visible'][0] == 'legendonly'
 
@@ -348,6 +368,11 @@ def match_mask_name_with_roi(data_selection: str, mask_options: list, roi_option
 
 def match_mask_old_pipeline_syntax(data_selection: str, mask_options: Union[list, None],
                                    roi_options: Union[list, None]):
+    """
+    Match a current ROI selection to the mask syntax used by the old pipeline (SA) prior to steinbock.
+    Mask naming conventions for the old pipeline are as follows:
+    `{mcd_filename}_s0_{acquisition_id}_ac_IA_mask.tiff
+    """
     # first, check to see if the pattern matches based on the pipeline mask name output
     mask_return = None
     if mask_options is not None and roi_options is not None:
@@ -367,6 +392,10 @@ def match_mask_old_pipeline_syntax(data_selection: str, mask_options: Union[list
 
 def match_mask_to_roi_name_components(data_selection: str, mask_options: Union[list, None],
                                       delimiter: str="+++"):
+    """
+    Parse the current mask selection and attempt to match it to an experiment or ROI name in the list of imported
+    ROIs/datasets.
+    """
     mask_return = None
     exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
     if mask_options is not None and exp in mask_options:
@@ -405,6 +434,13 @@ def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_lis
 
 def match_quantification_identifier_old_pipeline_syntax(mask_selection: str, cell_id_list: Union[list, None],
                                                         sample_col_id: str="sample"):
+    """
+    Match the current mask selection (that uses the old pipeline syntax of SA prior to steinbock) to an identifier
+    in a quantification sheet identifier.
+    The old pipeline used the `sample` column name to store ROI identifiers for quantification results across multiple
+    ROIs.
+    Example: S17-745424II_s0_a7_ac_IA_mask.tiff matches `S17-745424II_7` in the `sample` column
+    """
     sam_id = None
     if mask_selection and "_ac_IA_mask" in mask_selection and cell_id_list:
         try:

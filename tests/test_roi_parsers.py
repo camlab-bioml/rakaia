@@ -60,7 +60,7 @@ def test_query_parser_tiff(get_current_dir):
                                 dataset_options=list(parse.keys()),
                                 mask_dict=mask_dict,
                                 predefined_indices=query_selection).get_image_dict()
-    assert 'for_recolour+++slide0+++acq0' in roi_query.keys()
+    assert 'for_recolour+++slide0+++acq' in roi_query.keys()
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
@@ -68,7 +68,7 @@ def test_query_parser_tiff(get_current_dir):
                                 dataset_options=list(parse.keys()),
                                 mask_dict=mask_dict,
                                 single_channel_view=True).get_image_dict()
-    assert 'for_recolour+++slide0+++acq0' in roi_query_single_view.keys()
+    assert 'for_recolour+++slide0+++acq' in roi_query_single_view.keys()
     assert len(roi_query_single_view) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query_single_view.values()])
 
@@ -79,7 +79,7 @@ def test_query_parser_txt(get_current_dir):
     blend_dict = create_new_blending_dict(parse)
     roi_query = RegionThumbnail(session_config, blend_dict, ['Gd160'], 1,
                                 dataset_options=list(parse.keys())).get_image_dict()
-    assert 'query_from_text+++slide0+++0' in roi_query.keys()
+    assert 'query_from_text+++slide0+++acq' in roi_query.keys()
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 

@@ -28,10 +28,10 @@ def test_basic_conversion_rgb_to_greyscale():
 def test_basic_parser_tiff_to_dict(get_current_dir):
     uploaded_dict = FileParser([os.path.join(get_current_dir, "for_recolour.tiff")]).image_dict
     assert len(uploaded_dict['metadata']) > 0
-    assert 'for_recolour+++slide0+++acq0' in uploaded_dict.keys()
-    assert not 'experiment1' in uploaded_dict.keys()
-    assert len(uploaded_dict['for_recolour+++slide0+++acq0'].keys()) == 1
-    assert all([elem is None for elem in uploaded_dict['for_recolour+++slide0+++acq0'].values()])
+    assert 'for_recolour+++slide0+++acq' in uploaded_dict.keys()
+    assert 'experiment1' not in uploaded_dict.keys()
+    assert len(uploaded_dict['for_recolour+++slide0+++acq'].keys()) == 1
+    assert all([elem is None for elem in uploaded_dict['for_recolour+++slide0+++acq'].values()])
 
     blending_dict = create_new_blending_dict(uploaded_dict)
     assert all([elem in ['#FFFFFF', None] for elem in \
@@ -87,20 +87,23 @@ def test_basic_parser_blend_dict_from_lazy_loading(get_current_dir):
 def test_basic_parser_lazy_loading_2(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "query_from_text.txt")])
     uploaded_dict = uploaded.image_dict
-    assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++0'].values()])
+    assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++acq'].values()])
     session_config = {"uploads": [os.path.join(get_current_dir, "query_from_text.txt")]}
-    new_upload_dict = populate_image_dict_from_lazy_load(uploaded_dict, 'query_from_text+++slide0+++0', session_config)
-    assert all([elem is not None for elem in new_upload_dict['query_from_text+++slide0+++0'].values()])
-
+    new_upload_dict = populate_image_dict_from_lazy_load(uploaded_dict, 'query_from_text+++slide0+++acq', session_config)
+    assert all([elem is not None for elem in new_upload_dict['query_from_text+++slide0+++acq'].values()])
 
 
 def test_basic_parser_from_text(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "query_from_text.txt")])
     uploaded_dict = uploaded.image_dict
     assert 'metadata' in uploaded_dict.keys()
-    assert 'query_from_text+++slide0+++0' in uploaded_dict.keys()
-    assert len(uploaded_dict['query_from_text+++slide0+++0'].keys()) == 4
-    assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++0'].values()])
+    assert 'query_from_text+++slide0+++acq' in uploaded_dict.keys()
+    assert len(uploaded_dict['query_from_text+++slide0+++acq'].keys()) == 4
+    assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++acq'].values()])
+    # trying a panel of 2 with a current panel of 4 produces an exception
+    with pytest.raises(PanelMismatchError):
+        uploaded.check_for_valid_txt_panel(["fake_1", "fake_2"], ["fake_1", "fake_2"])
+
 
 def test_basic_parser_from_h5py(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "data.h5")])

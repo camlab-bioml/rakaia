@@ -12,20 +12,37 @@ from rakaia.parsers.object import drop_columns_from_measurements_csv
 from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
 
 class PandasFrameSummaryModes:
+    """
+    Define the static pandas operations for summarizing a channel expression frame
+
+    :return: None
+    """
     @staticmethod
     def pd_mean(frame: pd.DataFrame):
+        """
+        :return: The data frame channel mean along the column axis
+        """
         return frame.mean(axis=0)
 
     @staticmethod
     def pd_max(frame: pd.DataFrame):
+        """
+        :return: The data frame channel max along the column axis
+        """
         return frame.max(axis=0)
 
     @staticmethod
     def pd_min(frame: pd.DataFrame):
+        """
+        :return: The data frame channel min along the column axis
+        """
         return frame.min(axis=0)
 
     @staticmethod
     def pd_median(frame: pd.DataFrame):
+        """
+        :return: The data frame channel median along the column axis
+        """
         return frame.median(axis=0)
 
 class BarChartPartialModes:
@@ -87,6 +104,9 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     return fig
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
+    """
+    Generate a data frame of UMAP coordinates for a dataset of segmented objects based on channel expression
+    """
     if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
         umap_frame = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
@@ -140,6 +160,9 @@ def patch_umap_figure(quantification_dict: Union[pd.DataFrame, dict], channel_ov
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, mode_value,
                                                umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
                                                 category_column=None, category_subset=None):
+    """
+    Generate a bar plot of summarized channel expression using interactive umap subsetting
+    """
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame(quantification_dict)
         # IMP: perform category subsetting before removing columns

@@ -54,6 +54,10 @@ def adjust_option_height_from_list_length(list_options, dropdown_type="image"):
 
 def set_roi_tooltip_based_on_length(data_selection: str, delimiter: str="+++",
                                     char_threshold: Union[int, float]=45):
+    """
+    Define tooltip text for the ROI selection menu to preview the current ROI. Will parse and determine
+    if the name should be from the ROI (from mcd) or the base filename/experiment name (tiff, txt, etc.)
+    """
     if data_selection and len(data_selection) >= char_threshold:
         exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
         roi_name = str(roi_name) + f" ({str(exp)})" if "acq" in str(roi_name) else str(roi_name)

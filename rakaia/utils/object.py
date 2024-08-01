@@ -27,6 +27,9 @@ class QuantificationFormatError(Exception):
     """
 
 def set_columns_to_drop(measurements_csv=None):
+    """
+    Parse a measurement data frame and create a list of columns that should be dropped for channel expression computation.
+    """
     if measurements_csv is None:
         return QuantificationColumns().defaults
     # drop every column from sample and after, as these don't represent channels
@@ -42,11 +45,18 @@ def set_columns_to_drop(measurements_csv=None):
     return cols[min(indices): len(measurements_csv.columns)]
 
 def set_mandatory_columns(only_sample=True):
+    """
+    Set the mandatory column list for a measurements data frame
+    """
     if only_sample:
         return ['sample', 'cell_id']
     return ['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample']
 
 def get_min_max_values_from_zoom_box(coord_dict):
+    """
+    Parse a dictionary entry for a canvas zoom instance, and get the min and max coordinate positions
+    for both the x and y-axis
+    """
     if not all(elem in coord_dict.keys() for elem in
                     ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']):
         return None
@@ -57,6 +67,10 @@ def get_min_max_values_from_zoom_box(coord_dict):
     return x_min, x_max, y_min, y_max
 
 def get_min_max_values_from_rect_box(coord_dict):
+    """
+    Parse a dictionary entry for rectangle shape drawn on a canvas, and get the min and max coordinate positions
+    for both the x and y-axis
+    """
     if not all(elem in coord_dict.keys() for elem in
                     ['x0', 'x1', 'y0', 'y1']):
         return None
@@ -81,8 +95,8 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
     Subset measurements frame based on a range of UMAP coordinates in the x and y axes
     Expects that the length of both frames are equal
     """
-    if not all([elem in coordinates_dict for elem in ['xaxis.range[0]', 'xaxis.range[1]',
-                                                      'yaxis.range[0]', 'yaxis.range[1]']]): return None
+    if not all(elem in coordinates_dict for elem in ['xaxis.range[0]', 'xaxis.range[1]',
+                                                      'yaxis.range[0]', 'yaxis.range[1]']): return None
     if len(measurements) != len(umap_frame):
         umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
     #     umap_frame.reset_index()
@@ -114,8 +128,8 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
         #     umap_frame.reset_index()
         #     measurements.reset_index()
-        if all([elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
-                                                          'yaxis.range[0]', 'yaxis.range[1]']]):
+        if all(elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
+                                                          'yaxis.range[0]', 'yaxis.range[1]']):
             query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                          f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                          f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
@@ -324,6 +338,9 @@ def subset_measurements_by_point(measurements, x_coord, y_coord):
         return None
 
 def validate_mask_shape_matches_image(mask, image):
+    """
+    Return a boolean indicating if a given mask has dimensions that are compatible with an image array
+    """
     return (mask.shape[0] == image.shape[0]) and (mask.shape[1] == image.shape[1])
 
 
@@ -390,10 +407,10 @@ def match_roi_identifier_to_quantification(data_selection, quantification_frame,
                 acq in quantification_frame['description'].tolist():
             return acq, 'description'
         # use experiment name if coming from tiff
-        elif exp and (exp in quantification_frame['description'].tolist()) or (mask_name and exp in mask_name):
+        if exp and (exp in quantification_frame['description'].tolist()) or (mask_name and exp in mask_name):
             return mask_name if (mask_name and exp in mask_name) else exp, 'description'
         return None, None
-    elif 'sample' in quantification_frame.columns:
+    if 'sample' in quantification_frame.columns:
         if mask_name and match_steinbock_mask_name_to_mcd_roi(mask_name, acq) or (mask_name == acq):
             return mask_name, 'sample'
         else:
@@ -444,8 +461,7 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
             mask_to_add = np.array(Image.fromarray(mask_array).convert('RGB'))
             mask_to_add = np.where(mask_to_add > 0, 255, 0).astype(empty.dtype)
             return (empty + mask_to_add).clip(0, 255).astype(np.uint8)
-        else:
-            return empty.astype(np.uint8)
+        return empty.astype(np.uint8)
     except KeyError:
         return None
 

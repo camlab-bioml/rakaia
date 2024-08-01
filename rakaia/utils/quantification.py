@@ -11,7 +11,9 @@ from rakaia.utils.pixel import split_string_at_pattern
 
 class DistributionTableColumns:
     """
-    Define the basic columns for the quantification distribution table generated with UMAP interactivity
+    Define the basic columns for the quantification distribution table generated with UMAP interactivity in the
+    `columns` attribute
+    :return: None
     """
     columns = ["Value", "Counts", "Proportion"]
 

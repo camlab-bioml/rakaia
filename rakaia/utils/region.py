@@ -135,6 +135,11 @@ class FreeFormRegion(ChannelRegion):
                 self.std_dev, self.integrated = 0, 0, 0, 0, 0, 0
 
 class RegionAnnotation(BaseModel):
+    """
+    A base model for the attributes required for a region annotation.
+
+    :Return: None
+    """
     id: str = None
     title: str = None
     body: str = None

@@ -7,7 +7,8 @@ from rakaia.utils.session import (
     non_truthy_to_prevent_update,
     validate_session_upload_config,
     channel_dropdown_selection,
-    sleep_on_small_roi)
+    sleep_on_small_roi,
+    set_data_selection_after_import)
 import tempfile
 from dash.exceptions import PreventUpdate
 
@@ -63,3 +64,10 @@ def test_roi_pause():
     sleep_on_small_roi(larger_roi.shape)
     end = time.time()
     assert (end - start) < 2.00
+
+def test_set_data_selection():
+    roi_options = ["roi_1", "roi_2"]
+    assert set_data_selection_after_import(roi_options, "roi_2") == "roi_2"
+    assert set_data_selection_after_import(roi_options, None) == "roi_1"
+    assert not set_data_selection_after_import(None, None)
+    assert not set_data_selection_after_import(None, "roi_2")
