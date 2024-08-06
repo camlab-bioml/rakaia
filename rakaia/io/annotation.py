@@ -1,5 +1,6 @@
 import os
 import json
+from typing import Union
 import shutil
 import ast
 import tifffile
@@ -27,8 +28,7 @@ class AnnotationRegionWriter:
     :param annotation_dict: Dictionary of annotations for the current ROI
     :param data_selection: String representation of the current session ROI
     :param mask_dict: Dictionary of the imported mask options
-    :param delimiter: String expression on which to split the `data_selection` parameter into the filename, slide
-    identifier, and ROI name
+    :param delimiter: String expression on which to split the `data_selection` parameter into the filename
     :param use_roi_name: Whether to use the ROI name identifier in the column output
     :return: None
     """
@@ -44,6 +44,22 @@ class AnnotationRegionWriter:
         self.out_name = set_roi_identifier_from_length(self.roi_selection, delimiter=delimiter) if \
             use_roi_name else None
 
+    def set_objects_included(self, key: Union[str, tuple], value: dict):
+        """
+        Set the list of objects to be included in the region writer based on the annotation type
+
+        :param key: The unique identifier for the region annotation
+        :param value: The dictionary containing the region annotation configuration information
+        :return: List of included objects for a specific annotation
+        """
+        objects_included = []
+        if value['type'] == 'path' and value['mask_selection'] is not None:
+            objects_included = get_objs_in_svg_boundary_by_mask_percentage(
+                mask_array=self.mask_dict[value['mask_selection']]["raw"], svgpath=key).keys()
+        elif value['type'] == 'gate' and value['mask_selection'] is not None:
+            objects_included = list(key)
+        return objects_included
+
     def write_csv(self, dest_dir: str, dest_file: str="region_annotations.csv"):
         """
         Write the mask objects associated with regions to a CSV file
@@ -58,13 +74,7 @@ class AnnotationRegionWriter:
         if self.roi_selection in self.annotation_dict.keys() and \
                 len(self.annotation_dict[self.roi_selection].items()) > 0:
             for key, value in self.annotation_dict[self.roi_selection].items():
-                objects_included = []
-                # for now, just use svg paths to extract mask object annotation
-                if value['type'] == 'path' and value['mask_selection'] is not None:
-                    objects_included = get_objs_in_svg_boundary_by_mask_percentage(
-                        mask_array=self.mask_dict[value['mask_selection']]["raw"], svgpath=key).keys()
-                elif value['type'] == 'gate' and value['mask_selection'] is not None:
-                    objects_included = list(key)
+                objects_included = self.set_objects_included(key, value)
                 if objects_included:
                     for obj in objects_included:
                         if obj:
@@ -141,6 +151,24 @@ class AnnotationMaskWriter:
             self.cell_class_ids[value['annotation_column']]['counts'] += 1
             self.cell_class_ids[value['annotation_column']]['annotations'][value['cell_type']] = \
                 self.cell_class_ids[value['annotation_column']]['counts']
+
+    @staticmethod
+    def set_rectangular_region_bounds(key: Union[str, tuple], value: dict):
+        """
+        Set the min and max coordinate bounds for a rectangular region from either a canvas scroll zoom
+        or a drawn rectangle
+
+        :param key: The unique identifier for the region annotation
+        :param value: The dictionary containing the region annotation configuration information
+        :return: Tuple of x and y min and max coordinates
+        """
+        x_min, x_max, y_min, y_max = None, None, None, None
+        if value['type'] == "zoom":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
+        elif value['type'] == "rect":
+            x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
+        return x_min, x_max, y_min, y_max
+
     def write_annotation_masks(self):
         """
         Write the annotations to masks in a zip file and return the path of the zip
@@ -157,17 +185,13 @@ class AnnotationMaskWriter:
             self.cell_class_ids[value['annotation_column']]['mask_used'] = value['mask_selection']
             if value['type'] in ['point', 'points', 'path', 'zoom', 'rect']:
                 if value['type'] not in ['point', 'points', 'path']:
-                    if value['type'] == "zoom":
-                        x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
-                    elif value['type'] == "rect":
-                        x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
-
+                    x_min, x_max, y_min, y_max = self.set_rectangular_region_bounds(key, value)
                     # replace the array elements in the box with the count value
                     self.cell_class_arrays[value['annotation_column']][int(y_min):int(y_max), int(x_min):int(x_max)] = \
                         self.cell_class_ids[value['annotation_column']]['counts']
                     self.cell_class_arrays[value['annotation_column']] = self.cell_class_arrays[
                         value['annotation_column']].reshape(self.mask_shape)
-                # if using an svgpath, get the mask for the interior pixels
+                # if using an svg path, get the mask for the interior pixels
                 elif value['type'] == 'point':
                     try:
                         x_coord = ast.literal_eval(key)['points'][0]['x']

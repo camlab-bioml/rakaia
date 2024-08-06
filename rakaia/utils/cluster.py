@@ -2,7 +2,7 @@ from typing import Union
 import pandas as pd
 from dash import html
 from rakaia.utils.pixel import glasbey_palette
-from rakaia.utils.object import match_roi_identifier_to_quantification
+from rakaia.utils.object import ROIQuantificationMatch
 
 class ClusterIdentifiers:
     """
@@ -32,9 +32,9 @@ class QuantificationClusterMerge:
         self.current_mask = current_mask
         self._cluster_frame = current_cluster_frame if current_cluster_frame else {}
         # get the roi name match to the current ROI, and what column in the quant frame is used to link
-        self.roi_match, self.quant_frame_identifier = match_roi_identifier_to_quantification(
+        self.roi_match, self.quant_frame_identifier = ROIQuantificationMatch(
                                                         self.roi_selection, self.quantification_frame, None,
-                                                        self.delimiter, self.current_mask)
+                                                        self.delimiter, self.current_mask).get_matches()
         # figure out which column is the quant results holds the object ids
         self.quant_object_identifier = get_cluster_proj_id_column(self.quantification_frame)
         self.quantification_frame[self.quant_object_identifier] = \

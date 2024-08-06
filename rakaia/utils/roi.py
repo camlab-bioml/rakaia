@@ -38,5 +38,5 @@ def override_roi_gallery_blend_list(currently_selected: list, saved_blend_dict: 
     Override the roi gallery blend list (channels) if a saved blend is used
     """
     if saved_blend_dict and saved_blend and saved_blend in saved_blend_dict:
-        return [i for i in saved_blend_dict[saved_blend]]
+        return list(saved_blend_dict[saved_blend])
     return currently_selected

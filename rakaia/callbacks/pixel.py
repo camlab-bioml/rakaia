@@ -61,7 +61,7 @@ from rakaia.io.display import (
 from rakaia.io.gallery import (
     generate_channel_tile_gallery_children,
     replace_channel_gallery_aliases)
-from rakaia.parsers.object import match_mask_name_with_roi
+from rakaia.parsers.object import ROIMaskMatch
 from rakaia.utils.graph import strip_invalid_shapes_from_graph_layout
 from rakaia.inputs.loaders import (
     previous_roi_trigger,
@@ -752,8 +752,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
         if new_selection:
-            return CanvasLayout(cur_canvas).get_fig(), match_mask_name_with_roi(new_selection, mask_options,
-                                                                                dataset_options, delimiter, True)
+            return CanvasLayout(cur_canvas).get_fig(), ROIMaskMatch(new_selection, mask_options,
+                                                        dataset_options, delimiter, True).get_match()
         raise PreventUpdate
 
     @dash_app.callback(

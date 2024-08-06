@@ -19,9 +19,8 @@ class AnnotationPDFWriter:
 
     :param annotations_dict: Dictionary of annotations for the current ROI
     :param data_selection: String representation of the current session ROI
-    :param mask_config: Dictionary of the imported mask options
-    identifier, and ROI name
-    param dest_dir: Output directory for the PDF
+    :param mask_config: Dictionary of the imported mask options identifier, and ROI name
+    :param dest_dir: Output directory for the PDF
     :param output_file: Filename output for the PDF
     :param blend_dict: Dictionary of the blend parameters for the channel panel
     :param global_apply_filter: Whether a global filter (gaussian or median blur) has been applied

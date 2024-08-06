@@ -195,32 +195,35 @@ def add_local_file_dialog(use_local_dialog=False, input_id="local-dialog-file"):
                           id=input_id, className="mb-3", color=None, n_clicks=0, style={"margin-top": "10px"})
     return html.Div(id=input_id)
 
+def deepcopy_canvas_layout_slot(canvas: Union[go.Figure, dict],
+                                slot_name: str='annotations') -> Union[dict, list]:
+    """
+    Create a deepcopy of a slot from a canvas `go.Figure` layout configuration. Common slots to parse
+    are `annotations` or `shapes` for modifying the canvas overlays such as legend text and scalebar.
+    """
+    slot = []
+    if 'layout' in canvas and slot_name in canvas['layout']:
+        slot = deepcopy(canvas['layout'][slot_name])
+    return slot
+
 
 def invert_annotations_figure(cur_canvas: go.Figure):
     """
     Invert the annotations (scalebar and legend) on a canvas figure
     """
-    if 'layout' in cur_canvas and 'annotations' in cur_canvas['layout']:
-        cur_annotations = deepcopy(cur_canvas['layout']['annotations'])
-    else:
-        cur_annotations = []
-    if 'layout' in cur_canvas and 'shapes' in cur_canvas['layout']:
-        cur_shapes = deepcopy(cur_canvas['layout']['shapes'])
-    else:
-        cur_shapes = []
+    cur_annotations = deepcopy_canvas_layout_slot(cur_canvas, 'annotations')
+    cur_shapes = deepcopy_canvas_layout_slot(cur_canvas, 'shapes')
     for shape in cur_shapes:
         try:
             if 'y0' in shape and shape['y0'] == 0.05 and 'y1' in shape and shape['y1'] == 0.05:
                 shape['x0'] = 1 - shape['x0']
                 shape['x1'] = 1 - shape['x1']
-        except IndexError:
-            pass
+        except IndexError: pass
     for annot in cur_annotations:
         try:
             if annot['y'] in [0.05, 0.06]:
                 annot['x'] = 1 - annot['x']
-        except IndexError:
-            pass
+        except IndexError: pass
     cur_canvas['layout']['annotations'] = cur_annotations
     cur_canvas['layout']['shapes'] = cur_shapes
     return cur_canvas
@@ -235,7 +238,7 @@ def set_range_slider_tick_markers(max_value, num_ticks=4):
         return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 25), 2))
     # set the default number of tick marks to 4
     # if the maximum value is less than 3, reduce the number of ticks accordingly
-    elif int(max_value) < 3:
+    if int(max_value) < 3:
         num_ticks = int(max_value) + 1
         # sets the dictionary for the string and int values to be shown in the pixel intensity range slider
     return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1
@@ -324,6 +327,23 @@ def update_canvas_filename(canvas_config: dict, roi_name: str = None, delimiter:
             pass
     return canvas_config
 
+def canvas_aspect_ratio_from_layout(canvas: Union[go.Figure, dict]=None):
+    """
+    Set the canvas aspect ratio based on the ratio of pixels from the canvas figure layout
+    Can be parsed using the range features from the canvas layout x and y-axis slots, respectively.
+    """
+    aspect_ratio = 1
+    if canvas is not None and 'layout' in canvas and \
+            'range' in canvas['layout']['xaxis'] and \
+            'range' in canvas['layout']['yaxis']:
+        try:
+            aspect_ratio = int(canvas['layout']['xaxis']['range'][1]) / \
+                           int(canvas['layout']['yaxis']['range'][0])
+        except (KeyError, ZeroDivisionError):
+            aspect_ratio = 1
+    return aspect_ratio
+
+
 
 def set_canvas_viewport(size_slider_val: Union[float, int] = None,
                         image_dict: dict = None, data_selection: str = None,
@@ -340,17 +360,7 @@ def set_canvas_viewport(size_slider_val: Union[float, int] = None,
             cur_dimensions = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
         aspect_ratio = int(cur_dimensions[1]) / int(cur_dimensions[0])
     except (KeyError, AttributeError, IndexError):
-        if current_canvas is not None and 'layout' in current_canvas and \
-                'range' in current_canvas['layout']['xaxis'] and \
-                'range' in current_canvas['layout']['yaxis']:
-            try:
-                aspect_ratio = int(current_canvas['layout']['xaxis']['range'][1]) / \
-                               int(current_canvas['layout']['yaxis']['range'][0])
-            except (KeyError, ZeroDivisionError):
-                aspect_ratio = 1
-        else:
-            aspect_ratio = 1
-
+        aspect_ratio = canvas_aspect_ratio_from_layout(current_canvas)
     width = float(size_slider_val * aspect_ratio)
     height = float(size_slider_val)
     if max_width and width > max_width:

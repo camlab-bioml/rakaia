@@ -2,6 +2,7 @@ import math
 from typing import Union
 import dash_bootstrap_components as dbc
 from dash import html
+import plotly.graph_objs as go
 from PIL import Image
 import numpy as np
 from rakaia.utils.pixel import (
@@ -9,26 +10,39 @@ from rakaia.utils.pixel import (
     get_default_channel_upper_bound_by_percentile,
     apply_preset_to_array)
 
+def replace_child_card_label(child: dict, aliases: dict):
+    """
+    Replace a `dbc.Card` title for a channel label with an updated channel alias from the session hash
+    """
+    if isinstance(child, dict) and 'children' in child and 'className' in child and \
+            child['className'] == 'card-text' and 'id' in child and child['id'] in aliases.keys():
+        child['children'] = aliases[child['id']]
+    return child
+
+def replace_child_hover_template(child: dict, aliases: dict):
+    """
+    Replace a `dbc.Hovertip` title for a channel thumbnail with an updated channel alias from the session hash
+    """
+    if isinstance(child, dict) and 'children' in child and 'target' in child and \
+            'index' in child['target'] and child['target']['index'] in aliases.keys():
+        child['children'] = f"Add {aliases[child['target']['index']]} to canvas"
+    return child
+
 def replace_channel_gallery_aliases(child, aliases_dict):
     """
     Recursively traverse the existing channel gallery and change the channel labels based
     on the alias dictionary
     """
     # if a channel bold label is found, update the alias
-    if isinstance(child, dict) and 'children' in child and 'className' in child and \
-            child['className'] == 'card-text' and 'id' in child and child['id'] in aliases_dict.keys():
-        child['children'] = aliases_dict[child['id']]
+    child = replace_child_card_label(child, aliases_dict)
     # if a channel hover tip is found, update the hover text with the alias
-    if isinstance(child, dict) and 'children' in child and 'target' in child and \
-            'index' in child['target'] and child['target']['index'] in aliases_dict.keys():
-        child['children'] = f"Add {aliases_dict[child['target']['index']]} to canvas"
-    else:
-        if isinstance(child, dict):
-            for value in child.values():
-                replace_channel_gallery_aliases(value, aliases_dict)
-        elif isinstance(child, list):
-            for value in child:
-                replace_channel_gallery_aliases(value, aliases_dict)
+    child = replace_child_hover_template(child, aliases_dict)
+    if isinstance(child, dict):
+        for value in child.values():
+            replace_channel_gallery_aliases(value, aliases_dict)
+    elif isinstance(child, list):
+        for value in child:
+            replace_channel_gallery_aliases(value, aliases_dict)
     return child
 
 
@@ -47,6 +61,29 @@ def set_gallery_thumbnail_from_signal_retention(original_image: np.array, downsa
                                  any(size > resize_dimension_threshold for size in
                                      original_image.shape)) else alternate_image
 
+
+def set_channel_thumbnail(canvas_layout: Union[dict, go.Figure], channel_image: Union[np.array, np.ndarray],
+                          zoom_keys: list=None, toggle_gallery_zoom: bool=False):
+    """
+    Generate the numpy array for the greyscale channel thumbnail used for the preview gallery. Incorporates
+    the option to use the canvas graph zoom to show just a subset region
+    """
+    if zoom_keys and all(elem in canvas_layout for elem in zoom_keys) and toggle_gallery_zoom:
+        x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
+        x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
+        y_range_low = math.floor(int(canvas_layout['yaxis.range[1]']))
+        y_range_high = math.floor(int(canvas_layout['yaxis.range[0]']))
+        try:
+            if not x_range_high >= x_range_low or not y_range_high >= y_range_low:
+                raise AssertionError
+            image_render = channel_image[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+                                        range(int(x_range_low), int(x_range_high), 1))]
+        except IndexError:
+            image_render = channel_image
+    else:
+        image_render = resize_for_canvas(channel_image)
+    return image_render
+
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
 def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
@@ -62,28 +99,14 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
     if gallery_dict is not None and len(gallery_dict) > 0:
         for key, value in gallery_dict.items():
             channel_key = single_channel_identifier if single_channel_identifier else key
-            if all(elem in canvas_layout for elem in zoom_keys) and toggle_gallery_zoom:
-                x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
-                x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
-                y_range_low = math.floor(int(canvas_layout['yaxis.range[1]']))
-                y_range_high = math.floor(int(canvas_layout['yaxis.range[0]']))
-                try:
-                    if not (x_range_high >= x_range_low) or not (y_range_high >= y_range_low):
-                        raise AssertionError
-                    image_render = value[np.ix_(range(int(y_range_low), int(y_range_high), 1),
-                                                range(int(x_range_low), int(x_range_high), 1))]
-                except IndexError:
-                    image_render = value
-            else:
-                image_render = resize_for_canvas(value)
+            image_render = set_channel_thumbnail(canvas_layout, value, zoom_keys, toggle_gallery_zoom)
             if toggle_scaling_gallery:
                 try:
                     if blend_colour_dict[key]['x_lower_bound'] is None:
                         blend_colour_dict[key]['x_lower_bound'] = 0
                     if blend_colour_dict[key]['x_upper_bound'] is None:
                         blend_colour_dict[key]['x_upper_bound'] = \
-                            get_default_channel_upper_bound_by_percentile(
-                                value)
+                            get_default_channel_upper_bound_by_percentile(value)
                     image_render = apply_preset_to_array(image_render,
                                                          blend_colour_dict[channel_key])
                 except (KeyError, TypeError):

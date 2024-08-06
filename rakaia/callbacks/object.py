@@ -20,12 +20,12 @@ from rakaia.parsers.object import (
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    object_id_list_from_gating)
+    GatingObjectList)
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
-    match_roi_identifier_to_quantification,
+    ROIQuantificationMatch,
     validate_mask_shape_matches_image,
     quantification_distribution_table, custom_gating_id_list)
 from rakaia.inputs.object import (
@@ -316,8 +316,8 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 indices_remove = [int(i) for i in range(len(annotations[data_selection].keys()))]
             else:
                 indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
-            sample_name, id_column = match_roi_identifier_to_quantification(
-            data_selection, quantification_frame, data_dropdown_options, delimiter, mask_selection)
+            sample_name, id_column = ROIQuantificationMatch(data_selection, quantification_frame,
+                        data_dropdown_options, delimiter, mask_selection).get_matches()
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
                 annotations = reset_annotation_import(annotations, data_selection, app_config, False)
             quant_frame, annotations = AnnotationQuantificationMerge(annotations, quantification_frame, data_selection,
@@ -675,9 +675,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
                 gating_label_children(False, None, None, id_list, True), dash.no_update
         elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
-            id_list = object_id_list_from_gating(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
-                        mask_selection, intersection=(gating_type == 'intersection'))
-            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key= OVERWRITE), \
+            id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                        mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
+            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
                 gating_label_children(True, gating_dict, cur_gate_selection, id_list), reset_custom_gate_slider(ctx.triggered_id)
         return [] if gating_dict is not None else dash.no_update, [], dash.no_update if cur_gate_selection else False
 

@@ -16,7 +16,7 @@ from rakaia.parsers.pixel import convert_rgb_to_greyscale
 from rakaia.utils.object import validate_mask_shape_matches_image
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
-    match_mask_name_with_roi,
+    ROIMaskMatch,
     match_mask_name_to_quantification_sheet_roi)
 
 class RegionThumbnail:
@@ -57,14 +57,14 @@ class RegionThumbnail:
                         dimension_max: Union[int, float, None]=None,
                         roi_keyword: str=None,
                         single_channel_view: bool=False):
+
+        self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
         self.tiff = partial(self.additive_thumbnail_from_tiff)
         self.txt = partial(self.additive_thumbnail_from_txt)
         self.session_config = session_config
-        try:
-            self.file_list = [file for file in self.session_config['uploads']]
-        except KeyError:
-            self.file_list = []
+
+        self.set_imported_files()
         self.blend_dict = blend_dict
         self.currently_selected_channels = currently_selected_channels
         self.num_queries = num_queries
@@ -82,10 +82,9 @@ class RegionThumbnail:
         self.use_greyscale = use_greyscale
         self.single_channel_view = single_channel_view
         # do not use the dimension limit if querying from the quantification
-        self.dim_min = dimension_min if (dimension_min and not self.predefined_indices) else 0
-        self.dim_max = dimension_max if (dimension_max and not self.predefined_indices) else 1e6
-        self.keyword = [word.strip() for word in roi_keyword.split(",")] if (roi_keyword and "," in roi_keyword) else \
-            ([roi_keyword] if roi_keyword else None)
+        self.dim_min = self.set_dimension_min(dimension_min)
+        self.dim_max = self.set_dimension_max(dimension_max)
+        self.keyword = self.set_query_keywords(roi_keyword)
 
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
@@ -101,6 +100,46 @@ class RegionThumbnail:
                 filename, file_extension = os.path.splitext(file_path)
                 # call the additive thumbnail partial function with the corresponding extension
                 getattr(self, self.MATCHES[file_extension])(file_path)
+
+    def set_imported_files(self):
+        """
+        Set the files for parsing based on the session config dictionary uploads. If a key error occurs, pass
+
+        :return: None
+        """
+        try:
+            self.file_list = [file for file in self.session_config['uploads']]
+        except KeyError:
+            self.file_list = []
+
+    @staticmethod
+    def set_query_keywords(roi_keyword: str=None):
+        """
+        Set the list of query keywords by comma separating an expression passed by the user
+
+        :param roi_keyword: String combination of comma separated keywords to query
+        :return: list of query keywords by comma separating an expression passed by the user
+        """
+        return [word.strip() for word in roi_keyword.split(",")] if (roi_keyword and "," in roi_keyword) else \
+            ([roi_keyword] if roi_keyword else None)
+
+    def set_dimension_min(self, dimension_min: Union[int, float]=None):
+        """
+        Set the query dimension minimum based on the value passed and the type of query being done.
+
+        :param dimension_min: The numerical query value for the ROI size minimum (both dimensions).
+        :return: Dimension min that is either the query value, or 0 if predefined ROIs are used.
+        """
+        return dimension_min if (dimension_min and not self.predefined_indices) else 0
+
+    def set_dimension_max(self, dimension_max: Union[int, float]=None):
+        """
+        Set the query dimension minimum based on the value passed and the type of query being done.
+
+        :param dimension_max: The numerical query value for the ROI size maximum (both dimensions).
+        :return: Dimension max that is either the query value, or 1e6 if predefined ROIs are used.
+        """
+        return dimension_max if (dimension_max and not self.predefined_indices) else 1e6
 
     def shuffle_files_without_defined_indices(self, predefined_indices):
         """
@@ -131,10 +170,9 @@ class RegionThumbnail:
 
     def set_mcd_query_selection(self, mcd_slide, queries_by_name: list=None):
         """
-        Set the mcd query selection for one or multiple mcd files. Will check the number of queries requested
-        against the number of ROIs inside an mcd slide.
+        Set the mcd query selection for one or multiple mcd files, checking the query number against the dataset size.
 
-        :param mcd_slide: `Slide` object inside an mcd file
+        :param mcd_slide: Slide object from readimc from the currently parsed mcd file
         :param queries_by_name: An existing list of mcd slide queries. Useful for when multiple mcd files are queried
         :return: None
         """
@@ -171,8 +209,7 @@ class RegionThumbnail:
         from a common quantification dataset.
 
         :param slide_inside: Current MCD slide
-        :param query: The integer index for the acquisition in the current slide, or a query string name to match
-        an acquisition description
+        :param query: Integer index for the acquisition, or a query string name to match the acquisition description
         :return: Slide acquisition to read for thumbnail generation.
         """
         if isinstance(query, int):
@@ -262,7 +299,7 @@ class RegionThumbnail:
         # set the channel label by parsing through the dataset options to find a partial match of filename
         basename = str(Path(tiff_filepath).stem)
         label = self.parse_thumbnail_label_from_filepath(basename)
-        matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
+        matched_mask = ROIMaskMatch(label, self.mask_dict, self.dataset_options, self.delimiter).get_match()
         # if queried from the UMAP plot, restrict to only those with a match in the query selection
         if self.query_selection and 'names' in self.query_selection:
             query_list = self.query_selection['names']
@@ -349,7 +386,7 @@ class RegionThumbnail:
         if len(self.roi_images) < self.num_queries and image_list:
             summed_image = sum([image for image in image_list]).astype(np.float32)
             if not self.single_channel_view:
-                matched_mask = match_mask_name_with_roi(label, self.mask_dict, self.dataset_options, self.delimiter)
+                matched_mask = ROIMaskMatch(label, self.mask_dict, self.dataset_options, self.delimiter).get_match()
                 summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,
                                                      self.global_filter_type, self.global_filter_val,
                                                      self.global_filter_sigma)

@@ -36,7 +36,7 @@ def cli_parser():
 
     return parser
 
-def main(sysargs = sys.argv[1:]):
+def main(sysargs=sys.argv[1:]):
     # TODO: what happens if a JSON has a blend of multi and single polygons? Is this possible?
     warnings.filterwarnings("ignore")
     # os.environ['USE_PYGEOS'] = '0'
@@ -77,6 +77,7 @@ def main(sysargs = sys.argv[1:]):
             merged_mask = np.where(img > 0, img, merged_mask)
 
         tifffile.imwrite(args.outfile, merged_mask.astype(np.float32))
+
 
 if __name__ == "__main__":
     main()

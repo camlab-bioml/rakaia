@@ -47,10 +47,9 @@ class SessionServerside(Serverside):
     For public or sessions with concurrent users (i.e. Docker), `use_unique_key` should be set to False so that
     each callback invocation produces a unique Serverside cache
 
-    :param data The pickle-compatible data object to be stored
-    :param key The string key used to identify the pickled objects written to disk
-    :param use_unique_key: Whether to specify a unique key for every invocation. default is `True` and is
-    recommended unless or public sessions or sessions with concurrent users (i.e. Docker) are used.
+    :param data: The pickle-compatible data object to be stored
+    :param key: The string key used to identify the pickled objects written to disk
+    :param use_unique_key: Whether to use a unique key for every invocation. Should be `True` except for shared instances.
     :return: None
     """
     def __init__(self, data, key, use_unique_key: bool=True):
@@ -73,8 +72,8 @@ class JSONSessionDocument:
     global filters, and cluster colour annotations, if imported
     Used for local export to JSON or insertion into a mongoDB collection
 
-    :param save_type Whether the document will be saved as `json` (default) or to the mongoDB database (use `db`).
-    :param user Username
+    :param save_type: Whether the document will be saved as `json` (default) or to the mongoDB database (use `db`).
+    :param user: Username
     :param document_name: User set name of the blend config
     :param blend_dict: Dictionary of current channel blend parameters
     :param selected_channel_list: List of channels in the current blend

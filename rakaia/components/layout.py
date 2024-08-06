@@ -1161,7 +1161,6 @@ def register_app_layout(config, cache_dest):
                                     style={"width": "20%", "margin-top": "10px", "margin-left": "12.5px"}),
                                 dbc.Tooltip(TOOLTIPS['cluster-proj'], target="cluster-proj-info", placement='bottom')],
                                 style={"display": 'flex', 'margin-left': '10px', 'margin-top': '7.5px'}),
-                                # TODO: link quantification results to cluster projection
                                 html.Br(),
                                 dcc.Dropdown(id='cluster-col', options=[], multi=False,
                                     placeholder='Select cluster category', style={"width": "90%", "float": "center"}),

@@ -560,23 +560,21 @@ class RectangularKeys(BaseModel):
 class MarkerCorrelation:
     """
     Generate marker correlation metrics for a target marker compared to a baseline marker expression
-    Metrics computed include:
-    - Basic Pearson correlation
-    - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
-    - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
-    - marker expression at the baseline threshold, relative to the total marker expression inside the mask
+    Metrics computed include: pearson correlation, the proportion of target marker expression at
+    the threshold inside the mask, relative to the entire image, the proportion of target marker expression inside a mask,
+    at the target threshold, that overlaps with baseline, and marker expression at the baseline threshold,
+    relative to the total marker expression inside the mask
 
     :param image_dict: Dictionary where keys are the channel ids, and values are raw pixel intensities arrays
     :param roi_selection: String representation of the current ROI selection
     :param target_channel: ID of the target channel
     :param baseline_channel: ID of the baseline channel
-    :param target_threshold Minimum pixel intensity for the target channel
-    :param baseline_threshold Minimum pixel intensity for the baseline channel
+    :param target_threshold: Minimum pixel intensity for the target channel
+    :param baseline_threshold: Minimum pixel intensity for the baseline channel
     :param mask: Mask array used for object detection
     :param blend_dict: Dictionary of current channel blend parameters
-    :param use_blend_params: Whether channel blend parameters such as pixel thresholds and filters should be used
-    in the computations. Default is True and is recommended.
-    :param bounds: If canvas zoom bounds are passed, compute the statistics only in that region,
+    :param use_blend_params: Whether channel blend parameters (pixel thresholds, filters) are used in computation.
+    :param bounds: If canvas zoom bounds are passed, compute the statistics only in that region
     :return: None
     """
     def __init__(self, image_dict: dict, roi_selection: str, target_channel: Union[str, None],
@@ -608,12 +606,7 @@ class MarkerCorrelation:
             self.mask = mask
             self.baseline_array = None
             self.baseline_threshold = baseline_threshold
-            if self.bounds and self.mask is not None:
-                try:
-                    self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
-                                    range(int(self.bounds[0]), int(self.bounds[1]), 1))]
-                except IndexError:
-                    self.mask = mask
+            self.set_mask(mask)
             try:
                 self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
                                                         blend_dict, target_channel, roi_selection, self.bounds)
@@ -632,6 +625,20 @@ class MarkerCorrelation:
             except (ValueError, KeyError):
                 pass
 
+    def set_mask(self, mask: Union[np.array, np.ndarray]):
+        """
+        Set the mask for the object detection overlap
+
+        :param mask: NUmpy array of a mask that matches the current ROI
+        :return: None
+        """
+        if self.bounds and self.mask is not None:
+            try:
+                self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
+                                        range(int(self.bounds[0]), int(self.bounds[1]), 1))]
+            except IndexError:
+                self.mask = mask
+
     @staticmethod
     def compute_channel_bounds_from_zoom(bounds) -> Union[tuple, None]:
         """
@@ -647,9 +654,7 @@ class MarkerCorrelation:
 
     def get_correlation_statistics(self) -> tuple:
         """
-
-        :return: tuple: The proportion of the target channel that is inside the mask, the
-        target overlap with the baseline channel inside the mask, and baseline proportion in mask, and basic correlation
+        :return: tuple: Three values for target proportion in the mask, and basic correlation
         """
         return self.target_proportion_in_mask, self.target_proportion_relative, self.baseline_proportion_in_mask, \
             self.basic_correlation

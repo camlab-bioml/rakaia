@@ -11,12 +11,14 @@ from rakaia.inputs.pixel import (
     get_additive_image_with_masking,
     add_local_file_dialog,
     invert_annotations_figure,
+    deepcopy_canvas_layout_slot,
     set_range_slider_tick_markers,
     generate_canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
     set_canvas_viewport,
     marker_correlation_children,
-    reset_pixel_histogram)
+    reset_pixel_histogram,
+    canvas_aspect_ratio_from_layout)
 from rakaia.parsers.pixel import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -99,6 +101,8 @@ def test_invert_annotations_figure(channel_hash):
 
     assert image['layout']['annotations'][0]['x'] == 0.1
     assert image['layout']['shapes'][0]['x0'] == 0.065
+
+    assert len(deepcopy_canvas_layout_slot(image)) == len(deepcopy_canvas_layout_slot(image, 'shapes')) == 1
 
     image = invert_annotations_figure(image)
     assert image['layout']['annotations'][0]['x'] == (1 - 0.1)
@@ -190,6 +194,7 @@ def test_window_viewport_settings():
 
     blank_image_dict = {"roi_1": {}}
     canvas_layout = {'layout': {'xaxis': {"range": [0, 1000]}, 'yaxis': {"range": [2500, 0]}}}
+    assert canvas_aspect_ratio_from_layout(canvas_layout) == 0.4
     assert set_canvas_viewport(30, blank_image_dict, "roi_1", canvas_layout, cur_layout) == \
            {'width': '12.0vh', 'height': '30.0vh'}
 

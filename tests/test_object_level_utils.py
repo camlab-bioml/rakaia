@@ -4,6 +4,7 @@ import dash_extensions
 from rakaia.utils.object import (
     send_alert_on_incompatible_mask,
     get_min_max_values_from_zoom_box,
+    get_min_max_values_from_rect_box,
     subset_measurements_by_object_graph_box,
     populate_object_annotation_column_from_bounding_box,
     process_mask_array_for_hovertemplate,
@@ -12,7 +13,7 @@ from rakaia.utils.object import (
     populate_obj_annotation_column_from_clickpoint,
     subset_measurements_by_point,
     generate_greyscale_grid_array,
-    match_roi_identifier_to_quantification,
+    ROIQuantificationMatch,
     populate_quantification_frame_column_from_umap_subsetting,
     generate_mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
@@ -102,7 +103,23 @@ def test_basic_parser_bounding_box_min_max():
     assert y_min == -1
     assert y_max == 4
     bounds_bad_name = {'fake': 241, 'xaxis.range[0]': 253, 'yaxis.range[1]': -1, 'yaxis.range[0]': 4}
-    assert get_min_max_values_from_zoom_box(bounds_bad_name) is None
+    assert all(elem is None for elem in get_min_max_values_from_zoom_box(bounds_bad_name))
+
+def test_basic_parser_rect_box_min_max():
+    bounds = {'x0': 241, 'x1': 253, 'y0': -1, 'y1': 4}
+    x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(bounds)
+    assert x_min == 241
+    assert x_max == 253
+    assert y_min == -1
+    assert y_max == 4
+    bounds_2 = {'x0': 241, 'x1': 253, 'y0': -1, 'y1': 4}
+    x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(bounds_2)
+    assert x_min == 241
+    assert x_max == 253
+    assert y_min == -1
+    assert y_max == 4
+    bounds_bad_name = {'fake': 241, 'x0': 253, 'y1': -1, 'y0': 4}
+    assert all(elem is None for elem in get_min_max_values_from_rect_box(bounds_bad_name))
 
 def test_basic_box_query_measurements_csv(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
@@ -263,24 +280,24 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
 
     dataset_options = ["roi_1", "mcd1+++slide0+++Dilution_series_1_1", "roi_3"]
     data_selection = "mcd1+++slide0+++Dilution_series_1_1"
-    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options)
+    name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options).get_matches()
     assert name == "mcd1_2"
     assert column == "sample"
-    assert match_roi_identifier_to_quantification(data_selection, measurements, []) == (None, None)
-    assert match_roi_identifier_to_quantification("fake+++slide0+++fake_acq",
-                                                  measurements, dataset_options) == (None, None)
+    assert ROIQuantificationMatch(data_selection, measurements, []).get_matches() == (None, None)
+    assert ROIQuantificationMatch("fake+++slide0+++fake_acq",
+            measurements, dataset_options).get_matches() == (None, None)
 
 
     measurements.rename(columns={"sample": "description"}, inplace=True)
     dataset_options = ["roi_1", "mcd1+++slide0+++Dilution_series_1_1", "roi_3"]
     data_selection = "mcd1+++slide0+++Dilution_series_1_1"
-    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options)
+    name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options).get_matches()
     assert name == "Dilution_series_1_1"
     assert column == "description"
 
     dataset_options = ["roi_1", "mcd1+++slide0+++roi_1", "roi_3"]
     data_selection = "mcd1+++slide0+++roi_1"
-    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options)
+    name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options).get_matches()
     assert name is None
     assert column is None
     # from steinbock
@@ -288,8 +305,8 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     data_selection = "test---slide0---chr10-h54h54-Gd158_2_18"
     dataset_options = ["test---slide0---chr10-h54h54-Gd158_2_18"]
     measurements = parse_quantification_sheet_from_h5ad((os.path.join(get_current_dir, "from_steinbock.h5ad")))
-    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options,
-                                                          delimiter="---", mask_name=mask_option)
+    name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options,
+                                                          delimiter="---", mask_name=mask_option).get_matches()
     assert name == "chr10-h54h54-Gd158_2_18"
     assert column == "description"
 
@@ -299,8 +316,8 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     measurements = pd.DataFrame({"chan_1": [1, 2, 3, 4, 5],
                                  "description": mask_option,
                                  "cell_id": [1, 2, 3, 4, 5]})
-    name, column = match_roi_identifier_to_quantification(data_selection, measurements, dataset_options,
-                                                          delimiter="---", mask_name=mask_option)
+    name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options,
+                                                          delimiter="---", mask_name=mask_option).get_matches()
     assert name == mask_option
 
 def test_annotation_column_from_umap_(get_current_dir):

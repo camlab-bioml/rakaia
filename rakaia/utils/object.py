@@ -59,7 +59,7 @@ def get_min_max_values_from_zoom_box(coord_dict):
     """
     if not all(elem in coord_dict.keys() for elem in
                     ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']):
-        return None
+        return None, None, None, None
     x_min = min(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
     x_max = max(coord_dict['xaxis.range[0]'], coord_dict['xaxis.range[1]'])
     y_min = min(coord_dict['yaxis.range[0]'], coord_dict['yaxis.range[1]'])
@@ -73,7 +73,7 @@ def get_min_max_values_from_rect_box(coord_dict):
     """
     if not all(elem in coord_dict.keys() for elem in
                     ['x0', 'x1', 'y0', 'y1']):
-        return None
+        return None, None, None, None
     x_min = min(coord_dict['x0'], coord_dict['x1'])
     x_max = max(coord_dict['x0'], coord_dict['x1'])
     y_min = min(coord_dict['y0'], coord_dict['y1'])
@@ -156,8 +156,8 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
         try:
             first_image = list(upload_dict[data_selection].keys())[0]
             first_image = upload_dict[data_selection][first_image]
-            if first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
-                    first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]:
+            if first_image is not None and (first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
+                    first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]):
                 if error_config is None:
                     error_config = {"error": None}
                 error_config["error"] = "Warning: the current mask does not have " \
@@ -392,38 +392,98 @@ def is_steinbock_intensity_anndata(adata):
         all('.tiff' in elem for elem in adata.obs['Image'].to_list()) and \
       all('Object' in elem for elem in adata.obs.index)
 
-def match_roi_identifier_to_quantification(data_selection, quantification_frame, dataset_options,
-                                           delimiter: str="+++", mask_name: str=None):
+class ROIQuantificationMatch:
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
     prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1
+
+    :param data_selection: String representation of the current ROI selection
+    :param quantification_frame: tabular dataset of summarized intensity measurements per object
+    :param dataset_options: List of string representations of imported session ROIs
+    :param delimiter: string to split the data selection string into experiment/filename, slide, and ROI identifier
+    :param mask_name: string name of the currently applied mask (if it exists)
+    :return: None
     """
-    quantification_frame = pd.DataFrame(quantification_frame)
-    exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
-    if 'description' in quantification_frame.columns:
-        # this part applies to ROIs from mcd
-        if (mask_name and (match_steinbock_mask_name_to_mcd_roi(mask_name, acq) or acq in mask_name)) or \
-                acq in quantification_frame['description'].tolist():
-            return acq, 'description'
-        # use experiment name if coming from tiff
-        if exp and (exp in quantification_frame['description'].tolist()) or (mask_name and exp in mask_name):
-            return mask_name if (mask_name and exp in mask_name) else exp, 'description'
-        return None, None
-    if 'sample' in quantification_frame.columns:
-        if mask_name and match_steinbock_mask_name_to_mcd_roi(mask_name, acq) or (mask_name == acq):
-            return mask_name, 'sample'
-        else:
+    def __init__(self, data_selection, quantification_frame, dataset_options,
+                                           delimiter: str="+++", mask_name: str=None):
+        self.data_selection = data_selection
+        self.quantification = pd.DataFrame(quantification_frame)
+        self.dataset_options = dataset_options
+        self.delimiter = delimiter
+        self.mask = mask_name
+        self._match = None
+        self._quant_col = None
+
+        exp, slide, acq = split_string_at_pattern(self.data_selection, pattern=self.delimiter)
+        if 'description' in self.quantification.columns:
+            # this part applies to ROIs from mcd
+            self.steinbock_pipeline_description(acq)
+            # use experiment name if coming from tiff
+            self.filename_overlap(exp)
+        if 'sample' in self.quantification.columns:
+            self.steinbock_pipeline_sample(acq)
+            self.match_by_dataset_index(exp)
+
+    def steinbock_pipeline_description(self, roi_identifier: str):
+        """
+        Match the quantification column to a mask based on the steinbock pipeline naming w/ description
+        :param roi_identifier: string ROI identifier for the current ROI
+        :return: None
+        """
+        if not self._match and (self.mask and (match_steinbock_mask_name_to_mcd_roi(self.mask, roi_identifier) or
+            roi_identifier in self.mask)) or roi_identifier in self.quantification['description'].tolist():
+            self._match = roi_identifier
+            self._quant_col = 'description'
+
+    def steinbock_pipeline_sample(self, roi_identifier: str):
+        """
+        Match the quantification column to a mask based on the steinbock pipeline naming w/ sample
+        :param roi_identifier: string ROI identifier for the current ROI
+        :return: None
+        """
+        if not self._match and self.mask and match_steinbock_mask_name_to_mcd_roi(self.mask, roi_identifier) or \
+                (self.mask == roi_identifier):
+            self._match = self.mask
+            self._quant_col = 'sample'
+
+    def filename_overlap(self, experiment_name: str):
+        """
+        Match the quantification using either the experiment of ROI identifier w/ description
+
+        :param experiment_name: string of the experiment/filename of the current ROI
+        :return: None
+        """
+        if not self._match and (experiment_name and (experiment_name in
+                                                     self.quantification['description'].tolist()) or
+                                (self.mask and experiment_name in self.mask)):
+            self._match = self.mask if (self.mask and experiment_name in self.mask) else experiment_name
+            self._quant_col = 'description'
+
+    def match_by_dataset_index(self, experiment_name: str):
+        """
+        Match the quantification and ROI using the old pipeline syntax (positional ROI indexing)
+
+        :param experiment_name: string of the experiment/filename of the current ROI
+        :return: None
+        """
+        if not self._match:
             try:
-                index = dataset_options.index(data_selection) + 1
+                index = self.dataset_options.index(self.data_selection) + 1
                 # this is the default format coming out of the pipeline, but it doesn't always link the mask, ROI, and
                 # quant sheet properly
-                sample_name = f"{exp}_{index}"
+                self._match = f"{experiment_name}_{index}"
                 # sample_name = exp
-                return sample_name, 'sample'
+                self._quant_col = 'sample'
             except (IndexError, ValueError):
-                return None, None
-    return None, None
+                pass
+
+    def get_matches(self):
+        """
+
+        :return: Tuple: string match for the roi identifier (or None), and the identifying column in the measurements.
+        """
+        return self._match, self._quant_col
 
 def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
                                            cluster_col: str = "cluster", obj_id_col: str = "cell_id", retain_objs=True,

@@ -181,8 +181,7 @@ class AnnotationPreviewGenerator:
         Generates a list of previews for each annotation in the current ROI
 
         :param annot_key: The string or tuple identifier for a specific annotation
-        :param annot_type: The type of annotation to be summarized. Options include [`zoom`, `point`,
-        `gate`, `rect`, and `path`].
+        :param annot_type: String annotation type. Options include [`zoom`, `point`, `gate`, `rect`, and `path`].
         :return: `pd.DataFrame` of annotations summarized by their objects, or relative coordinate positions.
         """
         if annot_type == "point":

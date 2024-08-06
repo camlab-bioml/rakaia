@@ -61,7 +61,7 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     as rows and channels + metadata as columns
     """
     exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
-    array = np.stack([channel_dict[data_selection][channel] for channel in list(channel_dict[data_selection].keys()) if \
+    array = np.stack([channel_dict[data_selection][channel] for channel in list(channel_dict[data_selection].keys()) if
                        channel in channels_to_quantify], axis=0)
     chan_names = []
     for chan in channels_to_quantify:
@@ -104,8 +104,7 @@ def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_s
         if roi_name not in existing_frame['sample'].tolist() and roi_name not in \
         existing_frame['description'].tolist() and set(list(existing_frame.columns)) == set(list(new_frame.columns)):
             return pd.concat([existing_frame, new_frame], axis=0, ignore_index=True)
-        else:
-            return new_frame
+        return new_frame
     if empty_master_frame and not empty_new_frame:
         return new_frame
     return existing_frame
@@ -129,8 +128,8 @@ def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_sel
     the gating modifier dropdown
     """
     current_gate_dict = {gate_selected: {}} if current_gate_dict is None else current_gate_dict
-    if gate_selected and gate_selected not in current_gate_dict: current_gate_dict[gate_selected] = \
-        {'lower_bound': None, 'upper_bound': None}
+    if gate_selected and gate_selected not in current_gate_dict:
+        current_gate_dict[gate_selected] = {'lower_bound': None, 'upper_bound': None}
     current_gate_dict[gate_selected]['lower_bound'] = float(min(gating_vals))
     current_gate_dict[gate_selected]['upper_bound'] = float(max(gating_vals))
     return current_gate_dict

@@ -171,7 +171,7 @@ class RegionSummary:
 
 
 def output_current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_default="canvas",
-                                  roi_name: str=None, use_roi_name=False, delimiter:str="+++"):
+                                  roi_name: str=None, use_roi_name=False, delimiter: str="+++"):
     """
     Output the current canvas image as a photometric tiff
     """
@@ -216,7 +216,7 @@ class FullScreenCanvas:
     :param canvas: Current canvas  `go.Figure` object
     :param canvas_layout: Dictionary of canvas layout modifications
 
-    :return" None
+    :return: None
     """
     def __init__(self, canvas: Union[dict, go.Figure], canvas_layout: dict):
         self.canvas = canvas

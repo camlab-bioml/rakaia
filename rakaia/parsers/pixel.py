@@ -26,17 +26,15 @@ class FileParser:
     When using lazy loading, the dictionary will be created as a placeholder and a dataframe of ROI information
     will be created, but the dictionary will contain None values in place of image arrays. When lazy loading is
     turned off, greyscale image arrays are read into the dictionary slots with the numpy array type specified
-    in `array_store_type`
+    in `array_store_type`.
 
     :param filepaths: List of filepaths successfully imported into the session
-    :param array_store_type: Specify the numpy dtype for storing the channel arrays. Default is 32-byte `float` or
-    16-byte `int`.
+    :param array_store_type: Specify the numpy dtype for channel arrays, 32-byte `float` or 16-byte `int`.
     :param lazy_load: Whether arrays should be loaded into memory only when their corresponding ROI is requested.
-    Default is `True` and is recommended.
     :param single_roi_parse: When parsing mcd files, if only a single ROI should be parsed when using lazy loading.
-    Default is `True` and is recommended.
     :param roi_name: When parsing mcd files and not using lazy loading, pass a single ROI name to pull from an mcd.
     :param internal_name: When not using lazy loading, retain the current ROI selection string
+    :return: None
     """
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5"}
 
@@ -85,6 +83,8 @@ class FileParser:
     def check_for_valid_array_type(array_store_type: str):
         """
         Check if the `array_store_type` passed is either a float or int string from the CLI options
+
+        :param array_store_type: string of either `float` of `int`, usually provided through CLI on app initialization.
         """
         if array_store_type not in ["float", "int"]:
             raise TypeError("The array stored type must be one of float or int")
@@ -92,6 +92,9 @@ class FileParser:
     def check_for_valid_file_extension(self, file_extension: str, upload: str):
         """
         Check if the provided file has an appropriate extension
+
+        :param file_extension: Filetype extension of the uploaded file
+        :param upload: filepath for the uploaded file
         """
         if file_extension not in list(self.MATCHES.keys()):
             raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
@@ -100,6 +103,9 @@ class FileParser:
     def append_channel_identifier_to_collection(self, channel_name: str):
         """
         Append a unique channel identifier to the parsing collection if it doesn't yet exist.
+
+        :param channel_name: string identifier for channel name
+        :return: None
         """
         if channel_name not in self.unique_image_names:
             self.unique_image_names.append(channel_name)
@@ -107,6 +113,9 @@ class FileParser:
     def append_channel_identifier_to_channel_list(self, channel_identifier: str):
         """
         Append a unique channel identifier to the metadata channel list if it doesn't yet exist.
+
+        :param channel_identifier: string identifier for channel name
+        :return: None
         """
         if channel_identifier not in self.metadata_channels:
             self.metadata_channels.append(channel_identifier)
@@ -114,6 +123,9 @@ class FileParser:
     def append_channel_alias_to_label_list(self, channel_identifier: str):
         """
         Append a unique channel alias (internal session label) to the channel label list if it doesn't yet exist.
+
+        :param channel_identifier: string identifier for channel name
+        :return: None
         """
         if channel_identifier not in self.metadata_labels:
             self.metadata_labels.append(channel_identifier)
@@ -165,6 +177,8 @@ class FileParser:
         """
         Parse the current h5 ROI to extract the blend parameters for one channel
 
+        :param h5_roi: h5 data object containing slots from a previously processed ROI
+        :param channel: channel key
         :return: None
         """
         # for blend_key, blend_val in data_h5[roi][channel].items():
@@ -184,6 +198,7 @@ class FileParser:
         Check if the length of the tiff matches the current imported panel length. Since most tiff files
         will not contain panel metadata (unless ome), the matching heuristic is length
 
+        :param tiff: Instance of a tifffile tiff object
         :return: None
         """
         if not (all(len(value) == len(tiff.pages) for value in list(self.image_dict['metadata'].values()))) or \
@@ -246,6 +261,8 @@ class FileParser:
         """
         Check if the mcd acquisition has a panel length that matches the current imported panel.
 
+        :param acq: Instance of an Acquisition class from `readimc`
+        :param channel_labels: List of channel labels from previously parsed acquisitions
         :return: None
         """
         if len(acq.channel_labels) != len(channel_labels) or \
@@ -332,8 +349,9 @@ class FileParser:
     def check_for_valid_txt_panel(self, txt_channel_names, txt_channel_labels):
         """
         Check if the panel length from a .txt file is compatible with the currently imported panel.
-        The current matching heuristic is panel length
 
+        :param txt_channel_names: List of channel key identifiers internally in the txt file
+        :param txt_channel_labels: List of labels to be used in the app display for each channel key
         :return: None
         """
         if not len(self.metadata_channels) == len(txt_channel_names) or \

@@ -50,6 +50,7 @@ def init_app(cli_config):
         if username in users and \
                 check_password_hash(users.get(username), password):
             return username
+        return None
 
     @app.route('/')
     @auth.login_required
