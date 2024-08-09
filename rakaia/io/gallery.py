@@ -67,7 +67,10 @@ def set_channel_thumbnail(canvas_layout: Union[dict, go.Figure], channel_image: 
     """
     Generate the numpy array for the greyscale channel thumbnail used for the preview gallery. Incorporates
     the option to use the canvas graph zoom to show just a subset region
+    Return tuple: thumbnail image (subset by zoom or resized), and the alternate image based on the signal retention,
+    used if the signal retained isn't sufficient
     """
+    alternative = channel_image
     if zoom_keys and all(elem in canvas_layout for elem in zoom_keys) and toggle_gallery_zoom:
         x_range_low = math.floor(int(canvas_layout['xaxis.range[0]']))
         x_range_high = math.floor(int(canvas_layout['xaxis.range[1]']))
@@ -78,11 +81,12 @@ def set_channel_thumbnail(canvas_layout: Union[dict, go.Figure], channel_image: 
                 raise AssertionError
             image_render = channel_image[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                         range(int(x_range_low), int(x_range_high), 1))]
+            alternative = image_render
         except IndexError:
             image_render = channel_image
     else:
         image_render = resize_for_canvas(channel_image)
-    return image_render
+    return image_render, alternative
 
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
@@ -99,7 +103,7 @@ def generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_key
     if gallery_dict is not None and len(gallery_dict) > 0:
         for key, value in gallery_dict.items():
             channel_key = single_channel_identifier if single_channel_identifier else key
-            image_render = set_channel_thumbnail(canvas_layout, value, zoom_keys, toggle_gallery_zoom)
+            image_render, value = set_channel_thumbnail(canvas_layout, value, zoom_keys, toggle_gallery_zoom)
             if toggle_scaling_gallery:
                 try:
                     if blend_colour_dict[key]['x_lower_bound'] is None:

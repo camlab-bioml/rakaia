@@ -44,11 +44,14 @@ def test_generate_channel_gallery_children():
                     "im_3": np.zeros((1000, 1000)),
                     "im_4": np.zeros((1000, 1000)), "im_5": np.zeros((1000, 1000))}
 
-    assert set_channel_thumbnail({}, gallery_dict["im_1"]).shape == (400, 400)
+    thumbnail, alternative = set_channel_thumbnail({}, gallery_dict["im_1"])
+    assert thumbnail.shape == (400, 400)
+    assert alternative.shape == (1000, 1000)
     # use a zoom feature for the gallery
     canvas_layout = {'xaxis.range[0]': 100, 'xaxis.range[1]': 200, 'yaxis.range[1]': 100, 'yaxis.range[0]': 200}
     zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]']
-    assert set_channel_thumbnail(canvas_layout, gallery_dict["im_1"], zoom_keys, True).shape == (100, 100)
+    thumbnail, alternative = set_channel_thumbnail(canvas_layout, gallery_dict["im_1"], zoom_keys, True)
+    assert thumbnail.shape == alternative.shape == (100, 100)
     blend_colour_dict = {"im_1": {"color": "#0000FF", "x_lower_bound": None,
                                   "x_upper_bound": None, "filter_type": None, "filter_val": None},
                          "im_2": {"color": "#0000FF", "x_lower_bound": None,

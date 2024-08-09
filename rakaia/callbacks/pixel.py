@@ -533,8 +533,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # if the selected channel is in the current blend, check if a preset is used to override
                     elif elem in current_blend_dict.keys() and None not in (preset_selection, preset_dict):
                         # do not override the colour of the current channel
-                        current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem],
-                                                                              preset_dict[preset_selection])
+                        current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem], preset_dict[preset_selection])
                     else:
                         if autofill_channel_colours:
                             current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
@@ -918,7 +917,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
                     cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
                                 pixel_ratio, image_shape, legend_size, proportion, scale_col)
-
                     return cur_graph, cur_graph_layout
                 except (ValueError, KeyError, AssertionError): raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
@@ -994,8 +992,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def render_canvas_from_invert_annotations(cur_canvas, cur_layout, currently_selected,
                                               data_selection, blend_colour_dict, invert_annotations):
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict):
-            cur_canvas = strip_invalid_shapes_from_graph_layout(cur_canvas)
-            return invert_annotations_figure(cur_canvas)
+            return invert_annotations_figure(strip_invalid_shapes_from_graph_layout(cur_canvas))
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
@@ -1007,8 +1004,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Update the canvas when the size of the annotations is modified
         """
         if cur_graph is not None:
-            try:
-                return CanvasLayout(cur_graph).change_annotation_size(legend_size)
+            try: return CanvasLayout(cur_graph).change_annotation_size(legend_size)
             except KeyError: raise PreventUpdate
         raise PreventUpdate
 
@@ -1250,11 +1246,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
-                    row_children = generate_channel_tile_gallery_children(views, canvas_layout, ZOOM_KEYS,
+                    return generate_channel_tile_gallery_children(views, canvas_layout, ZOOM_KEYS,
                     blend_colour_dict, preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom,
                     toggle_scaling_gallery, 0.75, 3000, channel_selected if (view_by_channel and
                                                 channel_selected) else None) if views else []
-                    return row_children
             raise PreventUpdate
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError):
             raise PreventUpdate
@@ -1616,7 +1611,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def update_bound_display(cur_graph, cur_graph_layout):
         bound_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
         if None not in (cur_graph, cur_graph_layout) and all([elem in cur_graph_layout for elem in bound_keys]):
-            # only update if these keys are used for drag or pan to set custom coords
+            # only update if these keys are used for drag or pan to set custom coordinates
             return bounds_text(*high_low_values_from_zoom_layout(cur_graph_layout))
         # if the zoom is reset to the default, clear the bound window
         elif cur_graph_layout in [{'xaxis.autorange': True, 'yaxis.autorange': True}, {'autosize': True}]:
