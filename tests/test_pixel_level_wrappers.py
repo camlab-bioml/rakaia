@@ -3,7 +3,8 @@ from rakaia.callbacks.pixel_wrappers import (
     parse_local_path_imports,
     mask_options_from_json,
     bounds_text,
-    generate_annotation_list)
+    generate_annotation_list,
+    no_json_db_updates)
 import dash
 import os
 
@@ -94,3 +95,9 @@ def test_bounds_text():
     assert bounds == {'x_low': 0.0, 'x_high': 10, 'y_low': 0.0, 'y_high': 10}
     children, bounds = bounds_text(None, 100, None, 100)
     assert not children and not bounds
+
+def test_null_json_update():
+    assert isinstance(no_json_db_updates(None), tuple)
+    assert len(no_json_db_updates(None)) == 19
+    tup_return = no_json_db_updates({"error": "No error here"})
+    assert tup_return[2] == {"error": "No error here"}

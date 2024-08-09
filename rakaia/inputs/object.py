@@ -1,4 +1,5 @@
 from typing import Union
+from functools import partial
 import dash
 import pandas as pd
 from dash import Patch
@@ -7,25 +8,41 @@ import plotly.express as px
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 import numpy as np
-from functools import partial
 from rakaia.parsers.object import drop_columns_from_measurements_csv
 from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
 
 class PandasFrameSummaryModes:
+    """
+    Define the static pandas operations for summarizing a channel expression frame
+
+    :return: None
+    """
     @staticmethod
     def pd_mean(frame: pd.DataFrame):
+        """
+        :return: The data frame channel mean along the column axis
+        """
         return frame.mean(axis=0)
 
     @staticmethod
     def pd_max(frame: pd.DataFrame):
+        """
+        :return: The data frame channel max along the column axis
+        """
         return frame.max(axis=0)
 
     @staticmethod
     def pd_min(frame: pd.DataFrame):
+        """
+        :return: The data frame channel min along the column axis
+        """
         return frame.min(axis=0)
 
     @staticmethod
     def pd_median(frame: pd.DataFrame):
+        """
+        :return: The data frame channel median along the column axis
+        """
         return frame.median(axis=0)
 
 class BarChartPartialModes:
@@ -87,6 +104,9 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
     return fig
 
 def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
+    """
+    Generate a data frame of UMAP coordinates for a dataset of segmented objects based on channel expression
+    """
     if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
         umap_frame = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
@@ -140,6 +160,9 @@ def patch_umap_figure(quantification_dict: Union[pd.DataFrame, dict], channel_ov
 def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, mode_value,
                                                umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
                                                 category_column=None, category_subset=None):
+    """
+    Generate a bar plot of summarized channel expression using interactive umap subsetting
+    """
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame(quantification_dict)
         # IMP: perform category subsetting before removing columns
@@ -166,6 +189,16 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
         return fig, frame_return
     raise PreventUpdate
 
+def column_min_max_measurements(measurements: Union[dict, pd.DataFrame], normalize: bool=True):
+    """
+    Normalize a measurements data frame of summarized channel expression per object. Uses the column min-max
+    to normalize the expression values between 0 and 1 per channel
+    """
+    if normalize:
+        measurements = pd.DataFrame(measurements)
+        measurements = ((measurements - measurements.min()) / (measurements.max() - measurements.min()))
+    return measurements
+
 
 def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings, zoom_keys,
                                                 triggered_id, cols_drop=True,
@@ -180,31 +213,27 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layou
         # IMP: perform category sub-setting before removing columns
         if None not in (category_column, category_subset):
             frame = frame[frame[category_column].isin(category_subset)]
-        if cols_drop:
-            frame = drop_columns_from_measurements_csv(frame)
-        # need to normalize before  the subset occurs so that it is relative to the entire frame, not just the subset
-        if normalize:
-            frame = ((frame - frame.min()) / (frame.max() - frame.min()))
+        frame = drop_columns_from_measurements_csv(frame, cols_drop)
+        # need to normalize before the subset occurs so that it is relative to the entire frame, not just the subset
+        frame = column_min_max_measurements(frame, normalize)
         if umap_layout is not None and \
                 all(key in umap_layout for key in zoom_keys):
-            subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
+            frame = subset_measurements_frame_from_umap_coordinates(frame,
                         pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2']), umap_layout)
-        else:
-            subset_frame = frame
         # IMP: do not reset the subset index here as the indices are needed for the query subset!!!!
         # subset_frame = subset_frame.reset_index(drop=True)
         # only recreate the graph if new data are passed from the UMAP, not on a recolouring of the UMAP
         if triggered_id not in ["umap-projection-options"] or category_column is None:
             # IMP: reset the index for the heatmap to avoid uneven box sizes
             try:
-                fig = generate_channel_heatmap(subset_frame.reset_index(drop=True), cols_include=cols_include,
+                fig = generate_channel_heatmap(frame.reset_index(drop=True), cols_include=cols_include,
                                            subset_val=subset_val)
             except ValueError:
                 fig = go.Figure()
             fig['layout']['uirevision'] = True
         else:
             fig = dash.no_update
-        return fig, subset_frame
+        return fig, frame
     raise PreventUpdate
 
 def reset_custom_gate_slider(trigger_id: str=None):

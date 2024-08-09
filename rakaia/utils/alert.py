@@ -1,10 +1,12 @@
 import pathlib
-from pydantic import BaseModel
 from typing import Union
+from pydantic import BaseModel
 
 class DataImportTour(BaseModel):
     """
-    Contains the steps used for the dash tour component for data import assistance
+    Contains the steps used for the dash tour component for data import assistance in the `steps` atttribute
+
+    :return: None
     """
     steps: list = [{'selector': '[id="upload-image"]',
                     'content': "Option 1: Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
@@ -29,7 +31,9 @@ class DataImportTour(BaseModel):
 
 class AlertMessage(BaseModel):
     """
-    This class returns a simple string alert message display in the `error warning modal
+    Contains hash containing a simple string alert message display in the `error warning modal in the `warnings` attribute
+
+    :return: None
     """
     warnings: dict = {"blend_json_success": "Blend parameters successfully updated from JSON.",
                       "invalid_path": "Invalid filepath ir directory provided. Please verify the following: \n\n" \
@@ -80,6 +84,11 @@ class AlertMessage(BaseModel):
 
 
 class ToolTips(BaseModel):
+    """
+    Contains hash containing a tool tip hover text `tooltips` attribute
+
+    :return: None
+    """
     tooltips: dict = {"delimiter": "Set a custom delimiter for the string representation of datasets. "
                                 "Should be used if imported datasets contain filenames or identifiers with"
                                 "string overlap with the current delimiter.",
@@ -141,7 +150,10 @@ def file_import_message(imported_files: list):
     return message, unique_suffixes
 
 
-def add_warning_to_error_config(error_config: Union[dict, None], alert: Union[str, None]):
+def add_warning_to_error_config(error_config: Union[dict, None], alert: Union[str, None]) -> dict:
+    """
+    Parse an existing error/message/warning dictionary and add the current session warning
+    """
     error_config = {"error": None} if (error_config is None or "error" not in error_config) else error_config
     error_config["error"] = alert if alert else ""
     return error_config

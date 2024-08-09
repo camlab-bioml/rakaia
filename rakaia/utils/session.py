@@ -1,4 +1,6 @@
 import os
+from typing import Union
+import time
 import shutil
 from dash.exceptions import PreventUpdate
 
@@ -7,12 +9,11 @@ def remove_rakaia_caches(directory):
     Remove any rakaia caches from the specified directory
     """
     if os.access(directory, os.R_OK):
-        # TODO: establish cleaning the tmp dir for any sub directory that has rakaia cache in it
-        subdirs = [x[0] for x in os.walk(directory) if 'rakaia_cache' in x[0]]
+        sub_dirs_found = [x[0] for x in os.walk(directory) if 'rakaia_cache' in x[0]]
         # remove any parent directory that has a rakaia cache in it
-        for dir in subdirs:
-            if os.access(os.path.dirname(dir), os.R_OK) and os.access(dir, os.R_OK):
-                shutil.rmtree(os.path.dirname(dir))
+        for dir_found in sub_dirs_found:
+            if os.access(os.path.dirname(dir_found), os.R_OK) and os.access(dir_found, os.R_OK):
+                shutil.rmtree(os.path.dirname(dir_found), ignore_errors=True)
 
 def non_truthy_to_prevent_update(input_obj):
     """
@@ -40,3 +41,22 @@ def channel_dropdown_selection(channels: dict=None, channel_names: dict=None):
         return [{'label': channel_names[i], 'value': i} for i in channels.keys() if len(i) > 0 and \
                 i not in ['', ' ', None] and i in channel_names.keys()]
     return []
+
+def sleep_on_small_roi(roi_dimensions: tuple=None, dim_threshold: Union[int, float]=400,
+                       seconds_pause: Union[int, float]=2):
+    """
+    Initiate a sleep pause if an ROI has dimensions below the threshold. Allows for the canvas to render
+    properly on ROI changes between ROIs of varying sizes
+    """
+    if roi_dimensions and all(dim <= dim_threshold for dim in roi_dimensions):
+        time.sleep(seconds_pause)
+
+def set_data_selection_after_import(roi_options: Union[list, None]=None, cur_data_selection: Union[str, None]=None):
+    """
+    Set the current ROI selection after file import. Will evaluate whether a selection has already been made or not.
+    """
+    if cur_data_selection and roi_options and cur_data_selection in roi_options:
+        return cur_data_selection
+    if roi_options:
+        return roi_options[0]
+    return None

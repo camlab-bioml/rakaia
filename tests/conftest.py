@@ -155,3 +155,24 @@ def channel_hash_2():
                                                    "Nuclear": np.array([4, 4, 4, 4]),
                                                    "Cytoplasm": np.array([5, 5, 5, 5]),
                                                    "Other_Nuclear": np.array([6, 6, 6, 6])}}
+
+@pytest.fixture(scope="module")
+def recursive_aliases():
+    aliases = {}
+    for i in range(5):
+        aliases[f"channel_{i}"] = f"initial_label_{i}"
+    return aliases
+
+@pytest.fixture(scope="module")
+def recursive_aliases_2():
+    aliases = {}
+    for i in range(5):
+        aliases[f"channel_{i}"] = f"rakaia_label_{i}"
+    return aliases
+@pytest.fixture(scope="module")
+def recursive_gallery_children(recursive_aliases):
+    children = []
+    for key, value in recursive_aliases.items():
+        children.append({"props": {"children": [{"children": value, "className": "card-text", 'id': key},
+                                    {"children": f'Add {value} to canvas', 'target': {'index': key}}]}})
+    return children

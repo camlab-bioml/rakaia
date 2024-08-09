@@ -53,7 +53,6 @@ def test_layer_condition():
     assert not layers_exist({"roi_1": {"channel_1": None}}, "roi_2")
 
 def test_identify_rgb_codes():
-    # https://stackoverflow.com/questions/20275524/how-to-check-if-a-string-is-an-rgb-hex-string
     assert is_rgb_color('#FAF0E6')
     assert not is_rgb_color('#FAF0')
     assert not is_rgb_color('#NotRgb')
@@ -466,27 +465,30 @@ def test_basic_svgpath_pixel_mask():
     assert bool_inside[131, 223]
     assert not bool_inside[130, 223]
     # Edit pixels inside and outside of the path to compute the statistics
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0,0)
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0, 0, 0, 0)
     array[130, 223] = 5000
     array[131, 237] = 5000
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0, 0)
+    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0, 0, 0, 0)
     array[131, 223] = 5000
-    mean, max, min, total = get_area_statistics_from_closed_path(array, svgpath)
+    mean, max, min, median, sd, total = get_area_statistics_from_closed_path(array, svgpath)
     assert mean > 0
     assert max == 5000.0
     assert min == 0.0
     assert total == max
+    assert 170 < sd < 171
     array[150, 220] = 500
-    mean_2, max_2, min_2, total_2 = get_area_statistics_from_closed_path(array, svgpath)
+    mean_2, max_2, min_2, median_2, sd_2, total_2 = get_area_statistics_from_closed_path(array, svgpath)
     assert mean_2 > mean
     assert max_2 == 5000.0
     assert min_2 == 0.0
+    assert 171 < sd_2 < 172
     array[152, 230] = -1.0
     assert total_2 > max_2
-    mean_3, max_3, min_3, total_3 = get_area_statistics_from_closed_path(array, svgpath)
+    mean_3, max_3, min_3, median_3, sd_3, total_3 = get_area_statistics_from_closed_path(array, svgpath)
     assert mean_2 > mean_3
     assert max_2 == 5000.0
     assert min_3 == -1.0
+    assert 171 < sd_2 < 172
     assert get_bounding_box_for_svgpath(svgpath) == (200, 236, 131, 162)
 
 def test_path_to_mask_over_boundary():

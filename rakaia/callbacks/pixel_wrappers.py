@@ -86,3 +86,12 @@ def bounds_text(x_low: Union[int, float], x_high: Union[int, float], y_low: Unio
                         f"Y: ({round(y_low, 2)}, {round(y_high, 2)})", style={"color": "black", "white-space": "pre"}),
      html.Br()], {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
     return [], {}
+
+def no_json_db_updates(error_config: dict=None):
+    """
+    Return a tuple of `dash.no_update` and error config objects when the JSON configuration or database
+    configuration doesn't occur
+    """
+    return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update, \
+        dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update, \
+        dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update

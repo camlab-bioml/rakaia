@@ -60,9 +60,17 @@ def test_query_parser_tiff(get_current_dir):
                                 dataset_options=list(parse.keys()),
                                 mask_dict=mask_dict,
                                 predefined_indices=query_selection).get_image_dict()
-    assert 'for_recolour+++slide0+++acq0' in roi_query.keys()
+    assert 'for_recolour+++slide0+++acq' in roi_query.keys()
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
+
+    roi_query_single_view = RegionThumbnail(session_config, blend_dict, ['channel_1'], 1,
+                                dataset_options=list(parse.keys()),
+                                mask_dict=mask_dict,
+                                single_channel_view=True).get_image_dict()
+    assert 'for_recolour+++slide0+++acq' in roi_query_single_view.keys()
+    assert len(roi_query_single_view) == 1
+    assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query_single_view.values()])
 
 def test_query_parser_txt(get_current_dir):
     mcd = os.path.join(get_current_dir, "query_from_text.txt")
@@ -71,7 +79,7 @@ def test_query_parser_txt(get_current_dir):
     blend_dict = create_new_blending_dict(parse)
     roi_query = RegionThumbnail(session_config, blend_dict, ['Gd160'], 1,
                                 dataset_options=list(parse.keys())).get_image_dict()
-    assert 'query_from_text+++slide0+++0' in roi_query.keys()
+    assert 'query_from_text+++slide0+++acq' in roi_query.keys()
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
@@ -106,8 +114,7 @@ def test_roi_query_parser_predefined(get_current_dir):
     assert len(roi_query) == 1
     assert dataset_selection in roi_query.keys()
 
-    #define a bad ROI name
-
+    # define a bad ROI name
     roi_query_null = RegionThumbnail(session_config, blend_dict, channels, 4, [],
                                 predefined_indices={'names': ['no_exist']}).get_image_dict()
     assert roi_query_null is None

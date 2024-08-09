@@ -1,7 +1,6 @@
 import uuid
 import warnings
 import os
-from numba.core.errors import NumbaDeprecationWarning, NumbaPendingDeprecationWarning
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask
 from flask_caching import Cache
@@ -9,7 +8,7 @@ from flask import render_template
 from flask_httpauth import HTTPBasicAuth
 
 _program = "rakaia"
-__version__ = "0.17.0"
+__version__ = "0.18.0"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.
@@ -17,9 +16,8 @@ def init_app(cli_config):
     :param cli_config: dictionary of CLI app options from argparse
     :return: Parent Flask app object that will wrap the Dash Proxy server
     """
-    # suppress numba depreciation warnings from umap
-    warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
-    warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
+    # warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
+    # warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
     warnings.simplefilter('ignore', category=DeprecationWarning)
     """Construct core Flask application with embedded Dash dash."""
     # STATIC_DIR = os.path.dirname(os.path.join(get_current_dir(), "templates", "static"))
@@ -52,6 +50,7 @@ def init_app(cli_config):
         if username in users and \
                 check_password_hash(users.get(username), password):
             return username
+        return None
 
     @app.route('/')
     @auth.login_required

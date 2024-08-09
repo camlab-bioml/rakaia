@@ -11,6 +11,13 @@ from rakaia.utils.pixel import (
     get_bounding_box_for_svgpath,
     RectangularKeys)
 
+class RegionStatisticGroups:
+    """
+    Define the columns used for the region statistics summary table
+    """
+    columns = ('Channel', 'Mean', 'Max', 'Min', 'Median', 'SD', 'Total', 'Region')
+
+
 class ChannelRegion:
     """
     Abstract class defines a region for a particular channel
@@ -25,7 +32,8 @@ class ChannelRegion:
         self.mean_exp = None
         self.max_exp = None
         self.min_exp = None
-        # integrated has the sum of the signal in a region
+        self.median_exp = None
+        self.std_dev = None
         self.integrated = None
 
     def compute_pixel_mean(self):
@@ -46,6 +54,18 @@ class ChannelRegion:
         return: Channel region signal intensity max
         """
         return self.max_exp
+
+    def compute_pixel_median(self):
+        """
+        return: Channel region signal intensity median
+        """
+        return self.median_exp
+
+    def compute_pixel_dev(self):
+        """
+        return: Channel region signal standard deviation
+        """
+        return self.std_dev
 
     def compute_integrated_signal(self):
         """
@@ -83,8 +103,9 @@ class RectangleRegion(ChannelRegion):
                               math.ceil(int(self.coordinate_dict[self.required_keys[3]])))
             y_range_high = max(math.ceil(int(self.coordinate_dict[self.required_keys[2]])),
                                math.ceil(int(self.coordinate_dict[self.required_keys[3]])))
-            self.mean_exp, self.max_exp, self.min_exp, self.integrated = get_area_statistics_from_rect(
-                self.channel_array, x_range_low, x_range_high, y_range_low, y_range_high)
+            self.mean_exp, self.max_exp, self.min_exp, self.median_exp, self.std_dev, self.integrated = \
+                get_area_statistics_from_rect(self.channel_array, x_range_low, x_range_high,
+                                              y_range_low, y_range_high)
 
 class FreeFormRegion(ChannelRegion):
     """
@@ -106,12 +127,19 @@ class FreeFormRegion(ChannelRegion):
         else:
             self.path = None
         if self.path is not None:
-            self.mean_exp, self.max_exp, self.min_exp, self.integrated = get_area_statistics_from_closed_path(
+            self.mean_exp, self.max_exp, self.min_exp, self.median_exp, \
+                self.std_dev, self.integrated = get_area_statistics_from_closed_path(
                 self.channel_array, self.path)
         else:
-            self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
+            self.mean_exp, self.max_exp, self.min_exp, self.median_exp, \
+                self.std_dev, self.integrated = 0, 0, 0, 0, 0, 0
 
 class RegionAnnotation(BaseModel):
+    """
+    A base model for the attributes required for a region annotation.
+
+    :Return: None
+    """
     id: str = None
     title: str = None
     body: str = None
@@ -153,16 +181,15 @@ class AnnotationPreviewGenerator:
         Generates a list of previews for each annotation in the current ROI
 
         :param annot_key: The string or tuple identifier for a specific annotation
-        :param annot_type: The type of annotation to be summarized. Options include [`zoom`, `point`,
-        `gate`, `rect`, and `path`].
+        :param annot_type: String annotation type. Options include [`zoom`, `point`, `gate`, `rect`, and `path`].
         :return: `pd.DataFrame` of annotations summarized by their objects, or relative coordinate positions.
         """
         if annot_type == "point":
             return self.generate_point_preview(annot_key)
-        elif annot_type == "gate":
+        if annot_type == "gate":
             # if use gating, simply add the number of cells
             return f"{len(annot_key)} cells"
-        elif annot_type in ['zoom', 'rect', 'path']:
+        if annot_type in ['zoom', 'rect', 'path']:
             return self.generate_region_preview(annot_key, annot_type)
         return None
 
@@ -185,7 +212,7 @@ class AnnotationPreviewGenerator:
         x_min, x_max, y_min, y_max = None, None, None, None
         if reg_type == "zoom":
             x_min, x_max, y_min, y_max = get_min_max_values_from_zoom_box(dict(key))
-        elif reg_type =="rect":
+        elif reg_type == "rect":
             x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
         elif reg_type == "path":
             x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)

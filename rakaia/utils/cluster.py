@@ -2,12 +2,76 @@ from typing import Union
 import pandas as pd
 from dash import html
 from rakaia.utils.pixel import glasbey_palette
+from rakaia.utils.object import ROIQuantificationMatch
 
 class ClusterIdentifiers:
     """
     Set the set of mask object id column identifiers permitted for cluster projection
     """
     id_cols = ['cell_id', 'object_id']
+
+class QuantificationClusterMerge:
+    """
+    Transfer a category from quantification results to the cluster frame for a specific ROI.
+    Requires that the quantification results have a sample identifying column that matches to the current ROI
+
+    :param quantification_frame: Dictionary or `pd.Dataframe` of quantified object results across one or more ROIs
+    :param roi_selection: String representation of the currently loaded ROI
+    :param cat_to_transfer: List or string of quantification columns to add to cluster projection
+    :param delimiter: string splitter to split the string ROI selection
+    :return: None
+    """
+    def __init__(self, quantification_frame: Union[dict, pd.DataFrame], roi_selection: str,
+                 cat_to_transfer: Union[str, list],
+                 current_cluster_frame: Union[dict, pd.DataFrame]=None,
+                 delimiter: str="+++", current_mask: str=None) -> None:
+        self.quantification_frame = pd.DataFrame(quantification_frame)
+        self.roi_selection = roi_selection
+        self.cat_to_transfer = cat_to_transfer if isinstance(cat_to_transfer, list) else [cat_to_transfer]
+        self.delimiter = delimiter
+        self.current_mask = current_mask
+        self._cluster_frame = current_cluster_frame if current_cluster_frame else {}
+        # get the roi name match to the current ROI, and what column in the quant frame is used to link
+        self.roi_match, self.quant_frame_identifier = ROIQuantificationMatch(
+                                                        self.roi_selection, self.quantification_frame, None,
+                                                        self.delimiter, self.current_mask).get_matches()
+        # figure out which column is the quant results holds the object ids
+        self.quant_object_identifier = get_cluster_proj_id_column(self.quantification_frame)
+        self.quantification_frame[self.quant_object_identifier] = \
+            self.quantification_frame[self.quant_object_identifier].astype(int)
+        if self.cat_to_transfer and not self.quantification_frame.empty and all(elem in
+                list(self.quantification_frame.columns) for elem in self.cat_to_transfer) and \
+                self.roi_match and self.quant_frame_identifier:
+            # make the subset of the quant frame for the current ROI
+            subset = self.quantification_frame[self.quantification_frame[self.quant_frame_identifier] ==
+                                               self.roi_match][[self.quant_object_identifier] + self.cat_to_transfer]
+            self.set_new_cluster_frame(subset)
+
+    def set_new_cluster_frame(self, new_clust: Union[dict, pd.DataFrame]):
+        """
+        Set the new cluster frame based on the presence of an existing frame
+
+        :param new_clust: Cluster frame to replace or merge with existing results
+        :return: None
+        """
+        # if no cluster frame, make a new one
+        if not self._cluster_frame or self.roi_selection not in self._cluster_frame:
+            self._cluster_frame[self.roi_selection] = new_clust
+        # if cluster frame exists, merge
+        else:
+            clust_frame_identifier = get_cluster_proj_id_column(self._cluster_frame[self.roi_selection])
+            cur_clust = self._cluster_frame[self.roi_selection]
+            cur_clust[clust_frame_identifier] = cur_clust[clust_frame_identifier].astype(int)
+            clust_return = pd.merge(cur_clust, new_clust, left_on=clust_frame_identifier,
+                                    right_on=self.quant_object_identifier,
+                                    how='inner')
+            self._cluster_frame[self.roi_selection] = clust_return
+
+    def get_cluster_frame(self) -> Union[dict, list]:
+        """
+        :return: Dictionary with the updated cluster frame for the current ROI as a dataframe.
+        """
+        return self._cluster_frame
 
 def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: str=None, cluster_frame:
                                     Union[pd.DataFrame, dict]=None) -> dict:
@@ -18,7 +82,7 @@ def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: 
     cur_cluster_dict = {} if not cur_cluster_dict else cur_cluster_dict
     cluster_frame = pd.DataFrame(cluster_frame)
     # for now, use set column names, but expand in the future
-    if any([elem in list(cluster_frame.columns) for elem in ClusterIdentifiers.id_cols]) and roi_selection:
+    if any(elem in list(cluster_frame.columns) for elem in ClusterIdentifiers.id_cols) and roi_selection:
         cur_cluster_dict[roi_selection] = cluster_frame
     return cur_cluster_dict if len(cur_cluster_dict) > 0 else None
 
@@ -69,6 +133,7 @@ def cluster_label_children(roi_selection: str=None, cluster_assignments_dict: di
             children.append(html.Br())
         return children
     return []
+
 def get_cluster_proj_id_column(cluster_frame: Union[pd.DataFrame, dict]=None) -> Union[str, None]:
     """
     Return the cluster id column name associated with an imported cluster projection frame

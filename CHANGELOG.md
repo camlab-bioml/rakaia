@@ -5,7 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased
+## [Unreleased]
+
+## [0.18.0] - 2024-08-06
+
+### Added
+
+- Ability to transfer quantification columns to cluster projection per ROI
+- Median and standard deviation to region summary #107
+- Ability to toggle side placement of canvas tools sidebar #108
+
+### Fixed
+
+- Check for signal retention for channel gallery thumbnails after `Image.Resampling.LANCZOS` down-sampling
+- Don't enable zoom on channel-wise gallery due to varying ROI dimensions
+- Add panel length check in addition to key match for JSON, db config updates
+- More robust checks for importing files when ROIs already exist in the current session
+
+### Changed
+
+- Recursively go through channel gallery children on label changes instead of re-rendering all components
+- Do not update channel gallery on zoom automatically: use button trigger to update
+- Canvas mode bar moved to center #108
 
 ## [0.17.0] - 2024-07-23
 

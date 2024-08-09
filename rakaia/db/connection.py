@@ -5,6 +5,7 @@ from pymongo.collection import Collection
 from pymongo.errors import ConfigurationError
 from rakaia.utils.db import format_blend_config_document_for_insert
 
+
 class AtlasDatabaseConnection:
     """
     Provides a user connection to a mongoDB Atlas database
@@ -21,9 +22,10 @@ class AtlasDatabaseConnection:
     :param existing_client: Pass an existing open client to overwrite the previous credentials
     :return: None
     """
-    def __init__(self, connection_string: str="rakaia-db.uzqznla.mongodb.net",
+
+    def __init__(self, connection_string: str = "rakaia-db.uzqznla.mongodb.net",
                  username: str = None, password: str = None, database_name: str = "rakaia",
-                 blend_collection_name: str = "blend_config", existing_client: MongoClient=None) -> None:
+                 blend_collection_name: str = "blend_config", existing_client: MongoClient = None) -> None:
         self.username = username
         self.password = password
         self.connection_string = f"mongodb+srv://{self.username}:{self.password}@" \
@@ -51,8 +53,8 @@ class AtlasDatabaseConnection:
                 new_collection else new_collection
             self.client.admin.command('ping')
             return True, f"Connection to database: {self.database.name} successful"
-        except (AttributeError, ConfigurationError, Exception) as e:
-            return False, f"Connection to database: {self.database.name} failed: \n {e}"
+        except (AttributeError, ConfigurationError, Exception) as except_db:
+            return False, f"Connection to database: {self.database.name} failed: \n {except_db}"
 
     def blend_configs_by_user(self, user_key="user", id_key="name") -> tuple:
         """
@@ -71,8 +73,8 @@ class AtlasDatabaseConnection:
         return configs, blend_names
 
     def insert_blend_config(self, config_name, blend_dict, selected_channel_list, global_apply_filter,
-                            global_filter_type, global_filter_val, global_filter_sigma, data_selection: str=None,
-                            cluster_assignments: dict=None, alias_dict: dict=None, gating_dict: dict=None,
+                            global_filter_type, global_filter_val, global_filter_sigma, data_selection: str = None,
+                            cluster_assignments: dict = None, alias_dict: dict = None, gating_dict: dict = None,
                             mask_toggle: bool = False, mask_level: Union[int, float] = 35, mask_boundary: bool = True,
                             mask_hover: Union[bool, list] = False):
         """
@@ -100,9 +102,10 @@ class AtlasDatabaseConnection:
         self.blend_collection.delete_many({"user": self.username, "name": config_name})
         self.blend_collection.insert_one(format_blend_config_document_for_insert(
             self.username, config_name, blend_dict, selected_channel_list, global_apply_filter,
-                                    global_filter_type, global_filter_val, global_filter_sigma, data_selection,
-                                    cluster_assignments, alias_dict, gating_dict,
-                                    mask_toggle, mask_level, mask_boundary, mask_hover))
+            global_filter_type, global_filter_val, global_filter_sigma, data_selection,
+            cluster_assignments, alias_dict, gating_dict,
+            mask_toggle, mask_level, mask_boundary, mask_hover))
+
     def username_password_pair(self) -> dict:
         """
         Get the current connection username and password

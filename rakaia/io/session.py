@@ -1,7 +1,7 @@
 import os
 import json
-import h5py
 from typing import Union
+import h5py
 from pydantic import BaseModel
 import pandas as pd
 import numpy as np
@@ -10,13 +10,17 @@ from rakaia.utils.pixel import path_to_mask
 
 class SessionTheme(BaseModel):
     """
-    Sets the default theme elements for the session
+    Sets the default theme elements for the session in the `widget_colour` attribute
+
+    :return: None
     """
     widget_colour: str = "#0f4d92"
 
 class TabText(BaseModel):
     """
     Holds the html-compatible text explanations for different tabs
+
+    :return: None
     """
     dataset_preview: str = "ROIs that have been successfully imported are listed below. " \
                            "Selecting a row will load the ROI into the main canvas and channel gallery."
@@ -43,10 +47,9 @@ class SessionServerside(Serverside):
     For public or sessions with concurrent users (i.e. Docker), `use_unique_key` should be set to False so that
     each callback invocation produces a unique Serverside cache
 
-    :param data The pickle-compatible data object to be stored
-    :param key The string key used to identify the pickled objects written to disk
-    :param use_unique_key: Whether or not to specify a unique key for every invocation. default is `True` and is
-    recommended unless or public sessions or sessions with concurrent users (i.e. Docker) are used.
+    :param data: The pickle-compatible data object to be stored
+    :param key: The string key used to identify the pickled objects written to disk
+    :param use_unique_key: Whether to use a unique key for every invocation. Should be `True` except for shared instances.
     :return: None
     """
     def __init__(self, data, key, use_unique_key: bool=True):
@@ -69,8 +72,8 @@ class JSONSessionDocument:
     global filters, and cluster colour annotations, if imported
     Used for local export to JSON or insertion into a mongoDB collection
 
-    :param save_type Whether the document will be saved as `json` (default) or to the mongoDB database (use `db`).
-    :param user Username
+    :param save_type: Whether the document will be saved as `json` (default) or to the mongoDB database (use `db`).
+    :param user: Username
     :param document_name: User set name of the blend config
     :param blend_dict: Dictionary of current channel blend parameters
     :param selected_channel_list: List of channels in the current blend
@@ -132,12 +135,16 @@ def panel_match(current_blend: Union[dict, None], new_blend: Union[dict, None]):
     try:
         current_blend = current_blend if isinstance(current_blend, list) else list(current_blend.keys())
         return None not in (current_blend, new_blend) and all(
-            elem in new_blend['channels'] for elem in current_blend)
+            elem in new_blend['channels'] for elem in current_blend) and len(new_blend['channels']) == len(current_blend)
     except (KeyError, TypeError):
         return False
 
 def all_roi_match(current_blend: Union[dict, None], new_blend: Union[dict, None], image_dict: Union[dict, None],
                   delimiter: str="+++"):
+    """
+    Cheek if the current session panel is compatible and matches with a panel attempting to be imported.
+    The match occurs if all channel keys match as well as the panel length
+    """
     try:
         return current_blend is None and new_blend is not None and all(len(image_dict[roi]) == \
                         len(new_blend['channels']) for roi in image_dict.keys() if delimiter in roi)
@@ -225,6 +232,10 @@ def subset_mask_for_data_export(canvas_layout, array_shape):
 
 
 def sort_channel_dropdown(channel_list: Union[dict, None]=None, sort_channels: bool=False):
+    """
+    Sort the channel dropdown component alphanumerically. By default, the dropdown menu lists channels
+    in the order that they are contained in the origin files.
+    """
     try:
         if sort_channels:
             channels_return = dict(sorted(channel_list.items(), key=lambda x: x[1].lower()))

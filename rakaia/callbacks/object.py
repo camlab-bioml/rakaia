@@ -20,12 +20,12 @@ from rakaia.parsers.object import (
     return_umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    object_id_list_from_gating)
+    GatingObjectList)
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
-    match_roi_identifier_to_quantification,
+    ROIQuantificationMatch,
     validate_mask_shape_matches_image,
     quantification_distribution_table, custom_gating_id_list)
 from rakaia.inputs.object import (
@@ -49,7 +49,7 @@ from rakaia.utils.cluster import (
     cluster_label_children,
     cluster_annotation_frame_import,
     set_cluster_col_dropdown,
-    set_default_cluster_col)
+    set_default_cluster_col, QuantificationClusterMerge)
 from rakaia.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
@@ -140,7 +140,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if frame is not None:
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
-                    # also return the current count of the umap category selected to update the distribution table
+                # also return the current count of the umap category selected to update the distribution table
                 if umap_layout is not None:
                     merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
                     cell_id_dict = generate_dict_of_roi_cell_ids(merged)
@@ -314,11 +314,10 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             remove = ctx.triggered_id in ["delete-annotation-tabular", "clear-annotation_dict"]
             if ctx.triggered_id == "clear-annotation_dict" and data_selection in annotations:
                 indices_remove = [int(i) for i in range(len(annotations[data_selection].keys()))]
-                # annotations[data_selection] = {}
             else:
                 indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
-            sample_name, id_column = match_roi_identifier_to_quantification(
-            data_selection, quantification_frame, data_dropdown_options, delimiter, mask_selection)
+            sample_name, id_column = ROIQuantificationMatch(data_selection, quantification_frame,
+                        data_dropdown_options, delimiter, mask_selection).get_matches()
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
                 annotations = reset_annotation_import(annotations, data_selection, app_config, False)
             quant_frame, annotations = AnnotationQuantificationMerge(annotations, quantification_frame, data_selection,
@@ -334,7 +333,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def download_quantification_with_annotations(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
                 ctx.triggered_id == "btn-download-annotations":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "measurements.csv", index = False)
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "measurements.csv", index=False)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -382,7 +381,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             else:
                 mask_used = None
             return dcc.send_file(AnnotationMaskWriter(download_mask, annotations_dict, data_selection,
-                                (first_image.shape[0], first_image.shape[1]), mask_used).write_annotation_masks())
+                (first_image.shape[0], first_image.shape[1]), mask_used, False).write_annotation_masks())
         raise PreventUpdate
 
     @dash_app.callback(
@@ -465,7 +464,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if execute_download > 0 and umap_projection is not None:
             return dcc.send_data_frame(pd.DataFrame(umap_projection, columns=['UMAP1', 'UMAP2']).to_csv,
-                                "umap_coordinates.csv", index=False)
+                                       "umap_coordinates.csv", index=False)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -676,8 +675,23 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
                 gating_label_children(False, None, None, id_list, True), dash.no_update
         elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
-            id_list = object_id_list_from_gating(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
-                        mask_selection, intersection=(gating_type == 'intersection'))
-            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key= OVERWRITE), \
+            id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                        mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
+            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
                 gating_label_children(True, gating_dict, cur_gate_selection, id_list), reset_custom_gate_slider(ctx.triggered_id)
         return [] if gating_dict is not None else dash.no_update, [], dash.no_update if cur_gate_selection else False
+
+    @dash_app.callback(Output('imported-cluster-frame', 'data', allow_duplicate=True),
+                       Output('cluster-col', 'options', allow_duplicate=True),
+                       Input('overlay-to-clust', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('quantification-dict', 'data'),
+                       State('dataset-delimiter', 'value'),
+                       State('umap-projection-options', 'value'),
+                       State('imported-cluster-frame', 'data'),
+                       State('mask-options', 'value'))
+    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask):
+        if transfer and roi_selection and quant_dict and delimiter and overlay:
+            clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask).get_cluster_frame()
+            return SessionServerside(clust, key="cluster_assignments", use_unique_key=OVERWRITE), set_cluster_col_dropdown(clust[roi_selection])
+        raise PreventUpdate

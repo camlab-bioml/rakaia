@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
-rm -r build/
-rm source/rakaia*.rst
-sphinx-apidoc -o ./source ../rakaia/
-make html
+SCRIPT=$(realpath "$0")
+SCRIPTPATH=$(dirname "$SCRIPT")
+rm -r $SCRIPTPATH/build/
+rm $SCRIPTPATH/source/rakaia*.rst
+sphinx-apidoc -o $SCRIPTPATH/source/ $SCRIPTPATH/../rakaia/
+make -C $SCRIPTPATH/ html

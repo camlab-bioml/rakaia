@@ -124,7 +124,6 @@ def test_tab_text():
     assert 'channel_tiles' in list(texts.__fields__.keys())
     assert len(list(texts.__fields__.keys())) > 0
 
-
 def test_panel_compatible_import():
     channel_dict = {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}
     new_blend = {"channels": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}}
@@ -134,14 +133,24 @@ def test_panel_compatible_import():
     assert not panel_match(channel_dict, {"channels": []})
     assert not panel_match(channel_dict, {})
 
+    channel_dict_extra = {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3, "Channel_4": 4}
+    assert not panel_match(channel_dict_extra, new_blend)
+
     images = {"roi_1+++": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3},
               "roi_2+++": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3}}
     assert all_roi_match(None, new_blend, images)
+
+    new_blend_extra = {"channels": {"Channel_1": 1, "Channel_2": 2, "Channel_3": 3, "Channel_4": 4}}
+    assert not all_roi_match(channel_dict, new_blend_extra, images)
+
+
 
     images = {"roi_1+++": {"Channel_1": 1, "Channel_2": 2},
               "roi_2+++": {"Channel_1": 1, "Channel_2": 2}}
     assert not all_roi_match(None, new_blend, images)
     assert not all_roi_match(None, {}, images)
+
+
 
 def test_sort_channel_options():
     channels = {"1": "Eu151", "2": "Nd145", "3": "196pb", "4": "a_channel"}

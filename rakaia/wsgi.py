@@ -7,6 +7,7 @@ from threading import Timer
 from waitress import serve
 from rakaia.entrypoint import init_app, __version__
 
+
 def cli_parser():
     """Retrieve the argparse parser arguments on aoo CLI initialization.
 
@@ -72,10 +73,16 @@ def cli_parser():
     return parser
 
 
-def main(sysargs = sys.argv[1:]):
+def main(sysargs=sys.argv[1:]):
+    """
+    Define the main entry point for the parent flask app
+    Takes the CLI arguments and creates a Flask app instance (dev or through waitress if production mode is used).
 
+    :return: None
+    """
     parser = cli_parser()
     args = parser.parse_args(sysargs)
+
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
             webbrowser.open_new(f'http://127.0.0.1:{args.port}/')
@@ -101,6 +108,7 @@ def main(sysargs = sys.argv[1:]):
         app.run(host=HOST, debug=args.is_dev_mode, threaded=args.threading, port=args.port)
     else:
         serve(app, host=HOST, port=args.port)
+
 
 if __name__ == "__main__":
     main()

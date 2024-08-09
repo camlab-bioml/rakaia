@@ -19,6 +19,10 @@ import numexpr as ne
 import glasbey
 
 def split_string_at_pattern(string, pattern="+++"):
+    """
+    Split the string representation of an ROI selection using the delimiter parameter set in the session.
+    Should return three values: the base filename(experiment) name, slide identifier, and ROI name/identifier.
+    """
     return string.split(pattern)
 
 def layers_exist(layer_dict: dict=None, data_selection: str=None):
@@ -100,18 +104,20 @@ def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low,
     try:
         subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
-        return np.average(subset), np.max(subset), np.min(subset), np.sum(subset)
+        return np.average(subset), np.max(subset), np.min(subset), np.median(subset), np.std(subset), np.sum(subset)
     except IndexError:
-        return None, None, None
+        return None, None, None, None, None
 
 def path_to_indices(path):
-    """From SVG path to numpy array of coordinates, each row being a (row, col) point
+    """
+    From SVG path to numpy array of coordinates, each row being a (row, col) point
     """
     indices_str = [el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")]
     return np.rint(np.array(indices_str, dtype=float)).astype(int)
 
 def path_to_mask(path, shape):
-    """From SVG path to a boolean array where all pixels enclosed by the path
+    """
+    From SVG path to a boolean array where all pixels enclosed by the path
     are True, and the other pixels are False.
     """
     cols, rows = path_to_indices(path).T
@@ -147,14 +153,12 @@ def get_area_statistics_from_closed_path(array, svgpath):
     masked_array = path_to_mask(svgpath, array.shape)
     # masked_subset_data = ma.array(array, mask=masked_array)
     return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array]), \
-        np.sum(array[masked_array])
-
-
-# def convert_to_below_255(array):
-#     return array if np.max(array) < 65000 else (array // 256).astype(np.uint8)
-
+        np.median(array[masked_array]), np.std(array[masked_array]), np.sum(array[masked_array])
 
 def resize_for_canvas(image, basewidth=400, return_array=True):
+    """
+    Use a resampling method to rescale a raw greyscale channel array for a gallery thumbnail preview.
+    """
     image = Image.fromarray(image.astype(np.uint8)) if isinstance(image, np.ndarray) else image
     wpercent = (basewidth / float(image.size[0]))
     hsize = int((float(image.size[1]) * float(wpercent)))
@@ -166,8 +170,10 @@ def resize_for_canvas(image, basewidth=400, return_array=True):
 
 
 def make_metadata_column_editable(column_name):
-    # only allow the channel label column to be edited
-    # return "Label" in column_name or column_name == "Channel Label"
+    """
+    Determine if a metadata column name should be made editable. Currently, only the column named
+    `rakaia Label` can be edited by the user.
+    """
     return column_name == "rakaia Label"
 
 
@@ -218,9 +224,6 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     If `keep_max` is True, then the final histogram will always retain the max of the original array cast
     to an integer so that it matches the range slider
     """
-    # try:
-    # IMP: do not use the conversion to L as it will automatically set the max to 255
-    # array = np.array(Image.fromarray(array.astype(np.uint8)).convert('L'))
     # set the array cast type based on the max
     cast_type = np.uint16 if np.max(array) > 1 else np.float32
     hist_data = np.hstack(array).astype(cast_type)
@@ -235,7 +238,6 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
                                    np.array([max_hist]).astype(cast_type)])
     except ValueError:
         pass
-
     fig = go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist])
     fig.update_layout(showlegend=False, yaxis={'title': None},
                                       xaxis={'title': None}, margin=dict(pad=0))
@@ -249,6 +251,10 @@ def upper_bound_for_range_slider(array):
 
 
 def apply_preset_to_array(array, preset):
+    """
+    Apply a preset to a raw channel array. Presets include both lower and upper bound scaling as well as
+    filtering (either Gaussian or median blur), but does not include recoloring.
+    """
     preset_keys = ['x_lower_bound', 'x_upper_bound', 'filter_type', 'filter_val']
     if isinstance(preset, dict) and all(elem in preset.keys() for elem in preset_keys):
         array = filter_by_upper_and_lower_bound(array, preset['x_lower_bound'], preset['x_upper_bound'])
@@ -298,8 +304,8 @@ def validate_incoming_metadata_table(metadata, upload_dict):
     - have a column named "Column Label" that can be copied for editing
     """
     if isinstance(metadata, pd.DataFrame) and "Channel Label" in metadata.columns and upload_dict is not None and \
-        all(len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if \
-             roi not in ['metadata', 'metadata_columns']):
+        all(len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if
+            roi not in ['metadata', 'metadata_columns']):
         return metadata
     return None
 
@@ -383,9 +389,9 @@ def set_channel_list_order(set_order_clicks, order_row_data, channel_order, curr
         # make sure to remove any channels that are no longer selected while maintaining order
         return [elem for elem in channel_order if elem in current_blend]
     # option 2: if a unique order is set by the draggable grid
-    elif triggered_id == "set-sort" and order_row_data is not None and set_order_clicks > 0:
+    if triggered_id == "set-sort" and order_row_data is not None and set_order_clicks > 0:
         # imp: when taking the order from the dash grid, these are the values, so need to convert back to keys
-        channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for \
+        channel_order = [list(aliases.keys())[list(aliases.values()).index(elem['Channel'])] for
                          elem in order_row_data]
         return channel_order
     return []
@@ -406,17 +412,26 @@ def select_random_colour_for_channel(blend_dict, current_channel, default_colour
     return blend_dict
 
 def glasbey_palette(palette_length=10):
+    """
+    Produce a `glasbey` color palette of a specified size. Palettes should have good color balance for visualizations.
+    """
     return glasbey.create_palette(palette_length)
+
+
+def random_8_byte_int():
+    """
+    Return a random number in the 8 byte range. Used for random hex color generation
+    """
+    return random.randint(0, 255)
 
 def random_hex_colour_generator(number=10):
     """
     Generate a list of random hex colours. The number provided will be the length of the list
     """
-    rgen = lambda: random.randint(0, 255)
     colours = []
     index = 0
     while index < number:
-        colour = '#%02X%02X%02X' % (rgen(), rgen(), rgen())
+        colour = '#%02X%02X%02X' % (random_8_byte_int(), random_8_byte_int(), random_8_byte_int())
         if colour not in colours:
             colours.append(colour)
             index += 1
@@ -431,7 +446,7 @@ def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
     if layer_dict and channel_list:
         image_shape = layer_dict[channel_list[0]].shape
         image = np.zeros(image_shape)
-        channel_list  = [channel for channel in channel_list if channel in layer_dict.keys()]
+        channel_list = [channel for channel in channel_list if channel in layer_dict.keys()]
         if channel_list:
             for elem in channel_list:
                 blend = layer_dict[elem]
@@ -490,7 +505,7 @@ def channel_filter_matches(current_blend_dict: dict, channel: str, filter_chosen
     Evaluates whether the current channel's filters match the filter parameters currently
     set in the session
     """
-    return  current_blend_dict[channel]['filter_type'] == filter_name and \
+    return current_blend_dict[channel]['filter_type'] == filter_name and \
             current_blend_dict[channel]['filter_val'] == filter_value and \
             current_blend_dict[channel]['filter_sigma'] == filter_sigma and \
             len(filter_chosen) > 0
@@ -519,6 +534,10 @@ def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_
     return cell_styling_conditions
 
 def high_low_values_from_zoom_layout(zoom_layout, cast_type=float):
+    """
+    Parse and return a tuple of the min max coordinates from a canvas zoom event for both
+    the x and y-axis.
+    """
     x_low = float(min(zoom_layout['xaxis.range[0]'], zoom_layout['xaxis.range[1]']))
     x_high = float(max(zoom_layout['xaxis.range[0]'], zoom_layout['xaxis.range[1]']))
     y_low = float(min(zoom_layout['yaxis.range[0]'], zoom_layout['yaxis.range[1]']))
@@ -531,7 +550,9 @@ class RectangularKeys(BaseModel):
     """
     Defines the possible keys for different rectangular regions on the canvas
     Options vary depending on if zoom is used, or a rectangular shape is drawn fresh
-    or edited
+    or edited. Keys are stored in the `keys` attribute.
+
+    :return: None
     """
     keys: dict = {"zoom": ('xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[1]', 'yaxis.range[0]'),
                   "rect": ('x0', 'x1', 'y0', 'y1')}
@@ -539,23 +560,21 @@ class RectangularKeys(BaseModel):
 class MarkerCorrelation:
     """
     Generate marker correlation metrics for a target marker compared to a baseline marker expression
-    Metrics computed include:
-    - Basic Pearson correlation
-    - the proportion of target marker expression at the threshold inside the mask, relative to the entire image
-    - the proportion of target marker expression inside a mask, at the target threshold, that overlaps with baseline
-    - marker expression at the baseline threshold, relative to the total marker expression inside the mask
+    Metrics computed include: pearson correlation, the proportion of target marker expression at
+    the threshold inside the mask, relative to the entire image, the proportion of target marker expression inside a mask,
+    at the target threshold, that overlaps with baseline, and marker expression at the baseline threshold,
+    relative to the total marker expression inside the mask
 
     :param image_dict: Dictionary where keys are the channel ids, and values are raw pixel intensities arrays
     :param roi_selection: String representation of the current ROI selection
     :param target_channel: ID of the target channel
     :param baseline_channel: ID of the baseline channel
-    :param target_threshold Minimum pixel intensity for the target channel
-    :param baseline_threshold Minimum pixel intensity for the baseline channel
+    :param target_threshold: Minimum pixel intensity for the target channel
+    :param baseline_threshold: Minimum pixel intensity for the baseline channel
     :param mask: Mask array used for object detection
     :param blend_dict: Dictionary of current channel blend parameters
-    :param use_blend_params: Whether channel blend parameters such as pixel thresholds and filters should be used
-    in the computations. Default is True and is recommended.
-    :param bounds: If canvas zoom bounds are passed, compute the statistics only in that region,
+    :param use_blend_params: Whether channel blend parameters (pixel thresholds, filters) are used in computation.
+    :param bounds: If canvas zoom bounds are passed, compute the statistics only in that region
     :return: None
     """
     def __init__(self, image_dict: dict, roi_selection: str, target_channel: Union[str, None],
@@ -587,12 +606,7 @@ class MarkerCorrelation:
             self.mask = mask
             self.baseline_array = None
             self.baseline_threshold = baseline_threshold
-            if self.bounds and self.mask is not None:
-                try:
-                    self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
-                                    range(int(self.bounds[0]), int(self.bounds[1]), 1))]
-                except IndexError:
-                    self.mask = mask
+            self.set_mask(mask)
             try:
                 self.target_array, self.target_threshold = self.set_target_array_from_blend(image_dict, use_blend_params,
                                                         blend_dict, target_channel, roi_selection, self.bounds)
@@ -611,6 +625,20 @@ class MarkerCorrelation:
             except (ValueError, KeyError):
                 pass
 
+    def set_mask(self, mask: Union[np.array, np.ndarray]):
+        """
+        Set the mask for the object detection overlap
+
+        :param mask: NUmpy array of a mask that matches the current ROI
+        :return: None
+        """
+        if self.bounds and self.mask is not None:
+            try:
+                self.mask = mask[np.ix_(range(int(self.bounds[2]), int(self.bounds[3]), 1),
+                                        range(int(self.bounds[0]), int(self.bounds[1]), 1))]
+            except IndexError:
+                self.mask = mask
+
     @staticmethod
     def compute_channel_bounds_from_zoom(bounds) -> Union[tuple, None]:
         """
@@ -626,9 +654,7 @@ class MarkerCorrelation:
 
     def get_correlation_statistics(self) -> tuple:
         """
-
-        :return: tuple: The proportion of the target channel that is inside the mask, the
-        target overlap with the baseline channel inside the mask, and baseline proportion in mask, and basic correlation
+        :return: tuple: Three values for target proportion in the mask, and basic correlation
         """
         return self.target_proportion_in_mask, self.target_proportion_relative, self.baseline_proportion_in_mask, \
             self.basic_correlation
@@ -754,5 +780,5 @@ def add_saved_blend(saved_blend_dict: dict=None, blend_name: str=None,
     """
     saved_blend_dict = {} if not saved_blend_dict else saved_blend_dict
     if blend_name and cur_selected_channels:
-        saved_blend_dict[blend_name] = [i for i in cur_selected_channels]
+        saved_blend_dict[blend_name] = list(cur_selected_channels)
     return saved_blend_dict

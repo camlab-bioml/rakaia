@@ -1,6 +1,8 @@
 import os
 import pandas as pd
 from pandas.testing import assert_frame_equal
+from dash import html
+from rakaia.parsers.object import parse_quantification_sheet_from_h5ad
 from rakaia.utils.cluster import (
     assign_colours_to_cluster_annotations,
     cluster_label_children,
@@ -8,8 +10,8 @@ from rakaia.utils.cluster import (
     get_cluster_proj_id_column,
     set_cluster_col_dropdown,
     match_cluster_hash_to_cluster_frame,
-    set_default_cluster_col)
-from dash import html
+    set_default_cluster_col,
+    QuantificationClusterMerge)
 
 def test_basic_colparse_cluster(get_current_dir):
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
@@ -70,3 +72,18 @@ def test_default_cluster_col():
     assert set_default_cluster_col({"roi_1": {}}, "roi_1") is None
     assert set_default_cluster_col({}, "roi_1") is None
     assert set_default_cluster_col({"other": {"cat_1": {"one": "red"}}}, "roi_1") is None
+
+def test_quant_to_cluster_transfer(get_current_dir):
+    data_selection = "test---slide0---chr10-h54h54-Gd158_2_18"
+    measurements = parse_quantification_sheet_from_h5ad((os.path.join(get_current_dir, "from_steinbock.h5ad")))
+    clust_out = QuantificationClusterMerge(measurements, data_selection,
+                                              "description", None, delimiter="---").get_cluster_frame()
+    merged_clust = clust_out[data_selection]
+    assert all(elem in merged_clust.columns for elem in ['cell_id', 'description'])
+    merged_clust['cell_type'] = "immune"
+    merged_clust = merged_clust.drop(['description'], axis=1)
+    clust_out[data_selection] = merged_clust
+    out_clust_2 = QuantificationClusterMerge(measurements, data_selection, "description",
+                                                clust_out, delimiter="---").get_cluster_frame()
+    merged_clust_2 = out_clust_2[data_selection]
+    assert all(elem in merged_clust_2.columns for elem in ['cell_id', 'description', 'cell_type'])

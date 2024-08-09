@@ -7,8 +7,6 @@ class DashUploaderFileReader:
 
     :param uploader: `dash_uploader` UploadStatus for a specific dash_uploader` component
     :param progress: Float specifying the percentage of file contents to be read before the filenames are to be parsed.
-    By default, all files should be read before parsing.
-
     :return: None
     """
     def __init__(self, uploader: du.UploadStatus, progress: float = 1.0):

@@ -21,14 +21,13 @@ from rakaia.parsers.object import (
     parse_roi_query_indices_from_quantification_subset,
     match_steinbock_mask_name_to_mcd_roi,
     match_mask_name_to_quantification_sheet_roi,
-    match_mask_name_with_roi,
+    ROIMaskMatch,
     validate_coordinate_set_for_image,
     parse_quantification_sheet_from_h5ad,
     validate_quantification_from_anndata,
     return_umap_dataframe_from_quantification_dict,
-    object_id_list_from_gating,
+    GatingObjectList,
     is_steinbock_intensity_anndata)
-from pandas.testing import assert_frame_equal
 import anndata as adata
 
 def test_validation_of_measurements_csv(get_current_dir):
@@ -42,7 +41,6 @@ def test_validation_of_measurements_csv(get_current_dir):
     measurements_bad = measurements_csv.drop(['cell_id', 'x', 'y', 'x_max', 'y_max', 'area', 'sample'], axis=1)
     with pytest.raises(QuantificationFormatError):
         validate_incoming_measurements_csv(measurements_bad)
-
     valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None
     assert err is None
@@ -105,7 +103,6 @@ def test_parse_mask_filenames():
 
 def test_read_in_mask_from_filepath(get_current_dir):
     masks_dict = {"mask": os.path.join(get_current_dir, "mask.tiff")}
-    #TODO: validate the read_in_mask_array_from_filepath function
     mask_return = read_in_mask_array_from_filepath(masks_dict, "mask", 1, None, True)
     assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
     assert isinstance(mask_return[1], list)
@@ -113,7 +110,6 @@ def test_read_in_mask_from_filepath(get_current_dir):
 
     masks_dict_2 = {"mask_1": os.path.join(get_current_dir, "mask.tiff"),
                     "mask_2": os.path.join(get_current_dir, "mask.tiff")}
-    # TODO: validate the read_in_mask_array_from_filepath function
     mask_return = read_in_mask_array_from_filepath(masks_dict_2, "mask", 1, None, False)
     assert isinstance(mask_return[0], dash_extensions.enrich.Serverside)
     assert isinstance(mask_return[1], list)
@@ -122,7 +118,7 @@ def test_read_in_mask_from_filepath(get_current_dir):
 def test_return_proper_cols_remove_validate():
     assert 'cell_id' in set_columns_to_drop()
     assert 'x_min' in set_columns_to_drop()
-    assert not 'x_min' in set_mandatory_columns()
+    assert 'x_min' not in set_mandatory_columns()
     assert len(set_columns_to_drop()) != len(set_mandatory_columns())
 
 def test_parse_restyledata_from_legend_change():
@@ -168,42 +164,42 @@ def test_valid_parse_for_indices_for_query(get_current_dir):
 def test_mask_match_to_roi_name():
     data_selection = "MCD1+++slide0+++roi_1"
     mask_options = ["roi_1", "roi_2"]
-    assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1"
-    assert match_mask_name_with_roi(data_selection, mask_options, None, return_as_dash=True) == "roi_1"
+    assert ROIMaskMatch(data_selection, mask_options, None).get_match() == "roi_1"
+    assert ROIMaskMatch(data_selection, mask_options, None, return_as_dash=True).get_match() == "roi_1"
 
     data_selection_2 = "roi_1+++slide0+++roi_1"
-    assert match_mask_name_with_roi(data_selection_2, mask_options, None) == "roi_1"
+    assert ROIMaskMatch(data_selection_2, mask_options, None).get_match() == "roi_1"
 
     data_selection = "MCD1+++slide0+++roi_1"
     mask_options = ["roi_1_mask", "roi_2_mask"]
-    assert match_mask_name_with_roi(data_selection, mask_options, None) == "roi_1_mask"
+    assert ROIMaskMatch(data_selection, mask_options, None).get_match() == "roi_1_mask"
 
     dataset_options = ["round_1", "round_2", "round_3", "round_4"]
     mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
 
-    assert match_mask_name_with_roi("round_3", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+    assert ROIMaskMatch("round_3", mask_options, dataset_options).get_match() == "mcd1_s0_a3_ac_IA_mask"
     # Expect an index error on the second mask name as it's malformed
-    assert not match_mask_name_with_roi("round_2", mask_options, dataset_options)
+    assert not ROIMaskMatch("round_2", mask_options, dataset_options).get_match()
 
     dataset_options = ["round_1", "round_2", "MCD1+++slide0+++roi_1", "round_4"]
     mask_options = ["mcd1_s0_a1_ac_IA_mask", "mcd1_s0_a2_ac_IA_mask", "mcd1_s0_a3_ac_IA_mask", "mcd1_s0_a4_ac_IA_mask"]
 
-    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", mask_options, dataset_options) == "mcd1_s0_a3_ac_IA_mask"
+    assert ROIMaskMatch("MCD1+++slide0+++roi_1", mask_options, dataset_options).get_match() == "mcd1_s0_a3_ac_IA_mask"
 
-    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", None, dataset_options) is None
+    assert ROIMaskMatch("MCD1+++slide0+++roi_1", None, dataset_options).get_match() is None
 
-    assert match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options) is None
-    assert isinstance(match_mask_name_with_roi("MCD1+++slide0+++roi_1", [], dataset_options, return_as_dash=True),
+    assert ROIMaskMatch("MCD1+++slide0+++roi_1", [], dataset_options).get_match() is None
+    assert isinstance(ROIMaskMatch("MCD1+++slide0+++roi_1", [], dataset_options, return_as_dash=True).get_match(),
                       dash._callback.NoUpdate)
 
     # with steinbock-style mask naming
     data_selection = "Patient1+++slide0+++pos_1_3_3"
     mask_options = ["Patient1_002", "Patient1_003"]
-    assert match_mask_name_with_roi(data_selection, mask_options, None) == "Patient1_003"
+    assert ROIMaskMatch(data_selection, mask_options, None).get_match() == "Patient1_003"
 
     data_selection = "patient7B_SPS23_836_2_3---slide0---ROI_006_6"
     mask_options = ["patient7B_SPS23_836_2_3_002", "patient7B_SPS23_836_2_3_006", "patient7B_SPS23_836_2_3_007"]
-    assert match_mask_name_with_roi(data_selection, mask_options, None, delimiter="---") == "patient7B_SPS23_836_2_3_006"
+    assert ROIMaskMatch(data_selection, mask_options, None, delimiter="---").get_match() == "patient7B_SPS23_836_2_3_006"
 
 
 def test_match_mask_name_to_quantification_sheet_roi():
@@ -283,26 +279,26 @@ def test_gating_cell_ids(get_current_dir):
     gating_selection = ['191Ir_DNA1', '168Er_Ki67']
     gating_dict = {'191Ir_DNA1': {'lower_bound': 0.2, 'upper_bound': 0.4},
                    '168Er_Ki67': {'lower_bound': 0.5, 'upper_bound': 1}}
-    cell_ids = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1_mask")
+    cell_ids = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1_mask").get_object_list()
     # test 1 has only cells up to 203, so can enforce that only one ROI was used
     assert max(cell_ids) < 203
     assert len(cell_ids) > 0
-    cell_id_intersection = object_id_list_from_gating(gating_dict,gating_selection, measurements_csv, "test_1",
-                                                      intersection=True)
+    cell_id_intersection = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1",
+                                                      intersection=True).get_object_list()
     assert len(cell_ids) > len(cell_id_intersection)
 
     fake_frame = pd.DataFrame({"191Ir_DNA1": [1, 2, 3, 4, 5],
                                "168Er_Ki67": [1, 2, 3, 4, 5]})
 
     # if there is no column to match the ids to the mask, return empty
-    assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
-                                                      intersection=True) == []
+    assert GatingObjectList(gating_dict, gating_selection, fake_frame, "test_1",
+                                                      intersection=True).get_object_list() == []
 
     fake_frame = pd.DataFrame({"191Ir_DNA1": [1, 2, 3, 4, 5],
                                "168Er_Ki67": [1, 2, 3, 4, 5],
                                "description": ["roi", "roi", "roi", "roi", "roi"]})
-    assert object_id_list_from_gating(gating_dict, gating_selection, fake_frame, "test_1",
-                                      intersection=True) == []
+    assert GatingObjectList(gating_dict, gating_selection, fake_frame, "test_1",
+                                      intersection=True).get_object_list() == []
 
 def test_match_steinbock_mask_name_to_roi():
     assert match_steinbock_mask_name_to_mcd_roi("patient1_003", "pos_1_3_3") == "patient1_003"

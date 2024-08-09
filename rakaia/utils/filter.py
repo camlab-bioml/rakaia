@@ -1,5 +1,5 @@
-import dash
 from typing import Union
+import dash
 import numpy as np
 import cv2
 from scipy.ndimage import median_filter

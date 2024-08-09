@@ -16,6 +16,8 @@ from rakaia.inputs.pixel import (
     add_local_file_dialog)
 from rakaia.inputs.loaders import wrap_child_in_loading
 from rakaia.utils.pixel import generate_default_swatches
+from rakaia.utils.region import RegionStatisticGroups
+
 
 def register_app_layout(config, cache_dest):
 
@@ -40,7 +42,7 @@ def register_app_layout(config, cache_dest):
                               "max-width": "none", "max-height": "none"}),
         dbc.Modal(children=dbc.ModalBody([html.H6(TabText().dataset_preview),
                 html.Div([dash_table.DataTable(id='dataset-preview-table', columns=[], data=None,
-                                     style_table = {"max-width": "inherit"},
+                                     style_table={"max-width": "inherit"},
                 editable=False, filter_action='native', row_selectable='single', column_selectable='single')],
                 style={"max-width": "2000px"}),
                 html.Br(),
@@ -94,7 +96,13 @@ def register_app_layout(config, cache_dest):
                                   daq.ToggleSwitch(label='ROI change using arrows', id='enable-roi-change-key',
                                                    labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=True,
                                                    persistence=config['persistence'], persistence_type='local',
-                                                   style={"margin": "10px"})], style={"display": "flex",
+                                                   style={"margin": "10px"}),
+                                  daq.ToggleSwitch(label='Switch tool panel placement', id='toggle-advanced-placement',
+                                                   labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False,
+                                                   persistence=config['persistence'], persistence_type='local',
+                                                   style={"margin": "10px", "width": "35%",
+                                                          "textAlign": "center"}),
+                                  ], style={"display": "flex",
                                                 "justify-content": "center", "textAlign": "center"}),
                         html.Br(),
                         html.Div([daq.ToggleSwitch(label='Session messages', id='toggle-session-messages',
@@ -107,7 +115,8 @@ def register_app_layout(config, cache_dest):
                                                       style={"width": "40%", "height": "50%"},
                                                       persistence=config['persistence'], persistence_type='local'),
                                             dbc.Tooltip(TOOLTIPS['max-viewport'], target="canvas-viewport-max")
-                                            ], style={"display": "flex"})],
+                                            ], style={"display": "flex"}),
+                                  ],
                                  style={"display": "flex", "justify-content": "center"}),
                         html.Br(),
                         dcc.Checklist(options=[' use graph subset on download'], value=[],
@@ -121,7 +130,7 @@ def register_app_layout(config, cache_dest):
                                           style={"width": "65%", "margin-right": "10px"}),
                                 dbc.Button("Create preset", id="preset-button", className="me-1",
                                            style={"background-color": DEFAULT_WIDGET_COLOUR, "width": "30%"}),
-                            ],style={"display": "flex", "float": "center", "textAlign": "center", "width": "90%"}),
+                            ], style={"display": "flex", "float": "center", "textAlign": "center", "width": "90%"}),
                             html.Br(),
                             dcc.Dropdown(options=[], value=None, id='preset-options', style={"width": "75%"}),
                             dbc.Tooltip(children="", target="preset-options",
@@ -531,7 +540,7 @@ def register_app_layout(config, cache_dest):
                                         html.Br(),
                                             html.Div([
                                                 dcc.Slider(50, 150, 2.5, value=100, id='annotation-canvas-size',
-                                                           # persistence=config['persistence'], persistence_type='local',
+                                                           persistence=config['persistence'], persistence_type='local',
                                                            marks={50: 'small', 100: 'default', 150: 'large'})],
                                                 style={"width": "45vh", "height": "10%", "padding": "0px",
                                                        "margin-bottom": "-2px", "float": "right", "color": "#FFFFFF"}),
@@ -768,7 +777,7 @@ def register_app_layout(config, cache_dest):
                                 ])
                             ], style={"margin-left": "7.5px", "margin-right": "7.5px", "margin-top": "3px"},
                             active_tab='channel-config-tab'),
-                                 dbc.Offcanvas(id="blend-config-offcanvas", title="Apply additional canvas tools",
+                                dbc.Offcanvas(id="blend-config-offcanvas", title="Apply additional canvas tools",
                                                placement="end", style={"width": "32%"}, backdrop=False, scrollable=True,
                                                is_open=False, children=[
                                 dbc.Tabs(id='config-tabs',
@@ -993,8 +1002,8 @@ def register_app_layout(config, cache_dest):
                                 html.Div(dbc.Collapse(html.Div([html.H6("Selection information",
                                 style={'width': '75%'}),
                                 html.Div([dash_table.DataTable(id='selected-area-table',
-                                columns=[{'id': p, 'name': p} for p in ['Channel', 'Mean', 'Max', 'Min', 'Total', 'Region']],
-                                data=None)], style={"width": "85%"})]),
+                                columns=[{'id': p, 'name': p} for p in RegionStatisticGroups.columns],
+                                data=None)], style={"width": "100%"}, className="region-stats")]),
                                 id="area-stats-collapse", is_open=False), style={"margin-bottom": "0px", "margin-top": "20px"}),
                                 html.Div([
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-layer-group",
@@ -1039,7 +1048,7 @@ def register_app_layout(config, cache_dest):
                                 html.Div([
                                 dcc.Checklist(options=[' Overlay grid'], value=[], id="overlay-grid-canvas",
                                         style={"margin-top": "12px", "accent-color": DEFAULT_WIDGET_COLOUR}),
-                                dcc.Checklist(options=[' Add circle on click'], value=[' add circle on click'],
+                                dcc.Checklist(options=[' Add circle on click'], value=[' Add circle on click'],
                                         id="click-annotation-add-circle", style={"margin-top": "12px", "margin-left": "30px",
                                                             "accent-color": DEFAULT_WIDGET_COLOUR}),
                                 ], style={"display": "flex", "float": "center", "justifyContent": "center",
@@ -1152,13 +1161,12 @@ def register_app_layout(config, cache_dest):
                                     style={"width": "20%", "margin-top": "10px", "margin-left": "12.5px"}),
                                 dbc.Tooltip(TOOLTIPS['cluster-proj'], target="cluster-proj-info", placement='bottom')],
                                 style={"display": 'flex', 'margin-left': '10px', 'margin-top': '7.5px'}),
-                                # TODO: link quantification results to cluster projection
                                 html.Br(),
                                 dcc.Dropdown(id='cluster-col', options=[], multi=False,
                                     placeholder='Select cluster category', style={"width": "90%", "float": "center"}),
                                 html.Br(),
                                 dbc.Row(children=[
-                                    dbc.Col(width = 6, children=[
+                                    dbc.Col(width=6, children=[
                                         dcc.Dropdown(id='cluster-label-list', multi=False, options=[],
                                                      style={'width': '100%', 'margin-top': '10px', "margin-left": "5px"},
                                                      placeholder='Change cluster colors'),
@@ -1207,7 +1215,7 @@ def register_app_layout(config, cache_dest):
 
                             ),
 
-                        ],width=3),
+                        ], width=3),
 
                     ])])]),
 
@@ -1217,7 +1225,10 @@ def register_app_layout(config, cache_dest):
                             html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR,
                                 style={"margin-right": "15px", "margin-top": "10px", "textAlign": "center"}),
-                                    daq.ToggleSwitch(label='Use default scaling for preview',
+                                      dbc.Button("Update from zoom", id="chan-gallery-zoom-update",
+                                                 className="mb-3", color='dark', n_clicks=0, outline=True,
+                                                 style={"margin-top": "10px", "height": "50%"}),
+                                    daq.ToggleSwitch(label='Default scaling',
                                                      value=True,
                                                              id='default-scaling-gallery', labelPosition='bottom',
                                                              color=DEFAULT_WIDGET_COLOUR, style={"margin-left": "15px",
@@ -1357,6 +1368,9 @@ def register_app_layout(config, cache_dest):
                                         style={"width": "55%", "margin-right": "10px", "height": "100%",
                                                "margin-top": "5px"}),
                                         dbc.Button("Annotate UMAP", id="create-annotation-umap",
+                                            className="me-1", style={"margin-top": "10px",
+                                            "background-color": DEFAULT_WIDGET_COLOUR}),
+                                        dbc.Button("Current overlay -> Cluster", id="overlay-to-clust",
                                             className="me-1", style={"margin-top": "10px",
                                             "background-color": DEFAULT_WIDGET_COLOUR}),
                                         ]),

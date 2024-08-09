@@ -86,7 +86,7 @@ def test_identify_patchable_umap(get_current_dir):
     umap_plot_3 = generate_umap_plot(umap_dict, "sample", validated_measurements, None)
     assert not umap_eligible_patch(umap_plot_3, validated_measurements, "156Gd_FOXA1")
     # malformed fig
-    assert not umap_eligible_patch({"data": [{"fake_key": "fake_val"}]}, validated_measurements, "156Gd_FOXA1")
+    assert not umap_eligible_patch({"data": [{"fake_key": "fake_val"}], "layout": None}, validated_measurements, "156Gd_FOXA1")
 def test_generate_umap_patch(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)

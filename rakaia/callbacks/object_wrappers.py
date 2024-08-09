@@ -98,7 +98,7 @@ class AnnotationQuantificationMerge:
 
         :return: None
         """
-        if self.remove and self.annotations[self.data_selection]:
+        if self.remove and self.data_selection in self.annotations and self.annotations[self.data_selection]:
             # set the ids for the indices to remove
             if not self.indices_remove:
                 last = list(self.annotations[self.data_selection].keys())[-1]
@@ -132,7 +132,6 @@ class AnnotationQuantificationMerge:
             objects_included = get_objs_in_svg_boundary_by_mask_percentage(
                 mask_array=self.mask_config[self.mask_selection]["raw"], svgpath=annotation)
         return objects_included
-
 
     def populate_quantification_from_zoom(self, annotation):
         """
@@ -213,9 +212,7 @@ class AnnotationQuantificationMerge:
         """
         Get the annotation hash in pickle transform format and quantification result frame with the annotations added
 
-        :return: tuple: `pd.DataFrame` of quantification results with
-        the annotated objects in the annotation category column, and `
-        SessionServerside` transform of the annotation dictionary for all ROIs
+        :return: tuple: `pd.DataFrame` of quantification with annotations, and `annotation ROI SessionServerside`
         """
         if self.annotations:
             return self.get_annotated_frame(), self.get_annotation_cache()

@@ -6,7 +6,8 @@ from rakaia.io.display import (
     FullScreenCanvas,
     generate_preset_options_preview_text,
     annotation_preview_table,
-    timestamp_download_child)
+    timestamp_download_child,
+    generate_empty_region_table)
 import numpy as np
 import pandas as pd
 import tempfile
@@ -15,6 +16,9 @@ import plotly.express as px
 import datetime
 
 def test_generate_channel_statistics_dataframe():
+
+    assert generate_empty_region_table() == []
+
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.full((1000, 1000), 100),
                                                    "Nuclear": np.full((1000, 1000), 200),
                                                    "Cytoplasm": np.full((1000, 1000), 300)}}
@@ -32,6 +36,7 @@ def test_generate_channel_statistics_dataframe():
     assert list(stats_1['Max'] == [100, 300])
     assert list(stats_1['Min'] == [100, 300])
     assert list(stats_1['Mean'] == [100, 300])
+    assert list(stats_1['SD'] == [0.0, 0.0])
     assert list(stats_1['Total'] == [1100000.0, 3300000.0])
 
 
@@ -63,6 +68,7 @@ def test_generate_channel_statistics_dataframe():
                                            aliases).get_summary_frame())
     assert len(stats_2) == 1
     assert list(stats_2['Min']) == [200]
+    assert list(stats_2['SD']) == [0]
 
     # Option 3: when two rectangles are drawn for two channels
 
@@ -88,8 +94,9 @@ def test_generate_channel_statistics_dataframe():
     assert list(stats_3['Max'] == [100, 300, 100, 300])
     assert list(stats_3['Min'] == [100, 300, 100, 300])
     assert list(stats_3['Mean'] == [100, 300, 100, 300])
+    assert list(stats_3['SD'] == [0, 0, 0, 0])
     assert list(stats_3['Total']) == [1711500.0, 5134500.0, 2226300.0, 6678900.0]
-
+    assert list(stats_3['Region'] == [1, 1, 2, 2])
 
     # Option 4: when an existing svg path is edited
 
