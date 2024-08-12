@@ -7,7 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.18.0] - 2024-08-06
+## [0.18.1] - 2024-08-12
+
+### Added
+
+- script to install using `pyapp`
+
+### Changed
+
+- slight modification to `RegionAnnotation` pydantic implementation to be compatible with `pyapp`
+
+
+## [0.18.0] - 2024-08-09
 
 ### Added
 

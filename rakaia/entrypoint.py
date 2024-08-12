@@ -8,7 +8,7 @@ from flask import render_template
 from flask_httpauth import HTTPBasicAuth
 
 _program = "rakaia"
-__version__ = "0.18.0"
+__version__ = "0.18.1"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.

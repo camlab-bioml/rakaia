@@ -13,5 +13,6 @@ export PYAPP_PROJECT_PATH="$SCRIPTPATH/dist/rakaia-$VERSION-py3-none-any.whl"
 export PYAPP_EXE_NAME="rakaia"
 
 
-# assumes installation of pyapp in the same directory as the rakaia parent: https://ofek.dev/pyapp/latest/how-to/
-cd ../pyapp-latest && cargo build --release && mv target/release/pyapp rakaia && chmod 777 rakaia
+# assumes installation of pyapp in the same directory as the rakaia git source: https://ofek.dev/pyapp/latest/how-to/
+cd ../pyapp-latest && cargo build --release && mv target/release/pyapp rakaia_bin_$VERSION && chmod 777 rakaia_bin_$VERSION
+./rakaia_bin_$VERSION self remove

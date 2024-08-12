@@ -1,4 +1,5 @@
 import math
+from dataclasses import dataclass
 from typing import Union
 import ast
 from pydantic import BaseModel
@@ -134,6 +135,8 @@ class FreeFormRegion(ChannelRegion):
             self.mean_exp, self.max_exp, self.min_exp, self.median_exp, \
                 self.std_dev, self.integrated = 0, 0, 0, 0, 0, 0
 
+
+@dataclass(frozen=True)
 class RegionAnnotation(BaseModel):
     """
     A base model for the attributes required for a region annotation.
@@ -147,7 +150,7 @@ class RegionAnnotation(BaseModel):
     imported: bool = False
     annotation_column: str = 'object_annotation_1'
     type: str = None
-    channels: list = []
+    channels: list = None
     use_mask: Union[bool, list, str] = None
     mask_selection: str = None
     mask_blending_level: float = 35.0

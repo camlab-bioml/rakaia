@@ -162,6 +162,16 @@ of to use a production-level server from waitress, enable production mode:
 rakaia -pr
 ```
 
+### Binary distribution
+
+rakaia can be compiled and distributed as a binary using `pyapp`. The instructions [here](https://ofek.dev/pyapp/latest/how-to/)
+should be followed to install `pyapp` in the same directory as the rakaia git source, then:
+
+```commandline
+cd rakaia
+source pyapp.sh
+```
+
 ## Troubleshooting
 
 Troubleshooting tips can be found in the `Troubleshooting`
