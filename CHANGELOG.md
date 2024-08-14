@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.18.1] - 2024-08-12
+## [0.19.0] - 2024-08-14
 
 ### Added
 
-- script to install using `pyapp`
+- script to install using `pyapp` (UNIX systems)
+- Cluster projection distribution table with selected cluster sub-categories
 
 ### Changed
 

@@ -49,11 +49,15 @@ from rakaia.utils.cluster import (
     cluster_label_children,
     cluster_annotation_frame_import,
     set_cluster_col_dropdown,
-    set_default_cluster_col, QuantificationClusterMerge)
+    set_default_cluster_col,
+    QuantificationClusterMerge,
+    subset_cluster_frame)
 from rakaia.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
-    gating_label_children, mask_object_counter_preview, DistributionTableColumns)
+    gating_label_children,
+    mask_object_counter_preview,
+    DistributionTableColumns)
 
 def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -69,6 +73,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     dash_app.config.suppress_callback_exceptions = True
     matplotlib.use('agg')
     OVERWRITE = app_config['serverside_overwrite']
+    dist_cols = [{'id': p, 'name': p, 'editable': False} for p in DistributionTableColumns.columns]
 
     @du.callback(Output('session_config_quantification', 'data'),
                  id='upload-quantification')
@@ -413,10 +418,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('cur-umap-subset-category-counts', 'data'),
                        prevent_initial_call=True)
     def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
-        columns = [{'id': p, 'name': p, 'editable': False} for p in DistributionTableColumns.columns]
         if None not in (quantification_dict, umap_variable):
-            return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), columns
-        return pd.DataFrame({}).to_dict(orient="records"), columns
+            return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), dist_cols
+        return pd.DataFrame({}).to_dict(orient="records"), dist_cols
 
     @dash_app.callback(
         Output("download-point-csv", "data"),
@@ -695,3 +699,27 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask).get_cluster_frame()
             return SessionServerside(clust, key="cluster_assignments", use_unique_key=OVERWRITE), set_cluster_col_dropdown(clust[roi_selection])
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("show-clust-dist-table", "is_open"),
+        Input('toggle-cluster-dist', 'n_clicks'),
+        [State("show-clust-dist-table", "is_open")])
+    def toggle_show_clust_dist_modal(n, is_open):
+        return not is_open if n else is_open
+
+    @dash_app.callback(Output('clust-dist-table', 'data'),
+                       Output('clust-dist-table', 'columns'),
+                       State('cluster-col', 'value'),
+                       State('imported-cluster-frame', 'data'),
+                       State('data-collection', 'value'),
+                       Input('cluster-label-selection', 'value'),
+                       Input('gating-cell-list', 'data'),
+                       Input('apply-gating', 'value'),
+                       prevent_initial_call=True)
+    def populate_cluster_projection_distribution_table(clust_variable, cluster_data, roi_selection, cluster_cats,
+                                                       gating_object_list, use_gating):
+        if cluster_data and clust_variable and cluster_cats and roi_selection:
+            gating_object_list = gating_object_list if use_gating else None
+            cluster_data = subset_cluster_frame(cluster_data, roi_selection, clust_variable, cluster_cats, gating_object_list)
+            return quantification_distribution_table(cluster_data, clust_variable, None), dist_cols
+        return pd.DataFrame({}).to_dict(orient="records"), dist_cols

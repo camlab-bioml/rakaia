@@ -415,7 +415,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('blending_colours', 'data'),
                        State('session_alert_config', 'data'),
                        State('db-saved-configs', 'data'),
-                       State("imc-metadata-editable", "data"),
+                       State("imc-panel-editable", "data"),
                        State('dataset-delimiter', 'value'),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('blending_colours', 'data', allow_duplicate=True),
@@ -425,7 +425,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('global-filter-type', 'value', allow_duplicate=True),
                        Output("global-kernel-val-filter", 'value', allow_duplicate=True),
                        Output("global-sigma-val-filter", 'value', allow_duplicate=True),
-                       Output("imc-metadata-editable", "data", allow_duplicate=True),
+                       Output("imc-panel-editable", "data", allow_duplicate=True),
                        Output('db-config-options', 'value', allow_duplicate=True),
                        Output('db-config-name', 'value', allow_duplicate=True),
                        Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
@@ -1009,7 +1009,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @du.callback(Output('metadata_config', 'data'),
-                 id='upload-metadata')
+                 id='upload-panel-info')
     def upload_custom_metadata_panel(status: du.UploadStatus):
         """
         Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
@@ -1024,13 +1024,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(
-        Output("imc-metadata-editable", "columns", allow_duplicate=True),
-        Output("imc-metadata-editable", "data", allow_duplicate=True),
+        Output("imc-panel-editable", "columns", allow_duplicate=True),
+        Output("imc-panel-editable", "data", allow_duplicate=True),
         Output('session_alert_config', 'data', allow_duplicate=True),
         Input('metadata_config', 'data'),
         State('uploaded_dict_template', 'data'),
         State('session_alert_config', 'data'),
-        State('imc-metadata-editable', 'data'),
+        State('imc-panel-editable', 'data'),
         prevent_initial_call=True)
     def populate_datatable_columns(metadata_config, uploaded, error_config, cur_metadata):
         if metadata_config is not None and len(metadata_config['uploads']) > 0:
@@ -1048,8 +1048,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(
-        Output("imc-metadata-editable", "columns"),
-        Output("imc-metadata-editable", "data"),
+        Output("imc-panel-editable", "columns"),
+        Output("imc-panel-editable", "data"),
         Input('uploaded_dict_template', 'data'),
         Input('image-metadata', 'data'))
     def populate_metadata_table(uploaded, column_dict):
@@ -1062,7 +1062,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(
-        Input("imc-metadata-editable", "data"),
+        Input("imc-panel-editable", "data"),
         Output('alias-dict', 'data'))
     def create_channel_label_dict(metadata):
         if metadata is not None:
@@ -1070,10 +1070,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output("download-edited-table", "data"),
-        Input("btn-download-metadata", "n_clicks"),
-        Input("imc-metadata-editable", "data"))
+        Input("btn-download-panel", "n_clicks"),
+        Input("imc-panel-editable", "data"))
     def download_edited_metadata(n_clicks, datatable_contents):
-        if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and ctx.triggered_id == "btn-download-metadata":
+        if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and ctx.triggered_id == "btn-download-panel":
             return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "metadata.csv", index=False)
         raise PreventUpdate
 
@@ -1131,7 +1131,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('download-roi-h5py', 'data'),
                        Input('btn-download-roi-h5py', 'n_clicks'),
                        State('uploaded_dict', 'data'),
-                       State('imc-metadata-editable', 'data'),
+                       State('imc-panel-editable', 'data'),
                        State('blending_colours', 'data'),
                        State('data-collection', 'value'),
                        State('annotation_canvas', 'relayoutData'),
@@ -1668,7 +1668,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('alias-dict', 'data'),
-                       Input("imc-metadata-editable", "data"),
+                       Input("imc-panel-editable", "data"),
                        State('session_alert_config', 'data'),
                        prevent_initial_call=True)
     def give_alert_on_improper_edited_metadata(gene_aliases, metadata_editable, error_config):

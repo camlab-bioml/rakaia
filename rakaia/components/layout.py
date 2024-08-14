@@ -293,9 +293,9 @@ def register_app_layout(config, cache_dest):
                                                    style={"display": "flex", "width": "auto", "align-items": "center",
                                                           "float": "center", "justify-content": "center"}),
                                         dbc.Collapse([
-                                            html.H6("Panel metadata"),
-                                            du.Upload(id='upload-metadata', max_file_size=1000, max_files=1,
-                                                      text='Import panel metadata (CSV) using drag and drop',
+                                            html.H6("Panel info list"),
+                                            du.Upload(id='upload-panel-info', max_file_size=1000, max_files=1,
+                                                      text='Import panel info (CSV) using drag and drop',
                                                       filetypes=['csv'], upload_id="upload-image",
                                                       default_style={"margin-top": "20px", "height": "5vh"}),
                                             html.Br(),
@@ -432,9 +432,9 @@ def register_app_layout(config, cache_dest):
                                                                               style={"display": "inline-block",
                                                                                      "margin-right": "7.5px",
                                                                                      "margin-top": "3px"}),
-                                                                       html.Div("Panel metadata (CSV)")],
+                                                                       html.Div("Panel info (CSV)")],
                                                                       style={"display": "flex"}),
-                                                   id="btn-download-metadata", className="mx-auto", color=None,
+                                                   id="btn-download-panel", className="mx-auto", color=None,
                                                    n_clicks=0, style={"margin-top": "10px"}),
                                     dcc.Download(id="download-edited-table")
                                     ], style={"border":"1px black solid", "display": "inline-block",
@@ -1162,8 +1162,14 @@ def register_app_layout(config, cache_dest):
                                 dbc.Tooltip(TOOLTIPS['cluster-proj'], target="cluster-proj-info", placement='bottom')],
                                 style={"display": 'flex', 'margin-left': '10px', 'margin-top': '7.5px'}),
                                 html.Br(),
-                                dcc.Dropdown(id='cluster-col', options=[], multi=False,
-                                    placeholder='Select cluster category', style={"width": "90%", "float": "center"}),
+                                html.Div([
+                                    dcc.Dropdown(id='cluster-col', options=[], multi=False,
+                                                 placeholder='Select cluster category',
+                                                 style={"width": "90%", "float": "center"}),
+                                    dbc.Button("Cluster distribution", id="toggle-cluster-dist",
+                                               style={"background-color": DEFAULT_WIDGET_COLOUR,
+                                                      "margin-right": '7.5px'}),
+                                ], style={"display": "flex", "float": "center"}),
                                 html.Br(),
                                 dbc.Row(children=[
                                     dbc.Col(width=6, children=[
@@ -1188,6 +1194,9 @@ def register_app_layout(config, cache_dest):
                                 html.Br(),
                                 dbc.Button("Show cluster labels", id="toggle-cluster-labels",
                                 style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
+                                dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='clust-dist-table',
+                                columns=[], data=None, editable=False, filter_action='native')]),
+                                id="show-clust-dist-table", size='l'),
                                 dbc.Collapse(html.Div([
                                 html.Br(),
                                 html.H6(children=[], id="cluster-assignments")]),
@@ -1261,11 +1270,11 @@ def register_app_layout(config, cache_dest):
                         html.Div(id="image-gallery", children=[
                         dbc.Row(id="image-gallery-row")], style={"margin-top": "15px"}),
                         ], type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR)]),
-            dbc.Tab(label="Panel metadata", tab_id='metadata-tab', label_style={"color": DEFAULT_WIDGET_COLOUR},
+            dbc.Tab(label="Panel info", tab_id='panel-tab', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=
                         [html.Div([dbc.Row([
                         dbc.Col(html.Div([
-                        html.B("Panel metadata", style={"margin-top": "10px", "margin-left": "7.5px"}),
+                        html.B("Panel information", style={"margin-top": "10px", "margin-left": "7.5px"}),
                         dbc.Button(
                                 children=html.Span([html.I(className="fa-solid fa-circle-question",
                                                            style={"display": "inline-block",
@@ -1277,7 +1286,7 @@ def register_app_layout(config, cache_dest):
                             dbc.Tooltip(TabText().metadata, target="panel-help-hover",
                             style={"display": "flex"}),
                         html.Br(),
-                        dash_table.DataTable(id='imc-metadata-editable', columns=[], data=None,
+                        dash_table.DataTable(id='imc-panel-editable', columns=[], data=None,
                                             editable=True)]), width=9),
                         dbc.Col(html.Div([
                         html.Br()]),
@@ -1472,7 +1481,10 @@ def register_app_layout(config, cache_dest):
                                outline=True, color="dark",
                     style={"justifyContent": "center"}),
                     html.Br()], style={"margin-top": "15px", "display": "none"}),
-            ])
+            ]),
+            # TODO: add tab for custom patient-level metadata exploration
+            # dbc.Tab(label='Metadata', tab_id='custom-metadata', label_style={"color": DEFAULT_WIDGET_COLOUR},
+            #     children=[])
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),
         wrap_child_in_loading(dcc.Store(id="uploaded_dict"), wrap=config['use_loading']),

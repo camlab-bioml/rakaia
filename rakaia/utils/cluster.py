@@ -86,6 +86,22 @@ def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: 
         cur_cluster_dict[roi_selection] = cluster_frame
     return cur_cluster_dict if len(cur_cluster_dict) > 0 else None
 
+def subset_cluster_frame(cluster_data: dict, roi_selection: str, clust_variable: str,
+                         cluster_cats: Union[list, None]=None,
+                         gating_object_list: Union[list, None]=None) -> Union[pd.DataFrame, dict]:
+    """
+    Subset a cluster frame based on subset of cluster projection options in a specific column, or
+    an object gating list. Used for generating a distribution table of objects by annotation in the current image
+    """
+    if cluster_data and roi_selection and clust_variable and cluster_cats and \
+            roi_selection in cluster_data:
+        cluster_data = pd.DataFrame(cluster_data[roi_selection])
+        cluster_data = cluster_data[cluster_data[clust_variable].isin(list(cluster_cats))]
+        if gating_object_list:
+            object_column = get_cluster_proj_id_column(cluster_data)
+            cluster_data = cluster_data[cluster_data[object_column].isin(gating_object_list)]
+    return cluster_data
+
 def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_cluster_dict: dict=None,
                                           roi_selection: str=None, cluster_id_col: str='cluster') -> tuple:
     """

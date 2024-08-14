@@ -1,4 +1,5 @@
 import os
+import random
 import pandas as pd
 from pandas.testing import assert_frame_equal
 from dash import html
@@ -11,7 +12,8 @@ from rakaia.utils.cluster import (
     set_cluster_col_dropdown,
     match_cluster_hash_to_cluster_frame,
     set_default_cluster_col,
-    QuantificationClusterMerge)
+    QuantificationClusterMerge,
+    subset_cluster_frame)
 
 def test_basic_colparse_cluster(get_current_dir):
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
@@ -65,6 +67,22 @@ def test_matching_frame_to_hash(get_current_dir):
     cleaned_cols = match_cluster_hash_to_cluster_frame(cluster_assignments, type_cols, "roi_1")
     assert 'fake' not in cleaned_cols['roi_1'].keys()
     assert 'cluster' in cleaned_cols['roi_1'].keys()
+
+def test_cluster_frame_subsetting(get_current_dir):
+    cluster_assignments = {"roi_1": pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))}
+    subset = subset_cluster_frame(cluster_assignments, "roi_1", "cluster", ['Type_1', 'Type_2'])
+    assert len(subset) < len(pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv")))
+    assert isinstance(subset, pd.DataFrame)
+    subset_2 = subset_cluster_frame(cluster_assignments, "roi_2", "cluster", ['Type_1', 'Type_2'])
+    assert isinstance(subset_2, dict)
+
+    objs = random.sample(range(100, 999), 25)
+    subset_w_objs = subset_cluster_frame(cluster_assignments, "roi_1", "cluster", ['Type_1', 'Type_2'], objs)
+    assert len(subset_w_objs) == len(objs)
+
+
+
+
 
 def test_default_cluster_col():
     type_cols = {"roi_1": {"cat_1": {"one": "blue"}, "cluster": {"Type_1": "blue"}}}

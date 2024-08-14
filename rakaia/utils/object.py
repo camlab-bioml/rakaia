@@ -543,6 +543,7 @@ def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selectio
         return annot_dict
     return annotations_dict
 
+
 def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFrame],
                                       umap_variable: str, subset_cur_cat: Union[dict, None]=None,
                                       counts_col: str="Counts", proportion_col: str="Proportion",
