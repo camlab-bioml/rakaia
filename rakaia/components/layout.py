@@ -310,6 +310,13 @@ def register_app_layout(config, cache_dest):
                                                       text='Import UMAP coordinates (CSV)',
                                                       chunk_size=100, max_total_size=10000, max_files=1,
                                                       filetypes=['csv'],
+                                                      default_style={"margin-top": "20px", "height": "5vh"}),
+                                            html.Br(),
+                                            html.H6("Custom metadata"),
+                                            du.Upload(id='upload-custom-metadata', max_file_size=10000,
+                                                      text='Import image-level metadata (CSV)',
+                                                      chunk_size=100, max_total_size=10000, max_files=1,
+                                                      filetypes=['csv'],
                                                       default_style={"margin-top": "20px", "height": "5vh"})
                                         ], id='extra-import-collapse'),
                                     ],
@@ -1270,7 +1277,7 @@ def register_app_layout(config, cache_dest):
                         html.Div(id="image-gallery", children=[
                         dbc.Row(id="image-gallery-row")], style={"margin-top": "15px"}),
                         ], type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR)]),
-            dbc.Tab(label="Panel info", tab_id='panel-tab', label_style={"color": DEFAULT_WIDGET_COLOUR},
+            dbc.Tab(label="Panel", tab_id='panel-tab', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=
                         [html.Div([dbc.Row([
                         dbc.Col(html.Div([
@@ -1283,7 +1290,7 @@ def register_app_layout(config, cache_dest):
                                 id="panel-help-hover",
                                 className="mb-3", color=None, n_clicks=0,
                                 style={"width": "10%", "margin-top": "5px", "margin-left": "10px"}),
-                            dbc.Tooltip(TabText().metadata, target="panel-help-hover",
+                            dbc.Tooltip(TabText().panel, target="panel-help-hover",
                             style={"display": "flex"}),
                         html.Br(),
                         dash_table.DataTable(id='imc-panel-editable', columns=[], data=None,
@@ -1482,9 +1489,43 @@ def register_app_layout(config, cache_dest):
                     style={"justifyContent": "center"}),
                     html.Br()], style={"margin-top": "15px", "display": "none"}),
             ]),
-            # TODO: add tab for custom patient-level metadata exploration
-            # dbc.Tab(label='Metadata', tab_id='custom-metadata', label_style={"color": DEFAULT_WIDGET_COLOUR},
-            #     children=[])
+            dbc.Tab(label='Metadata', tab_id='custom-metadata', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                children=[
+                html.B("Metadata associations", style={"margin-top": "10px", "margin-left": "7.5px"}),
+                    dbc.Button(
+                        children=html.Span([html.I(className="fa-solid fa-circle-question",
+                                                   style={"display": "inline-block",
+                                                          "margin-right": "7.5px"})],
+                                           style={"display": "flex"}),
+                        id="metadata-help-hover",
+                        className="mb-3", color=None, n_clicks=0,
+                        style={"width": "5%", "margin-top": "5px", "margin-left": "10px"}),
+                    dbc.Tooltip(TabText().metadata, target="metadata-help-hover",
+                                style={"display": "flex"}),
+                    dbc.Button(children=html.Span([# html.Div("Swap"),
+                                                   html.I(className="fa-solid fa-repeat",
+                                                          style={"display": "inline-block"})],
+                                                  style={"margin-top": "-5px", "margin-bottom": "10px"}),
+                               id="swap-association-axes", color='dark', n_clicks=0, outline=True,
+                               style={"margin": "3px", "height": "100%"}),
+                    html.Br(),
+                    dbc.Row(dbc.Col(children=[
+                    dcc.Dropdown(options=[], value=None, id='meta-x-axis', style={"width": "60%"}, multi=False,
+                                 placeholder='Set x-axis variable'),
+                    dcc.Dropdown(options=[], value=None, id='meta-y-axis', style={"width": "60%"}, multi=False,
+                                     placeholder='Set y-axis variable'),
+                    dcc.Dropdown(options=[], value=None, id='meta-grouping', style={"width": "60%"}, multi=False,
+                                     placeholder='Set grouping variable'),
+                    ], width=8, style={"display": "flex"})),
+                    html.Br(),
+                    dbc.Row(dbc.Col(children=[
+                    dcc.Graph(id="metadata-association-plot",
+                    figure={'layout': dict(xaxis_showgrid=False, autosize=True,
+                    yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                    yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
+                                  responsive=False, config={'displaylogo': False}),
+                    ], width=10, style={"display": "flex"}))
+                ])
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),
         wrap_child_in_loading(dcc.Store(id="uploaded_dict"), wrap=config['use_loading']),
@@ -1496,7 +1537,7 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id="session_alert_config"),
         dcc.Store(id="blending_colours"),
         dcc.Store(id="image_presets"),
-        dcc.Store(id="metadata_config"),
+        dcc.Store(id="panel_config"),
         dcc.Store(id="param_blend_config"),
         dcc.Store(id="anndata"),
         dcc.Store(id="image-metadata"),
@@ -1529,6 +1570,7 @@ def register_app_layout(config, cache_dest):
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
         dcc.Store(id='query-cell-id-lists'),
         dcc.Store(id='saved-blends'),
+        dcc.Store(id='custom-metadata'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

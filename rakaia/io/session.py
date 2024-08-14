@@ -24,7 +24,7 @@ class TabText(BaseModel):
     """
     dataset_preview: str = "ROIs that have been successfully imported are listed below. " \
                            "Selecting a row will load the ROI into the main canvas and channel gallery."
-    metadata: str = "Panel metadata consists of a list of biomarkers corresponding to one or more " \
+    panel: str = "Panel metadata consists of a list of biomarkers corresponding to one or more " \
                     "experiments. rakaia requires internal channel identifiers (stored under" \
                     " the channel name) that are used within rakaia sessions to identify individual biomarkers." \
                     " Channel labels may be edited under the final column of the metadata table; these " \
@@ -37,6 +37,8 @@ class TabText(BaseModel):
                           "current blend parameters or a saved blend. These thumbnails may be generated " \
                           "randomly using query parameters, or from subsetting the UMAP plot under the quantification tab. " \
                           "Each thumbnail enables the specific ROI to be loaded into the main canvas."
+    metadata: str = "Custom metadata in CSV format can be imported for one or multiple ROIs. Associations between " \
+                    "pairs of metadata variables can be visualized below with categorical overlays."
 
 
 class SessionServerside(Serverside):

@@ -1008,33 +1008,32 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             except KeyError: raise PreventUpdate
         raise PreventUpdate
 
-    @du.callback(Output('metadata_config', 'data'),
+    @du.callback(Output('panel_config', 'data'),
                  id='upload-panel-info')
-    def upload_custom_metadata_panel(status: du.UploadStatus):
+    def upload_custom_panel_info(status: du.UploadStatus):
         """
         Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
         datasets to ensure that it matches the number of channels
         """
-        metadata_config = {'uploads': []}
+        panel_config = {'uploads': []}
         files = DashUploaderFileReader(status).return_filenames()
         if files:
-            for file in files:
-                metadata_config['uploads'].append(file)
-            return metadata_config
+            panel_config['uploads'] = list(files)
+            return panel_config
         raise PreventUpdate
 
     @dash_app.callback(
         Output("imc-panel-editable", "columns", allow_duplicate=True),
         Output("imc-panel-editable", "data", allow_duplicate=True),
         Output('session_alert_config', 'data', allow_duplicate=True),
-        Input('metadata_config', 'data'),
+        Input('panel_config', 'data'),
         State('uploaded_dict_template', 'data'),
         State('session_alert_config', 'data'),
         State('imc-panel-editable', 'data'),
         prevent_initial_call=True)
-    def populate_datatable_columns(metadata_config, uploaded, error_config, cur_metadata):
-        if metadata_config is not None and len(metadata_config['uploads']) > 0:
-            metadata_read = pd.read_csv(metadata_config['uploads'][0])
+    def populate_datatable_columns(panel_config, uploaded, error_config, cur_metadata):
+        if panel_config is not None and len(panel_config['uploads']) > 0:
+            metadata_read = pd.read_csv(panel_config['uploads'][0])
             metadata_validated = validate_incoming_metadata_table(metadata_read, uploaded)
             if metadata_validated is not None:
                 # make sure that the internal keys from channel names stay the same
@@ -1074,7 +1073,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input("imc-panel-editable", "data"))
     def download_edited_metadata(n_clicks, datatable_contents):
         if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and ctx.triggered_id == "btn-download-panel":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "metadata.csv", index=False)
+            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "panel.csv", index=False)
         raise PreventUpdate
 
     @dash_app.callback(Output('download-canvas-image-html', 'data'),

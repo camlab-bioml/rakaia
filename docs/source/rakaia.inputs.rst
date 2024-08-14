@@ -12,6 +12,14 @@ rakaia.inputs.loaders module
    :undoc-members:
    :show-inheritance:
 
+rakaia.inputs.metadata module
+-----------------------------
+
+.. automodule:: rakaia.inputs.metadata
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rakaia.inputs.object module
 ---------------------------
 

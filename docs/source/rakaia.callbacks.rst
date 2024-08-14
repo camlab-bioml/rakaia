@@ -12,6 +12,14 @@ rakaia.callbacks.db module
    :undoc-members:
    :show-inheritance:
 
+rakaia.callbacks.metadata module
+--------------------------------
+
+.. automodule:: rakaia.callbacks.metadata
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rakaia.callbacks.object module
 ------------------------------
 
