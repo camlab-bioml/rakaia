@@ -1518,13 +1518,15 @@ def register_app_layout(config, cache_dest):
                                      placeholder='Set grouping variable'),
                     ], width=8, style={"display": "flex"})),
                     html.Br(),
-                    dbc.Row(dbc.Col(children=[
-                    dcc.Graph(id="metadata-association-plot",
-                    figure={'layout': dict(xaxis_showgrid=False, autosize=True,
-                    yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
-                    yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15, t=20, pad=0))},
-                                  responsive=False, config={'displaylogo': False}),
-                    ], width=10, style={"display": "flex"}))
+                    dbc.Row(dbc.Col(width=9, children=
+                    html.Div([dcc.Graph(id="metadata-association-plot",
+                                        figure={'layout': dict(xaxis_showgrid=False, autosize=False,
+                                                               yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
+                                                               yaxis=YAxis(showticklabels=False),
+                                                               # height=450, width=900,
+                                                               margin=dict(l=5, r=5, b=15, t=20, pad=0))},
+                                        responsive=True, config={'displaylogo': False})]),
+                                    )),
                 ])
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),

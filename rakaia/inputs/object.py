@@ -4,12 +4,15 @@ import dash
 import pandas as pd
 from dash import Patch
 from pandas.errors import UndefinedVariableError
+from pandas.core.dtypes.common import is_string_dtype
 import plotly.express as px
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 import numpy as np
 from rakaia.parsers.object import drop_columns_from_measurements_csv
 from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
+from rakaia.utils.pixel import glasbey_palette
+
 
 class PandasFrameSummaryModes:
     """
@@ -103,17 +106,28 @@ def generate_channel_heatmap(measurements, cols_include=None, drop_cols=True, su
                               zmax=zmax, binary_compression_level=1))
     return fig
 
-def generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig):
+def generate_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overlay: Union[str, None]=None,
+                       quantification_dict: Union[pd.DataFrame, dict, None]=None,
+                       cur_umap_fig: Union[go.Figure, dict, None]=None,
+                       categorical_size_limit: Union[int, float]=50) -> Union[go.Figure, dict]:
     """
     Generate a data frame of UMAP coordinates for a dataset of segmented objects based on channel expression
+    Overlay color groupings can be passed as either numerical or categorical. Categorical variables are either
+    strings as identified by pandas, or column with fewer subtypes than a threshold (recommended 50-100).
     """
     if embeddings is not None and len(embeddings) > 0:
         quant_frame = pd.DataFrame(quantification_dict)
         umap_frame = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
+        palette = None
         try:
-            if channel_overlay is not None:
+            if channel_overlay:
+                if is_string_dtype(quant_frame[channel_overlay]) or \
+                        len(quant_frame[channel_overlay].value_counts()) <= categorical_size_limit:
+                    quant_frame[channel_overlay] = quant_frame[channel_overlay].apply(str)
+                    palette = glasbey_palette(len(quant_frame[channel_overlay].value_counts()))
                 umap_frame[channel_overlay] = quant_frame[channel_overlay]
-            fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2", color=channel_overlay)
+            fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2", color=channel_overlay,
+                             color_discrete_sequence=palette)
         except KeyError:
             fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2")
             fig['data'][0]['showlegend'] = True
