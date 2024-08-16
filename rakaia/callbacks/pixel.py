@@ -48,8 +48,11 @@ from rakaia.utils.pixel import (
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
     MarkerCorrelation, high_low_values_from_zoom_layout, layers_exist, add_saved_blend)
-from rakaia.utils.session import validate_session_upload_config, channel_dropdown_selection, sleep_on_small_roi, \
-    set_data_selection_after_import
+from rakaia.utils.session import (
+    validate_session_upload_config,
+    channel_dropdown_selection,
+    sleep_on_small_roi,
+    set_data_selection_after_import)
 from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 from rakaia.io.display import (
     RegionSummary,
@@ -94,7 +97,9 @@ from rakaia.utils.filter import (
 from rakaia.callbacks.triggers import (
     no_canvas_mask,
     global_filter_disabled,
-    channel_order_as_default, new_roi_same_dims, channel_already_added)
+    channel_order_as_default,
+    new_roi_same_dims,
+    channel_already_added)
 
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -118,15 +123,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-image')
     def get_filenames_from_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
-        if files is not None: return files
-        raise PreventUpdate
+        return files if files else dash.no_update
 
     @du.callback(Output('param_blend_config', 'data', allow_duplicate=True),
                  id='upload-param-json')
     def get_param_json_from_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
-        if files is not None: return json.load(open(files[0]))
-        raise PreventUpdate
+        return json.load(open(files[0])) if files else dash.no_update
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data'),
@@ -232,8 +235,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if "metadata" not in roi: datasets.append(roi)
             if cur_data_selection is not None:
                 selection_return = set_data_selection_after_import(datasets, cur_data_selection)
-                if cur_layers_selected is not None and len(cur_layers_selected) > 0:
-                    channels_return = cur_layers_selected
+                if cur_layers_selected is not None and len(cur_layers_selected) > 0: channels_return = cur_layers_selected
             height_update = adjust_option_height_from_list_length(datasets)
             return datasets, selection_return, channels_return, height_update
             # can use an animation to draw attention to the data selection input
@@ -1861,8 +1863,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 annotations_dict = check_for_valid_annotation_hash(annotations_dict, data_selection)
                 x, y = clickdata['points'][0]['x'], clickdata['points'][0]['y']
-                annotations_dict[data_selection][str(clickdata)] = RegionAnnotation(cell_type=annotation_cell_type,
-                            annotation_column=annot_col, type='point', id=str(shortuuid.uuid())).dict()
+                annotations_dict[data_selection][str(clickdata)] = RegionAnnotation(title=None, body=None, cell_type=
+                annotation_cell_type, imported=False, annotation_column=annot_col, type='point', channels=None,
+                use_mask=False, mask_selection=None, mask_blending_level=None, add_mask_boundary=False, id=str(shortuuid.uuid())).dict()
                 fig = dash.no_update if not add_circle else CanvasLayout(cur_figure).add_click_point_circle(x, y, circle_size)
                 return SessionServerside(annotations_dict, key="annotation_dict"), \
                     html.H6(f"Point {x, y} updated with {annotation_cell_type} in {annot_col}"), True, fig

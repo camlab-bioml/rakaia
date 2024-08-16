@@ -30,7 +30,10 @@ from rakaia.utils.object import (
     quantification_distribution_table, custom_gating_id_list)
 from rakaia.inputs.object import (
     generate_heatmap_from_interactive_subsetting,
-    generate_umap_plot, umap_eligible_patch, patch_umap_figure, reset_custom_gate_slider)
+    generate_umap_plot,
+    umap_eligible_patch,
+    patch_umap_figure,
+    reset_custom_gate_slider)
 from rakaia.io.pdf import AnnotationPDFWriter
 from rakaia.io.annotation import AnnotationRegionWriter
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary
@@ -519,8 +522,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-cluster-annotations')
     def get_filenames_from_cluster_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
-        if files is not None: return files
-        raise PreventUpdate
+        return files if files else dash.no_update
 
     @dash_app.callback(
                  Output('imported-cluster-frame', 'data', allow_duplicate=True),

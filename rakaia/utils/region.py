@@ -143,17 +143,17 @@ class RegionAnnotation(BaseModel):
 
     :Return: None
     """
-    id: str = None
-    title: str = None
-    body: str = None
-    cell_type: str = None
+    id: Union[str, None] = None
+    title: Union[str, None] = None
+    body: Union[str, None] = None
+    cell_type: Union[str, None] = None
     imported: bool = False
     annotation_column: str = 'object_annotation_1'
-    type: str = None
-    channels: list = None
+    type: Union[str, None] = None
+    channels: Union[list, None] = None
     use_mask: Union[bool, list, str] = None
-    mask_selection: str = None
-    mask_blending_level: float = 35.0
+    mask_selection: Union[str, None] = None
+    mask_blending_level: Union[float, int, None] = 35.0
     add_mask_boundary: Union[bool, list, str] = True
 
 def check_for_valid_annotation_hash(annotations_dict: dict=None, roi_selection: str=None):

@@ -1,6 +1,6 @@
 # rakaia
 
-rakaia: Large scale multiplex image analysis in the browser
+rakaia: Scalable multiplex imaging dataset analysis in the browser
 
 <p align="center">
     <img src="man/assets/app-preview.png">
@@ -19,7 +19,7 @@ suite include:
 - object quantification
 - cluster and heatmap visualization
 - dataset-wide profiling
-- NoSQL database integration
+- database support (mongoDB)
 
 rakaia benefits from on-demand data loading and requires minimal upfront data
 configuration for ease-of-use image analysis. It places no restrictions on
