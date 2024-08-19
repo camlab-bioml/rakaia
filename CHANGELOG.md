@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.19.0] - 2024-08-15
+## [0.19.0] - 2024-08-18
 
 ### Added
 
@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - slight modification to `RegionAnnotation` pydantic implementation to be compatible with `pyapp`
 - `glasbey` palettes and better categorical identification for UMAP overlay variables
+
+### Fixed
+
+- update from db or JSON for consecutive panel changes
 
 
 ## [0.18.0] - 2024-08-09

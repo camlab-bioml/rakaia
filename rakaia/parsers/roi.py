@@ -8,6 +8,7 @@ import cv2
 from readimc.data import Slide, Acquisition
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
+import numexpr as ne
 from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
@@ -374,6 +375,22 @@ class RegionThumbnail:
                 label = dataset
         return label
 
+    @staticmethod
+    def summed_image_from_list(image_list: list) -> Union[np.array, np.ndarray]:
+        """
+        Generate a summed channel image for each thumbnail from a list of channel arrays (un-clipped)
+
+        :param image_list: List of channel arrays to be blended
+        :return: Summed image array with a `numpy` float32 dtype
+        """
+        if image_list and len(image_list) >= 1:
+            image_shape = image_list[0].shape
+            image = np.zeros(image_shape)
+            for elem in image_list:
+                image = ne.evaluate("image + elem")
+            return image.astype(np.float32)
+        return None
+
     def process_additive_image(self, image_list: list, label: str):
         """
         Process the additive image prior to appending to the gallery, includes matching the mask and
@@ -384,7 +401,7 @@ class RegionThumbnail:
         :return: None
         """
         if len(self.roi_images) < self.num_queries and image_list:
-            summed_image = sum([image for image in image_list]).astype(np.float32)
+            summed_image = self.summed_image_from_list(image_list)
             if not self.single_channel_view:
                 matched_mask = ROIMaskMatch(label, self.mask_dict, self.dataset_options, self.delimiter).get_match()
                 summed_image = apply_filter_to_array(summed_image, self.global_filter_apply,

@@ -6,6 +6,7 @@ from dash.exceptions import PreventUpdate
 from PIL import Image
 import numpy as np
 from skimage.segmentation import find_boundaries
+import numexpr as ne
 import scipy
 from rakaia.utils.pixel import (
     path_to_mask,
@@ -513,7 +514,8 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
             annot_mask = np.where(np.isin(mask_array, obj_list), mask_array, 0)
             annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
             annot_mask = recolour_greyscale(annot_mask, cluster_annotations[obj_type])
-            empty = empty + annot_mask
+            # empty = empty + annot_mask
+            empty = ne.evaluate("empty + annot_mask")
         # Find where the objects are annotated, and add back in the ones that are not
         if retain_objs:
             already_objs = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0

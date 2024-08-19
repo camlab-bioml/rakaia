@@ -412,8 +412,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('param_blend_config', 'data'),
                        Input('db-config-options', 'value'),
                        State('data-collection', 'value'),
-                       State('image_layers', 'value'),
-                       State('canvas-layers', 'data'),
                        State('blending_colours', 'data'),
                        State('session_alert_config', 'data'),
                        State('db-saved-configs', 'data'),
@@ -440,8 +438,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('main-tabs', 'active_tab', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(uploaded_w_data, new_blend_dict, db_config_selection, data_selection,
-                                                 add_to_layer, all_layers, current_blend_dict, error_config,
-                                                 db_config_list, cur_metadata, delimiter):
+                                                 current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
         """
         Update the blend layer dictionary and currently selected channels from a JSON-formatted upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
@@ -458,18 +455,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if panel_match(current_blend_dict, new_blend_dict) or all_roi_match(
                     current_blend_dict, new_blend_dict, uploaded_w_data, delimiter):
                 current_blend_dict = new_blend_dict['channels'].copy()
-                all_layers = check_empty_missing_layer_dict(all_layers, data_selection)
-                for elem in add_to_layer:
-                    current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
-                        current_blend_dict, elem, uploaded_w_data, data_selection)
-                    array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
-                    all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
-                                                    current_blend_dict[elem]['color'])).astype(np.uint8)
+                all_layers = {data_selection: {}}
                 error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_update_success"])
                 channel_list_return = dash.no_update
                 if 'config' in new_blend_dict and 'blend' in new_blend_dict['config'] and \
                         all([elem in current_blend_dict.keys() for elem in new_blend_dict['config']['blend']]):
                     channel_list_return = new_blend_dict['config']['blend']
+                    for elem in channel_list_return:
+                        current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
+                            current_blend_dict, elem, uploaded_w_data, data_selection)
+                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
+                        all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
+                                                        current_blend_dict[elem]['color'])).astype(np.uint8)
                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
                     parse_global_filter_values_from_json(new_blend_dict['config'])
                 clust_return = {data_selection: new_blend_dict['cluster']} if \
@@ -481,8 +478,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     global_filter_val, global_filter_sigma, metadata_return, dash.no_update, \
                     dash.no_update, clust_return, gate_return, None, apply, level, boundary, hover, "pixel-analysis"
             # IMP: if the update does not occur, clear the database selection and auto filled config name
-            else:
-                return no_json_db_updates(add_warning_to_error_config(error_config, ALERT.warnings["json_update_error"]))
+            return no_json_db_updates(add_warning_to_error_config(error_config, ALERT.warnings["json_update_error"]))
         elif data_selection is None:
             return no_json_db_updates(add_warning_to_error_config(error_config, ALERT.warnings["json_requires_roi"]))
         raise PreventUpdate
