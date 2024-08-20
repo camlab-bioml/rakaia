@@ -542,21 +542,34 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
                 Output('cluster-colour-assignments-dict', 'data'),
-                Output('cluster-label-list', 'options'),
-                Output('cluster-label-selection', 'options'),
-                Output('cluster-label-selection', 'value'),
-                Input('cluster-col', 'value'),
-                State('imported-cluster-frame', 'data'),
+                Input('imported-cluster-frame', 'data'),
                 State('data-collection', 'value'),
                 State('cluster-colour-assignments-dict', 'data'))
-    def assign_cluster_colors(cluster_cat, cluster_frame, data_selection, cur_cluster_dict):
+    def assign_cluster_colors(cluster_frame, data_selection, cur_cluster_dict):
         """
-        Assign colors to cluster values from a selected cluster category
+        Assign colors to cluster values from a selected cluster category. Will auto-assign all the categories
+        provided in the frame
         """
-        if cluster_cat and cluster_frame and data_selection and data_selection in cluster_frame:
-            default_colors, options = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection, cluster_cat)
-            return default_colors, options, options, options
-        return dash.no_update, [], [], []
+        if cluster_frame and data_selection and data_selection in cluster_frame:
+            return assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output('cluster-label-list', 'options'),
+        Output('cluster-label-selection', 'options'),
+        Output('cluster-label-selection', 'value'),
+        Output('cluster-assignments', 'children'),
+        Input('cluster-col', 'value'),
+        State('data-collection', 'value'),
+        Input('cluster-colour-assignments-dict', 'data'))
+    def generate_clust_selection_options_legend(clust_select, data_selection, cur_cluster_dict):
+        """
+        Generate the cluster color label selection on a category selection
+        """
+        if clust_select and data_selection and clust_select in cur_cluster_dict[data_selection]:
+            options = list(cur_cluster_dict[data_selection][clust_select].keys())
+            return options, options, options, cluster_label_children(data_selection, cur_cluster_dict, clust_select)
+        return [], [], [], []
 
     @dash_app.callback(
         Output('cluster-label-selection', 'value', allow_duplicate=True),
@@ -564,33 +577,23 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('cluster-label-selection', 'options'))
     def generate_cluster_colour_assignment(toggle_clust_selection, clust_options):
         """
-        Toggle the options selectable for a specific cluster category
-        """
+            Toggle the options selectable for a specific cluster category
+            """
         return clust_options if toggle_clust_selection else []
 
     @dash_app.callback(Input('data-collection', 'value'),
                        State('cluster-colour-assignments-dict', 'data'),
+                       State('imported-cluster-frame', 'data'),
                        Output('cluster-col', 'options', allow_duplicate=True),
                        Output('cluster-col', 'value', allow_duplicate=True))
-    def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame):
+    def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame, master_clust):
         """
         Update the cluster categories selectable on an ROI change
         """
-        if cluster_frame and data_selection and data_selection in cluster_frame.keys():
+        if cluster_frame and data_selection and data_selection in cluster_frame and master_clust and \
+                data_selection in master_clust:
             return list(cluster_frame[data_selection].keys()), set_default_cluster_col(cluster_frame, data_selection)
         return [], None
-
-    @dash_app.callback(Output('cluster-assignments', 'children', allow_duplicate=True),
-                       Input('cluster-colour-assignments-dict', 'data'),
-                       Input('data-collection', 'value'),
-                       State('cluster-col', 'value'))
-    def render_cluster_colour_legend(cluster_assignments_dict, data_selection, cluster_cat):
-        """
-        Render the html H6 html span legend for the cluster annotation colours
-        """
-        if cluster_assignments_dict and data_selection and cluster_cat:
-            return cluster_label_children(data_selection, cluster_assignments_dict, cluster_cat)
-        raise PreventUpdate
 
     @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
                        Input('cluster-color-picker', 'value'),

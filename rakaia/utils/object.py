@@ -554,7 +554,9 @@ def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFr
     Compute the proportion of frequency counts for a UMAP distribution
     """
     if subset_cur_cat is None:
-        frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
+        frame = pd.DataFrame(quantification_dict)
+        frame[umap_variable] = frame[umap_variable].apply(str)
+        frame = frame[umap_variable].value_counts().reset_index().rename(
             columns={str(umap_variable): "Value", 'count': "Counts"})
     else:
         frame = pd.DataFrame(zip(list(subset_cur_cat.keys()), list(subset_cur_cat.values())),

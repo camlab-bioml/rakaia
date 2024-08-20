@@ -140,13 +140,14 @@ def generate_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_over
     return dash.no_update
 
 def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict], quantification_dict: Union[pd.DataFrame, dict],
-                        channel_overlay: str):
+                        channel_overlay: str, categorical_threshold: Union[int, float]=50):
     """
     Check if the current UMAP is available for a dash-style Patch for channel overlay
     Must already have a channel overlay applied so that the only updates to the figure
     are the color hovers over the channel intensities
     IMPORTANT: this only works for numeric to numeric overlay. Numeric to categorical or categorical to numeric
     requires a complete recreation of the figure because of the figure layout properties
+    Overlays that have more than a threshold of unique values are treated as categorical
     """
     if cur_umap_fig:
         # numeric overlay does not have a legend group in the data slot
@@ -155,7 +156,8 @@ def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict], quantification_dic
             return 'data' in cur_umap_fig and 'layout' in cur_umap_fig and len(cur_umap_fig['data']) > 0 and \
                     not cur_umap_fig['data'][0]['legendgroup'] and \
                     cur_umap_fig['data'][0]['hovertemplate'] != 'UMAP1=%{x}<br>UMAP2=%{y}<extra></extra>' and \
-            str(pd.DataFrame(quantification_dict)[channel_overlay].dtype) not in ["object"]
+            str(pd.DataFrame(quantification_dict)[channel_overlay].dtype) not in ["object"] and \
+            len(pd.DataFrame(quantification_dict)[channel_overlay].value_counts()) >= categorical_threshold
         except KeyError:
             return False
     return False

@@ -22,6 +22,7 @@ def test_basic_colparse_cluster(get_current_dir):
     assert not get_cluster_proj_id_column(fake_frame)
     assert set_cluster_col_dropdown(cluster_assignments) == ['cluster']
     assert not set_cluster_col_dropdown(fake_frame)
+
 def test_populating_cluster_annotation_dict():
     cluster_frame = pd.DataFrame({"cell_id": [1, 2, 3, 4, 5],
                                  "cluster": ["immune"] * 5})
@@ -37,21 +38,23 @@ def test_basic_cluster_colour_assignments():
     cluster_frame = pd.DataFrame(
         {"cell_id": range(1, 101),
          "cluster": ["cell_type_1"] * 25 + ["cell_type_2"] * 25 + ["cell_type_3"] * 25 + ["cell_type_4"] * 25,
+         "cell_type": ["cell_type_5"] * 25 + ["cell_type_6"] * 25 + ["cell_type_7"] * 25 + ["cell_type_8"] * 25,
          })
     clust_dict = {"roi_1": cluster_frame}
     cur_cluster_dict = None
-    colours, options = assign_colours_to_cluster_annotations(clust_dict, cur_cluster_dict, "roi_1")
-    assert len(colours['roi_1']['cluster']) == len(options) == 4
+    colours = assign_colours_to_cluster_annotations(clust_dict, cur_cluster_dict, "roi_1")
+    assert len(colours['roi_1']) == 2
+    assert len(colours['roi_1']['cluster']) == 4
     cluster_frame_2 = pd.DataFrame(
         {"cell_id": range(1, 201),
          "cluster": ["cell_type_1"] * 40 + ["cell_type_2"] * 40 + ["cell_type_3"] * 40 +
                     ["cell_type_4"] * 40 + ["cell_type_5"] * 40,
          })
     clust_dict_2 = {"roi_1": cluster_frame_2}
-    colours, options = assign_colours_to_cluster_annotations(clust_dict_2, {"roi_1": {}}, "roi_1")
-    assert len(colours['roi_1']['cluster']) == len(options) == 5
+    colours = assign_colours_to_cluster_annotations(clust_dict_2, {"roi_1": {}}, "roi_1")
+    assert len(colours['roi_1']['cluster']) == 5
 
-    assert assign_colours_to_cluster_annotations(clust_dict_2, clust_dict, "roi_2") == (None, None)
+    assert assign_colours_to_cluster_annotations(clust_dict_2, clust_dict, "roi_2") is None
 
     sidebar_labels = cluster_label_children("roi_1", colours)
     assert isinstance(sidebar_labels, list)

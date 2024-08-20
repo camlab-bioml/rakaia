@@ -477,7 +477,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     current_blend_dict, error_config, channel_list_return, global_apply_filter, global_filter_type, \
                     global_filter_val, global_filter_sigma, metadata_return, dash.no_update, \
                     dash.no_update, clust_return, gate_return, None, apply, level, boundary, hover, "pixel-analysis"
-            # IMP: if the update does not occur, clear the database selection and auto filled config name
+            # IMP: if the update does not occur, clear the database selection and autofill config name
             return no_json_db_updates(add_warning_to_error_config(error_config, ALERT.warnings["json_update_error"]))
         elif data_selection is None:
             return no_json_db_updates(add_warning_to_error_config(error_config, ALERT.warnings["json_requires_roi"]))
@@ -526,8 +526,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         if autofill_channel_colours:
                             current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                         if None not in (preset_selection, preset_dict):
-                            current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem],
-                                                                                  preset_dict[preset_selection])
+                            current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem], preset_dict[preset_selection])
                     # if the selected channel is in the current blend, check if a preset is used to override
                     elif elem in current_blend_dict.keys() and None not in (preset_selection, preset_dict):
                         # do not override the colour of the current channel
@@ -539,8 +538,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             current_blend_dict, elem, uploaded_w_data, data_selection)
                     if data_selection in all_layers.keys() and (
                             elem not in all_layers[data_selection].keys() or preset_selection):
-                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem],
-                                                             current_blend_dict[elem])
+                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                         current_blend_dict[elem]['color'])).astype(np.uint8)
                 return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
@@ -868,8 +866,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         apply_gating, gating_cell_id_list, clust_selected, cluster_cat)
                 # set if the image is to be downloaded or not
                 dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
-                canvas_tiff = dash.no_update
-                download_status = dash.no_update
+                canvas_tiff, download_status = dash.no_update, dash.no_update
                 if ctx.triggered_id == "btn-download-canvas-tiff":
                     fig = dash.no_update
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
@@ -1013,11 +1010,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
         datasets to ensure that it matches the number of channels
         """
-        panel_config = {'uploads': []}
         files = DashUploaderFileReader(status).return_filenames()
         if files:
-            panel_config['uploads'] = list(files)
-            return panel_config
+            return {'uploads': list(files)}
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1047,15 +1042,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("imc-panel-editable", "columns"),
         Output("imc-panel-editable", "data"),
-        Input('uploaded_dict_template', 'data'),
-        Input('image-metadata', 'data'))
-    def populate_metadata_table(uploaded, column_dict):
+        Input('uploaded_dict_template', 'data'))
+    def populate_metadata_table(uploaded):
         if uploaded is not None and uploaded['metadata'] is not None:
             try:
                 return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                         p in uploaded['metadata'].keys()], pd.DataFrame(uploaded['metadata']).to_dict(orient='records')
             except ValueError: raise PreventUpdate
-        elif column_dict is not None: return column_dict["columns"], column_dict["data"]
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1070,7 +1063,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input("btn-download-panel", "n_clicks"),
         Input("imc-panel-editable", "data"))
     def download_edited_metadata(n_clicks, datatable_contents):
-        if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and ctx.triggered_id == "btn-download-panel":
+        if n_clicks and datatable_contents is not None and ctx.triggered_id == "btn-download-panel":
             return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "panel.csv", index=False)
         raise PreventUpdate
 
@@ -1119,10 +1112,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                      global_filter_type, global_filter_val, global_filter_sigma, cluster_assignments,
                                      data_selection, aliases, gating_dict, apply_mask, mask_level, mask_boundary,
                                      mask_hover):
-        if blend_dict and download_json:
-            return dcc.send_file(write_blend_config_to_json(download_json, blend_dict, blend_layers, global_apply_filter,
-                global_filter_type, global_filter_val, global_filter_sigma, data_selection, cluster_assignments,
-                aliases, gating_dict, apply_mask, mask_level, mask_boundary, mask_hover))
+        if blend_dict and download_json: return dcc.send_file(write_blend_config_to_json(download_json, blend_dict,
+        blend_layers, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma, data_selection,
+        cluster_assignments, aliases, gating_dict, apply_mask, mask_level, mask_boundary, mask_hover))
         raise PreventUpdate
 
     @dash_app.callback(Output('download-roi-h5py', 'data'),
@@ -1297,8 +1289,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Reset the pixel histogram and range slider on a new dataset selection
         """
-        if currently_in_blend is not None:
-            return reset_pixel_histogram(), [None, None]
+        if currently_in_blend is not None: return reset_pixel_histogram(), [None, None]
         raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
@@ -1327,8 +1318,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Reset the checkbox for a custom range slider max on channel changing. Prevents the slider bar from
         having incorrect bounds for the upcoming channel
         """
-        if new_image_mod is not None: return []
-        raise PreventUpdate
+        return [] if new_image_mod else dash.no_update
 
     @dash_app.callback(Output("pixel-hist", 'figure'),
                        Output('pixel-intensity-slider', 'max'),
@@ -1560,8 +1550,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise AssertionError
                 return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
-            except AttributeError:
-                raise DataImportError(ALERT.warnings["possible-disk-storage-error"])
+            except AttributeError: raise DataImportError(ALERT.warnings["possible-disk-storage-error"])
             except KeyError: return []
         return []
 
@@ -1575,10 +1564,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if selected_channel is not None:
             cur_vars = {} if cur_vars is None else cur_vars
-            try:
-                cur_vars["cur_channel"] = selected_channel
-                return cur_vars
-            except KeyError: return cur_vars
+            try: cur_vars["cur_channel"] = selected_channel
+            except KeyError: pass
+            return cur_vars
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1818,7 +1806,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                   add_new_col_quant, new_col_quant, current_cols_quant):
         """
         Add a new annotation column to the dropdown menu possibilities for annotation
-        Will add the category to all of the dropdown menus where annotation can occur: Currently these are:
+        Will add the category to all the dropdown menus where annotation can occur: Currently these are:
             - region (under Region/presets -> Add region annotation)
             - gating (under Configuration -> Gating)
             - quantification (Under Quantification/clustering -> UMAP options)

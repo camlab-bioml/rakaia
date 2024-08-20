@@ -28,7 +28,7 @@ def init_metadata_level_callbacks(dash_app, tmpdirname, authentic_id, app_config
 
     @du.callback(Output('custom-metadata', 'data'),
                  id='upload-custom-metadata')
-    def get_umap_upload_from_drag_and_drop(status: du.UploadStatus):
+    def get_metadata_upload_from_drag_and_drop(status: du.UploadStatus):
         # TODO: add intermediate here if we want to import per ROI instead of bulk per session
         files = DashUploaderFileReader(status).return_filenames()
         if files: return SessionServerside(pd.read_csv(files[0]).to_dict(orient="records"), key="custom_metadata", use_unique_key=OVERWRITE)

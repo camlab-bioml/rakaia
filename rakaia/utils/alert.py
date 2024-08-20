@@ -68,7 +68,8 @@ class AlertMessage(BaseModel):
                                                 "Please review the required inputs.",
                       "possible-disk-storage-error": "The imported data could not be read/cached. \n"
                                                      "Check that there is sufficient disk storage to conduct analysis"
-                                                     " (typically 2x the size of the imported files).",
+                                                     " (typically 2x the size of the imported files), and that the "
+                                                     "imported files share the same panel.",
                       "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
                                          "delimiter does not have any overlapping characters with any of the filenames, "
                                          "or ROI names. ",
