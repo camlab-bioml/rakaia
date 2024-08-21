@@ -9,8 +9,8 @@ from rakaia.utils.pixel import glasbey_palette
 
 def metadata_association_plot(metadata_frame: Union[pd.DataFrame, dict, list],
                               x_axis_variable: str,
-                              y_axis_variable: str,
-                              grouping: str=None,
+                              y_axis_variable: Union[str, None]=None,
+                              grouping: Union[str, None]=None,
                               retain_uirevision: bool=False,
                               categorical_size_limit: Union[int, float]=50):
     """
@@ -27,17 +27,27 @@ def metadata_association_plot(metadata_frame: Union[pd.DataFrame, dict, list],
     # if the x-axis variable is categorical, make it violin. otherwise, make scatter
     # categorical if it's a string OR there are fewer than 100 unique values
     if is_string_dtype(metadata_frame[x_axis_variable]) or \
-        (len(metadata_frame[x_axis_variable].value_counts()) <= categorical_size_limit):
+            (len(metadata_frame[x_axis_variable].value_counts()) <= categorical_size_limit):
         metadata_frame[x_axis_variable] = metadata_frame[x_axis_variable].apply(str)
         grouping = grouping if (grouping and len(metadata_frame[grouping].value_counts()) <=
                                 categorical_size_limit) else None
         palette = palette if grouping else None
-        fig = go.Figure(px.violin(metadata_frame, y=y_axis_variable,
-                                   x=x_axis_variable, color=grouping, box=True,
+        if y_axis_variable:
+            fig = go.Figure(px.violin(metadata_frame, y=y_axis_variable,
+                                  x=x_axis_variable, color=grouping, box=True,
                                   color_discrete_sequence=palette))
+        else:
+            fig = go.Figure(px.bar(metadata_frame, x=x_axis_variable, color=grouping,
+                                   color_discrete_sequence=palette))
+            fig.update_traces(marker_line_width=0,
+                              selector=dict(type="bar"))
+            fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
+                              bargap=0, bargroupgap=0)
     else:
         fig = go.Figure(px.scatter(metadata_frame, y=y_axis_variable,
                                    x=x_axis_variable, color=grouping,
                                    color_discrete_sequence=palette))
+    # else:
+    #     fig = go.Figure()
     fig['layout']['uirevision'] = retain_uirevision
     return fig

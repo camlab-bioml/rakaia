@@ -62,6 +62,6 @@ def init_metadata_level_callbacks(dash_app, tmpdirname, authentic_id, app_config
                        Input('meta-grouping', 'value'),
                        prevent_initial_call=True)
     def generate_metadata_association_plot(custom_metadata, x_axis, y_axis, grouping):
-        if custom_metadata and x_axis and y_axis:
+        if custom_metadata and x_axis:
             return metadata_association_plot(custom_metadata, x_axis, y_axis, grouping, ctx.triggered_id == "meta-grouping")
         raise PreventUpdate

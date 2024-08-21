@@ -21,3 +21,7 @@ def test_metadata_association_plots(get_current_dir):
     violin_2 = metadata_association_plot(measurements, 'sample', '168Er_Ki67', 'cell_id')
     # no legend if numerical legend passed to violin
     assert not violin_2['data'][0]['showlegend']
+
+    bar = metadata_association_plot(measurements, 'sample', None, 'sample')
+    assert bar['data'][0]['type'] == 'bar'
+    assert bar['data'][0]['showlegend']

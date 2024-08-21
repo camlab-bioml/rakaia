@@ -582,3 +582,54 @@ def custom_gating_id_list(input_string: str=None):
                 pass
         return gating_list
     return []
+
+
+def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFrame],
+                                          overlay: str):
+    """
+    Compute the inner product similarity for a series of ROIs as defined by their
+    proportions using a UMAP overlay. Common overlays could include `leiden` or `phenograph` clustering
+    Generates a nxn data frame matrix for n images with similarity scores. Higher scores indicate
+    greater similarity between two images based on their cluster proportions
+    """
+    quantification = pd.DataFrame(quantification)
+    image_id_col = "description" if "description" in list(quantification.columns) else "sample"
+    quantification[overlay] = quantification[overlay].apply(str)
+
+    # number of sub types to compare
+    num_variables = len(quantification[overlay].value_counts())
+    num_images = len(quantification[image_id_col].value_counts())
+    matrix_cor = np.zeros((num_variables, num_images))
+    samples = [str(i) for i in quantification[image_id_col].value_counts().index]
+    unique_clusters = [str(i) for i in quantification[overlay].value_counts().index]
+    index = 0
+    for roi in samples:
+        sub = quantification[quantification[image_id_col] == roi]
+        type_dict = sub[overlay].value_counts().sort_index().to_dict()
+        # make sure that the value counts has every element in the unique clusters, otherwise pad
+        for unique in unique_clusters:
+            if unique not in type_dict.keys():
+                type_dict[unique] = 0
+        series = pd.Series(type_dict).sort_index()
+        prop = [round(float(int(i) / len(sub)), 3) for i in series.to_list()]
+        matrix_cor[:, index] = np.array(prop).flatten()
+        index += 1
+
+    # get the pairwise dot products for every observation
+    return pd.DataFrame(np.dot(matrix_cor.T, matrix_cor), columns=samples, index=samples)
+
+def find_similar_images(image_cor: Union[dict, pd.DataFrame], current_image_id: str,
+                        num_query: int=3, identifier: str="sample"):
+    """
+    Parse a data frame of image similarity scores and pull out the top n similar images by score
+    Return either a dictionary of indices or names depending on the format of the matching quantification sheet
+    """
+    image_cor = pd.DataFrame(image_cor)
+    similar = []
+    possible = list(image_cor[current_image_id].sort_values(ascending=False).index)
+    ordered = sorted(possible)
+    for image in possible:
+        if str(image) != str(current_image_id):
+            similar.append(ordered.index(image) if identifier == "sample" else image)
+    similar = similar[0:num_query] if len(similar) > num_query else similar
+    return {"indices": similar} if identifier == "sample" else {"names": similar}

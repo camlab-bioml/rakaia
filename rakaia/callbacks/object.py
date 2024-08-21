@@ -27,7 +27,7 @@ from rakaia.utils.object import (
     send_alert_on_incompatible_mask,
     ROIQuantificationMatch,
     validate_mask_shape_matches_image,
-    quantification_distribution_table, custom_gating_id_list)
+    quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
 from rakaia.inputs.object import (
     generate_heatmap_from_interactive_subsetting,
     generate_umap_plot,
@@ -728,3 +728,14 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             cluster_data = subset_cluster_frame(cluster_data, roi_selection, clust_variable, cluster_cats, gating_object_list)
             return quantification_distribution_table(cluster_data, clust_variable, None), dist_cols
         return pd.DataFrame({}).to_dict(orient="records"), dist_cols
+
+    @dash_app.callback(Output('image-prioritization-cor', 'data'),
+                       Input('compute-image-similarity', 'n_clicks'),
+                       State('quantification-dict', 'data'),
+                       State('umap-projection-options', 'value'),
+                       prevent_initial_call=True)
+    def compute_image_similarity_table(compute_similar, quant, overlay):
+        if compute_similar and quant and overlay:
+            similarity = compute_image_similarity_from_overlay(quant, overlay)
+            return SessionServerside(similarity, key="image-prioritization-cor", use_unique_key=OVERWRITE)
+        raise PreventUpdate
