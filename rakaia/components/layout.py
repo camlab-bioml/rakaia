@@ -47,7 +47,7 @@ def register_app_layout(config, cache_dest):
                 style={"max-width": "2000px"}),
                 html.Br(),
                 dbc.Button(children=html.Span([html.Abbr(html.I(className="fa fa-trash",
-                style={"display": "iflex"}))], style={"width": "100vw"}),
+                style={"display": "flex"}))], style={"width": "100vw"}),
                 id="remove-collection", color=None, n_clicks=0,
                 style={"margin-top": "-5px", "height": "10%"}),
                 dbc.Tooltip(TOOLTIPS['delete-selection'], target="remove-collection")]),
@@ -59,7 +59,7 @@ def register_app_layout(config, cache_dest):
                           dbc.Button(
                     children=html.Span([html.I(className="fa-solid fa-solid fa-solid fa-file-export",
                                                style={"display": "flex"}),
-                                        html.H6("Import/Export", style={"color": "#FFFFFF", "margin-left": "3px"})],
+                    html.H6("Import/Export", style={"color": "#FFFFFF", "margin-left": "3px"})],
                                        style={"display": "flex"}),
                     id="inputs-offcanvas-button", className="navbar-brand me-0 px-3",
                     color=None, n_clicks=0, style={"display": "inline-block", "margin-top": "5px",
@@ -1148,7 +1148,8 @@ def register_app_layout(config, cache_dest):
                                           dbc.Button("Find similar images", id="find-similar",
                                                      style={"background-color": DEFAULT_WIDGET_COLOUR,
                                                             "float": "center", "textAlign": "center", "display": "flex",
-                                                            "justifyContent": "center"})],
+                                                            "justifyContent": "center"}),
+                                dbc.Tooltip(TOOLTIPS['image-similarity'], target="find-similar", placement='bottom')],
                                 style={"display": "flex", "justifyContent": "center"}),
                                 html.Br(),
                                 html.Div([

@@ -4,7 +4,7 @@ from pydantic import BaseModel
 
 class DataImportTour(BaseModel):
     """
-    Contains the steps used for the dash tour component for data import assistance in the `steps` atttribute
+    Contains the steps used for the dash tour component for data import assistance in the `steps` attribute
 
     :return: None
     """
@@ -81,7 +81,10 @@ class AlertMessage(BaseModel):
                                        "\t\n -quantification results are loaded"
                                        "\t\n -the corresponding images for quantified ROIs are loaded, and an image "
                                        "has been generated in the main canvas"
-                                       "\t\n -ROI naming in the quantification sheet matches the ROI names in the session."}
+                                       "\t\n -ROI naming in the quantification sheet matches the ROI names in the session.\n\n"
+                                       "3. If querying using image similarity, that similarity scores have been computed "
+                                       "using a UMAP overlay. Scores can be computed from the UMAP options under "
+                                       "the quantification tab."}
 
 
 class ToolTips(BaseModel):
@@ -117,7 +120,9 @@ class ToolTips(BaseModel):
                       "set-blends": "Save the current canvas channels in a named blend. Blends can be quickly toggled"
                                     " to compare marker expression across the current ROI.",
                       "cluster-proj": "IMPORTANT: Using circles for cluster projection for > 1000 mask objects will "
-                                      "lead to slow performance."}
+                                      "lead to slow performance.",
+                      "image-similarity": "Search for images that are similar to the current ROI. Requires "
+                                          "image similarity scores for quantified images using a UMAP overlay."}
 
 
 class PanelMismatchError(Exception):

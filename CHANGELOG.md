@@ -7,12 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.19.0] - 2024-08-20
+## [0.19.0] - 2024-08-22
 
 ### Added
 
 - script to install using `pyapp` (UNIX systems)
 - Cluster projection distribution table with selected cluster sub-categories
+- Image prioritization using similarity scores computed from a cluster proportion
 
 ### Changed
 

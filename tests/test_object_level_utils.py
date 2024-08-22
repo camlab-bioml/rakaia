@@ -418,3 +418,4 @@ def test_compute_image_similarity(get_current_dir):
     assert find_similar_images(cor_mat, "test_2", 3, "sample") == {'indices': [0]}
     assert find_similar_images(cor_mat, "test_1", 3, "description") == {'names': ['test_2']}
     assert find_similar_images(cor_mat, "test_2", 3, "description") == {'names': ['test_1']}
+    assert find_similar_images(None, "test_2", 3, "description") is None

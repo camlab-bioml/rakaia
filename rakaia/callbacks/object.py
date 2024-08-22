@@ -478,8 +478,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("umap-config-modal", "is_open"),
         Input('umap-config-button', 'n_clicks'),
         Input('execute-umap-button', 'n_clicks'),
-        [State("umap-config-modal", "is_open")])
-    def toggle_show_umap_config_modal(n, render, is_open):
+        State("umap-config-modal", "is_open"),
+        Input('overlay-to-clust', 'n_clicks'),
+        Input('compute-image-similarity', 'n_clicks'),
+        State('umap-projection-options', 'value'))
+    def toggle_show_umap_config_modal(n, render, is_open, transfer, compute_similar, overlay):
+        if ctx.triggered_id in ["overlay-to-clust", "compute-image-similarity"]:
+            return not is_open if (n and overlay) else is_open
         return not is_open if (n or render) else is_open
 
     @dash_app.callback(

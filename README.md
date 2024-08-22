@@ -18,7 +18,7 @@ suite include:
 - region/focal annotation
 - object quantification
 - cluster and heatmap visualization
-- dataset-wide profiling
+- dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
 
 rakaia benefits from on-demand data loading and requires minimal upfront data

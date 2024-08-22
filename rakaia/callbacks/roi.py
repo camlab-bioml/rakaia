@@ -10,7 +10,10 @@ from rakaia.utils.pixel import get_first_image_from_roi_dictionary
 from rakaia.utils.quantification import (
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi)
-from rakaia.utils.object import validate_mask_shape_matches_image, ROIQuantificationMatch, find_similar_images
+from rakaia.utils.object import (
+    validate_mask_shape_matches_image,
+    ROIQuantificationMatch,
+    find_similar_images)
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
@@ -74,8 +77,9 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # do not execute query if triggered from the quantification tab and no sample indices exist
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
-        if None not in (currently_selected, data_selection, blend_colour_dict,
-                        session_config) and not quant_empty and len(currently_selected) > 0:
+        no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
+        if None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not \
+            quant_empty and len(currently_selected) > 0 and not no_similarity_scores:
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
                 rois_decided, rois_exclude, row_children = query_from_quantification, [], []
             elif ctx.triggered_id == "find-similar" and quant is not None and find_similar:

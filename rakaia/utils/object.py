@@ -85,7 +85,7 @@ def convert_mask_to_object_boundary(mask):
     """
     Generate a mask of object outlines corresponding to a segmentation mask of integer objects
     Returns an RGB mask where outlines are represented by 255, and all else are 0
-    NOte that this mask does not retain the spatial location of individual objects
+    Note that this mask does not retain the spatial location of individual objects
     """
     boundaries = find_boundaries(mask, mode='inner', connectivity=1)
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
@@ -100,15 +100,10 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
                                                       'yaxis.range[0]', 'yaxis.range[1]']): return None
     if len(measurements) != len(umap_frame):
         umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
-    #     umap_frame.reset_index()
-    #     measurements.reset_index()
     query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                              f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                              f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
                              f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
-    # if len(measurements) != len(umap_frame):
-    #     query.reset_index()
-    # use the normalized values if they exist
     measurements_to_use = normalized_values if normalized_values is not None else measurements
     subset = measurements_to_use.loc[query.index.tolist()]
     return subset
@@ -127,8 +122,6 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
         umap_frame.columns = ['UMAP1', 'UMAP2']
         if len(measurements) != len(umap_frame):
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
-        #     umap_frame.reset_index()
-        #     measurements.reset_index()
         if all(elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
                                                           'yaxis.range[0]', 'yaxis.range[1]']):
             query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
@@ -596,7 +589,7 @@ def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFra
     image_id_col = "description" if "description" in list(quantification.columns) else "sample"
     quantification[overlay] = quantification[overlay].apply(str)
 
-    # number of sub types to compare
+    # number of overlay types to compare
     num_variables = len(quantification[overlay].value_counts())
     num_images = len(quantification[image_id_col].value_counts())
     matrix_cor = np.zeros((num_variables, num_images))
@@ -606,7 +599,7 @@ def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFra
     for roi in samples:
         sub = quantification[quantification[image_id_col] == roi]
         type_dict = sub[overlay].value_counts().sort_index().to_dict()
-        # make sure that the value counts has every element in the unique clusters, otherwise pad
+        # make sure that the value counts has every element in the unique clusters, otherwise pad with missing cats
         for unique in unique_clusters:
             if unique not in type_dict.keys():
                 type_dict[unique] = 0
@@ -624,12 +617,17 @@ def find_similar_images(image_cor: Union[dict, pd.DataFrame], current_image_id: 
     Parse a data frame of image similarity scores and pull out the top n similar images by score
     Return either a dictionary of indices or names depending on the format of the matching quantification sheet
     """
-    image_cor = pd.DataFrame(image_cor)
-    similar = []
-    possible = list(image_cor[current_image_id].sort_values(ascending=False).index)
-    ordered = sorted(possible)
-    for image in possible:
-        if str(image) != str(current_image_id):
-            similar.append(ordered.index(image) if identifier == "sample" else image)
-    similar = similar[0:num_query] if len(similar) > num_query else similar
-    return {"indices": similar} if identifier == "sample" else {"names": similar}
+    try:
+        image_cor = pd.DataFrame(image_cor)
+        similar = []
+        possible = list(image_cor[current_image_id].sort_values(ascending=False).index)
+        ordered = sorted(possible)
+        for image in possible:
+            if str(image) != str(current_image_id):
+                similar.append(ordered.index(image) if identifier == "sample" else image)
+        similar = similar[0:num_query] if len(similar) > num_query else similar
+        # support for both pipelines: old pipeline using sample needs indices, processing using steinbock uses
+        # the description column and supports names
+        return {"indices": similar} if identifier == "sample" else {"names": similar}
+    except KeyError:
+        return None
