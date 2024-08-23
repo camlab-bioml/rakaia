@@ -131,15 +131,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if quantification_dict is not None:
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id not in ["umap-projection-options"]:
-                try:
-                    subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
+                try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
                                     umap_col_selection, prev_categories).get_callback_structures()
-                except TypeError:
-                    subtypes, keep = None, None
-            else:
-                subtypes, keep = None, None
-            try:
-                fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
+                except TypeError: subtypes, keep = None, None
+            else: subtypes, keep = None, None
+            try: fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
                         umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
                         subtypes, channels_to_display, normalize=normalize_heatmap, subset_val=subset_heatmap)
             except (BadRequest, IndexError):
@@ -386,8 +382,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
                                                                                 mask_dict[mask_selection]['raw']):
                 mask_used = mask_dict[mask_selection]['raw']
-            else:
-                mask_used = None
+            else: mask_used = None
             return dcc.send_file(AnnotationMaskWriter(download_mask, annotations_dict, data_selection,
                 (first_image.shape[0], first_image.shape[1]), mask_used, False).write_annotation_masks())
         raise PreventUpdate
@@ -595,8 +590,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the cluster categories selectable on an ROI change
         """
-        if cluster_frame and data_selection and data_selection in cluster_frame and master_clust and \
-                data_selection in master_clust:
+        if cluster_frame and data_selection and data_selection in cluster_frame and master_clust and data_selection in master_clust:
             return list(cluster_frame[data_selection].keys()), set_default_cluster_col(cluster_frame, data_selection)
         return [], None
 
@@ -703,10 +697,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-delimiter', 'value'),
                        State('umap-projection-options', 'value'),
                        State('imported-cluster-frame', 'data'),
-                       State('mask-options', 'value'))
-    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask):
+                       State('mask-options', 'value'),
+                       State('data-collection', 'options'))
+    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask, d_opt):
         if transfer and roi_selection and quant_dict and delimiter and overlay:
-            clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask).get_cluster_frame()
+            clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask, d_opt).get_cluster_frame()
             return SessionServerside(clust, key="cluster_assignments", use_unique_key=OVERWRITE), set_cluster_col_dropdown(clust[roi_selection])
         raise PreventUpdate
 

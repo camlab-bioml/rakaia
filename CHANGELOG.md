@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.19.0] - 2024-08-22
+## [0.19.0] - 2024-08-23
 
 ### Added
 
@@ -26,6 +26,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - multi cluster color assignment import with multiple ROIs
 - string casting for cluster category distributions
 - UMAP figure patch now considers categorical overlays based on number of unique values
+- quantification to cluster transfer for old pipeline (imcPQ) syntax
 
 ## [0.18.0] - 2024-08-09
 

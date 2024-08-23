@@ -85,7 +85,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id == "find-similar" and quant is not None and find_similar:
                 name, col = ROIQuantificationMatch(data_selection, quant, dataset_options, delimiter).get_matches()
                 rois_decided = find_similar_images(image_cor, name, num_queries, col) if name else None
-                rois_exclude, row_children = [], []
+                # do not use object id lists if looking for similar images (focus on whole image not subsets)
+                rois_exclude, row_children, query_cell_id_lists = [], [], None
             else:
                 rois_decided, row_children = None, None
             # if the query is being extended, append on top of the existing gallery

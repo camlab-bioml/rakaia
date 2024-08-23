@@ -84,9 +84,6 @@ def test_cluster_frame_subsetting(get_current_dir):
     assert len(subset_w_objs) == len(objs)
 
 
-
-
-
 def test_default_cluster_col():
     type_cols = {"roi_1": {"cat_1": {"one": "blue"}, "cluster": {"Type_1": "blue"}}}
     assert set_default_cluster_col(type_cols, "roi_1") == "cat_1"
@@ -108,3 +105,13 @@ def test_quant_to_cluster_transfer(get_current_dir):
                                                 clust_out, delimiter="---").get_cluster_frame()
     merged_clust_2 = out_clust_2[data_selection]
     assert all(elem in merged_clust_2.columns for elem in ['cell_id', 'description', 'cell_type'])
+
+    # using sample and old pipeline syntax
+    measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    measurements['cluster'] = 'epithelial'
+    # old pipeline: rois take the form of filename_index
+    dataset_options = ["test+++slide0+++test_1", "test+++slide0+++test_2"]
+    out_clust_3 = QuantificationClusterMerge(measurements, dataset_options[0], "cluster",
+                    None, '+++', None, dataset_options).get_cluster_frame()
+    assert dataset_options[0] in out_clust_3.keys()
+    assert all(elem in out_clust_3[dataset_options[0]].columns for elem in ['cell_id', 'cluster'])

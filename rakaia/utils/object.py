@@ -469,7 +469,7 @@ class ROIQuantificationMatch:
                 self._match = f"{experiment_name}_{index}"
                 # sample_name = exp
                 self._quant_col = 'sample'
-            except (IndexError, ValueError):
+            except (IndexError, ValueError, AttributeError):
                 pass
 
     def get_matches(self):

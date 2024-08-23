@@ -19,21 +19,24 @@ class QuantificationClusterMerge:
     :param roi_selection: String representation of the currently loaded ROI
     :param cat_to_transfer: List or string of quantification columns to add to cluster projection
     :param delimiter: string splitter to split the string ROI selection
+    :param dataset_options: List of session ROIs. Used by old pipeline logic to match mask names by dataset index
     :return: None
     """
     def __init__(self, quantification_frame: Union[dict, pd.DataFrame], roi_selection: str,
                  cat_to_transfer: Union[str, list],
                  current_cluster_frame: Union[dict, pd.DataFrame]=None,
-                 delimiter: str="+++", current_mask: str=None) -> None:
+                 delimiter: str="+++", current_mask: str=None,
+                 dataset_options: Union[list, None]=None) -> None:
         self.quantification_frame = pd.DataFrame(quantification_frame)
         self.roi_selection = roi_selection
         self.cat_to_transfer = cat_to_transfer if isinstance(cat_to_transfer, list) else [cat_to_transfer]
         self.delimiter = delimiter
         self.current_mask = current_mask
+        self.dataset_options = dataset_options
         self._cluster_frame = current_cluster_frame if current_cluster_frame else {}
         # get the roi name match to the current ROI, and what column in the quant frame is used to link
-        self.roi_match, self.quant_frame_identifier = ROIQuantificationMatch(
-                                                        self.roi_selection, self.quantification_frame, None,
+        self.roi_match, self.quant_frame_identifier = ROIQuantificationMatch(self.roi_selection,
+                                                        self.quantification_frame, self.dataset_options,
                                                         self.delimiter, self.current_mask).get_matches()
         # figure out which column is the quant results holds the object ids
         self.quant_object_identifier = get_cluster_proj_id_column(self.quantification_frame)
