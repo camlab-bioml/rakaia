@@ -128,10 +128,9 @@ class FileParser:
         :param channel_identifier: string identifier for channel name
         :return: None
         """
-        if channel_identifier not in self.metadata_labels and not \
-                (len(self.metadata_labels) + 1) > len(self.unique_image_names):
+        if channel_identifier not in self.metadata_labels and \
+                (len(self.metadata_labels) + 1) <= len(self.unique_image_names):
             self.metadata_labels.append(channel_identifier)
-
 
     def parse_h5(self, h5py_file):
         """

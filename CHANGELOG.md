@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.19.0] - 2024-08-23
+## [0.19.0] - 2024-08-29
 
 ### Added
 
@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - string casting for cluster category distributions
 - UMAP figure patch now considers categorical overlays based on number of unique values
 - quantification to cluster transfer for old pipeline (imcPQ) syntax
+- proper selection of objects through UMAP categorical legend if initial zoom hasn't been used
 
 ## [0.18.0] - 2024-08-09
 

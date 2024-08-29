@@ -129,6 +129,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # figure out how to decouple the quantification update from the heatmap rendering:
         #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered
         if quantification_dict is not None:
+            umap_layout = {'xaxis.autorange': True, 'yaxis.autorange': True} if umap_layout is None else umap_layout
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id not in ["umap-projection-options"]:
                 try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,

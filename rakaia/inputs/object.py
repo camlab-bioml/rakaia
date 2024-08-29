@@ -190,16 +190,15 @@ def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict
                 umap_layout is not None and \
                 all(key in umap_layout for key in zoom_keys):
             subset_frame = subset_measurements_frame_from_umap_coordinates(frame,
-                                                                           pd.DataFrame(embeddings,
-                                                                                        columns=['UMAP1', 'UMAP2']),
-                                                                           umap_layout)
+                            pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2']),
+                            umap_layout)
             fig = go.Figure(get_cell_channel_expression_plot(subset_frame,
-                                                             subset_dict=None, mode=mode_value))
+                                        subset_dict=None, mode=mode_value))
             frame_return = subset_frame
         else:
             subset_zoom = None
             fig = go.Figure(get_cell_channel_expression_plot(frame,
-                                                             subset_dict=subset_zoom, mode=mode_value))
+                        subset_dict=subset_zoom, mode=mode_value))
             frame_return = frame
         fig['layout']['uirevision'] = True
         return fig, frame_return

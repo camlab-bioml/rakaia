@@ -112,6 +112,13 @@ def test_invert_annotations_figure(channel_hash):
     image_2 = invert_annotations_figure(image_2)
     assert len(image_2['layout']['annotations']) == 0
 
+    # malformed figures
+    fake_fig = {"layout": {"shapes": [{"y0": 0.05, "y1": 0.05}],
+                           "annotations": [{"y": 0.05}]}}
+    image = invert_annotations_figure(fake_fig)
+    # if the figure does not have the required coordinate keys, leave as is
+    assert image == fake_fig
+
 
 def test_tick_marker_spacing_range_slider():
 

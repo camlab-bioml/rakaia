@@ -207,7 +207,7 @@ def deepcopy_canvas_layout_slot(canvas: Union[go.Figure, dict],
     return slot
 
 
-def invert_annotations_figure(cur_canvas: go.Figure):
+def invert_annotations_figure(cur_canvas: Union[go.Figure, dict]) -> Union[go.Figure, dict]:
     """
     Invert the annotations (scalebar and legend) on a canvas figure
     """
@@ -218,12 +218,14 @@ def invert_annotations_figure(cur_canvas: go.Figure):
             if 'y0' in shape and shape['y0'] == 0.05 and 'y1' in shape and shape['y1'] == 0.05:
                 shape['x0'] = 1 - shape['x0']
                 shape['x1'] = 1 - shape['x1']
-        except IndexError: pass
+        except (IndexError, KeyError):
+            pass
     for annot in cur_annotations:
         try:
             if annot['y'] in [0.05, 0.06]:
                 annot['x'] = 1 - annot['x']
-        except IndexError: pass
+        except (IndexError, KeyError):
+            pass
     cur_canvas['layout']['annotations'] = cur_annotations
     cur_canvas['layout']['shapes'] = cur_shapes
     return cur_canvas
