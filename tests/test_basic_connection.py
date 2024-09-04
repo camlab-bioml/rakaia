@@ -24,10 +24,10 @@ import dash_uploader as du
 from conftest import skip_on
 import tempfile
 
+
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
                     reason="Only test the connection in a GA workflow due to passwordless sudo")
 def test_for_connection():
-
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
     Popen(["echo yes| freeport 5000"], stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
@@ -53,7 +53,7 @@ def recursive_wait_for_elem(app, elem, duration):
         try:
             app.find_element(elem).click()
         except NoSuchElementException:
-            recursive_wait_for_elem(app, elem, int(1.1*duration))
+            recursive_wait_for_elem(app, elem, int(1.1 * duration))
 
 
 @skip_on(SessionNotCreatedException, "Selenium version is not compatible")
@@ -85,23 +85,23 @@ def test_basic_cli_outputs():
     args = parser.parse_args([])
     assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
-                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
+                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     parser = cli_parser()
     args = parser.parse_args(['-a'])
     assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
-                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
+                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
     assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
-                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
+                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-pr'])
     assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': False, 'swatches': None, 'array_type': 'int',
-                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir()}
+                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
 
     with pytest.raises(SystemExit):
         parser.parse_args(['-v'])
@@ -112,6 +112,7 @@ def test_basic_cli_outputs():
     # with pytest.raises(SystemExit):
     #     main()
 
+
 @pytest.mark.timeout(10)
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") == "true",
                     reason="Do not run main test in GA due to memory restrictions")
@@ -120,8 +121,10 @@ def test_basic_cli_outputs_main():
     Assert that when valid arguments are passed to main, there is no system exit but rather the expected
     timeout after 5 seconds
     """
+
     class TimeoutException(Exception):
         pass
+
     def timeout_handler(signum, frame):
         raise TimeoutException
 
@@ -133,14 +136,17 @@ def test_basic_cli_outputs_main():
     except TimeoutException:
         assert True
 
+
 def test_basic_app_return():
     config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
-              'swatches': None, 'is_dev_mode': False, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True}
+              'swatches': None, 'is_dev_mode': False, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True,
+              'threads': 8}
     app = init_app(config)
     assert isinstance(app, Flask)
     app_2 = Flask("rakaia")
     dashboard = init_dashboard(app_2, "test_app", config)
     assert isinstance(dashboard, Flask)
+
 
 def test_basic_callback_register():
     dash_app = DashProxy("fake_app")

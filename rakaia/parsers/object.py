@@ -539,7 +539,7 @@ def validate_coordinate_set_for_image(x_coord=None, y_coord=None, image=None):
 
 def parse_quantification_sheet_from_h5ad(h5ad_file):
     """
-    Parse the quantification results from an h5ad files. Assumes the following format:
+    Parse the quantification results from h5ad files. Assumes the following format:
     - Channel expression is held as an array in h5ad_file.X
     - Channel names are held in h5ad_file.var_names
     - Additional metadata variables are held in h5ad_file.obs

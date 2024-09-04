@@ -69,6 +69,9 @@ def cli_parser():
     parser.add_argument('-cs', "--cache-storage", action="store",
                         help="Set the output path for the temporary session caches. Default is the temp directory",
                         dest="cache_dest", default=str(tempfile.gettempdir()), type=str)
+    parser.add_argument('-tr', "--threads", action="store",
+                        help="Set the number of threads to use in production mode. Default is 8",
+                        dest="threads", default=8, type=int)
 
     return parser
 
@@ -107,7 +110,7 @@ def main(sysargs=sys.argv[1:]):
     if CLI_CONFIG['is_dev_mode']:
         app.run(host=HOST, debug=args.is_dev_mode, threaded=args.threading, port=args.port)
     else:
-        serve(app, host=HOST, port=args.port)
+        serve(app, host=HOST, port=args.port, threads=args.threads)
 
 
 if __name__ == "__main__":

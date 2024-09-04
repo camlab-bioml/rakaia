@@ -440,8 +440,8 @@ def random_hex_colour_generator(number=10):
 
 def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
     """
-    Create a additive blended image array from a list of marker channels
-    By default, return the array as a 32-byte float array before clipping
+    Create an additive blended image array from a list of marker channels
+    By default, return the array as a 32-byte float array before clipping to RGB value range
     """
     if layer_dict and channel_list:
         image_shape = layer_dict[channel_list[0]].shape

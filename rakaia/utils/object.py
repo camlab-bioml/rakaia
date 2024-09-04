@@ -6,6 +6,7 @@ from dash.exceptions import PreventUpdate
 from PIL import Image
 import numpy as np
 from skimage.segmentation import find_boundaries
+import numexpr as ne
 import scipy
 from rakaia.utils.pixel import (
     path_to_mask,
@@ -84,7 +85,7 @@ def convert_mask_to_object_boundary(mask):
     """
     Generate a mask of object outlines corresponding to a segmentation mask of integer objects
     Returns an RGB mask where outlines are represented by 255, and all else are 0
-    NOte that this mask does not retain the spatial location of individual objects
+    Note that this mask does not retain the spatial location of individual objects
     """
     boundaries = find_boundaries(mask, mode='inner', connectivity=1)
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
@@ -99,15 +100,10 @@ def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, co
                                                       'yaxis.range[0]', 'yaxis.range[1]']): return None
     if len(measurements) != len(umap_frame):
         umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
-    #     umap_frame.reset_index()
-    #     measurements.reset_index()
     query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                              f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                              f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
                              f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
-    # if len(measurements) != len(umap_frame):
-    #     query.reset_index()
-    # use the normalized values if they exist
     measurements_to_use = normalized_values if normalized_values is not None else measurements
     subset = measurements_to_use.loc[query.index.tolist()]
     return subset
@@ -126,8 +122,6 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
         umap_frame.columns = ['UMAP1', 'UMAP2']
         if len(measurements) != len(umap_frame):
             umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
-        #     umap_frame.reset_index()
-        #     measurements.reset_index()
         if all(elem in coordinates_dict for elem in ['xaxis.range[0]','xaxis.range[1]',
                                                           'yaxis.range[0]', 'yaxis.range[1]']):
             query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
@@ -475,7 +469,7 @@ class ROIQuantificationMatch:
                 self._match = f"{experiment_name}_{index}"
                 # sample_name = exp
                 self._quant_col = 'sample'
-            except (IndexError, ValueError):
+            except (IndexError, ValueError, AttributeError):
                 pass
 
     def get_matches(self):
@@ -513,7 +507,8 @@ def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: 
             annot_mask = np.where(np.isin(mask_array, obj_list), mask_array, 0)
             annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
             annot_mask = recolour_greyscale(annot_mask, cluster_annotations[obj_type])
-            empty = empty + annot_mask
+            # empty = empty + annot_mask
+            empty = ne.evaluate("empty + annot_mask")
         # Find where the objects are annotated, and add back in the ones that are not
         if retain_objs:
             already_objs = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
@@ -543,6 +538,7 @@ def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selectio
         return annot_dict
     return annotations_dict
 
+
 def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFrame],
                                       umap_variable: str, subset_cur_cat: Union[dict, None]=None,
                                       counts_col: str="Counts", proportion_col: str="Proportion",
@@ -551,7 +547,9 @@ def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFr
     Compute the proportion of frequency counts for a UMAP distribution
     """
     if subset_cur_cat is None:
-        frame = pd.DataFrame(quantification_dict)[umap_variable].value_counts().reset_index().rename(
+        frame = pd.DataFrame(quantification_dict)
+        frame[umap_variable] = frame[umap_variable].apply(str)
+        frame = frame[umap_variable].value_counts().reset_index().rename(
             columns={str(umap_variable): "Value", 'count': "Counts"})
     else:
         frame = pd.DataFrame(zip(list(subset_cur_cat.keys()), list(subset_cur_cat.values())),
@@ -577,3 +575,59 @@ def custom_gating_id_list(input_string: str=None):
                 pass
         return gating_list
     return []
+
+
+def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFrame],
+                                          overlay: str):
+    """
+    Compute the inner product similarity for a series of ROIs as defined by their
+    proportions using a UMAP overlay. Common overlays could include `leiden` or `phenograph` clustering
+    Generates a nxn data frame matrix for n images with similarity scores. Higher scores indicate
+    greater similarity between two images based on their cluster proportions
+    """
+    quantification = pd.DataFrame(quantification)
+    image_id_col = "description" if "description" in list(quantification.columns) else "sample"
+    quantification[overlay] = quantification[overlay].apply(str)
+
+    # number of overlay types to compare
+    num_variables = len(quantification[overlay].value_counts())
+    num_images = len(quantification[image_id_col].value_counts())
+    matrix_cor = np.zeros((num_variables, num_images))
+    samples = [str(i) for i in quantification[image_id_col].value_counts().index]
+    unique_clusters = [str(i) for i in quantification[overlay].value_counts().index]
+    index = 0
+    for roi in samples:
+        sub = quantification[quantification[image_id_col] == roi]
+        type_dict = sub[overlay].value_counts().sort_index().to_dict()
+        # make sure that the value counts has every element in the unique clusters, otherwise pad with missing cats
+        for unique in unique_clusters:
+            if unique not in type_dict.keys():
+                type_dict[unique] = 0
+        series = pd.Series(type_dict).sort_index()
+        prop = [round(float(int(i) / len(sub)), 3) for i in series.to_list()]
+        matrix_cor[:, index] = np.array(prop).flatten()
+        index += 1
+
+    # get the pairwise dot products for every observation
+    return pd.DataFrame(np.dot(matrix_cor.T, matrix_cor), columns=samples, index=samples)
+
+def find_similar_images(image_cor: Union[dict, pd.DataFrame], current_image_id: str,
+                        num_query: int=3, identifier: str="sample"):
+    """
+    Parse a data frame of image similarity scores and pull out the top n similar images by score
+    Return either a dictionary of indices or names depending on the format of the matching quantification sheet
+    """
+    try:
+        image_cor = pd.DataFrame(image_cor)
+        similar = []
+        possible = list(image_cor[current_image_id].sort_values(ascending=False).index)
+        ordered = sorted(possible)
+        for image in possible:
+            if str(image) != str(current_image_id):
+                similar.append(ordered.index(image) if identifier == "sample" else image)
+        similar = similar[0:num_query] if len(similar) > num_query else similar
+        # support for both pipelines: old pipeline using sample needs indices, processing using steinbock uses
+        # the description column and supports names
+        return {"indices": similar} if identifier == "sample" else {"names": similar}
+    except KeyError:
+        return None

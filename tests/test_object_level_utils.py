@@ -1,4 +1,5 @@
 import collections
+import random
 import pytest
 import dash_extensions
 from rakaia.utils.object import (
@@ -18,7 +19,7 @@ from rakaia.utils.object import (
     generate_mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
     quantification_distribution_table,
-    custom_gating_id_list)
+    custom_gating_id_list, compute_image_similarity_from_overlay, find_similar_images)
 import pandas as pd
 import os
 import numpy as np
@@ -399,10 +400,22 @@ def test_quantification_distribution_table(get_current_dir):
     too_many_cats = quantification_distribution_table(measurements, umap_variable="158Gd_GATA3")
     assert too_many_cats == [{'Value': 'NA (158Gd_GATA3 > 100 unique values)', 'Counts': 'NA', 'Proportion': 'NA'}]
 
-
-
 def test_custom_gating_id_from_string():
     assert custom_gating_id_list() == []
     gating_list = custom_gating_id_list("130,145,156, 170  ,   not_a_number")
     assert len(gating_list) == 4
     assert all([isinstance(elem, int) for elem in gating_list])
+
+
+def test_compute_image_similarity(get_current_dir):
+    measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    measurements['cluster'] = [str(i) for i in random.choices(range(8), k=len(measurements))]
+    cor_mat = compute_image_similarity_from_overlay(measurements, 'cluster')
+    # matrix is symmetric
+    assert (np.array(cor_mat) == np.array(cor_mat).T).all()
+
+    assert find_similar_images(cor_mat, "test_1", 3, "sample") == {'indices': [1]}
+    assert find_similar_images(cor_mat, "test_2", 3, "sample") == {'indices': [0]}
+    assert find_similar_images(cor_mat, "test_1", 3, "description") == {'names': ['test_2']}
+    assert find_similar_images(cor_mat, "test_2", 3, "description") == {'names': ['test_1']}
+    assert find_similar_images(None, "test_2", 3, "description") is None

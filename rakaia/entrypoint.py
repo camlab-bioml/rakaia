@@ -2,13 +2,12 @@ import uuid
 import warnings
 import os
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask
+from flask import Flask, render_template
 from flask_caching import Cache
-from flask import render_template
 from flask_httpauth import HTTPBasicAuth
 
 _program = "rakaia"
-__version__ = "0.18.0"
+__version__ = "0.19.0"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.
@@ -19,8 +18,7 @@ def init_app(cli_config):
     # warnings.simplefilter('ignore', category=NumbaDeprecationWarning)
     # warnings.simplefilter('ignore', category=NumbaPendingDeprecationWarning)
     warnings.simplefilter('ignore', category=DeprecationWarning)
-    """Construct core Flask application with embedded Dash dash."""
-    # STATIC_DIR = os.path.dirname(os.path.join(get_current_dir(), "templates", "static"))
+    # Construct core Flask application with embedded Dash
     app = Flask(__name__, instance_relative_config=False,
                 static_url_path="", static_folder="static",
             template_folder="templates")
@@ -66,19 +64,17 @@ def init_app(cli_config):
 
     @app.route('/help/')
     @auth.login_required
-    def help():
+    def help_landing():
         """Landing page."""
         return render_template(
             'help.html')
 
     with app.app_context():
         # Import parts of our core Flask dash
-
         # Import Dash application
         from rakaia.app import init_dashboard
         # use a unique uuid for the session id I/O
         authentic_user = str(uuid.uuid1())
         app = init_dashboard(app, authentic_user, config=cli_config)
         # init_callbacks(dash)
-
         return app

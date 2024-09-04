@@ -1,5 +1,6 @@
-import dash
+import random
 import os
+import dash
 import plotly.graph_objs as go
 import pandas as pd
 import plotly
@@ -62,16 +63,21 @@ def test_bar_graph_from_measurements_csv_with_subsetting(get_current_dir):
     assert '244 cells' in cell_bar['layout']['title']['text']
 
 def test_umap_plot(get_current_dir):
-    umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
+    umap_dict = {"UMAP1": [random.random() for _ in range(len(validated_measurements))],
+                 "UMAP2": [random.random() for _ in range(len(validated_measurements))]}
     assert isinstance(warning, dash._callback.NoUpdate)
     umap_plot = generate_umap_plot(umap_dict, "fake_col", validated_measurements, None)
     assert isinstance(umap_plot, plotly.graph_objs._figure.Figure)
     assert umap_plot['layout']['uirevision']
     assert isinstance(generate_umap_plot(None, None, None, None), dash._callback.NoUpdate)
     umap_plot_2 = generate_umap_plot(umap_dict, "156Gd_FOXA1", validated_measurements, umap_plot)
+    assert pd.Series(umap_plot_2['data'][0]['marker']['color']).equals(
+        pd.Series(pd.DataFrame(validated_measurements)['156Gd_FOXA1']))
     assert isinstance(umap_plot_2, plotly.graph_objs._figure.Figure)
+    umap_plot_3 = generate_umap_plot(umap_dict, "sample", validated_measurements, umap_plot)
+    assert len(umap_plot_3['data']) == len(pd.DataFrame(validated_measurements)['sample'].value_counts())
     assert umap_plot_2['layout']['uirevision']
 
 def test_identify_patchable_umap(get_current_dir):

@@ -17,7 +17,7 @@ jobs:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
         python-version: ["3.9"]
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -35,6 +35,8 @@ jobs:
 #          singularity build --fakeroot rakaia.sif Singularity
 #          singularity exec rakaia.sif which rakaia && python3 --version
         # shell: bash -l {0}
+      - if: runner.os == 'Linux'
+        run: sudo apt-get -y update && sudo apt-get install -y libgl1-mesa-dev
       - name: Install rakaia dependencies from requirements
         run: pip install -r requirements.txt
       - name: Install rakaia through pip after dependencies

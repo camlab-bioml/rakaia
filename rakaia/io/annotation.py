@@ -184,6 +184,7 @@ class AnnotationMaskWriter:
             self.add_new_count_type_id_match(value)
             self.cell_class_ids[value['annotation_column']]['mask_used'] = value['mask_selection']
             if value['type'] in ['point', 'points', 'path', 'zoom', 'rect']:
+                # TODO: add mask output for cell gating
                 if value['type'] not in ['point', 'points', 'path']:
                     x_min, x_max, y_min, y_max = self.set_rectangular_region_bounds(key, value)
                     # replace the array elements in the box with the count value

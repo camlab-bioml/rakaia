@@ -4,6 +4,8 @@ import os
 import dash_uploader as du
 from dash_extensions.enrich import DashProxy, ServersideOutputTransform, FileSystemBackend
 import dash_bootstrap_components as dbc
+
+from rakaia.callbacks.metadata import init_metadata_level_callbacks
 from rakaia.components.layout import register_app_layout
 from rakaia.callbacks.pixel import init_pixel_level_callbacks
 from rakaia.callbacks.object import init_object_level_callbacks
@@ -95,5 +97,6 @@ def init_dashboard(server, authentic_id, config=None):
     init_object_level_callbacks(dash_app, tmpdirname, authentic_id, config)
     init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, config)
     init_db_callbacks(dash_app, tmpdirname, authentic_id, config)
+    init_metadata_level_callbacks(dash_app, tmpdirname, authentic_id, config)
 
     return dash_app.server

@@ -27,10 +27,13 @@ from rakaia.utils.object import (
     send_alert_on_incompatible_mask,
     ROIQuantificationMatch,
     validate_mask_shape_matches_image,
-    quantification_distribution_table, custom_gating_id_list)
+    quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
 from rakaia.inputs.object import (
     generate_heatmap_from_interactive_subsetting,
-    generate_umap_plot, umap_eligible_patch, patch_umap_figure, reset_custom_gate_slider)
+    generate_umap_plot,
+    umap_eligible_patch,
+    patch_umap_figure,
+    reset_custom_gate_slider)
 from rakaia.io.pdf import AnnotationPDFWriter
 from rakaia.io.annotation import AnnotationRegionWriter
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary
@@ -49,11 +52,15 @@ from rakaia.utils.cluster import (
     cluster_label_children,
     cluster_annotation_frame_import,
     set_cluster_col_dropdown,
-    set_default_cluster_col, QuantificationClusterMerge)
+    set_default_cluster_col,
+    QuantificationClusterMerge,
+    subset_cluster_frame)
 from rakaia.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
-    gating_label_children, mask_object_counter_preview, DistributionTableColumns)
+    gating_label_children,
+    mask_object_counter_preview,
+    DistributionTableColumns)
 
 def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -69,6 +76,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     dash_app.config.suppress_callback_exceptions = True
     matplotlib.use('agg')
     OVERWRITE = app_config['serverside_overwrite']
+    dist_cols = [{'id': p, 'name': p, 'editable': False} for p in DistributionTableColumns.columns]
 
     @du.callback(Output('session_config_quantification', 'data'),
                  id='upload-quantification')
@@ -121,17 +129,14 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # figure out how to decouple the quantification update from the heatmap rendering:
         #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered
         if quantification_dict is not None:
+            umap_layout = {'xaxis.autorange': True, 'yaxis.autorange': True} if umap_layout is None else umap_layout
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id not in ["umap-projection-options"]:
-                try:
-                    subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
+                try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
                                     umap_col_selection, prev_categories).get_callback_structures()
-                except TypeError:
-                    subtypes, keep = None, None
-            else:
-                subtypes, keep = None, None
-            try:
-                fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
+                except TypeError: subtypes, keep = None, None
+            else: subtypes, keep = None, None
+            try: fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
                         umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
                         subtypes, channels_to_display, normalize=normalize_heatmap, subset_val=subset_heatmap)
             except (BadRequest, IndexError):
@@ -378,8 +383,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
                                                                                 mask_dict[mask_selection]['raw']):
                 mask_used = mask_dict[mask_selection]['raw']
-            else:
-                mask_used = None
+            else: mask_used = None
             return dcc.send_file(AnnotationMaskWriter(download_mask, annotations_dict, data_selection,
                 (first_image.shape[0], first_image.shape[1]), mask_used, False).write_annotation_masks())
         raise PreventUpdate
@@ -413,10 +417,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('cur-umap-subset-category-counts', 'data'),
                        prevent_initial_call=True)
     def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
-        columns = [{'id': p, 'name': p, 'editable': False} for p in DistributionTableColumns.columns]
         if None not in (quantification_dict, umap_variable):
-            return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), columns
-        return pd.DataFrame({}).to_dict(orient="records"), columns
+            return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), dist_cols
+        return pd.DataFrame({}).to_dict(orient="records"), dist_cols
 
     @dash_app.callback(
         Output("download-point-csv", "data"),
@@ -471,8 +474,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("umap-config-modal", "is_open"),
         Input('umap-config-button', 'n_clicks'),
         Input('execute-umap-button', 'n_clicks'),
-        [State("umap-config-modal", "is_open")])
-    def toggle_show_umap_config_modal(n, render, is_open):
+        State("umap-config-modal", "is_open"),
+        Input('overlay-to-clust', 'n_clicks'),
+        Input('compute-image-similarity', 'n_clicks'),
+        State('umap-projection-options', 'value'))
+    def toggle_show_umap_config_modal(n, render, is_open, transfer, compute_similar, overlay):
+        if ctx.triggered_id in ["overlay-to-clust", "compute-image-similarity"]:
+            return not is_open if (n and overlay) else is_open
         return not is_open if (n or render) else is_open
 
     @dash_app.callback(
@@ -515,8 +523,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-cluster-annotations')
     def get_filenames_from_cluster_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
-        if files is not None: return files
-        raise PreventUpdate
+        return files if files else dash.no_update
 
     @dash_app.callback(
                  Output('imported-cluster-frame', 'data', allow_duplicate=True),
@@ -536,21 +543,34 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
                 Output('cluster-colour-assignments-dict', 'data'),
-                Output('cluster-label-list', 'options'),
-                Output('cluster-label-selection', 'options'),
-                Output('cluster-label-selection', 'value'),
-                Input('cluster-col', 'value'),
-                State('imported-cluster-frame', 'data'),
+                Input('imported-cluster-frame', 'data'),
                 State('data-collection', 'value'),
                 State('cluster-colour-assignments-dict', 'data'))
-    def assign_cluster_colors(cluster_cat, cluster_frame, data_selection, cur_cluster_dict):
+    def assign_cluster_colors(cluster_frame, data_selection, cur_cluster_dict):
         """
-        Assign colors to cluster values from a selected cluster category
+        Assign colors to cluster values from a selected cluster category. Will auto-assign all the categories
+        provided in the frame
         """
-        if cluster_cat and cluster_frame and data_selection and data_selection in cluster_frame:
-            default_colors, options = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection, cluster_cat)
-            return default_colors, options, options, options
-        return dash.no_update, [], [], []
+        if cluster_frame and data_selection and data_selection in cluster_frame:
+            return assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output('cluster-label-list', 'options'),
+        Output('cluster-label-selection', 'options'),
+        Output('cluster-label-selection', 'value'),
+        Output('cluster-assignments', 'children'),
+        Input('cluster-col', 'value'),
+        State('data-collection', 'value'),
+        Input('cluster-colour-assignments-dict', 'data'))
+    def generate_clust_selection_options_legend(clust_select, data_selection, cur_cluster_dict):
+        """
+        Generate the cluster color label selection on a category selection
+        """
+        if clust_select and data_selection and clust_select in cur_cluster_dict[data_selection]:
+            options = list(cur_cluster_dict[data_selection][clust_select].keys())
+            return options, options, options, cluster_label_children(data_selection, cur_cluster_dict, clust_select)
+        return [], [], [], []
 
     @dash_app.callback(
         Output('cluster-label-selection', 'value', allow_duplicate=True),
@@ -558,33 +578,22 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('cluster-label-selection', 'options'))
     def generate_cluster_colour_assignment(toggle_clust_selection, clust_options):
         """
-        Toggle the options selectable for a specific cluster category
-        """
+            Toggle the options selectable for a specific cluster category
+            """
         return clust_options if toggle_clust_selection else []
 
     @dash_app.callback(Input('data-collection', 'value'),
                        State('cluster-colour-assignments-dict', 'data'),
+                       State('imported-cluster-frame', 'data'),
                        Output('cluster-col', 'options', allow_duplicate=True),
                        Output('cluster-col', 'value', allow_duplicate=True))
-    def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame):
+    def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame, master_clust):
         """
         Update the cluster categories selectable on an ROI change
         """
-        if cluster_frame and data_selection and data_selection in cluster_frame.keys():
+        if cluster_frame and data_selection and data_selection in cluster_frame and master_clust and data_selection in master_clust:
             return list(cluster_frame[data_selection].keys()), set_default_cluster_col(cluster_frame, data_selection)
         return [], None
-
-    @dash_app.callback(Output('cluster-assignments', 'children', allow_duplicate=True),
-                       Input('cluster-colour-assignments-dict', 'data'),
-                       Input('data-collection', 'value'),
-                       State('cluster-col', 'value'))
-    def render_cluster_colour_legend(cluster_assignments_dict, data_selection, cluster_cat):
-        """
-        Render the html H6 html span legend for the cluster annotation colours
-        """
-        if cluster_assignments_dict and data_selection and cluster_cat:
-            return cluster_label_children(data_selection, cluster_assignments_dict, cluster_cat)
-        raise PreventUpdate
 
     @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
                        Input('cluster-color-picker', 'value'),
@@ -689,9 +698,45 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-delimiter', 'value'),
                        State('umap-projection-options', 'value'),
                        State('imported-cluster-frame', 'data'),
-                       State('mask-options', 'value'))
-    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask):
+                       State('mask-options', 'value'),
+                       State('data-collection', 'options'))
+    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask, d_opt):
         if transfer and roi_selection and quant_dict and delimiter and overlay:
-            clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask).get_cluster_frame()
+            clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask, d_opt).get_cluster_frame()
             return SessionServerside(clust, key="cluster_assignments", use_unique_key=OVERWRITE), set_cluster_col_dropdown(clust[roi_selection])
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("show-clust-dist-table", "is_open"),
+        Input('toggle-cluster-dist', 'n_clicks'),
+        [State("show-clust-dist-table", "is_open")])
+    def toggle_show_clust_dist_modal(n, is_open):
+        return not is_open if n else is_open
+
+    @dash_app.callback(Output('clust-dist-table', 'data'),
+                       Output('clust-dist-table', 'columns'),
+                       State('cluster-col', 'value'),
+                       State('imported-cluster-frame', 'data'),
+                       State('data-collection', 'value'),
+                       Input('cluster-label-selection', 'value'),
+                       Input('gating-cell-list', 'data'),
+                       Input('apply-gating', 'value'),
+                       prevent_initial_call=True)
+    def populate_cluster_projection_distribution_table(clust_variable, cluster_data, roi_selection, cluster_cats,
+                                                       gating_object_list, use_gating):
+        if cluster_data and clust_variable and cluster_cats and roi_selection:
+            gating_object_list = gating_object_list if use_gating else None
+            cluster_data = subset_cluster_frame(cluster_data, roi_selection, clust_variable, cluster_cats, gating_object_list)
+            return quantification_distribution_table(cluster_data, clust_variable, None), dist_cols
+        return pd.DataFrame({}).to_dict(orient="records"), dist_cols
+
+    @dash_app.callback(Output('image-prioritization-cor', 'data'),
+                       Input('compute-image-similarity', 'n_clicks'),
+                       State('quantification-dict', 'data'),
+                       State('umap-projection-options', 'value'),
+                       prevent_initial_call=True)
+    def compute_image_similarity_table(compute_similar, quant, overlay):
+        if compute_similar and quant and overlay:
+            similarity = compute_image_similarity_from_overlay(quant, overlay)
+            return SessionServerside(similarity, key="image-prioritization-cor", use_unique_key=OVERWRITE)
         raise PreventUpdate

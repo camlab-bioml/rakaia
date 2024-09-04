@@ -63,6 +63,22 @@ class RegionSummary:
                 self.graph_layout = self.graph['layout']
                 self.compute_statistics_shapes()
 
+    def define_shapes_to_keep(self):
+        """
+
+        :return: list of shapes that should be retained to measure. Shapes to measure should not be lines, and
+        should be editable
+        """
+        shapes_keep = []
+        if 'shapes' in self.graph_layout:
+            for shape in self.graph_layout['shapes']:
+                try:
+                    if 'type' in shape and shape['type'] not in ['line'] and 'editable' in shape and shape['editable']:
+                        shapes_keep.append(shape)
+                except KeyError:
+                    pass
+        return shapes_keep
+
     def compute_statistics_shapes(self):
         """
         Compute the region statistics when new shapes are drawn on the canvas and are not modified
@@ -79,52 +95,45 @@ class RegionSummary:
         aliases = []
         region = []
         region_index = 1
-        shapes_keep = []
-        if 'shapes' in self.graph_layout:
-            for shape in self.graph_layout['shapes']:
-                try:
-                    if 'type' in shape and shape['type'] not in ['line'] and 'editable' in shape and shape['editable']:
-                        shapes_keep.append(shape)
-                except KeyError:
-                    pass
-        if shapes_keep:
-            for shape in shapes_keep:
-                try:
-                    # option 1: if the shape is drawn with a rectangle
-                    if shape['type'] == 'rect':
-                        for layer in self.selected_channels:
-                            region_shape = RectangleRegion(self.image_dict[self.data_selection][layer],
-                                                           shape, reg_type="rect")
-                            mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
-                            max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
-                            min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
-                            median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
-                            std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
-                            total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
-                            aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
-                            region.append(region_index)
-                        # option 2: if a closed form shape is drawn
-                    elif shape['type'] == 'path' and 'path' in shape:
-                        for layer in self.selected_channels:
-                            region_shape = FreeFormRegion(self.image_dict[self.data_selection][layer], shape)
-                            mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
-                            max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
-                            min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
-                            median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
-                            std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
-                            total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
-                            aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
-                            region.append(region_index)
-                    region_index += 1
+        shapes_keep = self.define_shapes_to_keep()
+        for shape in shapes_keep:
+            try:
+                # option 1: if the shape is drawn with a rectangle
+                if shape['type'] == 'rect':
+                    for layer in self.selected_channels:
+                        region_shape = RectangleRegion(self.image_dict[self.data_selection][layer],
+                                                       shape, reg_type="rect")
+                        mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
+                        max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
+                        min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                        median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
+                        std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
+                        total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
+                        aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
+                        region.append(region_index)
+                    # option 2: if a closed form shape is drawn
+                elif shape['type'] == 'path' and 'path' in shape:
+                    for layer in self.selected_channels:
+                        region_shape = FreeFormRegion(self.image_dict[self.data_selection][layer], shape)
+                        mean_panel.append(round(float(region_shape.compute_pixel_mean()), 2))
+                        max_panel.append(round(float(region_shape.compute_pixel_max()), 2))
+                        min_panel.append(round(float(region_shape.compute_pixel_min()), 2))
+                        median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
+                        std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
+                        total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
+                        aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
+                        region.append(region_index)
+                region_index += 1
 
-                # exception may not be necessary as there are already catches in the child classes
-                except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
-                        _ArrayMemoryError, KeyError):
-                    pass
+            # exception may not be necessary as there are already catches in the child classes
+            except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
+                    _ArrayMemoryError, KeyError):
+                pass
 
-            layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
-                          'Median': median_panel, 'SD': std_panel, 'Total': total_panel, 'Region': region}
-            self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
+        layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
+                      'Median': median_panel, 'SD': std_panel, 'Total': total_panel, 'Region': region}
+        self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
+
 
     def compute_statistics_rectangle(self, reg_type="zoom", redrawn=False):
         """

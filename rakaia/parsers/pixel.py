@@ -123,17 +123,18 @@ class FileParser:
     def append_channel_alias_to_label_list(self, channel_identifier: str):
         """
         Append a unique channel alias (internal session label) to the channel label list if it doesn't yet exist.
+        Ensure that the number of labels does not exceed the number of unique keys
 
         :param channel_identifier: string identifier for channel name
         :return: None
         """
-        if channel_identifier not in self.metadata_labels:
+        if channel_identifier not in self.metadata_labels and \
+                (len(self.metadata_labels) + 1) <= len(self.unique_image_names):
             self.metadata_labels.append(channel_identifier)
-
 
     def parse_h5(self, h5py_file):
         """
-        Parse an h5py ROI file generated from a previous session.
+        Parse a h5py ROI file generated from a previous session.
 
         :param h5py_file: path to a compatible h5py file.
         :return: None
@@ -243,9 +244,9 @@ class FileParser:
                     self.dataset_information_frame["Panel"].append(
                         f"{len(tif.pages)} markers")
                 multi_channel_index += 1
+                self.append_channel_identifier_to_collection(identifier)
                 self.append_channel_identifier_to_channel_list(identifier)
                 self.append_channel_alias_to_label_list(identifier)
-                self.append_channel_identifier_to_collection(identifier)
 
             if len(self.image_dict['metadata']) < 1:
                 self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
@@ -398,9 +399,9 @@ class FileParser:
                     self.dataset_information_frame["Panel"].append(
                         f"{len(acq_text_read.channel_names)} markers")
                 image_index += 1
+                self.append_channel_identifier_to_collection(identifier)
                 self.append_channel_identifier_to_channel_list(identifier)
                 self.append_channel_alias_to_label_list(image_label)
-                self.append_channel_identifier_to_collection(identifier)
             if len(self.image_dict['metadata']) < 1:
                 self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
                                            'Channel Name': self.metadata_channels,

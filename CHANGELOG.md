@@ -7,7 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.18.0] - 2024-08-06
+## [0.19.0] - 2024-08-29
+
+### Added
+
+- script to install using `pyapp` (UNIX systems)
+- Cluster projection distribution table with selected cluster sub-categories
+- Image prioritization using similarity scores computed from a cluster proportion
+
+### Changed
+
+- slight modification to `RegionAnnotation` pydantic implementation to be compatible with `pyapp`
+- `glasbey` palettes and better categorical identification for UMAP overlay variables
+
+### Fixed
+
+- update from db or JSON for consecutive panel changes
+- multi cluster color assignment import with multiple ROIs
+- string casting for cluster category distributions
+- UMAP figure patch now considers categorical overlays based on number of unique values
+- quantification to cluster transfer for old pipeline (imcPQ) syntax
+- proper selection of objects through UMAP categorical legend if initial zoom hasn't been used
+
+## [0.18.0] - 2024-08-09
 
 ### Added
 

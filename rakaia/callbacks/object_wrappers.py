@@ -30,7 +30,7 @@ class AnnotationQuantificationMerge:
     :param sample_name: Current ROI identifier
     :param id_column: Column in the quantification frame linking the mask to the measured results. Default is `sample`.
     :param config: Dictionary of current rakaia session settings from CLI
-    :param remove: Whether or not the annotation(s) should be removed
+    :param remove: Whether the annotation(s) should be removed. Default is False
     :param indices_remove: List of ROI indices from the preview table to be removed
     :return: None
     """

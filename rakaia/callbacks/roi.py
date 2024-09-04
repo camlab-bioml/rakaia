@@ -10,7 +10,10 @@ from rakaia.utils.pixel import get_first_image_from_roi_dictionary
 from rakaia.utils.quantification import (
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi)
-from rakaia.utils.object import validate_mask_shape_matches_image
+from rakaia.utils.object import (
+    validate_mask_shape_matches_image,
+    ROIQuantificationMatch,
+    find_similar_images)
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
@@ -57,13 +60,16 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-query-keyw', 'value'),
                        Input('saved-blend-options-roi', 'value'),
                        State('saved-blends', 'data'),
+                       Input('find-similar', 'n_clicks'),
+                       State('image-prioritization-cor', 'data'),
+                       State('quantification-dict', 'data'),
                        prevent_initial_call=True)
     def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
                                     existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
                                     dataset_options, query_cell_id_lists, global_apply_filter,
                                     global_filter_type, global_filter_val, global_filter_sigma, delimiter, error_config,
-                                    dim_min, dim_max, keyw, saved_blend, saved_blend_dict):
+                                    dim_min, dim_max, keyw, saved_blend, saved_blend_dict, find_similar, image_cor, quant):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -71,10 +77,16 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # do not execute query if triggered from the quantification tab and no sample indices exist
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
-        if None not in (currently_selected, data_selection, blend_colour_dict,
-                        session_config) and not quant_empty and len(currently_selected) > 0:
+        no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
+        if None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not \
+            quant_empty and len(currently_selected) > 0 and not no_similarity_scores:
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
                 rois_decided, rois_exclude, row_children = query_from_quantification, [], []
+            elif ctx.triggered_id == "find-similar" and quant is not None and find_similar:
+                name, col = ROIQuantificationMatch(data_selection, quant, dataset_options, delimiter).get_matches()
+                rois_decided = find_similar_images(image_cor, name, num_queries, col) if name else None
+                # do not use object id lists if looking for similar images (focus on whole image not subsets)
+                rois_exclude, row_children, query_cell_id_lists = [], [], None
             else:
                 rois_decided, row_children = None, None
             # if the query is being extended, append on top of the existing gallery
@@ -88,8 +100,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             global_filter_type, global_filter_val, global_filter_sigma, delimiter, False, dim_min, dim_max, keyw).get_image_dict()
             new_row_children, roi_list = generate_roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
-            if ctx.triggered_id == "dataset-query-additional-load":
-                roi_list = list(set(rois_exclude + roi_list))
+            if ctx.triggered_id == "dataset-query-additional-load": roi_list = list(set(rois_exclude + roi_list))
             roi_list.append(data_selection)
             row_children = row_children + new_row_children if row_children else new_row_children
             return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update

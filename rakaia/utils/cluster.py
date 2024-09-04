@@ -19,21 +19,24 @@ class QuantificationClusterMerge:
     :param roi_selection: String representation of the currently loaded ROI
     :param cat_to_transfer: List or string of quantification columns to add to cluster projection
     :param delimiter: string splitter to split the string ROI selection
+    :param dataset_options: List of session ROIs. Used by old pipeline logic to match mask names by dataset index
     :return: None
     """
     def __init__(self, quantification_frame: Union[dict, pd.DataFrame], roi_selection: str,
                  cat_to_transfer: Union[str, list],
                  current_cluster_frame: Union[dict, pd.DataFrame]=None,
-                 delimiter: str="+++", current_mask: str=None) -> None:
+                 delimiter: str="+++", current_mask: str=None,
+                 dataset_options: Union[list, None]=None) -> None:
         self.quantification_frame = pd.DataFrame(quantification_frame)
         self.roi_selection = roi_selection
         self.cat_to_transfer = cat_to_transfer if isinstance(cat_to_transfer, list) else [cat_to_transfer]
         self.delimiter = delimiter
         self.current_mask = current_mask
+        self.dataset_options = dataset_options
         self._cluster_frame = current_cluster_frame if current_cluster_frame else {}
         # get the roi name match to the current ROI, and what column in the quant frame is used to link
-        self.roi_match, self.quant_frame_identifier = ROIQuantificationMatch(
-                                                        self.roi_selection, self.quantification_frame, None,
+        self.roi_match, self.quant_frame_identifier = ROIQuantificationMatch(self.roi_selection,
+                                                        self.quantification_frame, self.dataset_options,
                                                         self.delimiter, self.current_mask).get_matches()
         # figure out which column is the quant results holds the object ids
         self.quant_object_identifier = get_cluster_proj_id_column(self.quantification_frame)
@@ -86,27 +89,47 @@ def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: 
         cur_cluster_dict[roi_selection] = cluster_frame
     return cur_cluster_dict if len(cur_cluster_dict) > 0 else None
 
+def subset_cluster_frame(cluster_data: dict, roi_selection: str, clust_variable: str,
+                         cluster_cats: Union[list, None]=None,
+                         gating_object_list: Union[list, None]=None) -> Union[pd.DataFrame, dict]:
+    """
+    Subset a cluster frame based on subset of cluster projection options in a specific column, or
+    an object gating list. Used for generating a distribution table of objects by annotation in the current image
+    """
+    if cluster_data and roi_selection and clust_variable and cluster_cats and \
+            roi_selection in cluster_data:
+        cluster_cats = [str(i) for i in cluster_cats]
+        cluster_data = pd.DataFrame(cluster_data[roi_selection])
+        cluster_data[clust_variable] = cluster_data[clust_variable].apply(str)
+        cluster_data = cluster_data[cluster_data[clust_variable].isin(list(cluster_cats))]
+        if gating_object_list:
+            object_column = get_cluster_proj_id_column(cluster_data)
+            cluster_data = cluster_data[cluster_data[object_column].isin(gating_object_list)]
+    return cluster_data
+
 def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_cluster_dict: dict=None,
-                                          roi_selection: str=None, cluster_id_col: str='cluster') -> tuple:
+                                          roi_selection: str=None) -> Union[dict, None]:
     """
     Generate a dictionary of random colours to assign to the clusters for a specific ROI
     cluster frame dict contains the cluster assignments by ROI
     cur_cluster_dict contains current assignments from previous uploads or previous ROIs
     """
     try:
-        unique_clusters = pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_id_col].unique().tolist()
-        unique_colours = glasbey_palette(len(unique_clusters))
         cluster_assignments = {roi_selection: {}} if not cur_cluster_dict else cur_cluster_dict
         if roi_selection not in cluster_assignments:
             cluster_assignments[roi_selection] = {}
         cluster_assignments = match_cluster_hash_to_cluster_frame(cluster_frame_dict, cluster_assignments, roi_selection)
-        if cluster_id_col not in cluster_assignments[roi_selection].keys():
-            cluster_assignments[roi_selection][cluster_id_col] = {}
-            for clust, colour in zip(unique_clusters, unique_colours):
-                cluster_assignments[roi_selection][cluster_id_col][clust] = colour
-        return cluster_assignments, list(unique_clusters)
+        for cluster_cat in cluster_frame_dict[roi_selection].keys():
+            if cluster_cat not in ClusterIdentifiers.id_cols and \
+                cluster_cat not in cluster_assignments[roi_selection].keys():
+                cluster_assignments[roi_selection][cluster_cat] = {}
+                unique_clusters = pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_cat].unique().tolist()
+                unique_colours = glasbey_palette(len(unique_clusters))
+                for clust, colour in zip(unique_clusters, unique_colours):
+                    cluster_assignments[roi_selection][cluster_cat][clust] = colour
+        return cluster_assignments
     except (KeyError, TypeError):
-        return None, None
+        return None
 
 def match_cluster_hash_to_cluster_frame(cluster_frame_dict: dict, cluster_assignments: dict,
                                         roi_selection: str) -> dict:
