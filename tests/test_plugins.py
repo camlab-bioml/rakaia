@@ -1,0 +1,26 @@
+import os
+import anndata
+import pandas as pd
+import pytest
+from rakaia.plugins import (
+    PluginNotFoundError,
+    run_quantification_model)
+from rakaia.plugins.models import leiden_clustering
+
+
+def test_leiden_clustering(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    assert "leiden" not in measurements_csv.columns
+    with_leiden = leiden_clustering(measurements_csv, n_neighbors=10)
+    assert "leiden" in pd.DataFrame(with_leiden).columns
+    with_leiden_adata = leiden_clustering(measurements_csv, n_neighbors=10, return_as_dict=False)
+    assert isinstance(with_leiden_adata, anndata.AnnData)
+    assert "leiden" in with_leiden_adata.obs.columns
+
+def test_run_quant_models(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    leiden_as_model = run_quantification_model(measurements_csv, None)
+    assert "out" in pd.DataFrame(leiden_as_model).columns
+
+    with pytest.raises(PluginNotFoundError):
+        run_quantification_model(measurements_csv, None, mode="not found")

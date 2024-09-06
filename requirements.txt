@@ -121,7 +121,7 @@ trio==0.22.0
 trio-websocket==0.10.2
 typing_extensions==4.6.3
 tzdata==2023.3
-umap-learn==0.5.6
+umap-learn==0.5.2
 urllib3==1.26.16
 urllib3-secure-extra==0.1.0
 URLObject==2.4.3

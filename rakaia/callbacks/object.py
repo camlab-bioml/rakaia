@@ -21,6 +21,7 @@ from rakaia.parsers.object import (
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
     GatingObjectList)
+from rakaia.plugins import run_quantification_model
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
@@ -739,4 +740,23 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if compute_similar and quant and overlay:
             similarity = compute_image_similarity_from_overlay(quant, overlay)
             return SessionServerside(similarity, key="image-prioritization-cor", use_unique_key=OVERWRITE)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("plugin-modal", "is_open"),
+        Input('show-plugins', 'n_clicks'),
+        State("plugin-modal", "is_open"))
+    def toggle_plugin_modal(open_plugins, is_open):
+        return not is_open if open_plugins else is_open
+
+    @dash_app.callback(
+        Output('quantification-dict', 'data', allow_duplicate=True),
+        Input('run-plugin', 'n_clicks'),
+        State('quantification-dict', 'data'),
+        State('plugin-in-col', 'value'),
+        State('plugin-out-col', 'value'))
+    def run_plugin_quantification(run_plugin, quant_dict, in_col, out_col):
+        if run_plugin and quant_dict and out_col:
+            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col),
+                              key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate

@@ -17,7 +17,7 @@ from rakaia.inputs.pixel import (
 from rakaia.inputs.loaders import wrap_child_in_loading
 from rakaia.utils.pixel import generate_default_swatches
 from rakaia.utils.region import RegionStatisticGroups
-
+from rakaia.plugins import PluginDescriptors
 
 def register_app_layout(config, cache_dest):
 
@@ -1140,7 +1140,7 @@ def register_app_layout(config, cache_dest):
                                 "margin-top": "15px"}),
                                 html.Br(),
                                 ], style={"padding": "5px"}),
-                                dbc.Tab(label="Measure/cluster", label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                dbc.Tab(label="Measure/overlay", label_style={"color": DEFAULT_WIDGET_COLOUR},
                                     children=[
                                 html.Br(),
                                 html.Div([dbc.Button("Quantify current ROI", id="quantify-cur-roi-button",
@@ -1354,17 +1354,23 @@ def register_app_layout(config, cache_dest):
                                     dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
                                         style={"display": "inline-block", "margin-right": "7.5px",
                                             "margin-top": "3px"}),
-                                    html.Div("UMAP options")], style={"display": "flex",
-                                        "margin-top": "-5px","margin-left": "15px"}),
+                                    html.Div("UMAP Options")], style={"display": "flex",
+                                        "margin-top": "-5px", "margin-left": "15px", "float": "right"}),
                                         id="umap-config-button", className="mx-auto", color=None, n_clicks=0,
-                                        style={"margin-top": "-5px", 'float': "left"}),
+                                        style={"margin-top": "-5px", 'float': "center", "margin-left": "15px"}),
+                                    dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
+                                    style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                    html.Div("Plugins")], style={"display": "flex",
+                                    "margin-top": "-5px", "margin-left": "15px", "float": "right"}),
+                                    id="show-plugins", className="mx-auto", color=None, n_clicks=0,
+                                    style={"margin-top": "-5px", 'float': "center"}),
                                     html.Div([
                                         dbc.Button("Show selection in dataset gallery", id="quantification-query-link",
                                                     style={"margin-right": "30px", "margin-bottom": "7px"},
                                                     color="dark", outline=True)
                                               ],
                                              style={"display": "flex", "justifyContent": "right"}),
-                                              ], style={"display": "flex", "float": "center", "width": "100%"}),
+                                              ], style={"display": "flex", "float": "right", "width": "100%"}),
                                         dbc.Modal(children=dbc.ModalBody([
                                         html.Div([
                                         dbc.Row([dbc.Col(width=6, children=[
@@ -1402,6 +1408,22 @@ def register_app_layout(config, cache_dest):
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
                                         ]),
                                         id="umap-config-modal", size='l'),
+                                    dbc.Modal(children=dbc.ModalBody([html.Div([
+                                    html.B("Choose plugin", style={"float": "left"}),
+                                    html.Br(),
+                                    dcc.Dropdown(id='plugin-mode', options=PluginDescriptors.descriptors),
+                                    html.Br(),
+                                    html.B("Choose existing annotation", style={"float": "left"}),
+                                    dcc.Dropdown(id='plugin-in-col', options=[]),
+                                    html.Br(),
+                                    html.B("Set output column", style={"float": "left"}),
+                                    html.Br(),
+                                    dcc.Input(type="text", value=None, placeholder="Set the name of the output column to"
+                                    "store the model results", debounce=True, id="plugin-out-col"),
+                                    html.Br(),
+                                    dbc.Button("Run plugin", id="run-plugin", className="me-1", style={"margin-top": "10px",
+                                            "background-color": DEFAULT_WIDGET_COLOUR})
+                                    ])]), id='plugin-modal', size='m'),
                                     html.Div(
                                     [dbc.Row([dbc.Col([
                                         dcc.Loading(dcc.Dropdown(id='umap-projection-options', multi=False,

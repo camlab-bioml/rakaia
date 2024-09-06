@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import Union
 import re
 import os
@@ -210,6 +211,24 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
     if not all(column in frame.columns for column in required_columns):
         return None, None
     return frame, None
+
+def quant_dataframe_to_anndata(quantification: Union[dict, pd.DataFrame]):
+    """
+    Convert a quantification frame to an anndata object. Creates an anndata with the following properties:
+    - Channel expression is held as an array in h5ad_file.X
+    - Channel names are held in h5ad_file.var_names
+    - Additional metadata variables are held in h5ad_file.obs
+    """
+    frame = pd.DataFrame(quantification)
+    # identify the first column that immediately follows the channel intensities. should be either sample or description
+    starting_col = "description" if "description" in frame.columns else "sample"
+    end_intensities = list(frame.columns).index(starting_col)
+    intensities = frame.iloc[:, 0:end_intensities]
+    metadata = frame.iloc[:, end_intensities:len(list(frame.columns))]
+    obj = anndata.AnnData(X=np.array(intensities), obs=metadata)
+    obj.var_names = list(intensities.columns)
+    return obj
+
 
 
 class RestyleDataParser:
@@ -537,32 +556,33 @@ def validate_coordinate_set_for_image(x_coord=None, y_coord=None, image=None):
     return False
 
 
-def parse_quantification_sheet_from_h5ad(h5ad_file):
+def parse_quantification_sheet_from_h5ad(h5ad_file: Union[Path, str, anndata.AnnData]):
     """
     Parse the quantification results from h5ad files. Assumes the following format:
     - Channel expression is held as an array in h5ad_file.X
     - Channel names are held in h5ad_file.var_names
     - Additional metadata variables are held in h5ad_file.obs
     """
-    quantification_frame = sc.read_h5ad(h5ad_file)
-    expression = pd.DataFrame(quantification_frame.X,
-                              columns=list(quantification_frame.var_names)).reset_index(drop=True)
-    if is_steinbock_intensity_anndata(quantification_frame):
+    if not isinstance(h5ad_file, anndata.AnnData):
+        h5ad_file = sc.read_h5ad(h5ad_file)
+    expression = pd.DataFrame(h5ad_file.X,
+                columns=list(h5ad_file.var_names)).reset_index(drop=True)
+    if is_steinbock_intensity_anndata(h5ad_file):
         # create a sample column that uses indices to match the steinbock masks
         edited = pd.DataFrame({"description": [f"{acq}_{position}" for acq, position in \
-                                               zip(quantification_frame.obs['image_acquisition_description'],
+                                               zip(h5ad_file.obs['image_acquisition_description'],
                                                    [int(re.search(r'\d+$', elem.split('.tiff')[0]).group()) for elem in
-                                                    quantification_frame.obs['Image']])],
+                                                    h5ad_file.obs['Image']])],
                                # parse the int cell id from the string index
                                "cell_id": [int(re.search(r'\d+', elem).group()) for elem in
-                                           quantification_frame.obs.index],
-                               "sample": [elem.split('.tiff')[0] for elem in quantification_frame.obs['Image']]},
-                              index=quantification_frame.obs.index)
+                                           h5ad_file.obs.index],
+                               "sample": [elem.split('.tiff')[0] for elem in h5ad_file.obs['Image']]},
+                              index=h5ad_file.obs.index)
         edited["cell_id"] = pd.to_numeric(edited["cell_id"])
-        quantification_frame = pd.concat([edited, quantification_frame.obs], axis=1, ignore_index=False)
+        quantification_frame = pd.concat([edited, h5ad_file.obs], axis=1, ignore_index=False)
         return expression.join(quantification_frame.reset_index(drop=True))
     # return the merged version of the data frames to mimic the pipeline
-    return expression.join(quantification_frame.obs.reset_index(drop=True))
+    return expression.join(h5ad_file.obs.reset_index(drop=True))
 
 class GatingObjectList:
     """

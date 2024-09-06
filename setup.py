@@ -13,7 +13,7 @@ setup(
     author_email="mwatson@lunenfeld.ca",
     packages=find_packages(),
     package_dir={"rakaia": "rakaia"},
-    package_data={'': ['*.json', "*.html", "*.css", "*.ico", "*.js", "*.png"]},
+    package_data={'': ['*.json', "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml"]},
     include_package_data=True,
     description="Large scale multiplex image analysis in the browser",
     long_description=open("README.md").read(),

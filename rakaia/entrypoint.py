@@ -7,7 +7,7 @@ from flask_caching import Cache
 from flask_httpauth import HTTPBasicAuth
 
 _program = "rakaia"
-__version__ = "0.19.0"
+__version__ = "0.20.0"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.
