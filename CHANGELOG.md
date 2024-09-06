@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- plugin ecosystem for quantification results: added leiden clustering
+- plugin ecosystem for quantification results: added leiden clustering & random forest on an existing annotation
 
 ## [0.19.0] - 2024-08-29
 

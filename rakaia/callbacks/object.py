@@ -161,6 +161,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('umap-projection', 'data', allow_duplicate=True),
                        Output('umap-projection-options', 'options'),
                        Output('gating-channel-options', 'options'),
+                       Output('plugin-in-col', 'options'),
                        Input('quantification-dict', 'data'),
                        State('umap-projection', 'data'),
                        Input('execute-umap-button', 'n_clicks'),
@@ -172,10 +173,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         of the embeddings and a list of the channels for interactive projection
         """
         if ctx.triggered_id == "quantification-dict":
-            return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
+            return dash.no_update, list(pd.DataFrame(quantification_dict).columns), \
+                list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         try:
             return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
-            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update
+            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update, dash.no_update
         except ValueError: raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
@@ -752,11 +754,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output('quantification-dict', 'data', allow_duplicate=True),
         Input('run-plugin', 'n_clicks'),
+        State('plugin-mode', 'value'),
         State('quantification-dict', 'data'),
         State('plugin-in-col', 'value'),
         State('plugin-out-col', 'value'))
-    def run_plugin_quantification(run_plugin, quant_dict, in_col, out_col):
-        if run_plugin and quant_dict and out_col:
-            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col),
+    def run_plugin_quantification(run_plugin, mode, quant_dict, in_col, out_col):
+        if run_plugin and quant_dict and out_col and mode:
+            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode),
                               key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
