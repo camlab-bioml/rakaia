@@ -17,13 +17,15 @@ class QuantificationRandomForest:
     :param quantification: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
     :param in_col: Existing annotation column in the object that specifies the classes used to fit the model
     :param out_col: Column to store the output labels of the classifier prediction
+    :param kwargs: Keyword arguments to pass to `RandomForestClassifier`
+
     :return: None
     """
-    def __init__(self, quantification: Union[dict, pd.DataFrame], in_col: str, out_col: str="rf"):
+    def __init__(self, quantification: Union[dict, pd.DataFrame], in_col: str, out_col: str="rf", **kwargs):
         self.quantification = pd.DataFrame(quantification)
         self.in_col = in_col
         self.out_col = out_col
-        self.clf = RandomForestClassifier(random_state=100)
+        self.clf = RandomForestClassifier(random_state=100, **kwargs)
         # since this is the default in the app, ignore any samples with just this annotation
         self.null_cats = ["Unassigned"]
         self.sample_identifier = "description" if "description" in list(self.quantification.columns) else "sample"
@@ -76,15 +78,17 @@ class QuantificationRandomForest:
         return self.quantification.to_dict(orient="records") if return_as_dict else self.quantification
 
 def leiden_clustering(quantification: Union[pd.DataFrame, anndata.AnnData, dict],
-                    out_col: str="leiden", n_neighbors: Union[int, float]=30, return_as_dict: bool=True):
+                    out_col: str="leiden", n_neighbors: Union[int, float]=30,
+                    return_as_dict: bool=True, **kwargs):
     """
     Apply leiden clustering to a set of quantified channel intensities. Accepts either an `anndata.AnnData` object
     or a `pd.DataFrame`. Converts the input into an `anndata.AnnData` object before processing
     Returns either an `anndata.AnnData` object or a dictionary representation of a `pd.DataFrame`
+    Accepts kwargs to pass to `scanpy.tl.leiden`.
     """
     if not isinstance(quantification, anndata.AnnData):
         quantification = quant_dataframe_to_anndata(quantification)
     sc.pp.neighbors(quantification, n_neighbors=n_neighbors)
-    sc.tl.leiden(quantification, key_added=out_col)
+    sc.tl.leiden(quantification, key_added=out_col, **kwargs)
     return parse_quantification_sheet_from_h5ad(quantification).to_dict(
         orient="records") if return_as_dict else quantification

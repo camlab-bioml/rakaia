@@ -1,13 +1,17 @@
 import dash_core_components as dcc
 import numpy as np
 import plotly.express as px
+import dash
+
 from rakaia.inputs.loaders import (
     wrap_child_in_loading,
     previous_roi_trigger,
     next_roi_trigger,
     reset_graph_data,
     adjust_option_height_from_list_length,
-    set_roi_tooltip_based_on_length)
+    set_roi_tooltip_based_on_length,
+    valid_key_trigger,
+    mask_toggle_trigger)
 
 def test_loader_children():
     child = dcc.Store(id="test_store")
@@ -25,6 +29,11 @@ def test_blanking_graph_data():
     assert len(blanked['data']) == 0
     assert blanked['layout'] == graph['layout']
 
+def test_valid_listener():
+    assert valid_key_trigger({'keyCode': 37})
+    assert not valid_key_trigger({'keyCode': 36})
+    assert not valid_key_trigger({})
+
 def test_loaders_roi_triggers():
     assert previous_roi_trigger("prev-roi", 1, None, None)
     assert not previous_roi_trigger("prev-roi", 0, None, None)
@@ -37,6 +46,12 @@ def test_loaders_roi_triggers():
     assert next_roi_trigger("keyboard-listener", 0, {'keyCode': 39}, 1)
     assert not next_roi_trigger("keyboard-listener", 0, {'keyCode': 39}, 0)
     assert not next_roi_trigger("keyboard-listener", 1, {'badKey': 39}, 1)
+
+def test_loaders_mask_toggle():
+    assert mask_toggle_trigger("keyboard-listener", {'keyCode': 38}, 1)
+    assert not mask_toggle_trigger("keyboard-listener", {'keyCode': 40}, 1)
+    assert not mask_toggle_trigger("next-roi", None, None)
+    assert isinstance(mask_toggle_trigger("keyboard-listener", {'bad_key': 40}, 1), dash._callback.NoUpdate)
 
 def test_adjust_option_height_based_on_lengths():
 

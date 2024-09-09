@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.20.0] - 2024-09-06
+## [0.20.0] - 2024-09-09
 
 ### Added
 
 - plugin ecosystem for quantification results: added leiden clustering & random forest on an existing annotation
+- Keyboard Event listener for mask toggle (up arrow)
 
 ## [0.19.0] - 2024-08-29
 
