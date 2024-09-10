@@ -3,7 +3,8 @@ from functools import partial
 import plotly.graph_objs as go
 from rakaia.plugins.models import (
     QuantificationRandomForest,
-    leiden_clustering)
+    leiden_clustering,
+    ObjectMixingRF)
 
 class PluginNotFoundError(Exception):
     """
@@ -17,7 +18,7 @@ class PluginDescriptors:
     :return: None
     """
     # the descriptors should be the string representation of the model in the application dropdown
-    descriptors = ["leiden", "random forest"]
+    descriptors = ["leiden", "random forest", "object mixing"]
 
 class PluginModes:
     """
@@ -48,7 +49,7 @@ class PluginModes:
     def random_forest(quantification_results: Union[dict, go.Figure], input_category: str,
                   output_category: str, **kwargs):
         """
-        Train and predict using a rando forest classifier
+        Train and predict using a random forest classifier
 
         :param quantification_results: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
         :param input_category: Existing annotation column in the object that specifies the classes used to fit the model
@@ -60,6 +61,24 @@ class PluginModes:
         return QuantificationRandomForest(
             quantification_results, input_category, output_category, **kwargs).quantification_with_labels(True)
 
+    @staticmethod
+    def object_mixing(quantification_results: Union[dict, go.Figure], input_category: str,
+                      output_category: str, **kwargs):
+        """
+        Train and predict object segmentation errors using object expression mixing.
+
+        :param quantification_results: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
+        :param input_category: Existing annotation column in the object that specifies the classes used to fit the model
+        :param output_category: Column to store the output labels of the classifier prediction
+        :param kwargs: Keyword arguments to pass to `RandomForestClassifier`
+
+        :return: Quantification results with the prediction labels added under the output column.
+        """
+
+        return ObjectMixingRF(
+            quantification_results, input_category, output_category, **kwargs).quantification_with_labels(True)
+
+
 
 class PluginModelModes:
     """
@@ -70,6 +89,7 @@ class PluginModelModes:
     # each attribute should be directly named after a specific function in PluginModes, and should be a partial function
     leiden = partial(PluginModes.leiden)
     random_forest = partial(PluginModes.random_forest)
+    object_mixing = partial(PluginModes.object_mixing)
 
 def run_quantification_model(quantification_results: Union[dict, go.Figure], input_category: Union[str, None]=None,
                              output_category: str="out", mode: str="leiden", **kwargs):
@@ -81,6 +101,7 @@ def run_quantification_model(quantification_results: Union[dict, go.Figure], inp
     if mode not in PluginDescriptors.descriptors:
         raise PluginNotFoundError(f"The plugin mode provided: {mode} is not a supported plugin."
                                   f"Current plugins include: {PluginDescriptors.descriptors}")
+    # get the attribute compatible string for each mode from the dropdown menu
     mode = mode.replace(" ", "_") if mode else ""
     with_model = getattr(PluginModelModes, mode)(quantification_results, input_category, output_category, **kwargs)
     return with_model

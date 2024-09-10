@@ -8,7 +8,8 @@ from rakaia.plugins import (
     run_quantification_model)
 from rakaia.plugins.models import (
     QuantificationRandomForest,
-    leiden_clustering)
+    leiden_clustering,
+    ObjectMixingRF)
 
 
 def test_leiden_clustering(get_current_dir):
@@ -29,8 +30,15 @@ def test_quant_random_forest(get_current_dir):
     assert 'area_predict_25' in pd.DataFrame(with_predictions).columns
     assert 'Unassigned' not in pd.DataFrame(with_predictions)['area_predict_25']
     with_predictions = pd.DataFrame(QuantificationRandomForest(with_predictions, "area_use", "area_predict_100",
-                                                **{"n_estimators": 100, "max_depth": 8}).quantification_with_labels())
+                                                **{"max_depth": 8, "n_estimators": 100}).quantification_with_labels())
     assert not pd.Series(with_predictions["area_predict_100"]).equals(pd.Series(with_predictions["area_predict_25"]))
+
+def test_object_mixing(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    with_predictions = ObjectMixingRF(measurements_csv, None, "mixing", training_set_prop=0.2,
+                                                  n_estimators=100).quantification_with_labels()
+    assert 'mixing' in pd.DataFrame(with_predictions).columns
+    assert sum(pd.Series(pd.DataFrame(with_predictions)['mixing'])) > 0
 
 def test_run_quant_models(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -38,6 +46,9 @@ def test_run_quant_models(get_current_dir):
     assert "out" in pd.DataFrame(leiden_as_model).columns
     rf_model = run_quantification_model(leiden_as_model, "area", "area_predict", "random forest", n_estimators=25)
     assert "area_predict" in pd.DataFrame(rf_model).columns
+
+    mixing = run_quantification_model(rf_model, None, "mixing", "object mixing", n_estimators=100)
+    assert "mixing" in pd.DataFrame(mixing).columns
 
     with pytest.raises(PluginNotFoundError):
         run_quantification_model(measurements_csv, None, mode="not found")
