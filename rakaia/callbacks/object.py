@@ -137,9 +137,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                     umap_col_selection, prev_categories).get_callback_structures()
                 except TypeError: subtypes, keep = None, None
             else: subtypes, keep = None, None
-            try: fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
-                        umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
-                        subtypes, channels_to_display, normalize=normalize_heatmap, subset_val=subset_heatmap)
+            try: fig, frame, out_cols = generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings,
+            zoom_keys, ctx.triggered_id, True, umap_col_selection, subtypes, channels_to_display,
+            normalize=normalize_heatmap, subset_val=subset_heatmap, umap_overlay=umap_col_selection)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             indices_query, freq_counts_cat, cell_id_dict = None, None, None
@@ -153,9 +153,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # if the heatmap channel options are already set, do not update
             cols_selected = dash.no_update
             if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
-                cols_selected = list(frame.columns)
+                cols_selected = [i for i in list(frame.columns) if i in out_cols]
             return fig, keep, indices_query, freq_counts_cat, SessionServerside(cell_id_dict,
-                    key="cell_id_list", use_unique_key=OVERWRITE), list(frame.columns), cols_selected
+                    key="cell_id_list", use_unique_key=OVERWRITE), out_cols, cols_selected
         raise PreventUpdate
 
     @dash_app.callback(Output('umap-projection', 'data', allow_duplicate=True),

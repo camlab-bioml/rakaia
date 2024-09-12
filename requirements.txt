@@ -14,6 +14,7 @@ Cython==0.29.35
 dash==2.10.2
 dash-ag-grid==2.3.0
 dash-auth==2.0.0
+dash-bio==1.0.2
 dash-bootstrap-components==1.4.1
 dash-canvas==0.1.0
 dash-core-components==2.0.0
