@@ -84,20 +84,37 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
                       title=f"Segmented Marker Expression ({len(measurement_frame)} cells)")
     return None
 
-def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str, normalize: bool=True):
+def clustergram_axes_order(clustergram: Union[dict, go.Figure]):
+    """
+    Get the order of channels and overlay sub types for a `dash_bio.Clustergram` for the figure data slots.
+    Returns a tuple of orders for both the x and y-axis
+    """
+    x_order = None
+    y_order = None
+    clustergram = clustergram.to_dict() if not isinstance(clustergram, dict) else clustergram
+    for key, val in clustergram['layout'].items():
+        if isinstance(val, dict) and 'ticktext' in val and 'anchor' in val:
+            x_order = val['ticktext'] if 'x' in val['anchor'] else x_order
+            y_order = val['ticktext'] if 'y' in val['anchor'] else y_order
+    return x_order, y_order
+
+def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str, normalize: bool=True,
+                    transpose: bool=False):
     """
     Generate a grouped channel heatmap of objects grouped by a umap overlay. Creates a mean expression
-    summary of overlay sub-types x channels
+    summary of overlay subtypes x channels
+    Normalization done by each channel, with the option to transpose for visualization purposes
     """
     quantification = pd.DataFrame(quantification)
     if not umap_overlay or umap_overlay not in quantification.columns: return None
     quantification[umap_overlay] = quantification[umap_overlay].apply(str)
     grouped = pd.DataFrame(quantification.groupby([umap_overlay]).mean())
-    x_lab = list(grouped.columns)
-    y_lab = [str(i) for i in pd.Series(grouped.index).to_list()]
     if normalize:
         grouped = pd.DataFrame((np.array(grouped) / np.array(grouped).max(axis=0)), columns=grouped.columns,
                            index=grouped.index)
+    grouped = grouped.transpose() if transpose else grouped
+    x_lab = list(grouped.columns)
+    y_lab = [str(i) for i in pd.Series(grouped.index).to_list()]
     fig = go.Figure(dash_bio.Clustergram(
         data=grouped,
         column_labels=x_lab,
@@ -112,15 +129,11 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
         # standardize='column' if not invert else 'row'
     ))
     # fig.update_layout()
-    x_order = None
-    y_order = None
-    for key, val in fig.to_dict()['layout'].items():
-        if isinstance(val, dict) and 'ticktext' in val and 'anchor' in val:
-            x_order = val['ticktext'] if 'x' in val['anchor'] else x_order
-            y_order = val['ticktext'] if 'y' in val['anchor'] else y_order
+    x_order, y_order = clustergram_axes_order(fig)
     grouped = grouped.loc[:, y_order]
-    reorder = grouped.reindex(x_order, method='ffill')
+    reorder = grouped.reindex(x_order)
 
+    # need to add check to ensure that the last data slot is always of a heatmap type?
     fig['data'][-1]['z'] = np.array(reorder)
     fig['layout']['title']['text'] = f"Channel Expression by {umap_overlay} ({len(quantification)} objects)"
     # zmax = 1 if np.max(grouped) <= 1 else np.max(grouped)
@@ -129,8 +142,7 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
     #                           title=f"Channel Expression by {umap_overlay} ({len(quantification)} objects)",
     #                           zmax=zmax, binary_compression_level=1))
     fig.update_layout(margin={"pad": 0, "l": 2})
-    fig.update_traces(hovertemplate="Channel: %{x} <br>" + umap_overlay +
-                                    ": %{y} <br>Expression: %{z} <br> <extra></extra>")
+    fig.update_traces(hovertemplate="x: %{x} <br>y: %{y} <br>Expression: %{z} <br> <extra></extra>")
     return fig
 
 def custom_channel_list_heatmap(measurements: pd.DataFrame, cols_include: Union[list, None]=None):
@@ -143,13 +155,13 @@ def custom_channel_list_heatmap(measurements: pd.DataFrame, cols_include: Union[
     return measurements
 
 def generate_channel_heatmap(measurements, cols_include=None, drop_cols=False, subset_val=50000,
-                             umap_overlay: Union[str, None]=None, normalize: bool=True):
+                             umap_overlay: Union[str, None]=None, normalize: bool=True, transpose: bool=False):
     """
     Generate a heatmap of the current quantification frame (total or subset)
     """
     measurements = pd.DataFrame(measurements)
     if umap_overlay and umap_overlay in measurements.columns:
-        return grouped_heatmap(measurements, umap_overlay, normalize)
+        return grouped_heatmap(measurements, umap_overlay, normalize, transpose)
     if drop_cols:
         measurements = drop_columns_from_measurements_csv(measurements)
     measurements = custom_channel_list_heatmap(measurements, cols_include)
@@ -199,8 +211,8 @@ def generate_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_over
         return fig
     return dash.no_update
 
-def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict], quantification_dict: Union[pd.DataFrame, dict],
-                        channel_overlay: str, categorical_threshold: Union[int, float]=50):
+def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict, None], quantification_dict: Union[pd.DataFrame, dict, None],
+                        channel_overlay: Union[str, None], categorical_threshold: Union[int, float]=50):
     """
     Check if the current UMAP is available for a dash-style Patch for channel overlay
     Must already have a channel overlay applied so that the only updates to the figure
@@ -274,6 +286,17 @@ def column_min_max_measurements(measurements: Union[dict, pd.DataFrame], normali
         measurements = ((measurements - measurements.min()) / (measurements.max() - measurements.min()))
     return measurements
 
+def filter_overlay_from_heatmap_data(quant_frame: pd.DataFrame, overlay: Union[str, None]=None,
+                                     categorical_size_limit: Union[int, float]=50):
+    """
+    Check a categorical UMAP overlay after subsetting to ensure that there are enough unique sub types to create
+    a grouped heatmap. If not, remove the column
+    """
+    overlay_use = overlay if overlay and overlay in quant_frame.columns and \
+    (1 < len(quant_frame[overlay].value_counts()) <= categorical_size_limit) else None
+    if overlay in quant_frame.columns and not overlay_use:
+        return quant_frame.drop([overlay], axis=1), overlay_use
+    return quant_frame, overlay_use
 
 def generate_heatmap_from_interactive_subsetting(quantification_dict: Union[dict, pd.DataFrame],
                                                 umap_layout: dict, embeddings: Union[dict, pd.DataFrame],
@@ -282,7 +305,8 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict: Union[dict
                                                 category_subset: Union[list, None]=None,
                                                 cols_include: Union[list, None]=None,
                                                 normalize=True, subset_val=None, umap_overlay: Union[str, None]=None,
-                                                categorical_size_limit: Union[int, float]=30):
+                                                categorical_size_limit: Union[int, float]=30,
+                                                transpose: bool=False):
     """
     Generate a heatmap of the quantification frame, trimmed to only the channel columns, based on an interactive
     subset from the UMAP graph
@@ -304,13 +328,12 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict: Union[dict
         frame, overlay_use = subset_measurements_frame_from_umap_coordinates(frame, pd.DataFrame(embeddings,
                             columns=['UMAP1', 'UMAP2']), umap_layout, umap_overlay=overlay_use)
         # need to check the value counts again after subsetting based on the restyler
-        overlay_use = overlay_use if umap_overlay and (1 < len(frame[umap_overlay].
-                    value_counts()) <= categorical_size_limit) else None
+        frame, overlay_use = filter_overlay_from_heatmap_data(frame, overlay_use, categorical_size_limit)
         # IMP: do not reset the subset index here as the indices are needed for the query subset!!!!
         # subset_frame = subset_frame.reset_index(drop=True)
         try:
             fig = generate_channel_heatmap(frame.reset_index(drop=True), cols_include=None,
-                                           subset_val=subset_val, umap_overlay=overlay_use, normalize=normalize)
+                subset_val=subset_val, umap_overlay=overlay_use, normalize=normalize, transpose=transpose)
         except ValueError:
             fig = go.Figure()
         fig['layout']['uirevision'] = True

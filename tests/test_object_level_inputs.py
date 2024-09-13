@@ -14,7 +14,7 @@ from rakaia.inputs.object import (
     generate_channel_heatmap,
     generate_heatmap_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
     reset_custom_gate_slider,
-    BarChartPartialModes)
+    BarChartPartialModes, filter_overlay_from_heatmap_data)
 from rakaia.parsers.object import parse_and_validate_measurements_csv
 
 def test_partial_bar_chart_modes(get_current_dir):
@@ -93,6 +93,7 @@ def test_identify_patchable_umap(get_current_dir):
     assert not umap_eligible_patch(umap_plot_3, validated_measurements, "156Gd_FOXA1")
     # malformed fig
     assert not umap_eligible_patch({"data": [{"fake_key": "fake_val"}], "layout": None}, validated_measurements, "156Gd_FOXA1")
+    assert not umap_eligible_patch(None, None, None)
 def test_generate_umap_patch(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
@@ -169,16 +170,27 @@ def test_heatmap_from_interactive_triggers(get_current_dir):
     assert interactive_heat['layout']['uirevision']
     assert '(41/41 shown)' in interactive_heat['layout']['title']['text']
 
-
     # subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
     interactive_heat, frame, out_cols = generate_heatmap_from_interactive_subsetting(validated_measurements, subset_layout,
                                                                         embeddings, zoom_keys, "umap-projection-options",
                                                                         category_column="sample",
                                                                         category_subset=["test_1", "test_2"],
-                                                                        umap_overlay="sample")
-
+                                                                        umap_overlay="sample",
+                                                                        transpose=False)
     assert len(interactive_heat.to_dict()['layout']['legend']) == len(pd.DataFrame(validated_measurements)['sample'].value_counts())
     assert all(elem in interactive_heat['layout']['title']['text'] for elem in ['41', 'by sample'])
+
+    # categorical, but only one category so just make normal heatmap
+    subset = pd.DataFrame(validated_measurements)
+    subset = subset[subset['sample'] == 'test_1']
+    filtered, overlay = filter_overlay_from_heatmap_data(subset, 'sample')
+    assert 'sample' not in filtered.columns
+    normal_heat, frame, out_cols = generate_heatmap_from_interactive_subsetting(subset, {'autosize': True},
+                                    embeddings, zoom_keys, "umap-projection-options", category_column=None,
+                                    category_subset=None, umap_overlay="sample", transpose=False)
+    assert '(202/202 shown)' in normal_heat['layout']['title']['text']
+    assert normal_heat['data'][0]['hovertemplate'] == 'Channel: %{x}<br>Objects: %{y}' \
+                                                      '<br>Expression Mean: %{z}<extra></extra>'
 
     with pytest.raises(PreventUpdate):
         generate_heatmap_from_interactive_subsetting(None, subset_layout,

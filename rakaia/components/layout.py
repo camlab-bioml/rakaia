@@ -1326,6 +1326,8 @@ def register_app_layout(config, cache_dest):
                                 html.Div([
                                 daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap',
                                         labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=True),
+                                daq.ToggleSwitch(label='Transpose heatmap', id='transpose-heatmap',
+                                labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False),
                                     html.Div([
                                     html.H6("Object count for sub-setting"),
                                         dcc.Input(type="number", placeholder="Subset heatmap", id="subset-heatmap",

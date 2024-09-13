@@ -123,10 +123,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('quant-heatmap-channel-list', 'options'),
                        Input('normalize-heatmap', 'value'),
                        Input('subset-heatmap', 'value'),
+                       Input('transpose-heatmap', 'value'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings, annot_cols, restyle_data,
                                             umap_col_selection, prev_categories, channels_to_display,
-                                            heatmap_channel_options, normalize_heatmap, subset_heatmap):
+                                            heatmap_channel_options, normalize_heatmap, subset_heatmap, transpose):
         # figure out how to decouple the quantification update from the heatmap rendering:
         #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered
         if quantification_dict is not None:
@@ -135,11 +136,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id not in ["umap-projection-options"]:
                 try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
                                     umap_col_selection, prev_categories).get_callback_structures()
-                except TypeError: subtypes, keep = None, None
+                except (TypeError, KeyError): subtypes, keep = None, None
             else: subtypes, keep = None, None
             try: fig, frame, out_cols = generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings,
             zoom_keys, ctx.triggered_id, True, umap_col_selection, subtypes, channels_to_display,
-            normalize=normalize_heatmap, subset_val=subset_heatmap, umap_overlay=umap_col_selection)
+            normalize=normalize_heatmap, subset_val=subset_heatmap, umap_overlay=umap_col_selection, transpose=transpose)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             indices_query, freq_counts_cat, cell_id_dict = None, None, None

@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.20.0] - 2024-09-10
+## [0.20.0] - 2024-09-13
 
 ### Added
 
 - plugin ecosystem for quantification results: leiden clustering, random forest (existing annotation, object mixing)
 - Keyboard Event listener for mask toggle (up arrow)
+
+### Changed
+
+- grouped clustergram for categorical UMAP projections instead of heatmap
 
 ## [0.19.0] - 2024-08-29
 
