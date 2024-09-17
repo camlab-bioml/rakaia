@@ -124,11 +124,9 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
         color_map=[
                 [0.0, "rgb(68, 1, 84)"],
                 [0.5, "rgb(33, 145, 140)"],
-                [1.0, "rgb(253, 231, 37)"],
-            ]
+                [1.0, "rgb(253, 231, 37)"]]
         # standardize='column' if not invert else 'row'
     ))
-    # fig.update_layout()
     x_order, y_order = clustergram_axes_order(fig)
     grouped = grouped.loc[:, y_order]
     reorder = grouped.reindex(x_order)
@@ -136,11 +134,6 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
     # need to add check to ensure that the last data slot is always of a heatmap type?
     fig['data'][-1]['z'] = np.array(reorder)
     fig['layout']['title']['text'] = f"Channel Expression by {umap_overlay} ({len(quantification)} objects)"
-    # zmax = 1 if np.max(grouped) <= 1 else np.max(grouped)
-    # fig = go.Figure(px.imshow(np.array(grouped), x=grouped.columns, y=group_labs,
-    #                           labels=dict(x="Channel", y=umap_overlay, color="Expression Mean"),
-    #                           title=f"Channel Expression by {umap_overlay} ({len(quantification)} objects)",
-    #                           zmax=zmax, binary_compression_level=1))
     fig.update_layout(margin={"pad": 0, "l": 2})
     fig.update_traces(hovertemplate="x: %{x} <br>y: %{y} <br>Expression: %{z} <br> <extra></extra>")
     return fig
@@ -154,28 +147,37 @@ def custom_channel_list_heatmap(measurements: pd.DataFrame, cols_include: Union[
         measurements = measurements[cols_include]
     return measurements
 
-def generate_channel_heatmap(measurements, cols_include=None, drop_cols=False, subset_val=50000,
-                             umap_overlay: Union[str, None]=None, normalize: bool=True, transpose: bool=False):
+def bar_chart_axes_by_orientation(transpose: bool=False):
     """
-    Generate a heatmap of the current quantification frame (total or subset)
+    Set bar chart axes labels and orientation based on transposing
+    """
+    orient = 'h' if transpose else None
+    x_lab = 'Channel' if not transpose else 'Expression'
+    y_lab = 'Expression' if not transpose else 'Channel'
+    return x_lab, y_lab, orient
+
+def channel_expression_summary(measurements, cols_include=None, drop_cols=False, subset_val=50000,
+                               umap_overlay: Union[str, None]=None, normalize: bool=True, transpose: bool=False):
+    """
+    Generate a channel expression summary figure (either a clustergram for a categorical overlay, or
+    a mean expression bar chart plot for a numeric overlay)
     """
     measurements = pd.DataFrame(measurements)
     if umap_overlay and umap_overlay in measurements.columns:
         return grouped_heatmap(measurements, umap_overlay, normalize, transpose)
-    if drop_cols:
-        measurements = drop_columns_from_measurements_csv(measurements)
+    measurements = drop_columns_from_measurements_csv(measurements, drop_cols)
     measurements = custom_channel_list_heatmap(measurements, cols_include)
-    # add a string to the title if subsampling is used
     total_objects = len(measurements)
-    # default subset value is 50,000, for some reason the chart doesn't render properly after this many elements
     if subset_val is not None and isinstance(subset_val, int) and subset_val < len(measurements):
         measurements = measurements.sample(n=subset_val).reset_index(drop=True)
-    array_measure = np.array(measurements)
-    zmax = 1.0 if float(np.max(array_measure)) <= 1.0 else float(np.max(array_measure))
-    fig = go.Figure(px.imshow(array_measure, x=measurements.columns, y=measurements.index,
-                              labels=dict(x="Channel", y="Objects", color="Expression Mean"),
-                              title=f"Channel expression ({len(measurements)}/{total_objects} shown)",
-                              zmax=zmax, binary_compression_level=1, color_continuous_scale='viridis'))
+    # violin plots are even slower than pixel based heatmaps!!! mean bar plot is fastest
+    summary = pd.DataFrame({"Channel": list(measurements.columns),
+                            "Expression": np.mean(np.array(measurements), axis=0).tolist()})
+    x_lab, y_lab, orient = bar_chart_axes_by_orientation(transpose)
+    fig = go.Figure(px.bar(summary, x=x_lab, y=y_lab, color='Expression',
+                           color_continuous_scale='viridis',
+                           title=f"Channel expression ({len(measurements)}/{total_objects} shown)",
+                           orientation=orient))
     return fig
 
 def generate_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overlay: Union[str, None]=None,
@@ -298,18 +300,18 @@ def filter_overlay_from_heatmap_data(quant_frame: pd.DataFrame, overlay: Union[s
         return quant_frame.drop([overlay], axis=1), overlay_use
     return quant_frame, overlay_use
 
-def generate_heatmap_from_interactive_subsetting(quantification_dict: Union[dict, pd.DataFrame],
-                                                umap_layout: dict, embeddings: Union[dict, pd.DataFrame],
-                                                zoom_keys: list, triggered_id: str, cols_drop: bool=True,
-                                                category_column: Union[str, None]=None,
-                                                category_subset: Union[list, None]=None,
-                                                cols_include: Union[list, None]=None,
-                                                normalize=True, subset_val=None, umap_overlay: Union[str, None]=None,
-                                                categorical_size_limit: Union[int, float]=30,
-                                                transpose: bool=False):
+def channel_expression_from_interactive_subsetting(quantification_dict: Union[dict, pd.DataFrame],
+                                                   umap_layout: dict, embeddings: Union[dict, pd.DataFrame],
+                                                   zoom_keys: list, triggered_id: str, cols_drop: bool=True,
+                                                   category_column: Union[str, None]=None,
+                                                   category_subset: Union[list, None]=None,
+                                                   cols_include: Union[list, None]=None,
+                                                   normalize=True, subset_val=None, umap_overlay: Union[str, None]=None,
+                                                   categorical_size_limit: Union[int, float]=30,
+                                                   transpose: bool=False):
     """
-    Generate a heatmap of the quantification frame, trimmed to only the channel columns, based on an interactive
-    subset from the UMAP graph
+    Generate summarized channel expression of the quantification frame, trimmed to only the channel columns,
+    based on an interactive subset from the UMAP graph
     """
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame(quantification_dict)
@@ -332,13 +334,12 @@ def generate_heatmap_from_interactive_subsetting(quantification_dict: Union[dict
         # IMP: do not reset the subset index here as the indices are needed for the query subset!!!!
         # subset_frame = subset_frame.reset_index(drop=True)
         try:
-            fig = generate_channel_heatmap(frame.reset_index(drop=True), cols_include=None,
-                subset_val=subset_val, umap_overlay=overlay_use, normalize=normalize, transpose=transpose)
+            fig = channel_expression_summary(frame.reset_index(drop=True), cols_include=None,
+                                             subset_val=subset_val, umap_overlay=overlay_use, normalize=normalize,
+                                             transpose=transpose)
         except ValueError:
             fig = go.Figure()
         fig['layout']['uirevision'] = True
-        # else:
-        #     fig = dash.no_update
         return fig, frame, out_cols
     raise PreventUpdate
 

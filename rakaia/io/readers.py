@@ -1,3 +1,4 @@
+from typing import Union
 import dash_uploader as du
 
 class DashUploaderFileReader:
@@ -9,7 +10,7 @@ class DashUploaderFileReader:
     :param progress: Float specifying the percentage of file contents to be read before the filenames are to be parsed.
     :return: None
     """
-    def __init__(self, uploader: du.UploadStatus, progress: float = 1.0):
+    def __init__(self, uploader: Union[du.UploadStatus, None], progress: float = 1.0):
         self.uploader = uploader
         self.progress = progress
 

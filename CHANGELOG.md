@@ -7,12 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.20.0] - 2024-09-13
+## [0.20.0] - 2024-09-17
 
 ### Added
 
 - plugin ecosystem for quantification results: leiden clustering, random forest (existing annotation, object mixing)
 - Keyboard Event listener for mask toggle (up arrow)
+- Ability to read all outputs from a steinbock directory using the local filepath
 
 ### Changed
 

@@ -1,8 +1,10 @@
 from pathlib import Path
-from typing import Union
+from typing import Union, Any
 import re
 import os
 import sys
+
+import dash_uploader
 import pandas as pd
 from dash.exceptions import PreventUpdate
 from tifffile import TiffFile
@@ -109,18 +111,18 @@ def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999
     return pd.DataFrame(filtered)
 
 
-def get_quantification_filepaths_from_drag_and_drop(status):
+def get_quantification_filepaths_from_drag_and_drop(status, files: list=None):
     """
     Parse a list of imported filepaths corresponding to quantification data frames
     """
-    filenames = DashUploaderFileReader(status).return_filenames()
+    filenames = DashUploaderFileReader(status).return_filenames() if (not files and status) else files
     session_config = {'uploads': []}
     # IMP: ensure that the progress is up to 100% in the float before beginning to process
     if filenames:
         for file in filenames:
             session_config['uploads'].append(file)
         return session_config
-    raise PreventUpdate
+    return dash.no_update
 
 
 def parse_and_validate_measurements_csv(session_dict, error_config=None, use_percentile=False):
@@ -149,20 +151,19 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, use_per
     raise PreventUpdate
 
 
-def parse_masks_from_filenames(status):
+def parse_masks_from_filenames(status: Union[dash_uploader.UploadStatus, None], files: list=None):
     """
     Parse a list of filepaths corresponding to segmentation masks for import.
     """
     masks = {}
-    filenames = DashUploaderFileReader(status).return_filenames()
+    filenames = DashUploaderFileReader(status).return_filenames() if (not files and status) else files
     if filenames:
         for mask_file in filenames:
             default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
             masks[default_mask_name] = mask_file
         if len(masks) > 0:
             return masks
-    raise PreventUpdate
-
+    return dash.no_update
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                      set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):

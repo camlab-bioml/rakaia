@@ -3,15 +3,31 @@ from rakaia.callbacks.pixel_wrappers import (
     parse_local_path_imports,
     mask_options_from_json,
     bounds_text,
-    generate_annotation_list,
-    no_json_db_updates)
+    AnnotationList,
+    no_json_db_updates,
+    is_steinbock_dir,
+    parse_steinbock_dir)
 import dash
 import os
+
+from rakaia.io.session import SessionServerside
+
+def test_parse_steinbock_dir(get_current_dir):
+    assert not is_steinbock_dir(os.path.join(get_current_dir, 'cell_measurements.csv'))
+    steinbock_dir = str(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    assert is_steinbock_dir(steinbock_dir)
+    mcd, error, masks, quant, umap = parse_steinbock_dir(steinbock_dir, None,
+                                    key="umap_coordinates", use_unique_key=True)
+    assert mcd['uploads'] == [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'mcd', 'test.mcd')]
+    assert len(masks) == 1
+    assert quant['uploads'] == [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'export', 'test_mcd.h5ad')]
+    assert isinstance(umap, SessionServerside)
+    assert umap.key == "umap_coordinates"
 
 def test_generate_annotation_lists():
     layout_1 = {'xaxis.range[0]': 259.7134146341464, 'xaxis.range[1]': 414.2865853658536,
                 'yaxis.range[0]': 363.3457507621951, 'yaxis.range[1]': 208.7725800304878}
-    annot_list_1 = generate_annotation_list(layout_1)
+    annot_list_1 = AnnotationList(layout_1).get_annotations()
     assert len(annot_list_1) == 1
     assert list(annot_list_1.values())[0] == "zoom"
     layout_2 = {'shapes': [{'editable': True, 'fillcolor': 'rgba(0, 0, 0, 0)', 'fillrule': 'evenodd', 'layer': 'above',
@@ -35,10 +51,10 @@ def test_generate_annotation_lists():
                  'layer': 'above', 'opacity': 1, 'line': {'color': 'white', 'width': 4, 'dash': 'solid'},
                  'fillcolor': 'rgba(0,0,0,0)', 'fillrule': 'evenodd', 'type': 'rect',
                  'x0': 210.32317073170734, 'y0': 334.9920922256098, 'x1': 253.3109756097561, 'y1': 454.8091653963415}]}
-    annot_list_2 = generate_annotation_list(layout_2, True)
+    annot_list_2 = AnnotationList(layout_2, True).get_annotations()
     assert len(annot_list_2) == 3
     assert list(annot_list_2.values()) == ["path", "rect", "rect"]
-    only_last = generate_annotation_list(layout_2, False)
+    only_last = AnnotationList(layout_2, False).get_annotations()
     assert len(only_last) == 1
     assert list(only_last.keys())[0] == list(annot_list_2.keys())[-1]
 

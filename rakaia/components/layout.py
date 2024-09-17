@@ -1311,26 +1311,26 @@ def register_app_layout(config, cache_dest):
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                html.Div([html.B("Heatmap", style={"margin-bottom": "10px", "margin=-left": "12.5px"}),
+                                html.Div([html.B("Object summary", style={"margin-bottom": "10px", "margin=-left": "12.5px"}),
                                 dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
                                         style={"display": "inline-block", "margin-right": "7.5px",
                                         "margin-top": "3px"}),
-                                        html.Div("Heatmap options")], style={"display": "flex",
+                                        html.Div("Plot options")], style={"display": "flex",
                                         "margin-top": "-5px", "margin-left": "15px"}),
                                         id="heatmap-config-button", className="mx-auto", color=None,
                                         n_clicks=0, style={"margin-top": "-5px", "justifyContent": "left"}),
                                 dbc.Modal(children=dbc.ModalBody([
-                                html.B("Heatmap settings"),
+                                html.B("Plot settings"),
                                 html.Br(),
                                 html.Br(),
                                 html.Div([
-                                daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap',
+                                daq.ToggleSwitch(label='Normalize expression', id='normalize-heatmap',
                                         labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=True),
-                                daq.ToggleSwitch(label='Transpose heatmap', id='transpose-heatmap',
+                                daq.ToggleSwitch(label='Transpose figure', id='transpose-heatmap',
                                 labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False),
                                     html.Div([
                                     html.H6("Object count for sub-setting"),
-                                        dcc.Input(type="number", placeholder="Subset heatmap", id="subset-heatmap",
+                                        dcc.Input(type="number", placeholder="Subset", id="subset-heatmap",
                                                   step=1, value=50000, debounce=True,
                                                   style={"width": "50%", "height": "40%",
                                                          "margin-left": "30px", "margin-top": "5px"})

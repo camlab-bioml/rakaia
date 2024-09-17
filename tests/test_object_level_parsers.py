@@ -61,9 +61,8 @@ def test_parsing_quantification_filepaths():
     uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=1, total_size_mb=1)
     upload_session = get_quantification_filepaths_from_drag_and_drop(uploader)
     assert len(upload_session['uploads']) > 0
-    with pytest.raises(PreventUpdate):
-        uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
-        get_quantification_filepaths_from_drag_and_drop(uploader)
+    uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
+    assert isinstance(get_quantification_filepaths_from_drag_and_drop(uploader), dash._callback.NoUpdate)
 
 
 def test_parsing_incoming_measurements_csv(get_current_dir):
@@ -97,9 +96,8 @@ def test_parse_mask_filenames():
     mask_files = parse_masks_from_filenames(uploader)
     assert 'mask' in mask_files.keys()
     assert mask_files['mask'] == "mask.tiff"
-    with pytest.raises(PreventUpdate):
-        uploader = UploadStatus(uploaded_files=["mask.tiff"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
-        parse_masks_from_filenames(uploader)
+    uploader = UploadStatus(uploaded_files=["mask.tiff"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
+    assert isinstance(parse_masks_from_filenames(uploader), dash._callback.NoUpdate)
 
 def test_read_in_mask_from_filepath(get_current_dir):
     masks_dict = {"mask": os.path.join(get_current_dir, "mask.tiff")}

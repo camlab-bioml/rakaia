@@ -71,7 +71,8 @@ from rakaia.inputs.loaders import (
     next_roi_trigger,
     adjust_option_height_from_list_length, set_roi_tooltip_based_on_length, valid_key_trigger, mask_toggle_trigger)
 from rakaia.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
-    mask_options_from_json, bounds_text, generate_annotation_list, no_json_db_updates
+    mask_options_from_json, bounds_text, AnnotationList, no_json_db_updates, is_steinbock_dir, \
+    parse_steinbock_dir
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -133,6 +134,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data'),
+                       Output('mask-uploads', 'data', allow_duplicate=True),
+                       Output('session_config_quantification', 'data', allow_duplicate=True),
+                       Output('umap-projection', 'data', allow_duplicate=True),
                        State('read-filepath', 'value'),
                        Input('add-file-by-path', 'n_clicks'),
                        State('session_config', 'data'),
@@ -141,7 +145,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
-            return parse_local_path_imports(path, validate_session_upload_config(cur_session), error_config)
+            if is_steinbock_dir(path):
+                return parse_steinbock_dir(path, error_config, key="umap_coordinates", use_unique_key=OVERWRITE)
+            paths, error = parse_local_path_imports(path, validate_session_upload_config(cur_session), error_config)
+            return paths, error, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
@@ -205,7 +212,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
             message, unique_suffixes = file_import_message(files)
             suffix_add = ALERT.warnings["multiple_filetypes"] if len(unique_suffixes) > 1 else ""
-            error_config = add_warning_to_error_config(error_config, suffix_add + message)
+            error_config = add_warning_to_error_config(error_config, suffix_add + message) if 'from_steinbock' \
+                                                                not in session_dict.keys() else dash.no_update
             try:
                 fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                 session_dict['unique_images'] = fileparser.unique_image_names
@@ -1729,7 +1737,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and None not in \
                 (annotation_title, annotation_body, canvas_layout, data_selection, cur_layers):
-            annotation_list = generate_annotation_list(canvas_layout, bulk_annot)
+            annotation_list = AnnotationList(canvas_layout, bulk_annot).get_annotations()
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = RegionAnnotation(title=annotation_title, body=annotation_body,
                 cell_type=annotation_cell_type, imported=False, annotation_column=annot_col, type=value,

@@ -30,7 +30,7 @@ from rakaia.utils.object import (
     validate_mask_shape_matches_image,
     quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
 from rakaia.inputs.object import (
-    generate_heatmap_from_interactive_subsetting,
+    channel_expression_from_interactive_subsetting,
     generate_umap_plot,
     umap_eligible_patch,
     patch_umap_figure,
@@ -138,9 +138,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                     umap_col_selection, prev_categories).get_callback_structures()
                 except (TypeError, KeyError): subtypes, keep = None, None
             else: subtypes, keep = None, None
-            try: fig, frame, out_cols = generate_heatmap_from_interactive_subsetting(quantification_dict, umap_layout, embeddings,
-            zoom_keys, ctx.triggered_id, True, umap_col_selection, subtypes, channels_to_display,
-            normalize=normalize_heatmap, subset_val=subset_heatmap, umap_overlay=umap_col_selection, transpose=transpose)
+            try: fig, frame, out_cols = channel_expression_from_interactive_subsetting(quantification_dict, umap_layout, embeddings,
+                zoom_keys, ctx.triggered_id, True, umap_col_selection, subtypes, channels_to_display,
+                normalize=normalize_heatmap, subset_val=subset_heatmap, umap_overlay=umap_col_selection, transpose=transpose)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             indices_query, freq_counts_cat, cell_id_dict = None, None, None
@@ -224,7 +224,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 orient='records'), key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
-    @du.callback(Output('mask-uploads', 'data'),
+    @du.callback(Output('mask-uploads', 'data', allow_duplicate=True),
                  id='upload-mask')
     def return_mask_upload(status: du.UploadStatus):
         return parse_masks_from_filenames(status)
