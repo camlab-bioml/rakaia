@@ -14,7 +14,7 @@ def rakaia_flask_test_app():
     app = init_app(cli_config={'use_local_dialog': False, 'use_loading': True,
                                'persistence': True, 'swatches': None, 'array_store_type': 'float',
                                'serverside_overwrite': False, 'is_dev_mode': False, 'cache_dest': tempfile.gettempdir(),
-                               'threads': 8})
+                               'threads': 8, 'auto_open': False})
     app.config.update({
         "TESTING": True,
     })

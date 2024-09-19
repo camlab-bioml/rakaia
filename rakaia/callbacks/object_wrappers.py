@@ -14,7 +14,7 @@ from rakaia.utils.object import (
     remove_annotation_entry_by_indices)
 from rakaia.utils.pixel import get_bounding_box_for_svgpath
 from rakaia.components.canvas import CanvasLayout
-from rakaia.utils.alert import AlertMessage
+from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.utils.shapes import filter_annotation_shapes
 
 class AnnotationQuantificationMerge:
@@ -58,28 +58,44 @@ class AnnotationQuantificationMerge:
                     len(self.annotations[self.data_selection]) > 0 and \
                     self.truthy_quantification(self.quantification_frame):
                 self.quantification_frame = pd.DataFrame(quantification_frame)
-                for annotation in self.annotations[self.data_selection].keys():
-                    if not self.annotations[self.data_selection][annotation]['imported']:
-                        if self.annotations[self.data_selection][annotation]['type'] == "zoom":
-                            self.quantification_frame = self.populate_quantification_from_zoom(annotation)
-                        elif self.annotations[self.data_selection][annotation]['type'] in ["path", "gate"] and \
-                                self.mask_toggle and None not in (self.mask_config, self.mask_selection) and \
-                                len(self.mask_config) > 0:
-                            objects_included = self.get_objects_included(annotation)
-                            self.quantification_frame = populate_obj_annotation_column_from_obj_id_list(
-                                self.quantification_frame, obj_list=list(objects_included.keys()),
-                                obj_type=self.annotations[self.data_selection][annotation]['cell_type'],
-                                sample_name=self.sample_name,
-                                annotation_column=self.annotations[self.data_selection][annotation]['annotation_column'],
-                                id_column=self.identifier, remove=self.remove)
-                        else:
-                            # use partial functions for the rest of the possibilities
-                            self.quantification_frame = getattr(self,
-                            self.annotations[self.data_selection][annotation]['type'])(annotation)
-                        self.annotations[self.data_selection][annotation]['imported'] = True
+                self.process_annotations(self.quantification_frame)
             if self.remove:
                 self.annotations = remove_annotation_entry_by_indices(self.annotations,
                                                self.data_selection, self.indices_remove)
+
+    def process_annotations(self, quantification_frame: Union[dict, pd.DataFrame]):
+        """
+        Iterate through a series of annotations, identify the type and the objects in the quantification
+        results, and merge the annotation into a designated annotation column in the quantification frame
+
+        :param quantification_frame: Frame of mask objects with summarized channel expression
+
+        :return: None
+        """
+        if self.data_selection in self.annotations.keys() and \
+                len(self.annotations[self.data_selection]) > 0 and \
+                self.truthy_quantification(self.quantification_frame):
+            self.quantification_frame = pd.DataFrame(quantification_frame)
+            for annotation in self.annotations[self.data_selection].keys():
+                if not self.annotations[self.data_selection][annotation]['imported']:
+                    if self.annotations[self.data_selection][annotation]['type'] == "zoom":
+                        self.quantification_frame = self.populate_quantification_from_zoom(annotation)
+                    elif self.annotations[self.data_selection][annotation]['type'] in ["path", "gate"] and \
+                            self.mask_toggle and None not in (self.mask_config, self.mask_selection) and \
+                            len(self.mask_config) > 0:
+                        objects_included = self.get_objects_included(annotation)
+                        self.quantification_frame = populate_obj_annotation_column_from_obj_id_list(
+                            self.quantification_frame, obj_list=list(objects_included.keys()),
+                            obj_type=self.annotations[self.data_selection][annotation]['cell_type'],
+                            sample_name=self.sample_name,
+                            annotation_column=self.annotations[self.data_selection][annotation]['annotation_column'],
+                            id_column=self.identifier, remove=self.remove)
+                    else:
+                        # use partial functions for the rest of the possibilities
+                        self.quantification_frame = getattr(self,
+                            self.annotations[self.data_selection][annotation]['type'])(annotation)
+                    self.annotations[self.data_selection][annotation]['imported'] = True
+
     @staticmethod
     def truthy_quantification(quantification_results: Union[dict, pd.DataFrame]) -> bool:
         """
@@ -220,7 +236,7 @@ class AnnotationQuantificationMerge:
 
 def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout, error_config):
     """
-    Remove any annotation shape on the canvas (i.e. any shape that is a rectangle or closed form svgpath)
+    Remove any annotation shape on the canvas (i.e. any shape that is a rectangle or closed form svg path)
     """
     if n_clicks > 0 and None not in (cur_canvas, canvas_layout) and 'shapes' not in canvas_layout:
         cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
@@ -232,17 +248,12 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
             fig = go.Figure(cur_canvas)
             fig.update_layout(dragmode="zoom")
             return fig, dash.no_update
-        else:
-            return go.Figure(cur_canvas), dash.no_update
-    elif 'shapes' in canvas_layout or ('layout' in cur_canvas and \
-                                       'shapes' in cur_canvas['layout'] and len(
+        return go.Figure(cur_canvas), dash.no_update
+    elif 'shapes' in canvas_layout or ('layout' in cur_canvas and 'shapes' in cur_canvas['layout'] and len(
                 cur_canvas['layout']['shapes']) > 0):
-        if error_config is None:
-            error_config = {"error": None}
-        error_config["error"] = AlertMessage().warnings["invalid_annotation_shapes"]
+        error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_annotation_shapes"])
         return dash.no_update, error_config
-    else:
-        raise PreventUpdate
+    raise PreventUpdate
 
 def reset_annotation_import(annotation_dict: dict=None, roi_selection: str=None, app_config: dict=None,
                             return_as_serverside: bool=True):

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.20.0] - 2024-09-17
+## [0.20.0] - 2024-09-19
 
 ### Added
 
@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - grouped clustergram for categorical UMAP projections instead of heatmap
+- set auto open tab to default in CLI
+- revamped landing page
+
+### Removed
+
+- Basic HTTP authentication for the landing page
 
 ## [0.19.0] - 2024-08-29
 

@@ -221,7 +221,7 @@ def register_app_layout(config, cache_dest):
                                                              "height": "7.5vh"}),
                                     html.H5("or", style={'width': '35%', 'margin-top': '5px'}),
                                     dcc.Input(id="read-filepath", type="text",
-                                    placeholder="Read imaging data directly from filepath or directory (local runs only)",
+                                    placeholder="Read imaging data or pipeline directory directly (local runs only)",
                                               value=None, style={"width": "100%", "height": "10%"}),
                                     html.Br(),
                                     html.Div([dbc.Button("Import local", id="add-file-by-path",

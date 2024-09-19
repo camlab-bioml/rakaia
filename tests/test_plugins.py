@@ -1,4 +1,5 @@
 import os
+import collections
 import anndata
 import pandas as pd
 import numpy as np
@@ -10,7 +11,6 @@ from rakaia.plugins.models import (
     QuantificationRandomForest,
     leiden_clustering,
     ObjectMixingRF)
-
 
 def test_leiden_clustering(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -35,10 +35,17 @@ def test_quant_random_forest(get_current_dir):
 
 def test_object_mixing(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
-    with_predictions = ObjectMixingRF(measurements_csv, None, "mixing", training_set_prop=0.2,
-                                                  n_estimators=100).quantification_with_labels()
-    assert 'mixing' in pd.DataFrame(with_predictions).columns
-    assert sum(pd.Series(pd.DataFrame(with_predictions)['mixing'])) > 0
+    for prop in [0.2, 0.25, 0.3, 0.35]:
+        rf_model = ObjectMixingRF(measurements_csv, None, "mixing", training_set_prop=prop,
+                                                  n_estimators=100)
+        # assert that the training length and dataset length are the same, as the training takes half of the data
+        # randomly then adds mixed cells
+        assert collections.Counter(list(rf_model.training_labels)) == {0.0: int(len(measurements_csv) * prop),
+                                                                       1.0: int(len(measurements_csv) * prop)}
+        assert len(rf_model.training_labels) == (int(len(measurements_csv) * prop) * 2)
+        with_predictions = rf_model.quantification_with_labels()
+        assert 'mixing' in pd.DataFrame(with_predictions).columns
+        assert sum(pd.Series(pd.DataFrame(with_predictions)['mixing'])) > 0
 
 def test_run_quant_models(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

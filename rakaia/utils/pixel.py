@@ -495,10 +495,11 @@ def no_filter_chosen(current_blend_dict: dict, channel: str, filter_chosen: Unio
     Evaluates whether the currently selected channel has no filter applied, and the session
     filter is set to None
     """
-    return  current_blend_dict[channel]['filter_type'] is None and \
-            current_blend_dict[channel]['filter_val'] is None and \
-            current_blend_dict[channel]['filter_sigma'] is None and \
-            len(filter_chosen) == 0
+    return current_blend_dict[channel]['filter_type'] is None and \
+        current_blend_dict[channel]['filter_val'] is None and \
+        current_blend_dict[channel]['filter_sigma'] is None and \
+        len(filter_chosen) == 0
+
 def channel_filter_matches(current_blend_dict: dict, channel: str, filter_chosen: Union[list, str],
                            filter_name: str="median", filter_value: int = 3, filter_sigma: Union[int, float] = 1.0):
     """

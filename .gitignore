@@ -1,5 +1,7 @@
 .snakemake_timestamp
 
+.swp
+
 sandbox*
 
 file_system_store/

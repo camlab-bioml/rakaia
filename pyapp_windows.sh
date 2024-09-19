@@ -14,5 +14,6 @@ export PYAPP_PYTHON_VERSION=3.10
 export PYAPP_EXE_NAME="rakaia"
 
 # assumes installation of pyapp in the same directory as the rakaia git source: https://ofek.dev/pyapp/latest/how-to/
-cd ../pyapp-latest && cargo build --release && mv target/release/pyapp rakaia_$VERSION && chmod 777 rakaia_$VERSION && chmod +x rakaia_$VERSION
-./rakaia_$VERSION self remove
+cd ../pyapp-latest && cargo build --release
+mv target/release/pyapp.exe rakaia_$VERSION.exe && chmod 777 rakaia_$VERSION.exe && chmod 777 rakaia_$VERSION.exe
+start rakaia_$VERSION.exe self remove

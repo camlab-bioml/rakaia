@@ -5,7 +5,7 @@ import webbrowser
 import os
 from threading import Timer
 from waitress import serve
-from rakaia.entrypoint import init_app, __version__
+from rakaia.entrypoint import init_app, __version__, _program
 
 
 def cli_parser():
@@ -28,8 +28,8 @@ def cli_parser():
     parser.add_argument('-h', "--help", action="help",
                         help="Show the help/options menu and exit. Does not execute the application.",
                         dest="help")
-    parser.add_argument('-a', "--auto-open", action="store_true",
-                        help="automatically open the browser when the dash is called. Default: False",
+    parser.add_argument('-da', "--disable-auto-open", action="store_false",
+                        help="Disable automatically opening the browser when the app is called. Default: auto open",
                         dest="auto_open")
     parser.add_argument('-l', "--use-local-dialog", action="store_true",
                         help="Enable a local file dialog with wxPython to browse and read local files. Default: False",
@@ -88,9 +88,9 @@ def main(sysargs=sys.argv[1:]):
 
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
-            webbrowser.open_new(f'http://127.0.0.1:{args.port}/')
+            webbrowser.open_new_tab(f'http://127.0.0.1:{args.port}/{_program}')
 
-    # establish the cli config
+    # cli config gets passed to the app initialization for callbacks, etc.
 
     CLI_CONFIG = {"use_local_dialog": args.use_local_dialog,
                   'use_loading': args.loading,

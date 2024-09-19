@@ -312,7 +312,7 @@ class RestyleDataParser:
             [ind for ind in range(0, len(tot_subtypes))]
         if self.restyledata[1][0] in indices_keep:
             indices_keep.remove(self.restyledata[1][0])
-        for selection in range(len(tot_subtypes)):
+        for selection in list(range(0, len(tot_subtypes))):
             if selection in indices_keep:
                 subtypes_keep.append(tot_subtypes[selection])
         self._subtypes_return, self._indices_keep = subtypes_keep, indices_keep

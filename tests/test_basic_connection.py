@@ -1,5 +1,4 @@
 import argparse
-import base64
 import pytest
 from selenium.common import NoSuchElementException
 from selenium.common.exceptions import SessionNotCreatedException
@@ -60,13 +59,14 @@ def recursive_wait_for_elem(app, elem, duration):
 # @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") != "true" or platform.system() != 'Linux',
 #                     reason="Only test the connection in a GA workflow due to passwordless sudo")
 def test_basic_app_load_from_locale(rakaia_flask_test_app, client):
-    credentials = base64.b64encode(b"rakaia_user:rakaia-1").decode('utf-8')
+    # credentials = base64.b64encode(b"rakaia_user:rakaia-1").decode('utf-8')
     assert str(type(rakaia_flask_test_app)) == "<class 'flask.app.Flask'>"
-    response = client.get('/', headers={"Authorization": "Basic {}".format(credentials)})
+    response = client.get('/')
     assert response.status_code == 200
     # test landing page alias
-    assert client.get("/").data == b'Unauthorized Access'
-    assert client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
+    assert client.get("/").data != b'Unauthorized Access'
+    assert b'Scalable multiplex imaging dataset analysis in the browser' in client.get("/").data
+    # assert client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
     # dash_duo.start_server(rakaia_flask_test_app.server)
     # for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:
     #     assert dash_duo.find_element(elem) is not None
@@ -83,23 +83,23 @@ def test_basic_cli_outputs():
     parser = cli_parser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
-    assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
-                          'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
-                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
-    assert "rakaia can be initialized from the command line using:" in parser.usage
-    parser = cli_parser()
-    args = parser.parse_args(['-a'])
     assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
+    parser = cli_parser()
+    args = parser.parse_args(['-da'])
+    assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
+                          'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
+                          'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
+    assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
-    assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-pr'])
-    assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': False, 'swatches': None, 'array_type': 'int',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
 
@@ -132,13 +132,13 @@ def test_basic_cli_outputs_main():
 
     signal.alarm(4)
     try:
-        main([])
+        main(['-da'])
     except TimeoutException:
         assert True
 
 
 def test_basic_app_return():
-    config = {'auto_open': True, 'port': 5000, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
+    config = {'auto_open': False, 'port': 5000, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
               'swatches': None, 'is_dev_mode': False, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True,
               'threads': 8}
     app = init_app(config)

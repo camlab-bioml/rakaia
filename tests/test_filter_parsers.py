@@ -1,4 +1,4 @@
-
+import cv2
 from rakaia.utils.filter import (
     return_current_or_default_filter_apply,
     return_current_or_default_filter_param,
@@ -21,6 +21,9 @@ def test_apply_filter_to_array():
     gaussian_filtered_bad_kernel = apply_filter_to_channel(channel_array, filter_name="gaussian",
                                                                     filter_value=2)
     assert np.array_equal(channel_array, gaussian_filtered_bad_kernel)
+
+    assert np.array_equal(channel_array, apply_filter_to_channel(channel_array, filter_value=0.5))
+
 
 def test_basic_filter_parsers():
     blend_dict = {"channel_1": {"color": '#FFFFFF', "filter_type": "median", "filter_val": 3,  "filter_sigma": 1.0}}

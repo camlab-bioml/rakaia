@@ -66,8 +66,7 @@ class RegionSummary:
     def define_shapes_to_keep(self):
         """
 
-        :return: list of shapes that should be retained to measure. Shapes to measure should not be lines, and
-        should be editable
+        :return: list of shapes that should be retained to annotate (must not be lines, and must be editable)
         """
         shapes_keep = []
         if 'shapes' in self.graph_layout:

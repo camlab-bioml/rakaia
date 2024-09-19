@@ -120,9 +120,9 @@ class ObjectMixingRF(QuantificationRandomForest):
         adata = quant_dataframe_to_anndata(
             self.quantification[self.quantification[self.sample_identifier].isin(self.training_samples)])
 
-        # use the proportion to randomly subsample from the training data
-        mask = np.random.choice([False, True], len(adata), p=[(1 - self.prop), self.prop])
-        expr = adata.X[mask]
+        expr = np.array(adata.X)
+        random_indices = np.random.choice(expr.shape[0], size=int(expr.shape[0] * self.prop), replace=False)
+        expr = expr[random_indices, :]
 
         num_sam, num_features = expr.shape
 
