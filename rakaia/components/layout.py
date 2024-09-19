@@ -213,7 +213,8 @@ def register_app_layout(config, cache_dest):
                                     "margin-top": "-3px"})], style={"display": "flex"}),
                                 dbc.Tooltip(TOOLTIPS['import-tour'], target="dash-import-tour"),
                                 du.Upload(id='upload-image', max_file_size=50000,
-                                text='Import imaging data (.MCD, .tiff, .txt, etc.) files using drag and drop',
+                                text='Import/copy imaging data (.MCD, .tiff, .txt, etc.) files '
+                                     'using drag and drop or a file dialog (click here)',
                                               chunk_size=100,
                                               max_total_size=50000, max_files=200,
                                               filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'],
@@ -221,7 +222,7 @@ def register_app_layout(config, cache_dest):
                                                              "height": "7.5vh"}),
                                     html.H5("or", style={'width': '35%', 'margin-top': '5px'}),
                                     dcc.Input(id="read-filepath", type="text",
-                                    placeholder="Read imaging data or pipeline directory directly (local runs only)",
+                                    placeholder="Read images or pipeline directory from path (local runs only)",
                                               value=None, style={"width": "100%", "height": "10%"}),
                                     html.Br(),
                                     html.Div([dbc.Button("Import local", id="add-file-by-path",
@@ -263,7 +264,7 @@ def register_app_layout(config, cache_dest):
                                             id="mask-name-modal", size='l',
                                             style={"margin-left": "10px", "margin-top": "15px"}),
                                         du.Upload(id='upload-mask', max_file_size=50000,
-                                                  text='Import mask (tiff) using drag and drop',
+                                                  text='Import mask (tiff) using drag and drop/file dialog',
                                                   max_total_size=50000, max_files=1000,
                                                   chunk_size=100,
                                                   filetypes=['tif', 'tiff'],
@@ -272,14 +273,16 @@ def register_app_layout(config, cache_dest):
                                         html.H6("Quantification results/measurements"),
                                         du.Upload(id='upload-quantification', max_file_size=5000,
                                                   filetypes=['h5ad', 'h5', 'csv'],
-                                                  text='Import quantification results (CSV, h5ad) using drag and drop',
+                                                  text='Import quantification results (CSV, h5ad) using '
+                                                       'drag and drop/file dialog',
                                                   max_files=1, upload_id="upload-quantification",
                                                   default_style={"margin-top": "20px", "height": "5vh"}),
                                         html.Br(),
                                         html.H6("ROI configuration"),
                                         du.Upload(id='upload-param-json', max_file_size=1000,
                                                   filetypes=['json'],
-                                                  text='Import channel blend parameters (JSON) using drag and drop',
+                                                  text='Import channel blend parameters (JSON) using '
+                                                       'drag and drop/file dialog',
                                                   max_files=1, upload_id="upload-param-json",
                                                   default_style={"margin-top": "20px", "height": "5vh"}),
                                         html.Br(),
@@ -295,7 +298,7 @@ def register_app_layout(config, cache_dest):
                                         dbc.Collapse([
                                             html.H6("Panel info list"),
                                             du.Upload(id='upload-panel-info', max_file_size=1000, max_files=1,
-                                                      text='Import panel info (CSV) using drag and drop',
+                                                      text='Import panel info (CSV)',
                                                       filetypes=['csv'], upload_id="upload-image",
                                                       default_style={"margin-top": "20px", "height": "5vh"}),
                                             html.Br(),
@@ -327,7 +330,7 @@ def register_app_layout(config, cache_dest):
                                 children=[
                                 html.Br(),
                                 dbc.Form([
-                                html.Div([dbc.Label("Connection string", html_for="db-connection-string"),
+                                html.Div([dbc.Label("Database connection string", html_for="db-connection-string"),
                                 dbc.Input(type="text", id="db-connection-string", value="rakaia-db.uzqznla.mongodb.net",
                                 style={"width": "75%"}, persistence=config['persistence'],
                                 persistence_type='local')], className="mb-3"),
@@ -340,7 +343,7 @@ def register_app_layout(config, cache_dest):
                                 dbc.Input(type="password", id="db-password", placeholder="Enter password",
                                           style={"width": "75%"}, persistence=config['persistence'],
                                           persistence_type='local'),
-                                dbc.FormText("Enter your credentials for a mongoDB Atlas connection", color="secondary"),
+                                dbc.FormText("Enter credentials for a mongoDB Atlas connection", color="secondary"),
                                 ], className="mb-3")
                                 ]),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-arrow-right-to-bracket",

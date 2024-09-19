@@ -17,6 +17,7 @@ pyapp-latest/
     docs/
     scripts/
     src/
+    ...
 rakaia/
     benchmarks/
     cli/
@@ -26,6 +27,7 @@ rakaia/
     rakaia/
     scripts/
     tests/
+    ...
 ```
 
 Next, ensure that rakaia has been installed through source.
@@ -48,16 +50,17 @@ source pyapp_windows.sh
 ```
 
 pyapp will then use Python v3.10 from the [python standalone build](https://github.com/indygreg/python-build-standalone)
-project as the interpreter and to manage dependencies. For installation target will be different dependin
+project as the interpreter and to manage dependencies. For installation target will be different depending
 on the OS:
 
 - on Linux, installation will be under the .local/share/pyapp/rakaia directory
 for the specific user
-- on MacOS,
+- on MacOS,installation can be found under the Library/Application Support/pyapp directory for the specific user
 - on Windows, installation will be under the AppData/pyapp directory for the specific user
 
 The final binary executable will be found in the pyapp directory, named as `rakaia_version` for either Linux or
 macOS, and `rakaia_version.exe` on Windows.
+
 
 ## Executing
 

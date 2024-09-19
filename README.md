@@ -3,7 +3,7 @@
 rakaia: Scalable multiplex imaging dataset analysis in the browser
 
 <p align="center">
-    <img src="man/assets/app-preview.png">
+    <img src="man/app-preview.png">
 </p>
 
 
