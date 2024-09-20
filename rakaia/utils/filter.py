@@ -23,7 +23,7 @@ def apply_filter_to_channel(channel_array: Union[np.array, np.ndarray]=None, fil
     return channel_array
 
 
-def return_current_channel_blend_params(blend_dict: dict, selected_channel: str=None):
+def get_current_channel_blend_params(blend_dict: dict, selected_channel: str=None):
     """
     Return the current blend parameters (colour and individual filter) for a specific channel
     """
@@ -36,8 +36,8 @@ def return_current_channel_blend_params(blend_dict: dict, selected_channel: str=
     except KeyError:
         return None, None, None, None
 
-def return_current_or_default_filter_apply(apply_channel_filter: Union[list, bool], filter_type: str="median",
-                                           filter_val: int=3, filter_sigma: float=1.0):
+def get_current_or_default_filter_apply(apply_channel_filter: Union[list, bool], filter_type: str= "median",
+                                        filter_val: int=3, filter_sigma: float=1.0):
     """
     Evaluate the state of the channel filter, and prevent an update, or return the value for the selected channel
     """
@@ -47,8 +47,8 @@ def return_current_or_default_filter_apply(apply_channel_filter: Union[list, boo
         to_apply_filter = [' Apply/refresh filter'] if None not in (filter_type, filter_val, filter_sigma) else []
     return to_apply_filter
 
-def return_current_or_default_filter_param(current_filter_param: Union[str, int, float]=None,
-                                           new_filter_param: Union[str, int, float]=None):
+def get_current_or_default_filter_param(current_filter_param: Union[str, int, float]=None,
+                                        new_filter_param: Union[str, int, float]=None):
     """
     Evaluate the state of the channel filter, and prevent an update, or return the value for the selected channel
     """
@@ -58,9 +58,9 @@ def return_current_or_default_filter_param(current_filter_param: Union[str, int,
         param_filter_return = new_filter_param if new_filter_param is not None else current_filter_param
     return param_filter_return
 
-def return_current_or_default_channel_color(current_color: Union[str, dict]=None,
-                                           new_color: Union[str, dict]=None,
-                                           autofill_colors: bool=False):
+def get_current_or_default_channel_color(current_color: Union[str, dict]=None,
+                                         new_color: Union[str, dict]=None,
+                                         autofill_colors: bool=False):
     """
     Evaluate the state of the channel color, and prevent an update, or return the value for the selected channel
     """
@@ -73,8 +73,8 @@ def return_current_or_default_channel_color(current_color: Union[str, dict]=None
     return color_return
 
 
-def return_current_default_params_with_preset(filter_type: str="median", filter_val: int=3, filter_sigma: float=1.0,
-                                              color: Union[str, dict]=None):
+def get_current_default_params_with_preset(filter_type: str= "median", filter_val: int=3, filter_sigma: float=1.0,
+                                           color: Union[str, dict]=None):
     """
     Return the default blend parameters (color and filter) from the current values when using a preset
     """

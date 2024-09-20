@@ -38,8 +38,9 @@ class FileParser:
     """
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5"}
 
-    def __init__(self, filepaths: list, array_store_type="float", lazy_load=True,
-                 single_roi_parse=True, roi_name=None, internal_name=None, delimiter="+++"):
+    def __init__(self, filepaths: list, array_store_type: str="float", lazy_load: bool=True,
+                 single_roi_parse: bool=True, roi_name: Union[str, None]=None,
+                 internal_name: Union[str, None]=None, delimiter: str="+++"):
 
         self.check_for_valid_array_type(array_store_type)
         self.filepaths = [str(x) for x in filepaths]

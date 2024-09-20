@@ -41,11 +41,11 @@ def drop_columns_from_measurements_csv(measurements_csv, drop: bool = True):
     return measurements_csv
 
 
-def return_umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame],
-                                                   current_umap: Union[dict, pd.DataFrame] = None,
-                                                   drop_col: bool = True,
-                                                   rerun: bool = True, unique_key_serverside: bool = True,
-                                                   cols_include: list = None):
+def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame],
+                                            current_umap: Union[dict, pd.DataFrame] = None,
+                                            drop_col: bool = True,
+                                            rerun: bool = True, unique_key_serverside: bool = True,
+                                            cols_include: list = None):
     """
     Generate a UMAP coordinate frame from a data frame of channel expression
     `cols_include`: Pass an optional list of channels to generate the coordinates from
@@ -250,6 +250,7 @@ class RestyleDataParser:
 
     def __init__(self, restyledata: Union[dict, list], quantification_frame: Union[dict, pd.DataFrame],
                  umap_col_annotation: str, existing_categories: Union[dict, list] = None):
+
         self.restyledata = restyledata
         self.quantification_frame = quantification_frame
         self.umap_col_annotation = umap_col_annotation
@@ -607,6 +608,7 @@ class GatingObjectList:
                                quantification_frame: Union[dict, pd.DataFrame] = None,
                                mask_identifier: str = None, quantification_sample_col: str = 'sample',
                                quantification_object_col: str = 'cell_id', intersection=False, normalize=True):
+
         self.gating_dict = gating_dict
         self.gating_selection = gating_selection
         self.quantification_frame = pd.DataFrame(quantification_frame)

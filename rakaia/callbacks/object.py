@@ -17,7 +17,7 @@ from rakaia.parsers.object import (
     parse_masks_from_filenames,
     parse_roi_query_indices_from_quantification_subset,
     get_quantification_filepaths_from_drag_and_drop,
-    return_umap_dataframe_from_quantification_dict,
+    umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
     GatingObjectList)
@@ -177,7 +177,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns), \
                 list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         try:
-            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
+            return umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
             current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update, dash.no_update
         except ValueError: raise PreventUpdate
 
@@ -226,7 +226,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @du.callback(Output('mask-uploads', 'data', allow_duplicate=True),
                  id='upload-mask')
-    def return_mask_upload(status: du.UploadStatus):
+    def parse_mask_upload(status: du.UploadStatus):
         return parse_masks_from_filenames(status)
 
     @dash_app.callback(Output('input-mask-name', 'value'),

@@ -23,6 +23,7 @@ class QuantificationRandomForest:
     """
     def __init__(self, quantification: Union[dict, pd.DataFrame], in_col: Union[str, None]= None,
                  out_col: str="rf", **kwargs):
+
         self.quantification = pd.DataFrame(quantification)
         self.in_col = in_col if in_col else "sample"
         self.out_col = out_col
@@ -97,6 +98,7 @@ class ObjectMixingRF(QuantificationRandomForest):
     """
     def __init__(self, quantification: Union[dict, pd.DataFrame], in_col: Union[str, None]= None, out_col: str="rf",
                  training_set_prop: Union[int, float]=0.5, **kwargs):
+
         self.prop = training_set_prop
         super().__init__(quantification, in_col, out_col, **kwargs)
 

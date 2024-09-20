@@ -89,11 +89,11 @@ from rakaia.utils.region import (
     check_for_valid_annotation_hash)
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.utils.filter import (
-    return_current_or_default_filter_apply,
-    return_current_or_default_filter_param,
-    return_current_channel_blend_params,
-    return_current_or_default_channel_color,
-    return_current_default_params_with_preset,
+    get_current_or_default_filter_apply,
+    get_current_or_default_filter_param,
+    get_current_channel_blend_params,
+    get_current_or_default_channel_color,
+    get_current_default_params_with_preset,
     apply_filter_to_channel, set_blend_parameters_for_channel)
 from rakaia.callbacks.triggers import (
     no_canvas_mask,
@@ -1486,18 +1486,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             only_options_changed = channel_already_added(ctx.triggered_id, ctx.triggered, session_vars)
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:
-            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict, selected_channel)
-            to_apply_filter = return_current_or_default_filter_apply(cur_bool_filter, filter_type, filter_val, filter_sigma)
-            filter_type_return = return_current_or_default_filter_param(cur_filter_type, filter_type)
-            filter_val_return = return_current_or_default_filter_param(cur_filter_val, filter_val)
-            filter_sigma_return = return_current_or_default_filter_param(cur_filter_sigma, filter_sigma)
-            color_return = return_current_or_default_channel_color(cur_colour, color, col_autofill)
+            filter_type, filter_val, filter_sigma, color = get_current_channel_blend_params(current_blend_dict, selected_channel)
+            to_apply_filter = get_current_or_default_filter_apply(cur_bool_filter, filter_type, filter_val, filter_sigma)
+            filter_type_return = get_current_or_default_filter_param(cur_filter_type, filter_type)
+            filter_val_return = get_current_or_default_filter_param(cur_filter_val, filter_val)
+            filter_sigma_return = get_current_or_default_filter_param(cur_filter_sigma, filter_sigma)
+            color_return = get_current_or_default_channel_color(cur_colour, color, col_autofill)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
-            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict, selected_channel)
+            filter_type, filter_val, filter_sigma, color = get_current_channel_blend_params(current_blend_dict, selected_channel)
             to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return = \
-                return_current_default_params_with_preset(filter_type, filter_val, filter_sigma, color)
+                get_current_default_params_with_preset(filter_type, filter_val, filter_sigma, color)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         raise PreventUpdate
 

@@ -1423,8 +1423,8 @@ def register_app_layout(config, cache_dest):
                                     html.Br(),
                                     html.B("Set output column", style={"float": "left"}),
                                     html.Br(),
-                                    dcc.Input(type="text", value=None, placeholder="Set the name of the output column to"
-                                    "store the model results", debounce=True, id="plugin-out-col"),
+                                    dcc.Input(type="text", value=None, placeholder="Set column name to"
+                                    " store model output", debounce=True, id="plugin-out-col", style={"width": "75%"}),
                                     html.Br(),
                                     dbc.Button("Run plugin", id="run-plugin", className="me-1", style={"margin-top": "10px",
                                             "background-color": DEFAULT_WIDGET_COLOUR})
@@ -1444,9 +1444,9 @@ def register_app_layout(config, cache_dest):
                                                                                      "margin-top": "3px"}),
                                                                        html.Div("Show overlay distribution")],
                                                                       style={"display": "flex", "margin-bottom": "5px",
-                                                                             "margin-left": "15px"}),
+                                                                    "margin-left": "10px"}),
                                                    id="show-quant-dist", className="mx-auto", color=None, n_clicks=0,
-                                                   style={"float": "right", "justifyContent": "right", "margin-right": "30px"})
+                                        style={"float": "right", "justifyContent": "right", "margin-left": "15px"})
                                     ], width=5)])], style={"margin-top": "7.5px"}),
                                     dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='quant-dist-table',
                                     columns=[], data=None, editable=False, filter_action='native')]),

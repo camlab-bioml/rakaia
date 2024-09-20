@@ -30,7 +30,7 @@ from rakaia.parsers.object import (
     convert_mask_to_object_boundary,
     parse_quantification_sheet_from_h5ad,
     parse_and_validate_measurements_csv,
-    return_umap_dataframe_from_quantification_dict)
+    umap_dataframe_from_quantification_dict)
 import dash
 from dash.exceptions import PreventUpdate
 from conftest import skip_on
@@ -65,12 +65,12 @@ def test_basic_mask_boundary_converter(get_current_dir):
 def test_umap_from_quantification_dict(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
-    returned_umap = return_umap_dataframe_from_quantification_dict(validated_measurements,
-                cols_include=['159Tb_DCN', '160Gd_FAP', '161Dy_CLDN5', '162Dy_s6', '163Dy_mTOR', '165Ho_ER', '166Er_AR'])
+    returned_umap = umap_dataframe_from_quantification_dict(validated_measurements,
+                                                            cols_include=['159Tb_DCN', '160Gd_FAP', '161Dy_CLDN5', '162Dy_s6', '163Dy_mTOR', '165Ho_ER', '166Er_AR'])
     assert isinstance(returned_umap, dash_extensions.enrich.Serverside)
     assert len(pd.DataFrame(returned_umap.value)) == len(validated_measurements)
-    assert return_umap_dataframe_from_quantification_dict(None) == dash.no_update
-    assert return_umap_dataframe_from_quantification_dict(validated_measurements, cols_include=['bad_col']) == dash.no_update
+    assert umap_dataframe_from_quantification_dict(None) == dash.no_update
+    assert umap_dataframe_from_quantification_dict(validated_measurements, cols_include=['bad_col']) == dash.no_update
 
 def test_receive_alert_on_incompatible_mask():
     upload_dict = {"experiment0+++slide0+++acq0": {"channel_1": np.empty((50, 50))}}
