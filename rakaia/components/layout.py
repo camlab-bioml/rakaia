@@ -552,7 +552,7 @@ def register_app_layout(config, cache_dest):
                                                 dcc.Slider(50, 150, 2.5, value=100, id='annotation-canvas-size',
                                                            persistence=config['persistence'], persistence_type='local',
                                                            marks={50: 'small', 100: 'default', 150: 'large'})],
-                                                style={"width": "45vh", "height": "10%", "padding": "0px",
+                                                style={"width": "100%", "height": "10%", "padding": "0px",
                                                        "margin-bottom": "-2px", "float": "right", "color": "#FFFFFF"}),
                                             html.Br(),
                                             html.Div([

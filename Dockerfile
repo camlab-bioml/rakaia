@@ -27,8 +27,6 @@ RUN apt-get install -y python3.9
 # ENV PATH="$VIRTUAL_ENV/bin:$PATH"
 # RUN pip install --upgrade pip
 # RUN pip install wheel cython numpy
-#
-# RUN pip install -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-18.04 wxPython==4.1.0
 
 # RUN python3 -m pip install attrdict cellprofiler
 
@@ -38,7 +36,7 @@ COPY . app/
 
 WORKDIR /app/
 
-# RUN pip install -U -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04 wxPython==4.2.1
+# RUN pip install -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04 wxPython==4.2.0
 
 RUN pip install -r requirements.txt && pip install .
 
