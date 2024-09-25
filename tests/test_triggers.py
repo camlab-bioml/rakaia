@@ -3,8 +3,8 @@ from rakaia.callbacks.triggers import (
     no_canvas_mask,
     global_filter_disabled,
     channel_order_as_default,
-    channel_already_added
-)
+    channel_already_added,
+    set_annotation_indices_to_remove)
 import numpy as np
 
 def test_triggers():
@@ -31,3 +31,16 @@ def test_triggers():
     assert channel_order_as_default("channel-order", ["1", "2", "3"], ["1", "2", "3"])
     assert not channel_order_as_default("channel-order", ["1", "3", "2"], ["1", "2", "3"])
     assert not channel_order_as_default("diff", ["1", "2", "3"], ["1", "2", "3"])
+
+
+def test_annotation_index_triggers():
+    annot_dict = {"roi_1": {"annot_1": {"imported": True}, "annot_2": {"imported": True}, "annot_3": {"imported": True}}}
+    indices_remove = set_annotation_indices_to_remove("clear-annotation_dict", annot_dict,
+                                                      "roi_1", [])
+    assert indices_remove == [0, 1, 2]
+    indices_remove = set_annotation_indices_to_remove("delete-annotation-tabular", annot_dict,
+                                                      "roi_1", [2])
+    assert indices_remove == [2]
+    indices_remove = set_annotation_indices_to_remove("delete-annotation-tabular", annot_dict,
+                                                      "roi_1", [])
+    assert not indices_remove

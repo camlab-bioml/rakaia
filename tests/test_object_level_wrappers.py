@@ -7,7 +7,8 @@ from dash.exceptions import PreventUpdate
 from rakaia.callbacks.object_wrappers import (
     callback_remove_canvas_annotation_shapes,
     reset_annotation_import,
-    AnnotationQuantificationMerge)
+    AnnotationQuantificationMerge,
+    transfer_annotations_by_index)
 from rakaia.io.session import SessionServerside
 
 def test_basic_callback_import_annotations_quantification_frame(get_current_dir, svgpath):
@@ -326,3 +327,25 @@ def test_reset_annotations_import():
                                 "annot_2": {"imported": True}, "annot_3": {"imported": True}}}
     annot_reset_mismatch = reset_annotation_import(annot_mismatch, "roi_1", {"serverside_overwrite": True}, False)
     assert annot_mismatch == annot_reset_mismatch
+
+def test_annotation_transfer(annotation_hash):
+    indices = [1, 3, 4, 5]
+    ignore = []
+    index = 0
+    keys = []
+    for annot in annotation_hash['Patient1+++slide0+++pos1_1'].keys():
+        if index in indices:
+            keys.append(annot)
+        else:
+            ignore.append(annot)
+        index += 1
+    annotation_hash = transfer_annotations_by_index(annotation_hash, 'missing_roi',
+                                                    'new_roi', indices)
+    assert 'new_roi' not in annotation_hash.keys()
+    annotation_hash = transfer_annotations_by_index(annotation_hash, 'Patient1+++slide0+++pos1_1',
+                                                    'new_roi', None)
+    assert 'new_roi' not in annotation_hash.keys()
+    annotation_hash = transfer_annotations_by_index(annotation_hash, 'Patient1+++slide0+++pos1_1',
+                                                    'new_roi', indices)
+    assert all(key in keys for key in annotation_hash['new_roi'].keys())
+    assert all(key not in ignore for key in annotation_hash['new_roi'].keys())

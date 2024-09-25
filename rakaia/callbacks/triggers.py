@@ -11,7 +11,7 @@ def new_roi_same_dims(triggered_id: str, cur_dimensions: Union[tuple, list], fir
 
 def channel_already_added(triggered_id: str, triggered_list: Union[list, tuple], session_vars: dict):
     """
-    Do not update if the trigger if the channel options and the current selection hasn't changed
+    Do not update the trigger if the channel options and the current selection haven't changed
     If an error occurs, play if safe and return False to re-trigger the callback
     """
     try:
@@ -45,3 +45,13 @@ def channel_order_as_default(triggered_id: str, channel_order: list, currently_s
     but the order has not changed
     """
     return triggered_id in ["channel-order"] and channel_order == currently_selected
+
+def set_annotation_indices_to_remove(trigger_id: str, annotations: dict, data_selection: str,
+                                     annot_table_indices: Union[list, None]=None):
+    """
+    Set the annotation indices to remove based on the trigger. Indices can come from a selection in the
+    ROI table or from bulk clearing
+    """
+    if trigger_id == "clear-annotation_dict" and data_selection in annotations:
+        return [int(i) for i in range(len(annotations[data_selection].keys()))]
+    return annot_table_indices if trigger_id == "delete-annotation-tabular" else None

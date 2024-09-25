@@ -17,6 +17,24 @@ from rakaia.components.canvas import CanvasLayout
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.utils.shapes import filter_annotation_shapes
 
+def transfer_annotations_by_index(annotations: dict, current_roi: Union[str, None]=None,
+                                  target_roi: Union[str, None]=None, indices_to_transfer: Union[list, int]=None) -> dict:
+    """
+    Transfer one or more annotation indices from a current ROI to a target ROI.
+    """
+    indices_to_transfer = [indices_to_transfer] if isinstance(indices_to_transfer, int) else indices_to_transfer
+    if current_roi and target_roi and indices_to_transfer and current_roi in annotations:
+        key_list = list(annotations[current_roi].keys())
+        if target_roi not in annotations:
+            annotations[target_roi] = {}
+        try:
+            for index_add in indices_to_transfer:
+                annotations[target_roi][key_list[index_add]] = annotations[current_roi][key_list[index_add]]
+        except (KeyError, IndexError):
+            pass
+    return annotations
+
+
 class AnnotationQuantificationMerge:
     """
     Iterate a dictionary of ROI annotations and align them to a pandas dataframe of quantification results

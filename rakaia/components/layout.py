@@ -1070,9 +1070,20 @@ def register_app_layout(config, cache_dest):
                                 filter_action='native', row_selectable='multi', column_selectable='multi'),
                                 html.Br(),
                                 dbc.Button("Delete selected annotation(s)", id='delete-annotation-tabular',
-                                           style={"background-color": DEFAULT_WIDGET_COLOUR})
-                                 ]),
+                                           style={"background-color": DEFAULT_WIDGET_COLOUR}),
+                                dbc.Button("Transfer selected annotation(s)", id='transfer-annotation-tabular',
+                                            style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-left": "12px"})
+                                ]),
                                     id="annotation-preview", size='xl'),
+                                dbc.Modal(children=dbc.ModalBody([
+                                dcc.Dropdown(id='transfer-collection-options', multi=False, options=[],
+                                                 placeholder='Select an ROI to transfer the annotation(s) to',
+                                                 style={'justifyContent': 'right', 'white-space': 'initial',
+                                                        'overflow-wrap': 'anywhere'}),
+                                html.Br(),
+                                dbc.Button("Transfer selected annotation(s)", id='transfer-annotation-execute',
+                                style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-left": "12px"})]
+                                ), id='annotation-transfer-window', size='m'),
                                 html.Br(),
                                 html.B("Set canvas position"),
                                           html.Div([

@@ -231,6 +231,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('data-collection', 'value'),
                        Output('image_layers', 'value'),
                        Output('data-collection', 'optionHeight'),
+                       Output('transfer-collection-options', 'options'),
                        # Output('data-collection', 'className'),
                        Input('uploaded_dict_template', 'data'),
                        State('data-collection', 'value'),
@@ -245,7 +246,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 selection_return = set_data_selection_after_import(datasets, cur_data_selection)
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0: channels_return = cur_layers_selected
             height_update = adjust_option_height_from_list_length(datasets)
-            return datasets, selection_return, channels_return, height_update
+            return datasets, selection_return, channels_return, height_update, datasets
             # can use an animation to draw attention to the data selection input
             # "animate__animated animate__jello animate__slower"
         raise PreventUpdate

@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2024-09-25
+
+### Added
+
+- Ability to transfer annotations between ROIs
+
 ## [0.20.0] - 2024-09-19
 
 ### Added

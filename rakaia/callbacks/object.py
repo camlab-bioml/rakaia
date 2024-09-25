@@ -10,6 +10,8 @@ from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
+
+from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.parsers.object import (
     RestyleDataParser,
@@ -40,7 +42,7 @@ from rakaia.io.annotation import AnnotationRegionWriter
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary
 from rakaia.callbacks.object_wrappers import (
     AnnotationQuantificationMerge,
-    callback_remove_canvas_annotation_shapes, reset_annotation_import)
+    callback_remove_canvas_annotation_shapes, reset_annotation_import, transfer_annotations_by_index)
 from rakaia.io.annotation import AnnotationMaskWriter, export_point_annotations_as_csv
 from rakaia.inputs.loaders import adjust_option_height_from_list_length
 from rakaia.utils.pixel import split_string_at_pattern
@@ -310,21 +312,24 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('clear-annotation_dict', 'n_clicks'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True),
-        Output('annotation-table', 'selected_rows', allow_duplicate=True))
+        Output('annotation-table', 'selected_rows', allow_duplicate=True),
+        Input('transfer-annotation-execute', 'n_clicks'),
+        State('transfer-collection-options', 'value'))
     def update_region_annotation_in_quantification_frame(annotations, quantification_frame,
                         data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
-                        delete_from_table, annot_table_selection, reimport_annots, clear_all_annots):
+                        delete_from_table, annot_table_selection, reimport_annots, clear_all_annots,
+                        execute_transfer, target_roi):
         """
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         Any selected rows in the annotation preview table are reset to avoid erroneous indices
         """
         if data_selection:
+            if ctx.triggered_id == "transfer-annotation-execute" and target_roi and annot_table_selection:
+                annotations = transfer_annotations_by_index(annotations, data_selection, target_roi, annot_table_selection)
+                data_selection = target_roi
             remove = ctx.triggered_id in ["delete-annotation-tabular", "clear-annotation_dict"]
-            if ctx.triggered_id == "clear-annotation_dict" and data_selection in annotations:
-                indices_remove = [int(i) for i in range(len(annotations[data_selection].keys()))]
-            else:
-                indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
+            indices_remove = set_annotation_indices_to_remove(ctx.triggered_id, annotations, data_selection, annot_table_selection)
             sample_name, id_column = ROIQuantificationMatch(data_selection, quantification_frame,
                         data_dropdown_options, delimiter, mask_selection).get_matches()
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
@@ -764,3 +769,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode),
                               key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("annotation-transfer-window", "is_open"),
+        Input('transfer-annotation-tabular', 'n_clicks'),
+        [State("annotation-transfer-window", "is_open")])
+    def toggle_show_annotation_transfer_modal(n, is_open):
+        """
+        Show the annotation transfer modal with a list of the possible ROIs to transfer to
+        """
+        return not is_open if n else is_open
