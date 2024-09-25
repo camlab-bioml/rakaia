@@ -17,7 +17,7 @@ from rakaia.inputs.pixel import (
 from rakaia.inputs.loaders import wrap_child_in_loading
 from rakaia.utils.pixel import generate_default_swatches
 from rakaia.utils.region import RegionStatisticGroups
-
+from rakaia.plugins import PluginDescriptors
 
 def register_app_layout(config, cache_dest):
 
@@ -213,7 +213,8 @@ def register_app_layout(config, cache_dest):
                                     "margin-top": "-3px"})], style={"display": "flex"}),
                                 dbc.Tooltip(TOOLTIPS['import-tour'], target="dash-import-tour"),
                                 du.Upload(id='upload-image', max_file_size=50000,
-                                text='Import imaging data (.MCD, .tiff, .txt, etc.) files using drag and drop',
+                                text='Import/copy imaging data (.MCD, .tiff, .txt, etc.) files '
+                                     'using drag and drop or a file dialog (click here)',
                                               chunk_size=100,
                                               max_total_size=50000, max_files=200,
                                               filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'],
@@ -221,7 +222,7 @@ def register_app_layout(config, cache_dest):
                                                              "height": "7.5vh"}),
                                     html.H5("or", style={'width': '35%', 'margin-top': '5px'}),
                                     dcc.Input(id="read-filepath", type="text",
-                                    placeholder="Read imaging data directly from filepath or directory (local runs only)",
+                                    placeholder="Read images or pipeline directory from path (local runs only)",
                                               value=None, style={"width": "100%", "height": "10%"}),
                                     html.Br(),
                                     html.Div([dbc.Button("Import local", id="add-file-by-path",
@@ -263,7 +264,7 @@ def register_app_layout(config, cache_dest):
                                             id="mask-name-modal", size='l',
                                             style={"margin-left": "10px", "margin-top": "15px"}),
                                         du.Upload(id='upload-mask', max_file_size=50000,
-                                                  text='Import mask (tiff) using drag and drop',
+                                                  text='Import mask (tiff) using drag and drop/file dialog',
                                                   max_total_size=50000, max_files=1000,
                                                   chunk_size=100,
                                                   filetypes=['tif', 'tiff'],
@@ -272,14 +273,16 @@ def register_app_layout(config, cache_dest):
                                         html.H6("Quantification results/measurements"),
                                         du.Upload(id='upload-quantification', max_file_size=5000,
                                                   filetypes=['h5ad', 'h5', 'csv'],
-                                                  text='Import quantification results (CSV, h5ad) using drag and drop',
+                                                  text='Import quantification results (CSV, h5ad) using '
+                                                       'drag and drop/file dialog',
                                                   max_files=1, upload_id="upload-quantification",
                                                   default_style={"margin-top": "20px", "height": "5vh"}),
                                         html.Br(),
                                         html.H6("ROI configuration"),
                                         du.Upload(id='upload-param-json', max_file_size=1000,
                                                   filetypes=['json'],
-                                                  text='Import channel blend parameters (JSON) using drag and drop',
+                                                  text='Import channel blend parameters (JSON) using '
+                                                       'drag and drop/file dialog',
                                                   max_files=1, upload_id="upload-param-json",
                                                   default_style={"margin-top": "20px", "height": "5vh"}),
                                         html.Br(),
@@ -295,7 +298,7 @@ def register_app_layout(config, cache_dest):
                                         dbc.Collapse([
                                             html.H6("Panel info list"),
                                             du.Upload(id='upload-panel-info', max_file_size=1000, max_files=1,
-                                                      text='Import panel info (CSV) using drag and drop',
+                                                      text='Import panel info (CSV)',
                                                       filetypes=['csv'], upload_id="upload-image",
                                                       default_style={"margin-top": "20px", "height": "5vh"}),
                                             html.Br(),
@@ -327,7 +330,7 @@ def register_app_layout(config, cache_dest):
                                 children=[
                                 html.Br(),
                                 dbc.Form([
-                                html.Div([dbc.Label("Connection string", html_for="db-connection-string"),
+                                html.Div([dbc.Label("Database connection string", html_for="db-connection-string"),
                                 dbc.Input(type="text", id="db-connection-string", value="rakaia-db.uzqznla.mongodb.net",
                                 style={"width": "75%"}, persistence=config['persistence'],
                                 persistence_type='local')], className="mb-3"),
@@ -340,7 +343,7 @@ def register_app_layout(config, cache_dest):
                                 dbc.Input(type="password", id="db-password", placeholder="Enter password",
                                           style={"width": "75%"}, persistence=config['persistence'],
                                           persistence_type='local'),
-                                dbc.FormText("Enter your credentials for a mongoDB Atlas connection", color="secondary"),
+                                dbc.FormText("Enter credentials for a mongoDB Atlas connection", color="secondary"),
                                 ], className="mb-3")
                                 ]),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-arrow-right-to-bracket",
@@ -549,7 +552,7 @@ def register_app_layout(config, cache_dest):
                                                 dcc.Slider(50, 150, 2.5, value=100, id='annotation-canvas-size',
                                                            persistence=config['persistence'], persistence_type='local',
                                                            marks={50: 'small', 100: 'default', 150: 'large'})],
-                                                style={"width": "45vh", "height": "10%", "padding": "0px",
+                                                style={"width": "100%", "height": "10%", "padding": "0px",
                                                        "margin-bottom": "-2px", "float": "right", "color": "#FFFFFF"}),
                                             html.Br(),
                                             html.Div([
@@ -1140,7 +1143,7 @@ def register_app_layout(config, cache_dest):
                                 "margin-top": "15px"}),
                                 html.Br(),
                                 ], style={"padding": "5px"}),
-                                dbc.Tab(label="Measure/cluster", label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                dbc.Tab(label="Measure/overlay", label_style={"color": DEFAULT_WIDGET_COLOUR},
                                     children=[
                                 html.Br(),
                                 html.Div([dbc.Button("Quantify current ROI", id="quantify-cur-roi-button",
@@ -1311,24 +1314,26 @@ def register_app_layout(config, cache_dest):
                                   children=[
                                 html.Div([dbc.Row([
                                 dbc.Col(html.Div([html.Br(),
-                                html.Div([html.B("Heatmap", style={"margin-bottom": "10px", "margin=-left": "12.5px"}),
+                                html.Div([html.B("Object summary", style={"margin-bottom": "10px", "margin=-left": "12.5px"}),
                                 dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
                                         style={"display": "inline-block", "margin-right": "7.5px",
                                         "margin-top": "3px"}),
-                                        html.Div("Heatmap options")], style={"display": "flex",
+                                        html.Div("Plot options")], style={"display": "flex",
                                         "margin-top": "-5px", "margin-left": "15px"}),
                                         id="heatmap-config-button", className="mx-auto", color=None,
                                         n_clicks=0, style={"margin-top": "-5px", "justifyContent": "left"}),
                                 dbc.Modal(children=dbc.ModalBody([
-                                html.B("Heatmap settings"),
+                                html.B("Plot settings"),
                                 html.Br(),
                                 html.Br(),
                                 html.Div([
-                                daq.ToggleSwitch(label='Normalize heatmap', id='normalize-heatmap',
+                                daq.ToggleSwitch(label='Normalize expression', id='normalize-heatmap',
                                         labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=True),
+                                daq.ToggleSwitch(label='Transpose figure', id='transpose-heatmap',
+                                labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False),
                                     html.Div([
                                     html.H6("Object count for sub-setting"),
-                                        dcc.Input(type="number", placeholder="Subset heatmap", id="subset-heatmap",
+                                        dcc.Input(type="number", placeholder="Subset", id="subset-heatmap",
                                                   step=1, value=50000, debounce=True,
                                                   style={"width": "50%", "height": "40%",
                                                          "margin-left": "30px", "margin-top": "5px"})
@@ -1354,17 +1359,23 @@ def register_app_layout(config, cache_dest):
                                     dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
                                         style={"display": "inline-block", "margin-right": "7.5px",
                                             "margin-top": "3px"}),
-                                    html.Div("UMAP options")], style={"display": "flex",
-                                        "margin-top": "-5px","margin-left": "15px"}),
+                                    html.Div("UMAP Options")], style={"display": "flex",
+                                        "margin-top": "-5px", "margin-left": "15px", "float": "right"}),
                                         id="umap-config-button", className="mx-auto", color=None, n_clicks=0,
-                                        style={"margin-top": "-5px", 'float': "left"}),
+                                        style={"margin-top": "-5px", 'float': "center", "margin-left": "15px"}),
+                                    dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
+                                    style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                    html.Div("Plugins")], style={"display": "flex",
+                                    "margin-top": "-5px", "margin-left": "15px", "float": "right"}),
+                                    id="show-plugins", className="mx-auto", color=None, n_clicks=0,
+                                    style={"margin-top": "-5px", 'float': "center"}),
                                     html.Div([
                                         dbc.Button("Show selection in dataset gallery", id="quantification-query-link",
                                                     style={"margin-right": "30px", "margin-bottom": "7px"},
                                                     color="dark", outline=True)
                                               ],
                                              style={"display": "flex", "justifyContent": "right"}),
-                                              ], style={"display": "flex", "float": "center", "width": "100%"}),
+                                              ], style={"display": "flex", "float": "right", "width": "100%"}),
                                         dbc.Modal(children=dbc.ModalBody([
                                         html.Div([
                                         dbc.Row([dbc.Col(width=6, children=[
@@ -1402,6 +1413,22 @@ def register_app_layout(config, cache_dest):
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
                                         ]),
                                         id="umap-config-modal", size='l'),
+                                    dbc.Modal(children=dbc.ModalBody([html.Div([
+                                    html.B("Choose plugin", style={"float": "left"}),
+                                    html.Br(),
+                                    dcc.Dropdown(id='plugin-mode', options=PluginDescriptors.descriptors),
+                                    html.Br(),
+                                    html.B("Choose existing annotation", style={"float": "left"}),
+                                    dcc.Dropdown(id='plugin-in-col', options=[]),
+                                    html.Br(),
+                                    html.B("Set output column", style={"float": "left"}),
+                                    html.Br(),
+                                    dcc.Input(type="text", value=None, placeholder="Set column name to"
+                                    " store model output", debounce=True, id="plugin-out-col", style={"width": "75%"}),
+                                    html.Br(),
+                                    dbc.Button("Run plugin", id="run-plugin", className="me-1", style={"margin-top": "10px",
+                                            "background-color": DEFAULT_WIDGET_COLOUR})
+                                    ])]), id='plugin-modal', size='m'),
                                     html.Div(
                                     [dbc.Row([dbc.Col([
                                         dcc.Loading(dcc.Dropdown(id='umap-projection-options', multi=False,
@@ -1417,9 +1444,9 @@ def register_app_layout(config, cache_dest):
                                                                                      "margin-top": "3px"}),
                                                                        html.Div("Show overlay distribution")],
                                                                       style={"display": "flex", "margin-bottom": "5px",
-                                                                             "margin-left": "15px"}),
+                                                                    "margin-left": "10px"}),
                                                    id="show-quant-dist", className="mx-auto", color=None, n_clicks=0,
-                                                   style={"float": "right", "justifyContent": "right", "margin-right": "30px"})
+                                        style={"float": "right", "justifyContent": "right", "margin-left": "15px"})
                                     ], width=5)])], style={"margin-top": "7.5px"}),
                                     dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='quant-dist-table',
                                     columns=[], data=None, editable=False, filter_action='native')]),

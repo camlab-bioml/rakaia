@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from typing import Union
 import ast
 from pydantic import BaseModel
+import numpy as np
 from rakaia.utils.object import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box)
@@ -27,7 +28,7 @@ class ChannelRegion:
     :param coordinates: A dictionary of coordinates corresponding to the spatial location of the region
     :return: None
     """
-    def __init__(self, channel_array, coordinates):
+    def __init__(self, channel_array: Union[np.array, np.ndarray], coordinates: dict):
         self.channel_array = channel_array
         self.coordinate_dict = coordinates
         self.mean_exp = None
@@ -84,7 +85,8 @@ class RectangleRegion(ChannelRegion):
     :param redrawn: If the type is a drawn rectangle, if the rectangle has been redrawn, or is a new canvas shape
     :return: None
     """
-    def __init__(self, channel_array, coordinates, reg_type="zoom", redrawn=False):
+    def __init__(self, channel_array: Union[np.array, np.ndarray], coordinates: dict,
+                 reg_type: str="zoom", redrawn: bool=False):
         super().__init__(channel_array, coordinates)
         self.type = reg_type
         self.redrawn = redrawn
@@ -116,7 +118,7 @@ class FreeFormRegion(ChannelRegion):
     :param coordinates: A dictionary of coordinates corresponding to the spatial location of the region
     :return: None
     """
-    def __init__(self, channel_array, coordinates):
+    def __init__(self, channel_array: Union[np.array, np.ndarray], coordinates: dict):
         super().__init__(channel_array, coordinates)
         if 'path' in self.coordinate_dict:
             self.path = self.coordinate_dict['path']
@@ -179,7 +181,7 @@ class AnnotationPreviewGenerator:
     :return: None
     """
 
-    def generate_annotation_preview(self, annot_key, annot_type="zoom"):
+    def generate_annotation_preview(self, annot_key: Union[str, tuple], annot_type: str="zoom") -> str:
         """
         Generates a list of previews for each annotation in the current ROI
 
@@ -197,7 +199,7 @@ class AnnotationPreviewGenerator:
         return None
 
     @staticmethod
-    def generate_region_preview(key, reg_type="zoom") -> str:
+    def generate_region_preview(key: Union[str, tuple], reg_type: str="zoom") -> str:
         """
         Generate a preview of a region key. Has the following general tuple structures:
         Zoom:
@@ -222,7 +224,7 @@ class AnnotationPreviewGenerator:
         return f"x: [{round(x_min)}, {round(x_max)}]\n y: [{round(y_min)}, {round(y_max)}]"
 
     @staticmethod
-    def generate_point_preview(key):
+    def generate_point_preview(key: Union[str, tuple]) -> str:
         """
         Generate a preview of the click point key. Has the following general string structure:
         "{'points': [{'x': 582, 'y': 465}]}"

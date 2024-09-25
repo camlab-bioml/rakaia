@@ -86,8 +86,10 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     channel_frame['cell_id'] = [int(i) for i in channel_frame.index]
     channel_frame['sample'] = sample_name
     props = ['area', 'centroid', 'axis_major_length', 'axis_minor_length', 'eccentricity']
-    region_props = measure_regionprops(array, mask, props)
-    to_return = channel_frame.join(region_props).reset_index(drop=True)
+    try:
+        region_props = measure_regionprops(array, mask, props)
+        to_return = channel_frame.join(region_props).reset_index(drop=True)
+    except TypeError: to_return = channel_frame
     return to_return
 
 def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_selection, delimiter: str="+++"):

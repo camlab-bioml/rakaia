@@ -3,7 +3,7 @@
 rakaia: Scalable multiplex imaging dataset analysis in the browser
 
 <p align="center">
-    <img src="man/assets/app-preview.png">
+    <img src="man/app-preview.png">
 </p>
 
 
@@ -164,13 +164,8 @@ rakaia -pr
 
 ### Binary distribution
 
-rakaia can be compiled and distributed as a binary using `pyapp`. The instructions [here](https://ofek.dev/pyapp/latest/how-to/)
-should be followed to install `pyapp` in the same directory as the rakaia git source, then:
-
-```commandline
-cd rakaia
-source pyapp.sh
-```
+rakaia can be compiled and distributed as a binary using `pyapp`. The instructions for building
+rakaia standalone binaries can be found under the [building section](BUILDING.md)
 
 ## Troubleshooting
 

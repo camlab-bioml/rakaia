@@ -1,7 +1,10 @@
-from typing import Union
+from pathlib import Path
+from typing import Union, Any
 import re
 import os
 import sys
+
+import dash_uploader
 import pandas as pd
 from dash.exceptions import PreventUpdate
 from tifffile import TiffFile
@@ -38,11 +41,11 @@ def drop_columns_from_measurements_csv(measurements_csv, drop: bool = True):
     return measurements_csv
 
 
-def return_umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame],
-                                                   current_umap: Union[dict, pd.DataFrame] = None,
-                                                   drop_col: bool = True,
-                                                   rerun: bool = True, unique_key_serverside: bool = True,
-                                                   cols_include: list = None):
+def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame],
+                                            current_umap: Union[dict, pd.DataFrame] = None,
+                                            drop_col: bool = True,
+                                            rerun: bool = True, unique_key_serverside: bool = True,
+                                            cols_include: list = None):
     """
     Generate a UMAP coordinate frame from a data frame of channel expression
     `cols_include`: Pass an optional list of channels to generate the coordinates from
@@ -108,18 +111,18 @@ def filter_measurements_csv_by_channel_percentile(measurements, percentile=0.999
     return pd.DataFrame(filtered)
 
 
-def get_quantification_filepaths_from_drag_and_drop(status):
+def get_quantification_filepaths_from_drag_and_drop(status, files: list=None):
     """
     Parse a list of imported filepaths corresponding to quantification data frames
     """
-    filenames = DashUploaderFileReader(status).return_filenames()
+    filenames = DashUploaderFileReader(status).return_filenames() if (not files and status) else files
     session_config = {'uploads': []}
     # IMP: ensure that the progress is up to 100% in the float before beginning to process
     if filenames:
         for file in filenames:
             session_config['uploads'].append(file)
         return session_config
-    raise PreventUpdate
+    return dash.no_update
 
 
 def parse_and_validate_measurements_csv(session_dict, error_config=None, use_percentile=False):
@@ -148,20 +151,19 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, use_per
     raise PreventUpdate
 
 
-def parse_masks_from_filenames(status):
+def parse_masks_from_filenames(status: Union[dash_uploader.UploadStatus, None], files: list=None):
     """
     Parse a list of filepaths corresponding to segmentation masks for import.
     """
     masks = {}
-    filenames = DashUploaderFileReader(status).return_filenames()
+    filenames = DashUploaderFileReader(status).return_filenames() if (not files and status) else files
     if filenames:
         for mask_file in filenames:
             default_mask_name = os.path.splitext(os.path.basename(mask_file))[0]
             masks[default_mask_name] = mask_file
         if len(masks) > 0:
             return masks
-    raise PreventUpdate
-
+    return dash.no_update
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                      set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):
@@ -211,6 +213,24 @@ def validate_quantification_from_anndata(anndata_obj, required_columns=set_manda
         return None, None
     return frame, None
 
+def quant_dataframe_to_anndata(quantification: Union[dict, pd.DataFrame]):
+    """
+    Convert a quantification frame to an anndata object. Creates an anndata with the following properties:
+    - Channel expression is held as an array in h5ad_file.X
+    - Channel names are held in h5ad_file.var_names
+    - Additional metadata variables are held in h5ad_file.obs
+    """
+    frame = pd.DataFrame(quantification)
+    # identify the first column that immediately follows the channel intensities. should be either sample or description
+    starting_col = "description" if "description" in frame.columns else "sample"
+    end_intensities = list(frame.columns).index(starting_col)
+    intensities = frame.iloc[:, 0:end_intensities]
+    metadata = frame.iloc[:, end_intensities:len(list(frame.columns))]
+    obj = anndata.AnnData(X=np.array(intensities), obs=metadata)
+    obj.var_names = list(intensities.columns)
+    return obj
+
+
 
 class RestyleDataParser:
     """
@@ -230,6 +250,7 @@ class RestyleDataParser:
 
     def __init__(self, restyledata: Union[dict, list], quantification_frame: Union[dict, pd.DataFrame],
                  umap_col_annotation: str, existing_categories: Union[dict, list] = None):
+
         self.restyledata = restyledata
         self.quantification_frame = quantification_frame
         self.umap_col_annotation = umap_col_annotation
@@ -292,7 +313,7 @@ class RestyleDataParser:
             [ind for ind in range(0, len(tot_subtypes))]
         if self.restyledata[1][0] in indices_keep:
             indices_keep.remove(self.restyledata[1][0])
-        for selection in range(len(tot_subtypes)):
+        for selection in list(range(0, len(tot_subtypes))):
             if selection in indices_keep:
                 subtypes_keep.append(tot_subtypes[selection])
         self._subtypes_return, self._indices_keep = subtypes_keep, indices_keep
@@ -537,32 +558,33 @@ def validate_coordinate_set_for_image(x_coord=None, y_coord=None, image=None):
     return False
 
 
-def parse_quantification_sheet_from_h5ad(h5ad_file):
+def parse_quantification_sheet_from_h5ad(h5ad_file: Union[Path, str, anndata.AnnData]):
     """
     Parse the quantification results from h5ad files. Assumes the following format:
     - Channel expression is held as an array in h5ad_file.X
     - Channel names are held in h5ad_file.var_names
     - Additional metadata variables are held in h5ad_file.obs
     """
-    quantification_frame = sc.read_h5ad(h5ad_file)
-    expression = pd.DataFrame(quantification_frame.X,
-                              columns=list(quantification_frame.var_names)).reset_index(drop=True)
-    if is_steinbock_intensity_anndata(quantification_frame):
+    if not isinstance(h5ad_file, anndata.AnnData):
+        h5ad_file = sc.read_h5ad(h5ad_file)
+    expression = pd.DataFrame(h5ad_file.X,
+                columns=list(h5ad_file.var_names)).reset_index(drop=True)
+    if is_steinbock_intensity_anndata(h5ad_file):
         # create a sample column that uses indices to match the steinbock masks
         edited = pd.DataFrame({"description": [f"{acq}_{position}" for acq, position in \
-                                               zip(quantification_frame.obs['image_acquisition_description'],
+                                               zip(h5ad_file.obs['image_acquisition_description'],
                                                    [int(re.search(r'\d+$', elem.split('.tiff')[0]).group()) for elem in
-                                                    quantification_frame.obs['Image']])],
+                                                    h5ad_file.obs['Image']])],
                                # parse the int cell id from the string index
                                "cell_id": [int(re.search(r'\d+', elem).group()) for elem in
-                                           quantification_frame.obs.index],
-                               "sample": [elem.split('.tiff')[0] for elem in quantification_frame.obs['Image']]},
-                              index=quantification_frame.obs.index)
+                                           h5ad_file.obs.index],
+                               "sample": [elem.split('.tiff')[0] for elem in h5ad_file.obs['Image']]},
+                              index=h5ad_file.obs.index)
         edited["cell_id"] = pd.to_numeric(edited["cell_id"])
-        quantification_frame = pd.concat([edited, quantification_frame.obs], axis=1, ignore_index=False)
+        quantification_frame = pd.concat([edited, h5ad_file.obs], axis=1, ignore_index=False)
         return expression.join(quantification_frame.reset_index(drop=True))
     # return the merged version of the data frames to mimic the pipeline
-    return expression.join(quantification_frame.obs.reset_index(drop=True))
+    return expression.join(h5ad_file.obs.reset_index(drop=True))
 
 class GatingObjectList:
     """
@@ -586,6 +608,7 @@ class GatingObjectList:
                                quantification_frame: Union[dict, pd.DataFrame] = None,
                                mask_identifier: str = None, quantification_sample_col: str = 'sample',
                                quantification_object_col: str = 'cell_id', intersection=False, normalize=True):
+
         self.gating_dict = gating_dict
         self.gating_selection = gating_selection
         self.quantification_frame = pd.DataFrame(quantification_frame)

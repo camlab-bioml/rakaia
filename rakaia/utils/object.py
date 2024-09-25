@@ -91,23 +91,27 @@ def convert_mask_to_object_boundary(mask):
     return np.where(boundaries == True, 255, 0).astype(np.uint8)
 
 
-def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict, normalized_values=None):
+def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict,
+                                                    normalized_values=None, umap_overlay: Union[dict, None]=None):
     """
     Subset measurements frame based on a range of UMAP coordinates in the x and y axes
     Expects that the length of both frames are equal
     """
+    measurements_to_use = normalized_values if normalized_values is not None else measurements
+    grouping = None
+    if umap_overlay:
+        measurements_to_use[str(list(umap_overlay.keys())[0])] = pd.Series(list(umap_overlay.values())[0])
+        grouping = str(list(umap_overlay.keys())[0])
     if not all(elem in coordinates_dict for elem in ['xaxis.range[0]', 'xaxis.range[1]',
-                                                      'yaxis.range[0]', 'yaxis.range[1]']): return None
+            'yaxis.range[0]', 'yaxis.range[1]']): return measurements_to_use, grouping
     if len(measurements) != len(umap_frame):
         umap_frame = umap_frame.iloc[measurements.index.values.tolist()]
     query = umap_frame.query(f'UMAP1 >= {coordinates_dict["xaxis.range[0]"]} &'
                              f'UMAP1 <= {coordinates_dict["xaxis.range[1]"]} &'
                              f'UMAP2 >= {min(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])} &'
                              f'UMAP2 <= {max(coordinates_dict["yaxis.range[0]"], coordinates_dict["yaxis.range[1]"])}')
-    measurements_to_use = normalized_values if normalized_values is not None else measurements
     subset = measurements_to_use.loc[query.index.tolist()]
-    return subset
-
+    return subset, grouping
 
 def populate_quantification_frame_column_from_umap_subsetting(measurements, umap_frame, coordinates_dict,
                                         annotation_column="object_annotation_1", annotation_value="Unassigned",
@@ -150,7 +154,7 @@ def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, erro
         try:
             first_image = list(upload_dict[data_selection].keys())[0]
             first_image = upload_dict[data_selection][first_image]
-            if first_image is not None and (first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or \
+            if first_image is not None and (first_image.shape[0] != mask_dict[mask_selection]["array"].shape[0] or
                     first_image.shape[1] != mask_dict[mask_selection]["array"].shape[1]):
                 if error_config is None:
                     error_config = {"error": None}

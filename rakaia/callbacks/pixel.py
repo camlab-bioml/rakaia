@@ -69,9 +69,10 @@ from rakaia.utils.graph import strip_invalid_shapes_from_graph_layout
 from rakaia.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
-    adjust_option_height_from_list_length, set_roi_tooltip_based_on_length)
+    adjust_option_height_from_list_length, set_roi_tooltip_based_on_length, valid_key_trigger, mask_toggle_trigger)
 from rakaia.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
-    mask_options_from_json, bounds_text, generate_annotation_list, no_json_db_updates
+    mask_options_from_json, bounds_text, AnnotationList, no_json_db_updates, is_steinbock_dir, \
+    parse_steinbock_dir
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -88,11 +89,11 @@ from rakaia.utils.region import (
     check_for_valid_annotation_hash)
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.utils.filter import (
-    return_current_or_default_filter_apply,
-    return_current_or_default_filter_param,
-    return_current_channel_blend_params,
-    return_current_or_default_channel_color,
-    return_current_default_params_with_preset,
+    get_current_or_default_filter_apply,
+    get_current_or_default_filter_param,
+    get_current_channel_blend_params,
+    get_current_or_default_channel_color,
+    get_current_default_params_with_preset,
     apply_filter_to_channel, set_blend_parameters_for_channel)
 from rakaia.callbacks.triggers import (
     no_canvas_mask,
@@ -133,6 +134,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data'),
+                       Output('mask-uploads', 'data', allow_duplicate=True),
+                       Output('session_config_quantification', 'data', allow_duplicate=True),
+                       Output('umap-projection', 'data', allow_duplicate=True),
                        State('read-filepath', 'value'),
                        Input('add-file-by-path', 'n_clicks'),
                        State('session_config', 'data'),
@@ -141,7 +145,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
-            return parse_local_path_imports(path, validate_session_upload_config(cur_session), error_config)
+            if is_steinbock_dir(path):
+                return parse_steinbock_dir(path, error_config, key="umap_coordinates", use_unique_key=OVERWRITE)
+            paths, error = parse_local_path_imports(path, validate_session_upload_config(cur_session), error_config)
+            return paths, error, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
@@ -205,7 +212,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
             message, unique_suffixes = file_import_message(files)
             suffix_add = ALERT.warnings["multiple_filetypes"] if len(unique_suffixes) > 1 else ""
-            error_config = add_warning_to_error_config(error_config, suffix_add + message)
+            error_config = add_warning_to_error_config(error_config, suffix_add + message) if 'from_steinbock' \
+                                                                not in session_dict.keys() else dash.no_update
             try:
                 fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                 session_dict['unique_images'] = fileparser.unique_image_names
@@ -1478,18 +1486,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             only_options_changed = channel_already_added(ctx.triggered_id, ctx.triggered, session_vars)
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 ctx.triggered_id in ["images_in_blend", "blending_colours"] and not only_options_changed:
-            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict, selected_channel)
-            to_apply_filter = return_current_or_default_filter_apply(cur_bool_filter, filter_type, filter_val, filter_sigma)
-            filter_type_return = return_current_or_default_filter_param(cur_filter_type, filter_type)
-            filter_val_return = return_current_or_default_filter_param(cur_filter_val, filter_val)
-            filter_sigma_return = return_current_or_default_filter_param(cur_filter_sigma, filter_sigma)
-            color_return = return_current_or_default_channel_color(cur_colour, color, col_autofill)
+            filter_type, filter_val, filter_sigma, color = get_current_channel_blend_params(current_blend_dict, selected_channel)
+            to_apply_filter = get_current_or_default_filter_apply(cur_bool_filter, filter_type, filter_val, filter_sigma)
+            filter_type_return = get_current_or_default_filter_param(cur_filter_type, filter_type)
+            filter_val_return = get_current_or_default_filter_param(cur_filter_val, filter_val)
+            filter_sigma_return = get_current_or_default_filter_param(cur_filter_sigma, filter_sigma)
+            color_return = get_current_or_default_channel_color(cur_colour, color, col_autofill)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
-            filter_type, filter_val, filter_sigma, color = return_current_channel_blend_params(current_blend_dict, selected_channel)
+            filter_type, filter_val, filter_sigma, color = get_current_channel_blend_params(current_blend_dict, selected_channel)
             to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return = \
-                return_current_default_params_with_preset(filter_type, filter_val, filter_sigma, color)
+                get_current_default_params_with_preset(filter_type, filter_val, filter_sigma, color)
             return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
         raise PreventUpdate
 
@@ -1729,7 +1737,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and None not in \
                 (annotation_title, annotation_body, canvas_layout, data_selection, cur_layers):
-            annotation_list = generate_annotation_list(canvas_layout, bulk_annot)
+            annotation_list = AnnotationList(canvas_layout, bulk_annot).get_annotations()
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = RegionAnnotation(title=annotation_title, body=annotation_body,
                 cell_type=annotation_cell_type, imported=False, annotation_column=annot_col, type=value,
@@ -1878,6 +1886,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
+                       Output('apply-mask', 'value', allow_duplicate=True),
                        Input('prev-roi', 'n_clicks'),
                        Input('next-roi', 'n_clicks'),
                        Input('keyboard-listener', 'event'),
@@ -1888,24 +1897,28 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('region-annotation-modal', 'is_open'),
                        State('main-tabs', 'active_tab'),
                        State('tour_component', 'isOpen'),
+                       State('apply-mask', 'value'),
                        prevent_initial_call=True)
-    def click_to_new_roi(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options,
-                         allow_arrow_change, annotating_region, active_tab, open_tour):
+    def use_key_listener(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options,
+                         allow_arrow_change, annotating_region, active_tab, open_tour, mask_stat):
         """
-        Use the forward and backwards buttons to click to a new ROI
-        Alternatively, use the directional arrow buttons from an event listener
+        Use the key event listener to trigger the following actions:
+            - Use the forward and backwards buttons to click to a new ROI
+            - Alternatively, use the directional arrow buttons from an event listener
+            - Use the arrow up button to toggle on/off the mask
         """
-        if None not in (cur_data_selection, cur_options) and not (ctx.triggered_id == 'keyboard-listener' and
-        not allow_arrow_change) and not annotating_region and active_tab == 'pixel-analysis' and not open_tour:
+        if None not in (cur_data_selection, cur_options) and not (ctx.triggered_id == 'keyboard-listener' and not allow_arrow_change) and \
+            not annotating_region and active_tab == 'pixel-analysis' and not open_tour and valid_key_trigger(key_listener):
             cur_index = cur_options.index(cur_data_selection)
+            mask_change = not mask_stat if mask_toggle_trigger(ctx.triggered_id, key_listener, n_events) else dash.no_update
             try:
                 prev_trigger = previous_roi_trigger(ctx.triggered_id, prev_roi, key_listener, n_events)
                 next_trigger = next_roi_trigger(ctx.triggered_id, next_roi, key_listener, n_events)
                 if prev_trigger and cur_index != 0:
-                    return cur_options[cur_index - 1] if cur_options[cur_index - 1] != cur_data_selection else dash.no_update
+                    return cur_options[cur_index - 1] if cur_options[cur_index - 1] != cur_data_selection else dash.no_update, mask_change
                 elif next_trigger:
-                    return cur_options[cur_index + 1] if cur_options[cur_index + 1] != cur_data_selection else dash.no_update
-                else: raise PreventUpdate
+                    return cur_options[cur_index + 1] if cur_options[cur_index + 1] != cur_data_selection else dash.no_update, mask_change
+                else: return dash.no_update, mask_change
             except IndexError: raise PreventUpdate
         raise PreventUpdate
 

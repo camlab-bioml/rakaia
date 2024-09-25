@@ -1,13 +1,13 @@
 import uuid
 import warnings
 import os
-from werkzeug.security import generate_password_hash, check_password_hash
 from flask import Flask, render_template
 from flask_caching import Cache
-from flask_httpauth import HTTPBasicAuth
+# from flask_httpauth import HTTPBasicAuth
+# from werkzeug.security import generate_password_hash, check_password_hash
 
 _program = "rakaia"
-__version__ = "0.19.0"
+__version__ = "0.20.0"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.
@@ -31,11 +31,11 @@ def init_app(cli_config):
     })
     cache.init_app(app)
 
-    auth = HTTPBasicAuth()
-
-    users = {
-        "rakaia_user": generate_password_hash("rakaia-1")
-    }
+    # auth = HTTPBasicAuth()
+    #
+    # users = {
+    #     "rakaia_user": generate_password_hash("rakaia-1")
+    # }
 
     app.config["APPLICATION_ROOT"] = "/"
 
@@ -43,15 +43,15 @@ def init_app(cli_config):
     # https://github.com/BodenmillerGroup/steinbock/issues/131
     os.environ["STEINBOCK_MASK_DTYPE"] = "uint32"
 
-    @auth.verify_password
-    def verify_password(username, password):
-        if username in users and \
-                check_password_hash(users.get(username), password):
-            return username
-        return None
+    # @auth.verify_password
+    # def verify_password(username, password):
+    #     if username in users and \
+    #             check_password_hash(users.get(username), password):
+    #         return username
+    #     return None
 
     @app.route('/')
-    @auth.login_required
+    # @auth.login_required
     def home():
         """Landing page."""
         return render_template(
@@ -63,11 +63,12 @@ def init_app(cli_config):
         )
 
     @app.route('/help/')
-    @auth.login_required
+    # @auth.login_required
     def help_landing():
         """Landing page."""
         return render_template(
             'help.html')
+
 
     with app.app_context():
         # Import parts of our core Flask dash

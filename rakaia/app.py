@@ -12,6 +12,7 @@ from rakaia.callbacks.object import init_object_level_callbacks
 from rakaia.callbacks.roi import init_roi_level_callbacks
 from rakaia.callbacks.db import init_db_callbacks
 
+
 def init_dashboard(server, authentic_id, config=None):
     """Initialize the dashboard server.
 

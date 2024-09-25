@@ -117,16 +117,22 @@ def test_generate_roi_gallery_children():
     assert all([elem in roi_list for elem in roi_dict.keys()])
 
 def test_recursive_gallery_children(recursive_gallery_children, recursive_aliases_2):
+    names = []
+    for child in recursive_gallery_children:
+        names.append(child['props']['children'][0]['id'])
     for child in recursive_gallery_children:
         for sub_child in child['props']['children']:
             assert 'initial_label' in sub_child['children']
             assert 'rakaia' not in sub_child['children']
+    recur_names = []
     edited_children = replace_channel_gallery_aliases(recursive_gallery_children, recursive_aliases_2)
     for child in edited_children:
+        recur_names.append(child['props']['children'][0]['id'])
         for sub_child in child['props']['children']:
             assert 'initial_label' not in sub_child['children']
             assert 'rakaia' in sub_child['children']
 
+    assert recur_names == names
     empty_children = replace_channel_gallery_aliases({}, recursive_aliases_2)
     assert empty_children == {}
     malformed = {"other": {"key_1": {"props": None}, "key_2": {"one": 1}}}

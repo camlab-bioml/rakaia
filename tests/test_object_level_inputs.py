@@ -11,10 +11,10 @@ from rakaia.inputs.object import (
     get_cell_channel_expression_plot,
     generate_umap_plot,
     generate_expression_bar_plot_from_interactive_subsetting,
-    generate_channel_heatmap,
-    generate_heatmap_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
+    channel_expression_summary,
+    channel_expression_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
     reset_custom_gate_slider,
-    BarChartPartialModes)
+    BarChartPartialModes, filter_overlay_from_heatmap_data)
 from rakaia.parsers.object import parse_and_validate_measurements_csv
 
 def test_partial_bar_chart_modes(get_current_dir):
@@ -93,6 +93,7 @@ def test_identify_patchable_umap(get_current_dir):
     assert not umap_eligible_patch(umap_plot_3, validated_measurements, "156Gd_FOXA1")
     # malformed fig
     assert not umap_eligible_patch({"data": [{"fake_key": "fake_val"}], "layout": None}, validated_measurements, "156Gd_FOXA1")
+    assert not umap_eligible_patch(None, None, None)
 def test_generate_umap_patch(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
@@ -109,12 +110,7 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
                                                                                 {}, umap_dict, zoom_keys, None,
                                                                                 category_column=category_column)
     assert '(244 cells)' in interactive_umap['layout']['title']['text']
-    # subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 900, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
-    # interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, subset_layout,
-    #                                                                             "mean", subset_layout,
-    #                                                                     umap_dict, zoom_keys, "annotation_canvas")
-    # assert interactive_umap['layout']['uirevision']
-    # assert '(61 cells)' in interactive_umap['layout']['title']['text']
+
     umap_dict = {"UMAP1": list(range(900)), "UMAP2": list(range(900))}
     subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
     interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean",
@@ -134,58 +130,70 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
                                                                  category_column="sample",
                                                                  cols_drop=['sample'])
 
-def test_quantification_heatmap(get_current_dir):
+def test_quantification_expr_summary(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
     # assert that the fake column subset will be ignored
-    fig = generate_channel_heatmap(measurements_csv, cols_include=["fake"])
-    # assert that the last element in the list of columns in the heatmap is a channel
+    fig = channel_expression_summary(measurements_csv, cols_include=["fake"], drop_cols=True)
+    # assert that the last element in the list of columns in the plot is a channel
     assert isinstance(fig, plotly.graph_objs._figure.Figure)
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
     assert '(244/244 shown)' in fig['layout']['title']['text']
     cols_include = ["209Bi_SMA"]
-    fig = generate_channel_heatmap(measurements_csv, cols_include=cols_include)
+    fig = channel_expression_summary(measurements_csv, cols_include=cols_include, drop_cols=True)
     assert '(244/244 shown)' in fig['layout']['title']['text']
     # assert that there is only one channel in the entire
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
     assert list(fig['data'][0]['x'])[0] == "209Bi_SMA"
 
-    fig = generate_channel_heatmap(measurements_csv, cols_include=cols_include, subset_val=200)
+    fig = channel_expression_summary(measurements_csv, cols_include=cols_include, subset_val=200, drop_cols=True)
     assert '(200/244 shown)' in fig['layout']['title']['text']
     # assert that there is only one channel in the entire
     assert list(fig['data'][0]['x'])[-1] == "209Bi_SMA"
     assert list(fig['data'][0]['x'])[0] == "209Bi_SMA"
 
 
-def test_heatmap_from_interactive_triggers(get_current_dir):
+def test_expr_plot_from_interactive_triggers(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
     umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
     zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
     # category_column = "sample"
-    interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, {}, umap_dict,
-                                                                zoom_keys, None, "umap-layout")
+    interactive_heat, frame, out_cols = channel_expression_from_interactive_subsetting(validated_measurements, {}, umap_dict,
+                                                                                       zoom_keys, None, "umap-layout")
     assert '(244/244 shown)' in interactive_heat['layout']['title']['text']
     embeddings = pd.read_csv(os.path.join(get_current_dir, "umap_coordinates_for_measurements.csv"))
     subset_layout = {'xaxis.range[0]': 7.386287234198646, 'xaxis.range[1]': 9.393588084462001,
                      'yaxis.range[0]': 6.270861713114755, 'yaxis.range[1]': 9.579169008196722}
-    interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, subset_layout,
-                                                                        embeddings, zoom_keys, "umap-layout")
+    interactive_heat, frame, out_cols = channel_expression_from_interactive_subsetting(validated_measurements, subset_layout,
+                                        embeddings, zoom_keys, "umap-layout", transpose=True)
+    assert out_cols[-1] == "209Bi_SMA"
     assert interactive_heat['layout']['uirevision']
     assert '(41/41 shown)' in interactive_heat['layout']['title']['text']
 
+    # subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
+    interactive_heat, frame, out_cols = channel_expression_from_interactive_subsetting(validated_measurements, subset_layout,
+                            embeddings, zoom_keys, "umap-projection-options", category_column="sample",
+                            category_subset=["test_1", "test_2"], umap_overlay="sample", transpose=False)
+    assert len(interactive_heat.to_dict()['layout']['legend']) == len(pd.DataFrame(
+        validated_measurements)['sample'].value_counts())
+    assert all(elem in interactive_heat['layout']['title']['text'] for elem in ['41', 'by sample'])
 
-    subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
-    interactive_heat, frame = generate_heatmap_from_interactive_subsetting(validated_measurements, subset_layout,
-                                                                        embeddings, zoom_keys, "umap-projection-options",
-                                                                        category_column="sample",
-                                                                           category_subset=["test_1", "test_2"])
-    assert isinstance(interactive_heat, dash._callback.NoUpdate)
+    # categorical, but only one category so just make normal heatmap
+    subset = pd.DataFrame(validated_measurements)
+    subset = subset[subset['sample'] == 'test_1']
+    filtered, overlay = filter_overlay_from_heatmap_data(subset, 'sample')
+    assert 'sample' not in filtered.columns
+    normal_heat, frame, out_cols = channel_expression_from_interactive_subsetting(subset, {'autosize': True},
+                                embeddings, zoom_keys, "umap-projection-options", category_column=None,
+                                category_subset=None, umap_overlay="sample", transpose=False)
+    assert '(202/202 shown)' in normal_heat['layout']['title']['text']
+    assert normal_heat['data'][0]['hovertemplate'] == 'Channel=%{x}<br>Expression=%{marker.color}<extra></extra>'
 
     with pytest.raises(PreventUpdate):
-        generate_heatmap_from_interactive_subsetting(None, subset_layout,
-                                                     embeddings, zoom_keys, "umap-projection-options",
-                                                     category_column="sample",
-                                                     category_subset=["test_1", "test_2"])
+        channel_expression_from_interactive_subsetting(None, subset_layout,
+                                                       embeddings, zoom_keys, "umap-projection-options",
+                                                       category_column="sample",
+                                                       category_subset=["test_1", "test_2"])
 
 def test_reset_custom_gate_slider():
     # by default, do nothing, or don't reset if triggered by an annotation/quantification

@@ -53,7 +53,7 @@ def autoscale_upper_bound_from_mode(vals: list, mode="min"):
         return mean(vals)
     return min(vals)
 
-def main(sysargs = sys.argv[1:]):
+def main(sysargs=sys.argv[1:]):
     warnings.filterwarnings("ignore")
     parser = cli_parser()
     args = parser.parse_args(sysargs)
@@ -89,7 +89,8 @@ def main(sysargs = sys.argv[1:]):
                                 "x_upper_bound": autoscale_upper_bound_from_mode(autoscale, args.method),
                                 "filter_type": None, "filter_val": None, "filter_sigma": None, "alias": aliases[channel]}
     with open(args.outfile, 'w', encoding='utf-8') as f:
-            json.dump(json_template, f, ensure_ascii=False)
+        json.dump(json_template, f, ensure_ascii=False)
+
 
 if __name__ == "__main__":
     main()

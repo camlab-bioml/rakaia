@@ -46,7 +46,7 @@ def replace_channel_gallery_aliases(child, aliases_dict):
     return child
 
 
-def set_gallery_thumbnail_from_signal_retention(original_image: np.array, downsampled_image: np.array,
+def set_gallery_thumbnail_from_signal_retention(original_image: np.array, down_sampled_image: np.array,
                                                 alternate_image: np.array,
                                                 signal_ratio: Union[int, float],
                                                 resize_signal_retention_threshold: Union[int, float] = 0.75,
@@ -57,7 +57,7 @@ def set_gallery_thumbnail_from_signal_retention(original_image: np.array, downsa
     use the down-sampled image
     Dimension threshold is to prevent very large images from being used as thumbnails
     """
-    return downsampled_image if (signal_ratio > resize_signal_retention_threshold or
+    return down_sampled_image if (signal_ratio > resize_signal_retention_threshold or
                                  any(size > resize_dimension_threshold for size in
                                      original_image.shape)) else alternate_image
 

@@ -17,10 +17,11 @@ from rakaia.parsers.object import (
     parse_masks_from_filenames,
     parse_roi_query_indices_from_quantification_subset,
     get_quantification_filepaths_from_drag_and_drop,
-    return_umap_dataframe_from_quantification_dict,
+    umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
     GatingObjectList)
+from rakaia.plugins import run_quantification_model
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
@@ -29,7 +30,7 @@ from rakaia.utils.object import (
     validate_mask_shape_matches_image,
     quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
 from rakaia.inputs.object import (
-    generate_heatmap_from_interactive_subsetting,
+    channel_expression_from_interactive_subsetting,
     generate_umap_plot,
     umap_eligible_patch,
     patch_umap_figure,
@@ -122,10 +123,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('quant-heatmap-channel-list', 'options'),
                        Input('normalize-heatmap', 'value'),
                        Input('subset-heatmap', 'value'),
+                       Input('transpose-heatmap', 'value'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings, annot_cols, restyle_data,
                                             umap_col_selection, prev_categories, channels_to_display,
-                                            heatmap_channel_options, normalize_heatmap, subset_heatmap):
+                                            heatmap_channel_options, normalize_heatmap, subset_heatmap, transpose):
         # figure out how to decouple the quantification update from the heatmap rendering:
         #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered
         if quantification_dict is not None:
@@ -134,11 +136,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id not in ["umap-projection-options"]:
                 try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
                                     umap_col_selection, prev_categories).get_callback_structures()
-                except TypeError: subtypes, keep = None, None
+                except (TypeError, KeyError): subtypes, keep = None, None
             else: subtypes, keep = None, None
-            try: fig, frame = generate_heatmap_from_interactive_subsetting(quantification_dict,
-                        umap_layout, embeddings, zoom_keys, ctx.triggered_id, True, umap_col_selection,
-                        subtypes, channels_to_display, normalize=normalize_heatmap, subset_val=subset_heatmap)
+            try: fig, frame, out_cols = channel_expression_from_interactive_subsetting(quantification_dict, umap_layout, embeddings,
+                zoom_keys, ctx.triggered_id, True, umap_col_selection, subtypes, channels_to_display,
+                normalize=normalize_heatmap, subset_val=subset_heatmap, umap_overlay=umap_col_selection, transpose=transpose)
             except (BadRequest, IndexError):
                 raise PreventUpdate
             indices_query, freq_counts_cat, cell_id_dict = None, None, None
@@ -152,14 +154,15 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # if the heatmap channel options are already set, do not update
             cols_selected = dash.no_update
             if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
-                cols_selected = list(frame.columns)
+                cols_selected = [i for i in list(frame.columns) if i in out_cols]
             return fig, keep, indices_query, freq_counts_cat, SessionServerside(cell_id_dict,
-                    key="cell_id_list", use_unique_key=OVERWRITE), list(frame.columns), cols_selected
+                    key="cell_id_list", use_unique_key=OVERWRITE), out_cols, cols_selected
         raise PreventUpdate
 
     @dash_app.callback(Output('umap-projection', 'data', allow_duplicate=True),
                        Output('umap-projection-options', 'options'),
                        Output('gating-channel-options', 'options'),
+                       Output('plugin-in-col', 'options'),
                        Input('quantification-dict', 'data'),
                        State('umap-projection', 'data'),
                        Input('execute-umap-button', 'n_clicks'),
@@ -171,10 +174,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         of the embeddings and a list of the channels for interactive projection
         """
         if ctx.triggered_id == "quantification-dict":
-            return dash.no_update, list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
+            return dash.no_update, list(pd.DataFrame(quantification_dict).columns), \
+                list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         try:
-            return return_umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
-            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update
+            return umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
+            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update, dash.no_update
         except ValueError: raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
@@ -220,9 +224,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 orient='records'), key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
-    @du.callback(Output('mask-uploads', 'data'),
+    @du.callback(Output('mask-uploads', 'data', allow_duplicate=True),
                  id='upload-mask')
-    def return_mask_upload(status: du.UploadStatus):
+    def parse_mask_upload(status: du.UploadStatus):
         return parse_masks_from_filenames(status)
 
     @dash_app.callback(Output('input-mask-name', 'value'),
@@ -739,4 +743,24 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if compute_similar and quant and overlay:
             similarity = compute_image_similarity_from_overlay(quant, overlay)
             return SessionServerside(similarity, key="image-prioritization-cor", use_unique_key=OVERWRITE)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("plugin-modal", "is_open"),
+        Input('show-plugins', 'n_clicks'),
+        State("plugin-modal", "is_open"))
+    def toggle_plugin_modal(open_plugins, is_open):
+        return not is_open if open_plugins else is_open
+
+    @dash_app.callback(
+        Output('quantification-dict', 'data', allow_duplicate=True),
+        Input('run-plugin', 'n_clicks'),
+        State('plugin-mode', 'value'),
+        State('quantification-dict', 'data'),
+        State('plugin-in-col', 'value'),
+        State('plugin-out-col', 'value'))
+    def run_plugin_quantification(run_plugin, mode, quant_dict, in_col, out_col):
+        if run_plugin and quant_dict and out_col and mode:
+            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode),
+                              key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate

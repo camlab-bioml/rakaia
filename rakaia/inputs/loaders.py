@@ -1,4 +1,6 @@
 from typing import Union
+
+import dash
 from dash import dcc
 from rakaia.io.session import SessionTheme
 from rakaia.utils.pixel import split_string_at_pattern
@@ -19,6 +21,18 @@ def reset_graph_data(graph):
         graph['data'] = []
     return graph
 
+def valid_key_trigger(key_listener: dict):
+    """
+    Specify the valid key codes that can be used for listening. Currently only the key codes for the left
+    and right arrows are permitted (for ROI switching), and the up arrow for mask toggling
+    """
+    return 'keyCode' in key_listener and key_listener['keyCode'] in [37, 38, 39]
+
+def mask_toggle_trigger(triggered_id, key_listener, key_events):
+    try:
+        return triggered_id == "keyboard-listener" and key_listener['keyCode'] == 38 and key_events > 0
+    except KeyError:
+        return dash.no_update
 
 def previous_roi_trigger(triggered_id, button_click, key_listener, key_events):
     """

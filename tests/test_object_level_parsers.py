@@ -25,9 +25,9 @@ from rakaia.parsers.object import (
     validate_coordinate_set_for_image,
     parse_quantification_sheet_from_h5ad,
     validate_quantification_from_anndata,
-    return_umap_dataframe_from_quantification_dict,
+    umap_dataframe_from_quantification_dict,
     GatingObjectList,
-    is_steinbock_intensity_anndata)
+    is_steinbock_intensity_anndata, quant_dataframe_to_anndata)
 import anndata as adata
 
 def test_validation_of_measurements_csv(get_current_dir):
@@ -61,9 +61,8 @@ def test_parsing_quantification_filepaths():
     uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=1, total_size_mb=1)
     upload_session = get_quantification_filepaths_from_drag_and_drop(uploader)
     assert len(upload_session['uploads']) > 0
-    with pytest.raises(PreventUpdate):
-        uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
-        get_quantification_filepaths_from_drag_and_drop(uploader)
+    uploader = UploadStatus(uploaded_files=["measurements.csv"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
+    assert isinstance(get_quantification_filepaths_from_drag_and_drop(uploader), dash._callback.NoUpdate)
 
 
 def test_parsing_incoming_measurements_csv(get_current_dir):
@@ -97,9 +96,8 @@ def test_parse_mask_filenames():
     mask_files = parse_masks_from_filenames(uploader)
     assert 'mask' in mask_files.keys()
     assert mask_files['mask'] == "mask.tiff"
-    with pytest.raises(PreventUpdate):
-        uploader = UploadStatus(uploaded_files=["mask.tiff"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
-        parse_masks_from_filenames(uploader)
+    uploader = UploadStatus(uploaded_files=["mask.tiff"], n_total=1, uploaded_size_mb=0, total_size_mb=1)
+    assert isinstance(parse_masks_from_filenames(uploader), dash._callback.NoUpdate)
 
 def test_read_in_mask_from_filepath(get_current_dir):
     masks_dict = {"mask": os.path.join(get_current_dir, "mask.tiff")}
@@ -269,9 +267,17 @@ def test_parse_quantification_sheet_from_anndata_steinbock(get_current_dir):
 def test_return_umap_dataframe_from_quantification_dict(get_current_dir):
     quant_sheet = pd.DataFrame({'Channel_1': [1, 2, 3, 4, 5, 6], 'Channel_2': [1, 2, 3, 4, 5, 6]})
     cur_umap = pd.DataFrame({'UMAP1': [1, 2, 3, 4, 5, 6], 'UMAP2': [1, 2, 3, 4, 5, 6]})
-    umap = return_umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False,
-                                                          cols_include=['Channel_1'])
+    umap = umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False,
+                                                   cols_include=['Channel_1'])
     assert isinstance(umap, dash._callback.NoUpdate)
+
+def test_csv_to_anndata(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    adata_obj = quant_dataframe_to_anndata(measurements_csv)
+    assert list(adata_obj.obs.columns)[0] == "sample"
+    assert len(adata_obj.var_names) == adata_obj.X.shape[1]
+    measurements_back = parse_quantification_sheet_from_h5ad(adata_obj)
+    assert measurements_csv.equals(measurements_back)
 
 def test_gating_cell_ids(get_current_dir):
 

@@ -1,0 +1,21 @@
+
+projects:
+  - test_mcd # Informs the snakemake pipeline which projects to process
+
+seed: 123L
+hpf: 0 # hot pixel filter
+
+nuclear: "Ir191 Ir193"
+cytoplasm: "Dy162"
+
+deepcell_app: "mesmer"
+deepcell_model: "MultiplexSegmentation"
+deepcell_modelpath: "/opt/keras/models"
+deepcell_pxsize: 1
+aggr: "mean" # Aggregation of signal. Can be either of these [mean|median]
+neighbor_type: "borders" # Consideration of each neighbor
+dmax: 15
+kmax: 5
+
+phenograph_k: 30
+phenograph_min_cluster_size: 10

@@ -2,9 +2,11 @@
 <html>
   <head>
   <style>
+    * {font-family: Arial;}
     title {text-align: center;}
     h1 {text-align: center;}
     p {text-align: center;}
+    a {text-align: center; float: center;}
     div {text-align: center;}
 </style>
     <title>rakaia</title>
@@ -13,15 +15,22 @@
   <body>
     <header>
       <div class="container">
-        <h1 class="logo">rakaia</h1>
+        <h1 class="logo" style="margin-right: 1rem;">rakaia</h1>
         <h2 class="logo">Scalable multiplex imaging dataset analysis in the browser</h2>
+          <br>
+          <img src="{{ url_for('static', filename='app-preview.png')}}"  height="350"
+               width="1200" alt="rakaia app overview" style="float: center">
+          <br>
         <strong><nav>
           <ul class="menu">
-            <a href="/rakaia/">Launch rakaia image viewer</a>
+            <a style="font-size: 30px; margin-right: 3rem;" href="/rakaia/">Launch rakaia</a>
             <br>
-            <a href="https://camlab-bioml.github.io/rakaia-doc" target="_blank">Access rakaia help</a>
+              <br>
+              <br>
+              <br>
+            <a style="font-size: 20px; margin-right: 3rem"
+               href="https://camlab-bioml.github.io/rakaia-doc/docs/installation" target="_blank">Access rakaia documentation </a>
             <br>
-            <a href="https://github.com/camlab-bioml/rakaia" target="_blank">View source code</a>
           </ul>
         </nav></strong>
       </div>
