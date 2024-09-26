@@ -67,7 +67,7 @@ def get_current_or_default_channel_color(current_color: Union[str, dict]=None,
     if new_color == current_color['hex']:
         color_return = dash.no_update
     else:
-        color_return = dict(hex=new_color) if (new_color is not None and new_color not in \
+        color_return = {"hex": new_color} if (new_color is not None and new_color not in
                                           ['#FFFFFF', '#ffffff'] and not autofill_colors) or \
                                               (new_color is not None and autofill_colors) else dash.no_update
     return color_return
@@ -82,7 +82,7 @@ def get_current_default_params_with_preset(filter_type: str= "median", filter_va
     filter_type_return = filter_type if filter_type is not None else "median"
     filter_val_return = filter_val if filter_val is not None else 3
     filter_sigma_return = filter_sigma if filter_sigma is not None else 1.0
-    color_return = dict(hex=color) if color is not None and color not in \
+    color_return = {"hex": color} if color is not None and color not in \
                                       ['#FFFFFF', '#ffffff'] else dash.no_update
     return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
 

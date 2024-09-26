@@ -339,6 +339,10 @@ def test_annotation_transfer(annotation_hash):
         else:
             ignore.append(annot)
         index += 1
+    original_length = len(annotation_hash['Patient1+++slide0+++pos1_1'].keys())
+    annotation_hash = transfer_annotations_by_index(annotation_hash, 'Patient1+++slide0+++pos1_1',
+                                    'Patient1+++slide0+++pos1_1', indices)
+    assert len(annotation_hash['Patient1+++slide0+++pos1_1'].keys()) == original_length
     annotation_hash = transfer_annotations_by_index(annotation_hash, 'missing_roi',
                                                     'new_roi', indices)
     assert 'new_roi' not in annotation_hash.keys()

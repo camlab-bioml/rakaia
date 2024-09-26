@@ -127,9 +127,9 @@ def register_app_layout(config, cache_dest):
                             html.Div([
                                 dcc.Input(id="set-preset", type="text",
                                           placeholder="Create a preset from the current channel", value=None,
-                                          style={"width": "65%", "margin-right": "10px"}),
+                                          style={"width": "70%", "margin-right": "10px"}),
                                 dbc.Button("Create preset", id="preset-button", className="me-1",
-                                           style={"background-color": DEFAULT_WIDGET_COLOUR, "width": "30%"}),
+                                           style={"background-color": DEFAULT_WIDGET_COLOUR, "width": "40%"}),
                             ], style={"display": "flex", "float": "center", "textAlign": "center", "width": "90%"}),
                             html.Br(),
                             dcc.Dropdown(options=[], value=None, id='preset-options', style={"width": "75%"}),
@@ -771,7 +771,7 @@ def register_app_layout(config, cache_dest):
                                                               "accent-color": DEFAULT_WIDGET_COLOUR})],
                                         style={"display": "flex", "margin": "20px"}),
                                     html.Div([dcc.Checklist(options=[' Apply/refresh filter'], value=[],
-                                                            id="bool-apply-filter", style={"width": "85%",
+                                                            id="bool-apply-filter", style={"width": "100%",
                                                             "accent-color": DEFAULT_WIDGET_COLOUR}),
                                               dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
                                                            style={"width": "85%", "display": "inline-block"}),
@@ -1482,7 +1482,7 @@ def register_app_layout(config, cache_dest):
             dbc.Tab(label="Dataset gallery", tab_id='dataset-query', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=[
                 dbc.Row([dbc.Col(width=1, children=[
-                    html.H6("Query number", style={"margin-top": "15px"}),
+                    html.H6("Query No.", style={"margin-top": "15px"}),
                     html.Div([dcc.Input(id="dataset-query-number", type="number",
                                         placeholder="Query number",
                                         value=3, style={"height": "25%", "width": "45%"}),

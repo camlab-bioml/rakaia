@@ -23,7 +23,8 @@ def transfer_annotations_by_index(annotations: dict, current_roi: Union[str, Non
     Transfer one or more annotation indices from a current ROI to a target ROI.
     """
     indices_to_transfer = [indices_to_transfer] if isinstance(indices_to_transfer, int) else indices_to_transfer
-    if current_roi and target_roi and indices_to_transfer and current_roi in annotations:
+    if current_roi and target_roi and indices_to_transfer and current_roi in annotations and \
+            current_roi != target_roi:
         key_list = list(annotations[current_roi].keys())
         if target_roi not in annotations:
             annotations[target_roi] = {}

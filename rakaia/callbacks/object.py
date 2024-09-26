@@ -773,9 +773,15 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("annotation-transfer-window", "is_open"),
         Input('transfer-annotation-tabular', 'n_clicks'),
-        [State("annotation-transfer-window", "is_open")])
-    def toggle_show_annotation_transfer_modal(n, is_open):
+        State("annotation-transfer-window", "is_open"),
+        Input('transfer-annotation-execute', 'n_clicks'),
+        State('transfer-collection-options', 'value'),
+        State('annotation-table', 'selected_rows'))
+    def toggle_show_annotation_transfer_modal(n, is_open, transfer_execute, transfer_to, annots_selected):
         """
         Show the annotation transfer modal with a list of the possible ROIs to transfer to
+        Close the modal if at least one annotation is transferred to a new ROI
         """
+        if ctx.triggered_id == "transfer-annotation-execute":
+            return not is_open if (transfer_to and annots_selected) else is_open
         return not is_open if n else is_open
