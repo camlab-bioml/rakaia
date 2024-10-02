@@ -1,11 +1,18 @@
+import os
+import uuid
+
 import dash
 import pandas as pd
-from dash import ALL
+from dash import ALL, dcc
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 from dash.exceptions import PreventUpdate
 from rakaia.parsers.roi import RegionThumbnail
-from rakaia.io.gallery import generate_roi_query_gallery_children
+from rakaia.io.gallery import (
+            roi_query_gallery_children,
+            gallery_export_template,
+            channel_tiles_from_gallery)
+from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.pixel import get_first_image_from_roi_dictionary
 from rakaia.utils.quantification import (
     quantify_multiple_channels_per_roi,
@@ -35,6 +42,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('dataset-query-gallery-list', 'data'),
                        Output('main-tabs', 'active_tab', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
+                       Output('download-roi-tiles', 'data'),
+                       Input('btn-download-roi-tiles', 'n_clicks'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
                        State('blending_colours', 'data'),
@@ -64,7 +73,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('image-prioritization-cor', 'data'),
                        State('quantification-dict', 'data'),
                        prevent_initial_call=True)
-    def generate_roi_images_from_query(currently_selected, data_selection, blend_colour_dict,
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
+    def generate_roi_images_from_query(export_roi, currently_selected, data_selection, blend_colour_dict,
                                     session_config, execute_query, num_queries, rois_exclude, load_additional,
                                     existing_gallery, execute_quant_query, query_from_quantification, mask_dict,
                                     dataset_options, query_cell_id_lists, global_apply_filter,
@@ -78,8 +88,13 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # do not execute query if triggered from the quantification tab and no sample indices exist
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
         no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
-        if None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not \
-            quant_empty and len(currently_selected) > 0 and not no_similarity_scores:
+        if ctx.triggered_id == "btn-download-roi-tiles" and existing_gallery:
+            export_gallery = dcc.send_file(gallery_export_template(os.path.join(export_roi, 'rois.html'),
+                            channel_tiles_from_gallery(existing_gallery), num_cols=3))
+            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, export_gallery
+        elif None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not \
+            quant_empty and len(currently_selected) > 0 and not no_similarity_scores and ctx.triggered_id != "btn-download-roi-tiles":
+            # if exporting the current gallery
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
                 rois_decided, rois_exclude, row_children = query_from_quantification, [], []
             elif ctx.triggered_id == "find-similar" and quant is not None and find_similar:
@@ -91,6 +106,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 rois_decided, row_children = None, None
             # if the query is being extended, append on top of the existing gallery
             if ctx.triggered_id == "dataset-query-additional-load" and load_additional > 0:
+                # cant use existing gallery, need to somehow get the names in the current gallery and remake
                 rois_exclude, row_children = rois_exclude, existing_gallery
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
@@ -98,15 +114,15 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries),
             rois_exclude, rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter,
             global_filter_type, global_filter_val, global_filter_sigma, delimiter, False, dim_min, dim_max, keyw).get_image_dict()
-            new_row_children, roi_list = generate_roi_query_gallery_children(images)
+
+            new_row_children, roi_list = roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load": roi_list = list(set(rois_exclude + roi_list))
             roi_list.append(data_selection)
             row_children = row_children + new_row_children if row_children else new_row_children
-            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update
-        else:
-            error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_query"])
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
+            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update, dash.no_update
+        error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_query"])
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config, dash.no_update
 
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),

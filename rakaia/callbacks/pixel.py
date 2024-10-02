@@ -62,8 +62,8 @@ from rakaia.io.display import (
     generate_preset_options_preview_text,
     annotation_preview_table, timestamp_download_child, generate_empty_region_table)
 from rakaia.io.gallery import (
-    generate_channel_tile_gallery_children,
-    replace_channel_gallery_aliases)
+    channel_tile_gallery_children,
+    replace_channel_gallery_aliases, channel_tiles, gallery_export_template)
 from rakaia.parsers.object import ROIMaskMatch
 from rakaia.utils.graph import strip_invalid_shapes_from_graph_layout
 from rakaia.inputs.loaders import (
@@ -1186,6 +1186,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
+                       Output('download-chan-tiles', 'data'),
+                       Input('btn-download-chan-tiles', 'n_clicks'),
                        Input('uploaded_dict', 'data'),
                        Input('data-collection', 'value'),
                        State('annotation_canvas', 'relayoutData'),
@@ -1204,7 +1206,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('image-gallery-row', 'children'),
                        Input('chan-gallery-zoom-update', 'n_clicks'),
                        prevent_initial_call=True)
-    def create_channel_tile_gallery_grid(gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
+    def create_channel_tile_gallery_grid(download_tiles, gallery_data, data_selection, canvas_layout, toggle_gallery_zoom,
                                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases,
                                          nclicks, blend_colour_dict, toggle_scaling_gallery, session_config, delimiter,
                                          options, cur_gal, update_zoom):
@@ -1227,7 +1230,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if data_there and not zoom_not_needed and not no_channel and not dont_need_aliases:
                 # if the aliases are changed but the gallery exists, just update the labels in the DOM without re-rendering
                 if ctx.triggered_id == "alias-dict" and cur_gal and len(cur_gal) == len(aliases):
-                    return replace_channel_gallery_aliases(cur_gal, aliases)
+                    return replace_channel_gallery_aliases(cur_gal, aliases), dash.no_update
                 else:
                     # maintain the original order of channels that is dictated by the metadata
                     # decide if channel view or ROI view is selected
@@ -1244,13 +1247,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     else:
                         views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
-                    return generate_channel_tile_gallery_children(views, canvas_layout, ZOOM_KEYS,
-                    blend_colour_dict, preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom,
-                    toggle_scaling_gallery, 0.75, 3000, channel_selected if (view_by_channel and
-                                                channel_selected) else None) if views else []
+                    # if exporting, want only thumbnails so that all the images are the same size
+                    dim_use = 1 if ctx.triggered_id == "btn-download-chan-tiles" else 3000
+                    tiles, export = channel_tiles(views, canvas_layout, ZOOM_KEYS,
+                                                         blend_colour_dict, preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom,
+                                                         toggle_scaling_gallery, 0.75, dim_use, channel_selected if (view_by_channel and
+                                                channel_selected) else None) if views else None, dash.no_update
+                    if ctx.triggered_id == "btn-download-chan-tiles":
+                        export = dcc.send_file(gallery_export_template(os.path.join(download_tiles, 'tiles.html'), tiles))
+                    return channel_tile_gallery_children(tiles) if tiles else None, export
             raise PreventUpdate
-        except (dash.exceptions.LongCallbackError, AttributeError, KeyError):
-            raise PreventUpdate
+        except (dash.exceptions.LongCallbackError, AttributeError, KeyError): raise PreventUpdate
 
     @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
     def serve_static(path):
