@@ -73,7 +73,7 @@ class AlertMessage(BaseModel):
                       "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
                                          "delimiter does not have any overlapping characters with any of the filenames, "
                                          "or ROI names. ",
-                      "invalid_query": "Error when generating ROI query. Ensure that: \n\n"
+                      "invalid_query": "Error when generating/exporting ROI query. Ensure that: \n\n"
                                        "1. If querying a random subset, that images have been imported and "
                                        "the current canvas contains at least one marker. \n\n"
                                        "2. If querying from the quantification/UMAP tab: "

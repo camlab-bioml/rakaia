@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ability to transfer annotations between ROIs
 - Option to export channel tile and ROI query galleries as HTML
 
+### Fixed
+
+- Import filenames as sets (do not import duplicate filenames)
+
 ## [0.20.0] - 2024-09-19
 
 ### Added

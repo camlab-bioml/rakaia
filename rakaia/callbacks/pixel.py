@@ -63,7 +63,7 @@ from rakaia.io.display import (
     annotation_preview_table, timestamp_download_child, generate_empty_region_table)
 from rakaia.io.gallery import (
     channel_tile_gallery_children,
-    replace_channel_gallery_aliases, channel_tiles, gallery_export_template)
+    replace_channel_gallery_aliases, channel_tiles, gallery_export_template, channel_tiles_from_gallery)
 from rakaia.parsers.object import ROIMaskMatch
 from rakaia.utils.graph import strip_invalid_shapes_from_graph_layout
 from rakaia.inputs.loaders import (
@@ -209,7 +209,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         The image dictionary template is used to populate the actual images using lazy load
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-            files = natsorted(session_dict['uploads']) if natsort else session_dict['uploads']
+            files = natsorted(set(session_dict['uploads'])) if natsort else set(session_dict['uploads'])
             message, unique_suffixes = file_import_message(files)
             suffix_add = ALERT.warnings["multiple_filetypes"] if len(unique_suffixes) > 1 else ""
             error_config = add_warning_to_error_config(error_config, suffix_add + message) if 'from_steinbock' \
@@ -1227,7 +1227,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                          (ctx.triggered_id == "toggle-gallery-view" and not channel_selected)
             # don't use updated aliases if using single-channel view
             dont_need_aliases = ctx.triggered_id == "alias-dict" and (view_by_channel and channel_selected)
-            if data_there and not zoom_not_needed and not no_channel and not dont_need_aliases:
+            if ctx.triggered_id == "btn-download-chan-tiles" and cur_gal:
+                return dash.no_update, dcc.send_file(gallery_export_template(os.path.join(download_tiles, 'tiles.html'),
+                            channel_tiles_from_gallery(cur_gal)))
+            elif data_there and not zoom_not_needed and not no_channel and not dont_need_aliases and ctx.triggered_id != "btn-download-chan-tiles":
                 # if the aliases are changed but the gallery exists, just update the labels in the DOM without re-rendering
                 if ctx.triggered_id == "alias-dict" and cur_gal and len(cur_gal) == len(aliases):
                     return replace_channel_gallery_aliases(cur_gal, aliases), dash.no_update
@@ -1248,14 +1251,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
                     # if exporting, want only thumbnails so that all the images are the same size
-                    dim_use = 1 if ctx.triggered_id == "btn-download-chan-tiles" else 3000
-                    tiles, export = channel_tiles(views, canvas_layout, ZOOM_KEYS,
+                    tiles = channel_tiles(views, canvas_layout, ZOOM_KEYS,
                                                          blend_colour_dict, preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom,
-                                                         toggle_scaling_gallery, 0.75, dim_use, channel_selected if (view_by_channel and
-                                                channel_selected) else None) if views else None, dash.no_update
-                    if ctx.triggered_id == "btn-download-chan-tiles":
-                        export = dcc.send_file(gallery_export_template(os.path.join(download_tiles, 'tiles.html'), tiles))
-                    return channel_tile_gallery_children(tiles) if tiles else None, export
+                                                         toggle_scaling_gallery, 0.75, 3000, channel_selected if (view_by_channel and
+                                                channel_selected) else None) if views else None
+                    return channel_tile_gallery_children(tiles) if tiles else None, dash.no_update
             raise PreventUpdate
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError): raise PreventUpdate
 

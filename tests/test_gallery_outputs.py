@@ -122,7 +122,7 @@ def test_generate_channel_gallery_children():
         assert isinstance(elem.children, dbc.Card)
 
 def test_tiles_from_gallery_children(get_current_dir):
-    with open(os.path.join(get_current_dir, 'gallery.pickle'), 'rb') as f:
+    with open(os.path.join(get_current_dir, 'rois.pickle'), 'rb') as f:
         channel_children = pickle.load(f)
         tiles_from_gal = channel_tiles_from_gallery(channel_children)
         assert len(tiles_from_gal) == 2

@@ -89,12 +89,11 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
         no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
         if ctx.triggered_id == "btn-download-roi-tiles" and existing_gallery:
-            export_gallery = dcc.send_file(gallery_export_template(os.path.join(export_roi, 'rois.html'),
-                            channel_tiles_from_gallery(existing_gallery), num_cols=3))
-            return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, export_gallery
+            return (dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update,
+                    dcc.send_file(gallery_export_template(os.path.join(export_roi, 'rois.html'),
+                            channel_tiles_from_gallery(existing_gallery), 3)))
         elif None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not \
             quant_empty and len(currently_selected) > 0 and not no_similarity_scores and ctx.triggered_id != "btn-download-roi-tiles":
-            # if exporting the current gallery
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
                 rois_decided, rois_exclude, row_children = query_from_quantification, [], []
             elif ctx.triggered_id == "find-similar" and quant is not None and find_similar:

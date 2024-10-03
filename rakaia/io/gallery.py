@@ -46,10 +46,10 @@ def replace_channel_gallery_aliases(child, aliases_dict):
         for value in child:
             replace_channel_gallery_aliases(value, aliases_dict)
     return child
-#
+
 def gallery_image_identifiers(gallery_children: list):
     """
-    Parse the current children for image labels
+    Parse the current children for image thumbnail labels from either channel and ROI galleries
     """
     labels = []
     for child in gallery_children:
@@ -57,14 +57,15 @@ def gallery_image_identifiers(gallery_children: list):
             for sub_child in child['props']['children']['props']['children']:
                 if sub_child['props']['children']:
                     for inner_child in sub_child['props']['children']:
-                        if isinstance(inner_child['props'], dict) and 'id' in inner_child['props'] and \
-                                'index' in inner_child['props']['id']:
-                            labels.append(inner_child['props']['id']['index'])
+                        # get the card label instead of the key to match the galleries exactly
+                        if 'props' in inner_child and all(elem in inner_child['props'] for elem in
+                        ['children', 'className']) and inner_child['props']['className'] == 'card-text':
+                            labels.append(inner_child['props']['children'])
     return labels
 
 def gallery_image_src(gallery_children: list):
     """
-    Parse the current gallery children for image src attributes
+    Parse the current gallery children for image src attributes from either channel and ROI galleries.
     """
     src = []
     for child in gallery_children:
@@ -118,8 +119,7 @@ def set_channel_thumbnail(canvas_layout: Union[dict, go.Figure], channel_image: 
             image_render = channel_image[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                                         range(int(x_range_low), int(x_range_high), 1))]
             alternative = image_render
-        except IndexError:
-            image_render = channel_image
+        except IndexError: image_render = channel_image
     else:
         image_render = resize_for_canvas(channel_image)
     return image_render, alternative
@@ -159,9 +159,7 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
                         apply_preset_to_array(raw_channel_array,
                         blend_colour_dict[channel_key]).astype(np.uint8), ratio,
                         resize_signal_retention_threshold, resize_dimension_threshold)
-    except KeyError as e:
-        print(e)
-        pass
+    except KeyError: pass
     return image_render
 
 def channel_tiles(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
@@ -252,13 +250,13 @@ def channel_column_template(channel_name: str, channel_array: Union[np.array, np
     Set the HTML column template for a channel array to export in HTML format
     """
     chan_str = channel_array
+    # if channel is passed as base64 string, the data image dir is already provided
     data_dir = ""
     if not isinstance(channel_array, str):
         channel_array = Image.fromarray(resize_for_canvas(channel_array)).convert('RGB')
         buffered = BytesIO()
         channel_array.save(buffered, format="png")
         base64_channel = base64.b64encode(buffered.getvalue())
-        # base64_channel = base64.b64encode(channel_array)
         chan_str = base64_channel.decode()
         data_dir = "data:image/png;base64, "
     return f"<div class='column'>" \
@@ -266,17 +264,11 @@ def channel_column_template(channel_name: str, channel_array: Union[np.array, np
             f"<img style='max-width: 100%; max-height: 100%;' src='{data_dir}{str(chan_str)}'>" \
             "</div>"
 
-def gallery_export_template(dest_file: str, tiles: dict, by_roi: bool=False,
-                            num_cols: int=4):
+def gallery_export_template(dest_file: str, tiles: dict, num_cols: int=4):
     """
     Set the template for exporting the channel gallery in HTML format
     """
     cols_added = ""
-    if by_roi:
-        new_tiles = {}
-        for key, value in tiles.items():
-            new_tiles[key] = {'label': key, 'tile': value}
-        tiles = new_tiles
     for value in tiles.values():
         cols_added = cols_added + channel_column_template(value['label'], value['tile'])
 
@@ -297,12 +289,13 @@ def gallery_export_template(dest_file: str, tiles: dict, by_roi: bool=False,
                     "<div class='row'>" \
                     f"{cols_added}" \
                     "</div>" \
+                    "<footer>" \
+                    "<p> Note: Low resolution thumbnails (< 350px) may appear smaller than in the application. </p>" \
+                    "</footer>" \
                     "</body>" \
                     "</html>"
 
     html_write = open(dest_file, "w")
-    # Adding input data to the HTML file
     html_write.write(html_template)
-    # Saving the data into the HTML file
     html_write.close()
     return dest_file
