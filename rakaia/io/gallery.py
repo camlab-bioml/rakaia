@@ -261,7 +261,8 @@ def channel_column_template(channel_name: str, channel_array: Union[np.array, np
         data_dir = "data:image/png;base64, "
     return f"<div class='column'>" \
             f"<h3 id={channel_name} style='margin: 15px;' class='card-text'>{channel_name} </b>" \
-            f"<img style='max-width: 100%; max-height: 100%;' src='{data_dir}{str(chan_str)}'>" \
+            f"<img style='max-width: 100%; max-height: 100%; min-width: 100%;" \
+             f"min-height: 100%;' src='{data_dir}{str(chan_str)}'>" \
             "</div>"
 
 def gallery_export_template(dest_file: str, tiles: dict, num_cols: int=4):
@@ -290,7 +291,7 @@ def gallery_export_template(dest_file: str, tiles: dict, num_cols: int=4):
                     f"{cols_added}" \
                     "</div>" \
                     "<footer>" \
-                    "<p> Note: Low resolution thumbnails (< 350px) may appear smaller than in the application. </p>" \
+                    "<p>Note: Low resolution thumbnails (< 350px) may appear distorted due to automatic scaling.</p>" \
                     "</footer>" \
                     "</body>" \
                     "</html>"

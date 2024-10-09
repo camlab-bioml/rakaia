@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-10-02
+## [0.21.0] - 2024-10-09
 
 ### Added
 
 - Ability to transfer annotations between ROIs
-- Option to export channel tile and ROI query galleries as HTML
+- Option to export channel tile and ROI query galleries as HTML while retaining resolution
 
 ### Fixed
 
