@@ -456,13 +456,12 @@ def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
 
 def get_first_image_from_roi_dictionary(roi_dictionary):
     """
-    Return the first image in a dictionary that specifies an ROI. This assumes that
+    Return the first real image in a dictionary that specifies an ROI. This assumes that
     all of the other channel arrays in the dictionary have the same shape
     """
-    first_image_name = list(roi_dictionary.keys())[0]
-    image_for_validation = roi_dictionary[first_image_name]
-    return image_for_validation
-
+    for value in roi_dictionary.values():
+        if value is not None:
+            return value
 
 def apply_filter_to_array(image, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
     """

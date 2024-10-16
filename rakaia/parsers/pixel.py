@@ -9,6 +9,7 @@ from scipy.sparse import issparse, csc_matrix
 import pandas as pd
 from PIL import Image
 import h5py
+import anndata as ad
 from rakaia.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
@@ -36,7 +37,8 @@ class FileParser:
     :param internal_name: When not using lazy loading, retain the current ROI selection string
     :return: None
     """
-    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5"}
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5",
+               ".h5ad": "h5ad"}
 
     def __init__(self, filepaths: list, array_store_type: str="float", lazy_load: bool=True,
                  single_roi_parse: bool=True, roi_name: Union[str, None]=None,
@@ -65,6 +67,8 @@ class FileParser:
             self.tiff = partial(self.parse_tiff, internal_name=self.internal_name)
             self.txt = partial(self.parse_txt, internal_name=self.internal_name)
             self.h5 = partial(self.parse_h5)
+            self.h5ad = partial(self.parse_h5ad)
+
             for upload in self.filepaths:
                 try:
                     # IMP: split reading a single mcd ROI from the entire mcd, as mcds can contain multiple ROIs
@@ -99,7 +103,7 @@ class FileParser:
         """
         if file_extension not in list(self.MATCHES.keys()):
             raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
-                            ".mcd, .tiff, .txt, or .h5")
+                            ".mcd, .tiff, .txt, .h5, or .h5ad")
 
     def append_channel_identifier_to_collection(self, channel_name: str):
         """
@@ -413,6 +417,32 @@ class FileParser:
             self.panel_length = len(txt_channel_names) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
+    def parse_h5ad(self, h5ad_filepath):
+        """
+        Parse an h5ad filepath. Currently, only 10x Visium is supported as an h5ad raw image input
+        :param h5ad_filepath: Filepath to 10x Visium filepath
+        """
+        anndata = ad.read_h5ad(h5ad_filepath)
+        if 'spatial' in anndata.obsm:
+            basename = str(Path(h5ad_filepath).stem)
+            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq"
+            self.metadata_channels = list(anndata.var_names)
+            self.metadata_labels = list(anndata.var_names)
+            # get the channel names from the var names
+            self.dataset_information_frame["ROI"].append(str(roi))
+            self.dataset_information_frame["Dimensions"].append("NA (10x Visium)")
+            self.dataset_information_frame["Panel"].append(
+                f"{len(list(anndata.var_names))} markers")
+            self.image_dict[roi] = {str(marker): None for marker in anndata.var_names}
+            self.panel_length = len(list(anndata.var_names))
+            self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
+                                           'Channel Name': self.metadata_channels,
+                                           'Channel Label': self.metadata_labels,
+                                           'rakaia Label': self.metadata_labels}
+            self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
+                                                   'rakaia Label']
+
+
     def get_parsed_information(self) -> pd.DataFrame:
         """
         Get a dataframe listing successfully parsed ROIs.
@@ -533,3 +563,13 @@ def check_empty_missing_layer_dict(current_layers: Union[dict, None], data_selec
     if current_layers is None or data_selection not in current_layers.keys():
         current_layers = {data_selection: {}}
     return current_layers
+
+def parse_files_for_h5ad(uploads: Union[list, dict]):
+    """
+    Parse the list of uploaded filepaths and search for an h5ad extension (represents 10x Visium)
+    """
+    uploads = uploads['uploads'] if isinstance(uploads, dict) and 'uploads' in uploads else uploads
+    for upload in uploads:
+        if upload.endswith('.h5ad'):
+            return upload
+    return None

@@ -26,7 +26,9 @@ from rakaia.parsers.pixel import (
     populate_image_dict_from_lazy_load,
     create_new_blending_dict,
     populate_alias_dict_from_editable_metadata,
-    check_blend_dictionary_for_blank_bounds_by_channel, check_empty_missing_layer_dict)
+    check_blend_dictionary_for_blank_bounds_by_channel,
+    check_empty_missing_layer_dict, parse_files_for_h5ad)
+from rakaia.parsers.visium import visium_canvas_dimensions, check_spot_grid_multi_channel
 from rakaia.utils.decorator import (
     # time_taken_callback,
     DownloadDirGenerator)
@@ -160,7 +162,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             import wx
             app = wx.App(None)
             dialog = wx.FileDialog(None, 'Open', str(Path.home()), style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
-                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5|*.tiff;*.tif;*.mcd;*.txt;*.h5")
+                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5|*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad")
             if dialog.ShowModal() == wx.ID_OK:
                 filenames = dialog.GetPaths()
                 if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
@@ -307,8 +309,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 try:
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
                     session_config=session_config, array_store_type=app_config['array_store_type'], delimiter=delimiter)
+                    # TODO: change logic here for 10x Visium, all will be None
                     if all([elem is None for elem in image_dict[data_selection].values()]):
-                        raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
+                        # if 10x Visium, check the dimensions
+                        if not parse_files_for_h5ad(session_config): raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
+                        grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(parse_files_for_h5ad(session_config))
+                        dim_return = (grid_height, grid_width)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if data_selection in image_dict.keys() and all([image_dict[data_selection][elem] is not None for
                                                                     elem in image_dict[data_selection].keys()]):
@@ -502,19 +508,26 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('image_presets', 'data'),
                        State('images_in_blend', 'value'),
                        State('autofill-channel-colors', 'value'),
+                       State('session_config', 'data'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('param_config', 'data', allow_duplicate=True),
                        Output('images_in_blend', 'value', allow_duplicate=True),
+                       Output('uploaded_dict', 'data', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict,
-                                               cur_image_in_mod_menu, autofill_channel_colours):
+                                               cur_image_in_mod_menu, autofill_channel_colours, session_dict):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
         if None not in (add_to_layer, current_blend_dict, data_selection, uploaded_w_data) and data_selection in uploaded_w_data:
             try:
+                uploaded_return = dash.no_update
+                if any(uploaded_w_data[data_selection][elem] is None for elem in add_to_layer):
+                    uploaded_w_data = check_spot_grid_multi_channel(uploaded_w_data, data_selection,
+                    parse_files_for_h5ad(session_dict), add_to_layer)
+                    uploaded_return = SessionServerside(uploaded_w_data, key="upload_dict", use_unique_key=OVERWRITE)
                 channel_modify = dash.no_update
                 if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}
                 if data_selection is not None:
@@ -551,7 +564,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                         current_blend_dict[elem]['color'])).astype(np.uint8)
                 return current_blend_dict, SessionServerside(all_layers, key="layer_dict",
-                                                             use_unique_key=OVERWRITE), param_dict, channel_modify
+                        use_unique_key=OVERWRITE), param_dict, channel_modify, uploaded_return
             except (TypeError, KeyError): raise PreventUpdate
         raise PreventUpdate
 
@@ -1359,7 +1372,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # TODO: currently, the pixel histogram will collapse on a slider change because of the blend dictionary.
         # collapse is triggered by this object to prevent the pixel histogram from being empty on an ROI change
-        if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
+        if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
+                data_selection in uploaded and uploaded[data_selection][selected_channel] is not None:
             blend_return, hist_open = dash.no_update, dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend"]:
