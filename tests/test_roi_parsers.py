@@ -83,6 +83,15 @@ def test_query_parser_txt(get_current_dir):
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
+def test_query_parser_visium_h5ad(get_current_dir):
+    # Currently, visium is not supported for ROI thumbnails, so returns None
+    session_config = {"uploads": [str(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))]}
+    parse = FileParser(session_config['uploads']).image_dict
+    blend_dict = create_new_blending_dict(parse)
+    roi_query = RegionThumbnail(session_config, blend_dict, ['Xkr4'], 1,
+                dataset_options=list(parse.keys())).get_image_dict()
+    assert roi_query is None
+
 def test_roi_query_parser_predefined(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")
     session_config = {"uploads": [str(mcd)]}

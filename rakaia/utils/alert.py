@@ -9,8 +9,8 @@ class DataImportTour(BaseModel):
     :return: None
     """
     steps: list = [{'selector': '[id="upload-image"]',
-                    'content': "Option 1: Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
-                               " be used only for datasets < 2GB or if the app deployment is public/shared, "
+                    'content': "Option 1: Upload images or spatial datasets (.mcd, .tiff, .h5ad, etc.) using drag and drop. "
+                               "Should be used only for datasets < 2GB or if the app deployment is public/shared, "
                                "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
                 'content': "Option 2: For large datasets (> 2GB) on local deployments, "
@@ -19,7 +19,7 @@ class DataImportTour(BaseModel):
                 {'selector': '[id="show-dataset-info"]',
                 'content': 'View a list of imported datasets and regions of interest (ROIs).'
                            ' Multiple ROIs, files, and/or filetypes can be imported into the same session, '
-                           'provided that the biomarker panel is the same across all ROIs.'},
+                           'provided that the biomarker panel is identical across all ROIs.'},
                 {'selector': '[id="data-collection"]',
                 'content': 'Select an ROI from the dropdown menu to populate the image gallery'
                                ' and begin image analysis'},

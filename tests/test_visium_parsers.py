@@ -12,9 +12,10 @@ import pytest
 def test_identify_h5ad_in_uploads(get_current_dir):
     uploads = {"uploads": [os.path.join(get_current_dir, "for_recolour.tiff"),
                            os.path.join(get_current_dir, "visium_thalamus.h5ad")]}
-    h5ad_found = parse_files_for_h5ad(uploads)
+    h5ad_found = parse_files_for_h5ad(uploads, "visium_thalamus+++slide0+++acq")
     assert h5ad_found == os.path.join(get_current_dir, "visium_thalamus.h5ad")
-    assert parse_files_for_h5ad([]) is None
+    assert parse_files_for_h5ad(uploads, "other_visium+++slide0+++acq") is None
+    assert parse_files_for_h5ad([], "visium_thalamus+++slide0+++acq") is None
 
 def test_basic_visium_anndata_parser(get_current_dir):
     visium_parser = FileParser([os.path.join(get_current_dir, "visium_thalamus.h5ad")])

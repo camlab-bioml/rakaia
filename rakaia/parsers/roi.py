@@ -100,7 +100,9 @@ class RegionThumbnail:
                     break
                 filename, file_extension = os.path.splitext(file_path)
                 # call the additive thumbnail partial function with the corresponding extension
-                getattr(self, self.MATCHES[file_extension])(file_path)
+                try:
+                    getattr(self, self.MATCHES[file_extension])(file_path)
+                except KeyError: pass
 
     def set_imported_files(self):
         """

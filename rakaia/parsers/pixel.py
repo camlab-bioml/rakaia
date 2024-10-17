@@ -10,6 +10,8 @@ import pandas as pd
 from PIL import Image
 import h5py
 import anndata as ad
+
+from rakaia.parsers.visium import visium_canvas_dimensions
 from rakaia.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
@@ -428,7 +430,8 @@ class FileParser:
             self.metadata_labels = list(anndata.var_names)
             # get the channel names from the var names
             self.dataset_information_frame["ROI"].append(str(roi))
-            self.dataset_information_frame["Dimensions"].append("NA (10x Visium)")
+            grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(anndata)
+            self.dataset_information_frame["Dimensions"].append(f"{grid_height}x{grid_width}")
             self.dataset_information_frame["Panel"].append(
                 f"{len(list(anndata.var_names))} markers")
             self.image_dict[roi] = {str(marker): None for marker in anndata.var_names}
@@ -562,12 +565,13 @@ def check_empty_missing_layer_dict(current_layers: Union[dict, None], data_selec
         current_layers = {data_selection: {}}
     return current_layers
 
-def parse_files_for_h5ad(uploads: Union[list, dict]):
+def parse_files_for_h5ad(uploads: Union[list, dict], data_selection: str, delimiter: str="+++"):
     """
     Parse the list of uploaded filepaths and search for an h5ad extension (represents 10x Visium)
     """
     uploads = uploads['uploads'] if isinstance(uploads, dict) and 'uploads' in uploads else uploads
+    exp, slide, acq =  split_string_at_pattern(data_selection, delimiter)
     for upload in uploads:
-        if upload.endswith('.h5ad'):
+        if upload.endswith('.h5ad') and exp in upload:
             return upload
     return None

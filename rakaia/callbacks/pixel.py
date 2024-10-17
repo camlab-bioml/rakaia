@@ -312,8 +312,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     session_config=session_config, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                     if all([elem is None for elem in image_dict[data_selection].values()]):
                         # if 10x Visium, check the dimensions
-                        if not parse_files_for_h5ad(session_config): raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
-                        grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(parse_files_for_h5ad(session_config))
+                        if not parse_files_for_h5ad(session_config, data_selection, delimiter):
+                            raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
+                        grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(
+                            parse_files_for_h5ad(session_config, data_selection, delimiter))
                         dim_return = (grid_height, grid_width)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if data_selection in image_dict.keys() and all([image_dict[data_selection][elem] is not None for
@@ -511,6 +513,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('autofill-channel-colors', 'value'),
                        State('session_config', 'data'),
                        Input('visium-spot-rad', 'value'),
+                       State('dataset-delimiter', 'value'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('param_config', 'data', allow_duplicate=True),
@@ -520,7 +523,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict,
                                                cur_image_in_mod_menu, autofill_channel_colours, session_dict,
-                                               visium_spot_size):
+                                               visium_spot_size, delimiter):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
@@ -530,7 +533,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 if any(uploaded_w_data[data_selection][elem] is None for elem in add_to_layer):
                     uploaded_w_data = check_spot_grid_multi_channel(uploaded_w_data, data_selection,
-                    parse_files_for_h5ad(session_dict), add_to_layer, visium_spot_size)
+                    parse_files_for_h5ad(session_dict, data_selection, delimiter), add_to_layer, visium_spot_size)
                     uploaded_return = SessionServerside(uploaded_w_data, key="upload_dict", use_unique_key=OVERWRITE)
                 channel_modify = dash.no_update
                 if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}
