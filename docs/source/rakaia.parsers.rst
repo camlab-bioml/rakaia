@@ -28,6 +28,14 @@ rakaia.parsers.roi module
    :undoc-members:
    :show-inheritance:
 
+rakaia.parsers.visium module
+----------------------------
+
+.. automodule:: rakaia.parsers.visium
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

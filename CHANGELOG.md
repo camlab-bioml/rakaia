@@ -7,16 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-10-09
+## [0.21.0] - 2024-10-17
 
 ### Added
 
 - Ability to transfer annotations between ROIs
 - Option to export channel tile and ROI query galleries as HTML while retaining resolution
+- Support for reading 10X Visium anndata (h5ad) objects for marker-spot projection + input for setting spot radius
 
 ### Fixed
 
 - Import filenames as sets (do not import duplicate filenames)
+- Improved scaling tick markers for smaller dynamic ranges and sparse matrices
 
 ## [0.20.0] - 2024-09-19
 

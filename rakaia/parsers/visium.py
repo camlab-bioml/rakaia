@@ -1,3 +1,4 @@
+from typing import Union
 import anndata as ad
 import numpy as np
 import skimage
@@ -57,7 +58,6 @@ def visium_spot_grid_single_marker(adata, gene_marker, spot_size: int=55):
         raise ValueError("Spatial coordinates not found in 'obsm' attribute.")
 
     spatial_coords = adata.obsm['spatial']
-    # spatial_coords = np.column_stack((adata.obs['array_col'], adata.obs['array_row']))
 
     grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(adata)
     gene_grid = np.zeros((grid_height, grid_width))
@@ -68,17 +68,19 @@ def visium_spot_grid_single_marker(adata, gene_marker, spot_size: int=55):
         grid_y = int(y - y_min)  # Shift the y-coordinate to start from 0
         try:
             gene_grid[skimage.draw.disk((grid_y, grid_x), radius=int(spot_size))] = float(spot_values[i])
-        except IndexError:
-            pass
+        except IndexError: pass
 
     return gene_grid.astype(np.float32)
 
 
-def check_spot_grid_multi_channel(image_dict, data_selection, adata, channel_list):
+def check_spot_grid_multi_channel(image_dict, data_selection, adata, channel_list,
+                                  spot_size: Union[int,float]=55):
     """
-    Check the current raw image dictionary for missing visium spot arrays
+    Check the current raw image dictionary for missing visium spot arrays using hte currently selected
+    marker list. If markers are missing, add the spot grids to the dictionary
     """
     for selection in channel_list:
         if image_dict[data_selection][selection] is None:
-            image_dict[data_selection][selection] = visium_spot_grid_single_marker(adata, selection)
+            image_dict[data_selection][selection] = visium_spot_grid_single_marker(adata, selection,
+                                                    spot_size)
     return image_dict

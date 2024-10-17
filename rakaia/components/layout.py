@@ -166,6 +166,12 @@ def register_app_layout(config, cache_dest):
                                                  persistence=config['persistence'], persistence_type='local',
                                                  style={"accent-color": DEFAULT_WIDGET_COLOUR})],
                                  style={"display": "flex"}),
+                        html.Br(),
+                        html.Div([html.B("Visium spot radius", style={"margin-right": "20px"}),
+                                  dcc.Input(id='visium-spot-rad', type='number', value=55, debounce=True,
+                                            style={"width": "20%", "height": "50%"},
+                                            persistence=config['persistence'], persistence_type='local'),
+                                  ], style={"display": "flex"}),
                     html.Br(),
                     ], style={"margin": "5px"})]),
                     html.H6(f"Session cache: {cache_dest}"),
@@ -213,11 +219,11 @@ def register_app_layout(config, cache_dest):
                                     "margin-top": "-3px"})], style={"display": "flex"}),
                                 dbc.Tooltip(TOOLTIPS['import-tour'], target="dash-import-tour"),
                                 du.Upload(id='upload-image', max_file_size=50000,
-                                text='Import/copy imaging data (.MCD, .tiff, .txt, etc.) files '
+                                text='Import/copy imaging or spatial data (.MCD, .tiff, .txt, .h5ad, etc.) files '
                                      'using drag and drop or a file dialog (click here)',
                                               chunk_size=100,
                                               max_total_size=50000, max_files=200,
-                                              filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'],
+                                              filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt', 'h5ad'],
                                               default_style={"margin-top": "12.5px",
                                                              "height": "7.5vh"}),
                                     html.H5("or", style={'width': '35%', 'margin-top': '5px'}),
@@ -1606,7 +1612,7 @@ def register_app_layout(config, cache_dest):
                 ])
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),
-        wrap_child_in_loading(dcc.Store(id="uploaded_dict"), wrap=config['use_loading']),
+        dcc.Store(id="uploaded_dict"),
         # use a blank template for the lazy loading
         wrap_child_in_loading(dcc.Store(id="uploaded_dict_template"), wrap=config['use_loading']),
         dcc.Store(id="session_config"),

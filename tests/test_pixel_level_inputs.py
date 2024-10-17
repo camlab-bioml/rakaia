@@ -121,12 +121,14 @@ def test_invert_annotations_figure(channel_hash):
 
 
 def test_tick_marker_spacing_range_slider():
-
-    assert len(set_range_slider_tick_markers(3)[0]) == 4
-    assert len(set_range_slider_tick_markers(2)[0]) == 3
-    assert set_range_slider_tick_markers(100)[0] == {0: '0', 33: '33', 66: '66', 100: '100'}
+    med_range, step = set_range_slider_tick_markers(3)
+    assert len(med_range) == 4
+    assert step == 0.12
+    normal_range, normal_step = set_range_slider_tick_markers(100)
+    assert normal_range == {0: '0', 33: '33', 66: '66', 100: '100'}
+    assert normal_step == 1
     low_range, small_step = set_range_slider_tick_markers(0.3)
-    assert len(low_range) == 2
+    assert len(low_range) == 4
     assert small_step == 0.01
 
 def test_generate_legend_text_channels(channel_hash_2):

@@ -162,8 +162,7 @@ class FileParser:
                                 f"{self.image_dict[roi][channel].shape[1]}x"
                                 f"{self.image_dict[roi][channel].shape[0]}")
                             self.dataset_information_frame["Panel"].append(f"{len(data_h5[roi].keys())} markers")
-                    except KeyError:
-                        pass
+                    except KeyError: pass
                     self.append_channel_identifier_to_collection(channel)
                     self.append_channel_identifier_to_channel_list(channel)
                     self.append_channel_alias_to_label_list(channel)
@@ -175,8 +174,7 @@ class FileParser:
             meta_back[col] = meta_back[col].str.decode("utf-8")
         try:
             meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
-        except KeyError:
-            pass
+        except KeyError: pass
         self.image_dict['metadata'] = meta_back
 
     def parse_h5_channel_blend_params(self, h5_roi, channel: str):

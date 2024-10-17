@@ -4,7 +4,8 @@ from rakaia.callbacks.triggers import (
     global_filter_disabled,
     channel_order_as_default,
     channel_already_added,
-    set_annotation_indices_to_remove)
+    set_annotation_indices_to_remove,
+    reset_on_visium_spot_size_change)
 import numpy as np
 
 def test_triggers():
@@ -44,3 +45,14 @@ def test_annotation_index_triggers():
     indices_remove = set_annotation_indices_to_remove("delete-annotation-tabular", annot_dict,
                                                       "roi_1", [])
     assert not indices_remove
+
+def test_reset_layers_on_visium_spot_change():
+    raw = {"visium_1": {"marker_1": np.zeros((100, 100)),
+                        "marker_2": np.zeros((100, 100))}}
+    layers = {"visium_1": {"marker_2": np.ones((100, 100))}}
+    raw_back, layers_back = reset_on_visium_spot_size_change("visium-spot-rad", raw, layers, "visium_1")
+    assert all(elem is None for elem in raw_back['visium_1'].values())
+    assert not layers_back['visium_1']
+    raw_same, layers_same = reset_on_visium_spot_size_change("diff_trigger", raw, layers, "visium_1")
+    assert raw_same == raw
+    assert layers_same == layers

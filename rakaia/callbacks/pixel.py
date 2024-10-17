@@ -102,7 +102,7 @@ from rakaia.callbacks.triggers import (
     global_filter_disabled,
     channel_order_as_default,
     new_roi_same_dims,
-    channel_already_added)
+    channel_already_added, reset_on_visium_spot_size_change)
 
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -304,12 +304,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # set the default canvas to return without a load screen
         if image_dict and data_selection and names:
-            channels_return = sort_channel_dropdown(names, sort_channels)
+            # set a small default grid width and height for no loading. if adding something like visium, add a loading
+            channels_return, grid_width, grid_height = sort_channel_dropdown(names, sort_channels), 1, 1
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
                 try:
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
                     session_config=session_config, array_store_type=app_config['array_store_type'], delimiter=delimiter)
-                    # TODO: change logic here for 10x Visium, all will be None
                     if all([elem is None for elem in image_dict[data_selection].values()]):
                         # if 10x Visium, check the dimensions
                         if not parse_files_for_h5ad(session_config): raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
@@ -330,7 +330,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=
                             enable_zoom, wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                     else:
-                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
+                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(np.zeros((grid_width, grid_height)), enable_zoom=enable_zoom,
                                         wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
 
                     # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
@@ -479,8 +479,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     for elem in channel_list_return:
                         current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
                             current_blend_dict, elem, uploaded_w_data, data_selection)
-                        array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
-                        all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
+                        if uploaded_w_data[data_selection][elem] is not None:
+                            array_preset = apply_preset_to_array(uploaded_w_data[data_selection][elem], current_blend_dict[elem])
+                            all_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                         current_blend_dict[elem]['color'])).astype(np.uint8)
                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
                     parse_global_filter_values_from_json(new_blend_dict['config'])
@@ -509,6 +510,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('images_in_blend', 'value'),
                        State('autofill-channel-colors', 'value'),
                        State('session_config', 'data'),
+                       Input('visium-spot-rad', 'value'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
                        Output('param_config', 'data', allow_duplicate=True),
@@ -517,16 +519,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict,
-                                               cur_image_in_mod_menu, autofill_channel_colours, session_dict):
+                                               cur_image_in_mod_menu, autofill_channel_colours, session_dict,
+                                               visium_spot_size):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
+        uploaded_return = dash.no_update
         if None not in (add_to_layer, current_blend_dict, data_selection, uploaded_w_data) and data_selection in uploaded_w_data:
+            uploaded_w_data, all_layers = reset_on_visium_spot_size_change(ctx.triggered_id, uploaded_w_data, all_layers, data_selection)
             try:
-                uploaded_return = dash.no_update
                 if any(uploaded_w_data[data_selection][elem] is None for elem in add_to_layer):
                     uploaded_w_data = check_spot_grid_multi_channel(uploaded_w_data, data_selection,
-                    parse_files_for_h5ad(session_dict), add_to_layer)
+                    parse_files_for_h5ad(session_dict), add_to_layer, visium_spot_size)
                     uploaded_return = SessionServerside(uploaded_w_data, key="upload_dict", use_unique_key=OVERWRITE)
                 channel_modify = dash.no_update
                 if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}
@@ -1390,7 +1394,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             # set the min of the hist max to be 1 for very low images to also match the min for the pixel hist max
-            hist_max = float(hist_max if hist_max > 1 else 1)
+            # hist_max = float(hist_max if hist_max > 5 else 5)
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
                     # if the current selection has already had a histogram bound on it, update the histogram with it
