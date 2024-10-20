@@ -4,7 +4,9 @@ from rakaia.parsers.pixel import (
 from rakaia.parsers.visium import (
     visium_canvas_dimensions,
     visium_spot_grid_single_marker,
-    check_spot_grid_multi_channel)
+    check_spot_grid_multi_channel,
+    get_visium_spot_radius,
+    detect_visium_capture_size)
 import numpy as np
 import anndata as ad
 import pytest
@@ -26,22 +28,26 @@ def test_basic_visium_anndata_parser(get_current_dir):
 def test_visium_generate_spot_grid(get_current_dir):
     grid_image = visium_spot_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
                                                 'Sox17')
-    assert grid_image[1316, 1925] == np.max(grid_image)
+    assert grid_image[481, 700] == np.max(grid_image)
     assert grid_image[10, 10] == 0
 
     grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(
         os.path.join(get_current_dir, "visium_thalamus.h5ad"))
-    assert grid_image.shape == (grid_height, grid_width) == (2633, 2880)
+    assert grid_image.shape == (grid_height, grid_width) == (961, 1051)
 
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
+    assert get_visium_spot_radius(adata) == 89
     no_spatial = ad.AnnData(X=adata.X)
     no_spatial.var_names = adata.var_names
     assert visium_canvas_dimensions(no_spatial) is None
+    # if no radius is found, use the default of 55
+    assert get_visium_spot_radius(no_spatial) == 55
+    assert detect_visium_capture_size(no_spatial) == 65
 
     with pytest.raises(ValueError):
         visium_spot_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
                                        'fake_gene')
-
+    with pytest.raises(ValueError):
         visium_spot_grid_single_marker(no_spatial,'Sox17')
 
 def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
@@ -52,6 +58,6 @@ def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
     for marker in image_dict_back['visium_thalamus+++slide0+++acq'].keys():
         if marker in list(adata.var_names)[0:2]:
             assert image_dict_back['visium_thalamus+++slide0+++acq'][marker] is not None
-            assert image_dict_back['visium_thalamus+++slide0+++acq'][marker].shape == (2633, 2880)
+            assert image_dict_back['visium_thalamus+++slide0+++acq'][marker].shape == (961, 1051)
         else:
             assert image_dict_back['visium_thalamus+++slide0+++acq'][marker] is None

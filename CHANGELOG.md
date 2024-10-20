@@ -13,7 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Ability to transfer annotations between ROIs
 - Option to export channel tile and ROI query galleries as HTML while retaining resolution
-- Support for reading 10X Visium anndata (h5ad) objects for marker-spot projection + input for setting spot radius
+- Support for reading 10X Visium anndata (h5ad) objects for marker-spot projection +
+input for setting custom spot radius (radius parsed on default)
 
 ### Fixed
 

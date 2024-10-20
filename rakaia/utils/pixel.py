@@ -227,7 +227,7 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     # set the array cast type based on the max
     cast_type = np.uint16 if np.max(array) > 1 else np.float32
     hist_data = np.hstack(array).astype(cast_type)
-    max_hist = float(np.max(array)) if int(np.max(array)) > 1 else 1
+    max_hist = upper_bound_for_range_slider(array)
     hist = np.random.choice(hist_data, subset_number).astype(cast_type) if \
         hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
@@ -454,14 +454,15 @@ def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
         return image.astype(np.float32)
     return None
 
-def get_first_image_from_roi_dictionary(roi_dictionary):
+def get_region_dim_from_roi_dictionary(roi_dictionary):
     """
-    Return the first real image in a dictionary that specifies an ROI. This assumes that
-    all of the other channel arrays in the dictionary have the same shape
+    Return the first array in the ROI session dictionary that can specify an ROi shape. This assumes that
+    all the other channel arrays in the dictionary have the same shape
     """
     for value in roi_dictionary.values():
         if value is not None:
             return value
+    return None
 
 def apply_filter_to_array(image, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
     """

@@ -39,7 +39,7 @@ from rakaia.inputs.object import (
     reset_custom_gate_slider)
 from rakaia.io.pdf import AnnotationPDFWriter
 from rakaia.io.annotation import AnnotationRegionWriter
-from rakaia.utils.pixel import get_first_image_from_roi_dictionary
+from rakaia.utils.pixel import get_region_dim_from_roi_dictionary
 from rakaia.callbacks.object_wrappers import (
     AnnotationQuantificationMerge,
     callback_remove_canvas_annotation_shapes, reset_annotation_import, transfer_annotations_by_index)
@@ -387,7 +387,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                  data_selection, image_dict, mask_dict, apply_mask, mask_selection):
         if download_mask and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
-            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+            first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             # check that the mask is compatible with the current image
             if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
                                                                                 mask_dict[mask_selection]['raw']):

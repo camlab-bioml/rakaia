@@ -13,7 +13,7 @@ from rakaia.io.gallery import (
             gallery_export_template,
             channel_tiles_from_gallery)
 from rakaia.utils.decorator import DownloadDirGenerator
-from rakaia.utils.pixel import get_first_image_from_roi_dictionary
+from rakaia.utils.pixel import get_region_dim_from_roi_dictionary
 from rakaia.utils.quantification import (
     quantify_multiple_channels_per_roi,
     concat_quantification_frames_multi_roi)
@@ -165,7 +165,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         If the quantification is successful, close the modal
         """
         if None not in (image_dict, data_selection, mask_selection) and apply_mask and channels_to_quantify:
-            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+            first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 new_quant = quantify_multiple_channels_per_roi(image_dict, mask_dict[mask_selection]['raw'],
                             data_selection, channels_to_quantify, aliases, dataset_options, delimiter, mask_selection)

@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 import plotly.express as px
 from rakaia.io.session import SessionTheme
-from rakaia.utils.pixel import split_string_at_pattern, get_first_image_from_roi_dictionary
+from rakaia.utils.pixel import split_string_at_pattern, get_region_dim_from_roi_dictionary
 from rakaia.utils.object import convert_mask_to_object_boundary
 
 
@@ -361,7 +361,7 @@ def set_canvas_viewport(size_slider_val: Union[float, int] = None,
     """
     try:
         if not cur_dimensions:
-            cur_dimensions = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
+            cur_dimensions = get_region_dim_from_roi_dictionary(image_dict[data_selection]).shape
         aspect_ratio = int(cur_dimensions[1]) / int(cur_dimensions[0])
     except (KeyError, AttributeError, IndexError):
         aspect_ratio = canvas_aspect_ratio_from_layout(current_canvas)

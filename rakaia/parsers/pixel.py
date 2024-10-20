@@ -11,7 +11,9 @@ from PIL import Image
 import h5py
 import anndata as ad
 
-from rakaia.parsers.visium import visium_canvas_dimensions
+from rakaia.parsers.visium import (
+    visium_canvas_dimensions,
+    is_visium_anndata)
 from rakaia.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
@@ -254,12 +256,7 @@ class FileParser:
                 self.append_channel_alias_to_label_list(identifier)
 
             if len(self.image_dict['metadata']) < 1:
-                self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
-                                           'Channel Name': self.metadata_channels,
-                                           'Channel Label': self.metadata_labels,
-                                           'rakaia Label': self.metadata_labels}
-                self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
-                                                   'rakaia Label']
+                self.set_hash_metadata(self.metadata_channels, self.metadata_labels)
         self.panel_length = len(tif.pages) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
@@ -298,12 +295,7 @@ class FileParser:
                     if channel_labels is None:
                         channel_labels = acq.channel_labels
                         channel_names = acq.channel_names
-                        self.image_dict['metadata'] = {'Channel Order': range(1, len(channel_names) + 1, 1),
-                                                   'Channel Name': channel_names,
-                                                   'Channel Label': channel_labels,
-                                                   'rakaia Label': channel_labels}
-                        self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
-                                                           'rakaia Label']
+                        self.set_hash_metadata(list(channel_names), list(channel_labels))
                     else:
                         # for now, just checking the that the length matches is sufficient in case
                         # there are slight spelling errors between mcds with the same panel
@@ -408,12 +400,7 @@ class FileParser:
                 self.append_channel_identifier_to_channel_list(identifier)
                 self.append_channel_alias_to_label_list(image_label)
             if len(self.image_dict['metadata']) < 1:
-                self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
-                                           'Channel Name': self.metadata_channels,
-                                           'Channel Label': self.metadata_labels,
-                                           'rakaia Label': self.metadata_labels}
-                self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
-                                                   'rakaia Label']
+                self.set_hash_metadata(self.metadata_channels, self.metadata_labels)
             self.panel_length = len(txt_channel_names) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
@@ -423,7 +410,7 @@ class FileParser:
         :param h5ad_filepath: Filepath to 10x Visium filepath
         """
         anndata = ad.read_h5ad(h5ad_filepath)
-        if 'spatial' in anndata.obsm:
+        if is_visium_anndata(anndata):
             basename = str(Path(h5ad_filepath).stem)
             roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq"
             self.metadata_channels = list(anndata.var_names)
@@ -431,18 +418,28 @@ class FileParser:
             # get the channel names from the var names
             self.dataset_information_frame["ROI"].append(str(roi))
             grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(anndata)
-            self.dataset_information_frame["Dimensions"].append(f"{grid_height}x{grid_width}")
+            self.dataset_information_frame["Dimensions"].append(f"{grid_width}x{grid_height}")
             self.dataset_information_frame["Panel"].append(
                 f"{len(list(anndata.var_names))} markers")
             self.image_dict[roi] = {str(marker): None for marker in anndata.var_names}
             self.panel_length = len(list(anndata.var_names))
-            self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
-                                           'Channel Name': self.metadata_channels,
-                                           'Channel Label': self.metadata_labels,
-                                           'rakaia Label': self.metadata_labels}
-            self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
-                                                   'rakaia Label']
+            self.set_hash_metadata(self.metadata_channels, self.metadata_labels)
 
+    def set_hash_metadata(self, identifiers: list, labels: list):
+        """
+        Set the image dictionary metadata table and column labels
+
+        :param identifiers: List of keys for each channel
+        :param labels: List of aliases/labels for each channel
+
+        :return: None
+        """
+        self.image_dict['metadata'] = {'Channel Order': range(1, len(identifiers) + 1, 1),
+                                       'Channel Name': identifiers,
+                                       'Channel Label': labels,
+                                       'rakaia Label': labels}
+        self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
+                                               'rakaia Label']
 
     def get_parsed_information(self) -> pd.DataFrame:
         """

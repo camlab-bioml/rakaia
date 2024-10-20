@@ -1,17 +1,21 @@
 # rakaia
 
-rakaia: Scalable multiplex imaging dataset analysis in the browser
+rakaia: Scalable multiplexed dataset analysis in the browser
 
 <p align="center">
     <img src="man/app-preview.png">
 </p>
 
 
-rakaia provides streamlined in-browser analysis of multiplexed imaging datasets.
-The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI)
-from imaging technologies such as imaging mass cytometry (IMC),
-Immunofluorescence (IF) and others. Tools in the rakaia analysis
-suite include:
+rakaia provides streamlined in-browser analysis of multiplexed imaging and spatial transcriptomics datasets.
+The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI), and
+currently supports the following technologies:
+
+- imaging mass cytometry (IMC)
+- immunofluorescence (IF)
+- 10X Visium Spatial Gene Expression
+
+Tools in the rakaia application include:
 
 - pixel level analysis for publication-quality blended images
 - object/segmentation detection

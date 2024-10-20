@@ -15,7 +15,7 @@ from rakaia.utils.object import (
     get_min_max_values_from_rect_box,
     validate_mask_shape_matches_image,
     get_objs_in_svg_boundary_by_mask_percentage)
-from rakaia.utils.pixel import get_first_image_from_roi_dictionary, split_string_at_pattern
+from rakaia.utils.pixel import get_region_dim_from_roi_dictionary, split_string_at_pattern
 from rakaia.utils.pixel import path_to_mask
 
 class AnnotationRegionWriter:
@@ -235,7 +235,7 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
         points = {'ROI': [], 'x': [], 'y': [], 'annotation_col': [], 'annotation': []}
         try:
             if None not in (image_dict, data_selection):
-                first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+                first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             else:
                 first_image = None
         except (KeyError, TypeError):

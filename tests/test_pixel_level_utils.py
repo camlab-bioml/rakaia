@@ -31,7 +31,7 @@ from rakaia.utils.pixel import (
     generate_default_swatches,
     random_hex_colour_generator,
     get_additive_image,
-    get_first_image_from_roi_dictionary,
+    get_region_dim_from_roi_dictionary,
     set_array_storage_type_from_config,
     apply_filter_to_array,
     split_string_at_pattern,
@@ -551,7 +551,7 @@ def test_retrieval_first_roi_dict_image():
     layer_dict = {"channel_1": np.full((200, 200, 3), 1000),
                   "channel_2": np.full((200, 200, 3), 2000),
                   "channel_3": np.full((200, 200, 3), 3000)}
-    first_array = get_first_image_from_roi_dictionary(layer_dict)
+    first_array = get_region_dim_from_roi_dictionary(layer_dict)
     assert first_array.shape == (200, 200, 3)
     assert np.mean(first_array) == 1000
 

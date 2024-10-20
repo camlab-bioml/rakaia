@@ -44,7 +44,7 @@ from rakaia.utils.pixel import (
     pixel_hist_from_array,
     validate_incoming_metadata_table,
     make_metadata_column_editable,
-    get_first_image_from_roi_dictionary,
+    get_region_dim_from_roi_dictionary,
     upper_bound_for_range_slider,
     no_filter_chosen,
     channel_filter_matches,
@@ -321,7 +321,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     if data_selection in image_dict.keys() and all([image_dict[data_selection][elem] is not None for
                                                                     elem in image_dict[data_selection].keys()]):
                         # get the first image in the ROI and check the dimensions
-                        first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+                        first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
                         # add a pause if the roi is really small to allow a full canvas update
                         sleep_on_small_roi(dim_return)
@@ -935,7 +935,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             if ctx.triggered_id not in ["activate-coord"]:
                 try:
-                    image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
+                    image_shape = get_region_dim_from_roi_dictionary(image_dict[data_selection]).shape
                     proportion = float(custom_scale_val / image_shape[1]) if custom_scale_val is not None else 0.1
                     cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion, scale_col)
                     x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
@@ -989,7 +989,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # do not trigger update if the channel order is maintained
         chan_same = channel_order_as_default(ctx.triggered_id, channel_order, currently_selected)
         if None not in (cur_layout, cur_canvas, data_selection, currently_selected, blend_colour_dict) and not chan_same:
-            image_shape = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
+            image_shape = get_region_dim_from_roi_dictionary(image_dict[data_selection]).shape
             x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
             cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend", "channel-order"]:
@@ -1162,7 +1162,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
         if None not in (uploaded, blend_dict) and download_h5py:
-            first_image = get_first_image_from_roi_dictionary(uploaded[data_selection])
+            first_image = get_region_dim_from_roi_dictionary(uploaded[data_selection])
             try:
                 mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
@@ -1387,7 +1387,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     fig, hist_max = pixel_hist_from_array(uploaded[data_selection][selected_channel])
                 else:
                     fig, hist_open = dash.no_update, False
-                    hist_max = float(np.max(uploaded[data_selection][selected_channel]))
+                    hist_max = upper_bound_for_range_slider(uploaded[data_selection][selected_channel])
             except (ValueError, TypeError, KeyError):
                 fig, hist_max, hist_open = dash.no_update, 100.0, False
             try:
@@ -1397,7 +1397,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             # set the min of the hist max to be 1 for very low images to also match the min for the pixel hist max
-            # hist_max = float(hist_max if hist_max > 5 else 5)
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
                     # if the current selection has already had a histogram bound on it, update the histogram with it
@@ -1909,7 +1908,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         must fit inside the dimensions of the current image
         """
         if None not in (imported_annotations, image_dict, data_selection, cur_graph):
-            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+            first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             fig = CanvasLayout(cur_graph).add_point_annotations_as_circles(imported_annotations, first_image, circle_size)
             return CanvasLayout(fig).clear_improper_shapes()
         raise PreventUpdate
