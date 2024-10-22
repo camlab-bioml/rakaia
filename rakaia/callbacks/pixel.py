@@ -85,7 +85,7 @@ from rakaia.utils.db import (
     match_db_config_to_request_str,
     extract_alias_labels_from_db_document)
 from rakaia.utils.alert import AlertMessage, file_import_message, DataImportError, LazyLoadError, \
-    add_warning_to_error_config
+    add_warning_to_error_config, PanelMismatchError
 from rakaia.utils.region import (
     RegionAnnotation,
     check_for_valid_annotation_hash)
@@ -135,7 +135,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return json.load(open(files[0])) if files else dash.no_update
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
-                       Output('session_alert_config', 'data'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('mask-uploads', 'data', allow_duplicate=True),
                        Output('session_config_quantification', 'data', allow_duplicate=True),
                        Output('umap-projection', 'data', allow_duplicate=True),
@@ -335,7 +335,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         canvas_return = [wrap_canvas_in_loading_screen_for_large_images(np.zeros((grid_width, grid_height)), enable_zoom=enable_zoom,
                                         wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
 
-                    # if all of the currently selected channels are in the new ROI, keep them. otherwise, reset
+                    # if all the currently selected channels are in the new ROI, keep them. otherwise, reset
                     if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
                             all([elem in image_dict[data_selection].keys() for elem in currently_selected_channels]):
                         channels_selected = list(currently_selected_channels)
@@ -413,15 +413,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('uploaded_dict_template', 'data'),
                        State('blending_colours', 'data'),
                        Output('blending_colours', 'data'),
+                       Output('session_alert_config', 'data'),
                        State('data-collection', 'value'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
-    def create_new_blend_dict_on_upload(session_config, uploaded, current_blend_dict, current_selection):
+    def create_new_blend_dict_on_upload(session_config, uploaded, current_blend_dict, current_selection, error_config):
         """
         Create a new blending dictionary on a new dataset upload.
         """
         if session_config is not None:
             if current_blend_dict is None and uploaded is not None and current_selection is None:
-                return create_new_blending_dict(uploaded)
+                try: return create_new_blending_dict(uploaded), dash.no_update
+                except PanelMismatchError as e:
+                    return dash.no_update, add_warning_to_error_config(error_config, str(e))
             raise PreventUpdate
         raise PreventUpdate
 

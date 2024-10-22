@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-10-17
+## [0.21.0] - 2024-10-22
 
 ### Added
 
@@ -20,6 +20,11 @@ input for setting custom spot radius (radius parsed on default)
 
 - Import filenames as sets (do not import duplicate filenames)
 - Improved scaling tick markers for smaller dynamic ranges and sparse matrices
+- Explicit sorting (descending) on value counts for quantification distribution tables
+
+### Changed
+
+- Increase limits on raw image uploader
 
 ## [0.20.0] - 2024-09-19
 
@@ -649,4 +654,4 @@ percentile is at least 1 #49
 
 ## [0.1.0] - 2023-05-29
 
-Initial beta/development release for the Jackson lab group
+Initial beta/development release (internal)

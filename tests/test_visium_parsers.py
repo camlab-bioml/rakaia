@@ -6,7 +6,8 @@ from rakaia.parsers.visium import (
     visium_spot_grid_single_marker,
     check_spot_grid_multi_channel,
     get_visium_spot_radius,
-    detect_visium_capture_size)
+    detect_visium_capture_size,
+    visium_has_scaling_factors)
 import numpy as np
 import anndata as ad
 import pytest
@@ -39,10 +40,11 @@ def test_visium_generate_spot_grid(get_current_dir):
     assert get_visium_spot_radius(adata) == 89
     no_spatial = ad.AnnData(X=adata.X)
     no_spatial.var_names = adata.var_names
-    assert visium_canvas_dimensions(no_spatial) is None
+    assert all(elem is None for elem in visium_canvas_dimensions(no_spatial))
     # if no radius is found, use the default of 55
     assert get_visium_spot_radius(no_spatial) == 55
     assert detect_visium_capture_size(no_spatial) == 65
+    assert not visium_has_scaling_factors(no_spatial)
 
     with pytest.raises(ValueError):
         visium_spot_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),

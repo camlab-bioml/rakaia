@@ -560,7 +560,7 @@ def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFr
                              columns=["Value", "Counts"])
     if len(frame) <= counts_threshold:
         frame[proportion_col] = frame[counts_col] / (frame[counts_col].abs().sum())
-        return frame.round(3).to_dict(orient="records")
+        return frame.round(3).sort_values(by=['Counts'], ascending=False).to_dict(orient="records")
     return [{"Value": f"NA ({umap_variable} > {counts_threshold} unique values)",
                 "Counts": "NA", "Proportion": "NA"}]
 

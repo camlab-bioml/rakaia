@@ -9,6 +9,7 @@ from readimc.data import Slide, Acquisition
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
 import numexpr as ne
+import anndata as ad
 from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
@@ -19,6 +20,11 @@ from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
     ROIMaskMatch,
     match_mask_name_to_quantification_sheet_roi)
+from rakaia.parsers.visium import (
+    VisiumDefaults,
+    visium_canvas_dimensions, visium_spot_grid_single_marker, set_visium_scale, get_visium_spot_radius,
+    is_visium_anndata)
+
 
 class RegionThumbnail:
     """
@@ -45,10 +51,11 @@ class RegionThumbnail:
     :param dimension_max: Maximum dimension in pixels for an ROI thumbnail to be generated.
     :param roi_keyword: String keyword used to search for ROI names.
     :param single_channel_view: Whether the thumbnail should be used to preview a single greyscale channel thumbnail.
+    :param visium_spot_size: Optional value for user-driven visium spot size. By default, inferred from the dataset.
     :return: None
     """
     # define string attribute matches for the partial
-    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt"}
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5ad": "h5ad"}
 
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                         predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
@@ -57,12 +64,13 @@ class RegionThumbnail:
                         dimension_min: Union[int, float, None]=None,
                         dimension_max: Union[int, float, None]=None,
                         roi_keyword: str=None,
-                        single_channel_view: bool=False):
+                        single_channel_view: bool=False, visium_spot_size: Union[int, None]=None):
 
         self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
         self.tiff = partial(self.additive_thumbnail_from_tiff)
         self.txt = partial(self.additive_thumbnail_from_txt)
+        self.h5ad = partial(self.additive_thumbnail_from_h5ad)
         self.session_config = session_config
 
         self.set_imported_files()
@@ -86,6 +94,7 @@ class RegionThumbnail:
         self.dim_min = self.set_dimension_min(dimension_min)
         self.dim_max = self.set_dimension_max(dimension_max)
         self.keyword = self.set_query_keywords(roi_keyword)
+        self.spot_size = visium_spot_size
 
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
@@ -363,6 +372,37 @@ class RegionThumbnail:
                             acq_image.append(recoloured)
                         image_index += 1
                     self.process_additive_image(acq_image, label)
+
+    def additive_thumbnail_from_h5ad(self, h5ad_filepath):
+        """
+        Generate an image thumbnail from an h5ad Anndata file. Current technologies supported are:
+        10X Visium V1 and V2
+
+        :param h5ad_filepath: Path to an h5ad Anndata file.
+        :return: None
+        """
+        basename = str(Path(h5ad_filepath).stem)
+        label = self.parse_thumbnail_label_from_filepath(basename)
+        if label not in self.rois_exclude and (self.roi_keyword_in_roi_identifier(label) or
+                                               self.roi_keyword_in_roi_identifier(h5ad_filepath)):
+            adata = ad.read_h5ad(h5ad_filepath)
+            # get the visium anndata dimensions
+            acq_image = []
+            grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(adata)
+            if (self.roi_within_dimension_threshold(grid_width, grid_height) and
+                    is_visium_anndata(adata)):
+                spot_size = get_visium_spot_radius(adata, self.spot_size)
+                for marker in self.currently_selected_channels:
+                    if marker in self.blend_dict.keys():
+                        with_preset = apply_preset_to_array(visium_spot_grid_single_marker(
+                            adata, marker, spot_size), self.blend_dict[marker])
+                        colour_use = self.blend_dict[marker]['color'] if not \
+                            self.use_greyscale else '#FFFFFF'
+                        recoloured = np.array(recolour_greyscale(with_preset,
+                                            colour_use)).astype(np.float32)
+                        acq_image.append(recoloured)
+                self.process_additive_image(acq_image, label)
+
 
     def parse_thumbnail_label_from_filepath(self, file_basename) -> str:
         """

@@ -5,28 +5,42 @@ import skimage
 
 class VisiumDefaults:
     """
-    Defines the the default spot sizes and scale numerators for the capture areas
+    Defines the default spot sizes and scale numerators for the capture areas
     for both the 6.5um and 11um capture slides. The default spot size in microns is the same for both
     """
     spot_size: int=55
-    scale_num_small: int= 65
-    scale_num_large: int= 110
+    scale_num: int=65
+
+
+def visium_has_scaling_factors(adata: ad.AnnData):
+    """
+    Return if the Anndata parsed has scaling factor information present in the
+    """
+    try:
+        spatial_meta = adata.uns['spatial'][list(adata.uns['spatial'].keys())[0]]
+        return 'scalefactors' in spatial_meta.keys()
+    except KeyError:
+        return False
 
 def is_visium_anndata(adata: ad.AnnData):
     """
     Detect if an anndata object is from the 10X Visium spatial gene expression assay
     """
-    return 'spatial' in adata.obsm and 'array_col' in adata.obs and 'array_row' in adata.obs
+    return ('spatial' in adata.obsm and 'array_col' in adata.obs and
+            'array_row' in adata.obs and visium_has_scaling_factors(adata))
 
 def detect_visium_capture_size(adata):
     """
     Get the capture area scale factor for a Visium anndata (65 for 6.5um, and 110 for 11um)
     """
-    try:
-        return VisiumDefaults.scale_num_large if (int(np.max(adata.obs['array_col'])) > 200 and
-                int(np.max(adata.obs['array_row'] > 100))) else VisiumDefaults.scale_num_small
-    except KeyError:
-        return VisiumDefaults.scale_num_small
+    # try:
+    #     return VisiumDefaults.scale_num if (int(np.max(adata.obs['array_col'])) > 200 and
+    #             int(np.max(adata.obs['array_row'] > 100))) else VisiumDefaults.scale_num
+    # except KeyError:
+    #     return VisiumDefaults.scale_num
+    # appears that both 6.5 and 11 um capture areas use the same normalization factor
+    # https://www.10xgenomics.com/support/software/space-ranger/latest/analysis/outputs/spatial-outputs
+    return VisiumDefaults.scale_num
 
 def set_visium_scale(adata: ad.AnnData, spot_size: Union[int, None]=None, downscale: bool=True):
     """
@@ -62,7 +76,7 @@ def visium_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: f
         grid_width = int(x_max - x_min)
         grid_height = int(y_max - y_min)
         return grid_width, grid_height, x_min, y_min
-    return None
+    return None, None, None, None
 
 def visium_spot_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: str,
                                    spot_size: Union[int, None]=None, downscale: bool=True):
@@ -96,7 +110,7 @@ def visium_spot_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: s
     if 'spatial' not in adata.obsm.keys():
         raise ValueError("Spatial coordinates not found in 'obsm' attribute.")
 
-    capture_size, spot_size, scale_factor = set_visium_scale(adata, downscale=downscale)
+    capture_size, spot_size, scale_factor = set_visium_scale(adata, spot_size, downscale=downscale)
     spot_size = spot_size if not downscale else int(spot_size * scale_factor)
 
     grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(adata, downscale=downscale)

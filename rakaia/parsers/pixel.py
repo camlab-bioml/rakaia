@@ -407,6 +407,7 @@ class FileParser:
     def parse_h5ad(self, h5ad_filepath):
         """
         Parse an h5ad filepath. Currently, only 10x Visium is supported as an h5ad raw image input
+
         :param h5ad_filepath: Filepath to 10x Visium filepath
         """
         anndata = ad.read_h5ad(h5ad_filepath)

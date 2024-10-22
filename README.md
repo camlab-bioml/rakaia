@@ -13,7 +13,7 @@ currently supports the following technologies:
 
 - imaging mass cytometry (IMC)
 - immunofluorescence (IF)
-- 10X Visium Spatial Gene Expression
+- 10X Visium Spatial Gene Expression (V1 & V2)
 
 Tools in the rakaia application include:
 
