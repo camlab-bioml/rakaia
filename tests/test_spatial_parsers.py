@@ -1,12 +1,12 @@
 import os
 from rakaia.parsers.pixel import (
     FileParser, parse_files_for_h5ad)
-from rakaia.parsers.visium import (
-    visium_canvas_dimensions,
-    visium_spot_grid_single_marker,
+from rakaia.parsers.spatial import (
+    spatial_canvas_dimensions,
+    spatial_grid_single_marker,
     check_spot_grid_multi_channel,
-    get_visium_spot_radius,
-    detect_visium_capture_size,
+    get_spatial_spot_radius,
+    detect_spatial_capture_size,
     visium_has_scaling_factors)
 import numpy as np
 import anndata as ad
@@ -27,30 +27,30 @@ def test_basic_visium_anndata_parser(get_current_dir):
 
 
 def test_visium_generate_spot_grid(get_current_dir):
-    grid_image = visium_spot_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
+    grid_image = spatial_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
                                                 'Sox17')
     assert grid_image[481, 700] == np.max(grid_image)
     assert grid_image[10, 10] == 0
 
-    grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(
+    grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(
         os.path.join(get_current_dir, "visium_thalamus.h5ad"))
     assert grid_image.shape == (grid_height, grid_width) == (961, 1051)
 
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
-    assert get_visium_spot_radius(adata) == 89
+    assert get_spatial_spot_radius(adata) == 89
     no_spatial = ad.AnnData(X=adata.X)
     no_spatial.var_names = adata.var_names
-    assert all(elem is None for elem in visium_canvas_dimensions(no_spatial))
-    # if no radius is found, use the default of 55
-    assert get_visium_spot_radius(no_spatial) == 55
-    assert detect_visium_capture_size(no_spatial) == 65
+    assert all(elem is None for elem in spatial_canvas_dimensions(no_spatial))
+    # if no radius is found, use the default of 1
+    assert get_spatial_spot_radius(no_spatial) == 1
+    assert detect_spatial_capture_size(no_spatial) == 65
     assert not visium_has_scaling_factors(no_spatial)
 
     with pytest.raises(ValueError):
-        visium_spot_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
+        spatial_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
                                        'fake_gene')
     with pytest.raises(ValueError):
-        visium_spot_grid_single_marker(no_spatial,'Sox17')
+        spatial_grid_single_marker(no_spatial, 'Sox17')
 
 def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))

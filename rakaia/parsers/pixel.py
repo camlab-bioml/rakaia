@@ -11,9 +11,9 @@ from PIL import Image
 import h5py
 import anndata as ad
 
-from rakaia.parsers.visium import (
-    visium_canvas_dimensions,
-    is_visium_anndata)
+from rakaia.parsers.spatial import (
+    spatial_canvas_dimensions,
+    is_visium_anndata, is_spatial_dataset)
 from rakaia.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
@@ -411,14 +411,14 @@ class FileParser:
         :param h5ad_filepath: Filepath to 10x Visium filepath
         """
         anndata = ad.read_h5ad(h5ad_filepath)
-        if is_visium_anndata(anndata):
+        if is_visium_anndata(anndata) or is_spatial_dataset(anndata):
             basename = str(Path(h5ad_filepath).stem)
             roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq"
             self.metadata_channels = list(anndata.var_names)
             self.metadata_labels = list(anndata.var_names)
             # get the channel names from the var names
             self.dataset_information_frame["ROI"].append(str(roi))
-            grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(anndata)
+            grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(anndata)
             self.dataset_information_frame["Dimensions"].append(f"{grid_width}x{grid_height}")
             self.dataset_information_frame["Panel"].append(
                 f"{len(list(anndata.var_names))} markers")

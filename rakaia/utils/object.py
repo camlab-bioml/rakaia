@@ -342,7 +342,7 @@ def validate_mask_shape_matches_image(mask, image):
     return (mask.shape[0] == image.shape[0]) and (mask.shape[1] == image.shape[1])
 
 
-def generate_greyscale_grid_array(array_shape, dim=100):
+def greyscale_grid_array(array_shape, dim=100):
     """
     Generate a greyscale grid array defined as white lines with a black background, with the square dimensions
     given by the dim parameter
@@ -483,10 +483,10 @@ class ROIQuantificationMatch:
         """
         return self._match, self._quant_col
 
-def generate_mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
-                                           cluster_col: str = "cluster", obj_id_col: str = "cell_id", retain_objs=True,
-                                           use_gating_subset: bool = False, gating_subset_list: list=None,
-                                           cluster_option_subset=None):
+def mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
+                                  cluster_col: str = "cluster", obj_id_col: str = "cell_id", retain_objs=True,
+                                  use_gating_subset: bool = False, gating_subset_list: list=None,
+                                  cluster_option_subset=None):
     """
     Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated objects
     remain as greyscale values

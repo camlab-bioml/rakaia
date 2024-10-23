@@ -51,7 +51,7 @@ def test_basic_canvas_image():
                          cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
     assert list(canvas.get_image()[44, 44]) == [6, 6, 6]
     assert isinstance(canvas, CanvasImage)
-    canvas_fig = canvas.generate_canvas()
+    canvas_fig = canvas.render_canvas()
     assert isinstance(canvas_fig, dict)
 
     use_gating = False
@@ -71,7 +71,7 @@ def test_basic_canvas_image():
                          cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
     assert list(canvas.get_image()[44, 44]) == [255, 255, 255]
     assert isinstance(canvas, CanvasImage)
-    canvas_fig = canvas.generate_canvas()
+    canvas_fig = canvas.render_canvas()
     assert isinstance(canvas_fig, dict)
 
 
@@ -88,7 +88,7 @@ def test_basic_canvas_image():
                            cluster_assignments_dict, "cluster",
                            cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
     assert isinstance(canvas_2, CanvasImage)
-    canvas_fig = canvas_2.generate_canvas()
+    canvas_fig = canvas_2.render_canvas()
     assert isinstance(canvas_fig, dict)
 
 
@@ -104,7 +104,7 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                            cluster_assignments_dict, "cluster",
                            cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
-    canvas_fig_3 = canvas_3.generate_canvas()
+    canvas_fig_3 = canvas_3.render_canvas()
     assert isinstance(canvas_fig_3, dict)
 
 
@@ -118,7 +118,7 @@ def test_basic_canvas_image():
                            cluster_assignments_dict, "cluster",
                            cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
 
-    canvas_fig_4 = canvas_4.generate_canvas()
+    canvas_fig_4 = canvas_4.render_canvas()
     assert isinstance(canvas_fig_4, dict)
 
     cur_graph = {'data': {'customdata': None}, 'layout': {'uirevision': True}}
@@ -131,7 +131,7 @@ def test_basic_canvas_image():
                            cluster_assignments_dict, "cluster",
                            cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
 
-    canvas_fig_5 = canvas_5.generate_canvas()
+    canvas_fig_5 = canvas_5.render_canvas()
     assert isinstance(canvas_fig_5, dict)
 
     add_cell_id_hover = []
@@ -143,7 +143,7 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                            cluster_assignments_dict, "cluster",
                            cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
-    canvas_fig_6 = canvas_6.generate_canvas()
+    canvas_fig_6 = canvas_6.render_canvas()
     assert isinstance(canvas_fig_6, dict)
 
     cur_graph = {'data': {'customdata': None}, 'layout': {'uirevision': True, 'shapes': [{'fake_key': 'fake_val'}]}}
@@ -155,7 +155,7 @@ def test_basic_canvas_image():
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                            cluster_assignments_dict, "cluster",
                            cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
-    canvas_fig_7 = canvas_7.generate_canvas()
+    canvas_fig_7 = canvas_7.render_canvas()
     assert isinstance(canvas_fig_7, dict)
 
     canvas_layers = {"roi_1": {"channel_1": np.full((100, 100, 3), 10),
@@ -178,7 +178,7 @@ def test_basic_canvas_image():
                         global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                            cluster_assignments_dict, "cluster", cluster_frame, cluster_type, custom_scale_val,
                            use_gating, gating_cell_id_list)
-    canvas_fig_8 = canvas_8.generate_canvas()
+    canvas_fig_8 = canvas_8.render_canvas()
     assert isinstance(canvas_fig_8, dict)
 
 
@@ -193,7 +193,7 @@ def test_basic_canvas_image():
                            global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                            cluster_assignments_dict, "cluster", cluster_frame, cluster_type, custom_scale_val,
                            use_gating, gating_cell_id_list)
-    canvas_fig_9 = canvas_9.generate_canvas()
+    canvas_fig_9 = canvas_9.render_canvas()
     assert isinstance(canvas_fig_9, dict)
 
 def test_canvas_layout_editor(get_current_dir):

@@ -4,19 +4,19 @@ import numpy as np
 from PIL import Image
 from rakaia.utils.object import convert_mask_to_object_boundary
 from rakaia.utils.roi import (
-    generate_dict_of_roi_cell_ids,
+    dict_of_roi_cell_ids,
     subset_mask_outline_using_cell_id_list,
     override_roi_gallery_blend_list)
 from rakaia.utils.region import check_for_valid_annotation_hash
 
 def test_generate_dict_of_roi_cell_ids(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv"))
-    cell_id_dict = generate_dict_of_roi_cell_ids(measurements)
+    cell_id_dict = dict_of_roi_cell_ids(measurements)
     assert len(cell_id_dict) == 1
     assert 'Dilution_series_1_1' in cell_id_dict.keys()
     assert len(cell_id_dict['Dilution_series_1_1']) == len(measurements)
 
-    assert generate_dict_of_roi_cell_ids(measurements, "fake_col", "fake_col") is None
+    assert dict_of_roi_cell_ids(measurements, "fake_col", "fake_col") is None
 
 def test_basic_mask_boundary_subsetting(get_current_dir):
     """

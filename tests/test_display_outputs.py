@@ -4,10 +4,10 @@ from rakaia.io.display import (
     output_current_canvas_as_tiff,
     output_current_canvas_as_html,
     FullScreenCanvas,
-    generate_preset_options_preview_text,
+    preset_options_preview_text,
     annotation_preview_table,
     timestamp_download_child,
-    generate_empty_region_table)
+    empty_region_table)
 import numpy as np
 import pandas as pd
 import tempfile
@@ -17,7 +17,7 @@ import datetime
 
 def test_generate_channel_statistics_dataframe():
 
-    assert generate_empty_region_table() == []
+    assert empty_region_table() == []
 
     upload_dict = {"experiment0+++slide0+++acq0": {"DNA": np.full((1000, 1000), 100),
                                                    "Nuclear": np.full((1000, 1000), 200),
@@ -308,11 +308,11 @@ def test_fullscreen_canvas():
 def test_output_preset_text():
     presets = {"preset_1": {"x_lower_bound": 1, "x_upper_bound": 10, 'filter_type': 'gaussian',
                             'filter_val': 1, 'filter_sigma': 1.0}}
-    preset_preview = generate_preset_options_preview_text(presets)
+    preset_preview = preset_options_preview_text(presets)
     assert preset_preview == 'preset_1: \r\n l_bound: 1, y_bound: 10, ' \
                              'filter type: gaussian, filter val: 1, filter_sigma: 1.0 \r\n'
     preset_malformed = {"preset_1": {"fake_keys": None}}
-    assert generate_preset_options_preview_text(preset_malformed) == ''
+    assert preset_options_preview_text(preset_malformed) == ''
 
 def test_annotation_preview_table(annotation_hash):
 

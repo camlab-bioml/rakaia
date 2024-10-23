@@ -3,7 +3,7 @@ import numpy as np
 from PIL import Image
 from rakaia.utils.object import validate_mask_shape_matches_image
 
-def generate_dict_of_roi_cell_ids(measurements, sample_col="description", cell_id_col="cell_id"):
+def dict_of_roi_cell_ids(measurements, sample_col="description", cell_id_col="cell_id"):
     """
     Generate a dictionary where each key is an ROI name from the query, and each value is a list of cell ids
     Used for sub setting the mask to display in the ROI gallery to indicate where cells are in the overall image

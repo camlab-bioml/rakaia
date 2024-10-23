@@ -63,7 +63,7 @@ def reset_on_visium_spot_size_change(triggered_id: str, raw_data_dict: dict,
     Changing the size of the visium spot requires all the raw and RGB layers for currently selected
     channels to be reconstructed.
     """
-    if triggered_id == "visium-spot-rad" and data_selection in raw_data_dict and \
+    if triggered_id == "spatial-spot-rad" and data_selection in raw_data_dict and \
             data_selection in layer_dict:
         raw_data_dict[data_selection] = {marker: None for marker in raw_data_dict[data_selection].keys()}
         layer_dict[data_selection] = {}

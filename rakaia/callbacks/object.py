@@ -33,7 +33,7 @@ from rakaia.utils.object import (
     quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
 from rakaia.inputs.object import (
     channel_expression_from_interactive_subsetting,
-    generate_umap_plot,
+    object_umap_plot,
     umap_eligible_patch,
     patch_umap_figure,
     reset_custom_gate_slider)
@@ -47,7 +47,7 @@ from rakaia.io.annotation import AnnotationMaskWriter, export_point_annotations_
 from rakaia.inputs.loaders import adjust_option_height_from_list_length
 from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.io.readers import DashUploaderFileReader
-from rakaia.utils.roi import generate_dict_of_roi_cell_ids
+from rakaia.utils.roi import dict_of_roi_cell_ids
 from rakaia.io.session import SessionServerside
 from rakaia.utils.session import non_truthy_to_prevent_update
 from rakaia.utils.cluster import (
@@ -152,7 +152,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # also return the current count of the umap category selected to update the distribution table
                 if umap_layout is not None:
                     merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
-                    cell_id_dict = generate_dict_of_roi_cell_ids(merged)
+                    cell_id_dict = dict_of_roi_cell_ids(merged)
             # if the heatmap channel options are already set, do not update
             cols_selected = dash.no_update
             if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
@@ -200,7 +200,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay):
                     return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
                 else:
-                    umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                    umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
                     display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
             except BadRequest: return dash.no_update, blank_umap
@@ -369,7 +369,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if download_pdf and None not in (annotations_dict, canvas_layers, data_selection):
             return dcc.send_file(non_truthy_to_prevent_update(AnnotationPDFWriter(download_pdf, annotations_dict, canvas_layers,
                 data_selection, mask_config, aliases, "annotations.pdf", blend_dict, global_apply_filter,
-                global_filter_type, global_filter_val, global_filter_sigma).generate_annotation_pdf()), type="application/pdf")
+                global_filter_type, global_filter_val, global_filter_sigma).write_annotation_pdf()), type="application/pdf")
         raise PreventUpdate
 
     @dash_app.callback(

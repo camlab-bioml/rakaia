@@ -20,10 +20,10 @@ from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
     ROIMaskMatch,
     match_mask_name_to_quantification_sheet_roi)
-from rakaia.parsers.visium import (
-    VisiumDefaults,
-    visium_canvas_dimensions, visium_spot_grid_single_marker, set_visium_scale, get_visium_spot_radius,
-    is_visium_anndata)
+from rakaia.parsers.spatial import (
+    SpatialDefaults,
+    spatial_canvas_dimensions, spatial_grid_single_marker, set_spatial_scale, get_spatial_spot_radius,
+    is_visium_anndata, is_spatial_dataset)
 
 
 class RegionThumbnail:
@@ -51,20 +51,20 @@ class RegionThumbnail:
     :param dimension_max: Maximum dimension in pixels for an ROI thumbnail to be generated.
     :param roi_keyword: String keyword used to search for ROI names.
     :param single_channel_view: Whether the thumbnail should be used to preview a single greyscale channel thumbnail.
-    :param visium_spot_size: Optional value for user-driven visium spot size. By default, inferred from the dataset.
+    :param spatial_radius: Optional value for user-driven spatial marker radius. By default, inferred from the dataset.
     :return: None
     """
     # define string attribute matches for the partial
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5ad": "h5ad"}
 
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
-                        predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
-                        global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
-                        dimension_min: Union[int, float, None]=None,
-                        dimension_max: Union[int, float, None]=None,
-                        roi_keyword: str=None,
-                        single_channel_view: bool=False, visium_spot_size: Union[int, None]=None):
+                 predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
+                 global_apply_filter=False, global_filter_type="median", global_filter_val=3,
+                 global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
+                 dimension_min: Union[int, float, None]=None,
+                 dimension_max: Union[int, float, None]=None,
+                 roi_keyword: str=None,
+                 single_channel_view: bool=False, spatial_radius: Union[int, None]=None):
 
         self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
@@ -94,7 +94,7 @@ class RegionThumbnail:
         self.dim_min = self.set_dimension_min(dimension_min)
         self.dim_max = self.set_dimension_max(dimension_max)
         self.keyword = self.set_query_keywords(roi_keyword)
-        self.spot_size = visium_spot_size
+        self.spot_size = spatial_radius
 
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
@@ -388,13 +388,13 @@ class RegionThumbnail:
             adata = ad.read_h5ad(h5ad_filepath)
             # get the visium anndata dimensions
             acq_image = []
-            grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(adata)
+            grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(adata)
             if (self.roi_within_dimension_threshold(grid_width, grid_height) and
-                    is_visium_anndata(adata)):
-                spot_size = get_visium_spot_radius(adata, self.spot_size)
+                    (is_visium_anndata(adata) or is_spatial_dataset(adata))):
+                spot_size = get_spatial_spot_radius(adata, self.spot_size)
                 for marker in self.currently_selected_channels:
                     if marker in self.blend_dict.keys():
-                        with_preset = apply_preset_to_array(visium_spot_grid_single_marker(
+                        with_preset = apply_preset_to_array(spatial_grid_single_marker(
                             adata, marker, spot_size), self.blend_dict[marker])
                         colour_use = self.blend_dict[marker]['color'] if not \
                             self.use_greyscale else '#FFFFFF'

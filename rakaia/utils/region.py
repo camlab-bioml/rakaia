@@ -181,7 +181,7 @@ class AnnotationPreviewGenerator:
     :return: None
     """
 
-    def generate_annotation_preview(self, annot_key: Union[str, tuple], annot_type: str="zoom") -> str:
+    def annotation_preview(self, annot_key: Union[str, tuple], annot_type: str= "zoom") -> Union[str, None]:
         """
         Generates a list of previews for each annotation in the current ROI
 
@@ -190,16 +190,16 @@ class AnnotationPreviewGenerator:
         :return: `pd.DataFrame` of annotations summarized by their objects, or relative coordinate positions.
         """
         if annot_type == "point":
-            return self.generate_point_preview(annot_key)
+            return self.point_preview(annot_key)
         if annot_type == "gate":
             # if use gating, simply add the number of cells
             return f"{len(annot_key)} cells"
         if annot_type in ['zoom', 'rect', 'path']:
-            return self.generate_region_preview(annot_key, annot_type)
+            return self.region_preview(annot_key, annot_type)
         return None
 
     @staticmethod
-    def generate_region_preview(key: Union[str, tuple], reg_type: str="zoom") -> str:
+    def region_preview(key: Union[str, tuple], reg_type: str= "zoom") -> str:
         """
         Generate a preview of a region key. Has the following general tuple structures:
         Zoom:
@@ -224,7 +224,7 @@ class AnnotationPreviewGenerator:
         return f"x: [{round(x_min)}, {round(x_max)}]\n y: [{round(y_min)}, {round(y_max)}]"
 
     @staticmethod
-    def generate_point_preview(key: Union[str, tuple]) -> str:
+    def point_preview(key: Union[str, tuple]) -> str:
         """
         Generate a preview of the click point key. Has the following general string structure:
         "{'points': [{'x': 582, 'y': 465}]}"

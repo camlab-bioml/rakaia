@@ -269,9 +269,9 @@ class RestyleDataParser:
                 self.append_sub_selection(tot_subtypes)
             elif self.subtypes_already_selected():
                 if self.ignore_selected_index():
-                    self.generate_indices_from_ignore(self._subtypes_return, tot_subtypes)
+                    self.indices_to_ignore(self._subtypes_return, tot_subtypes)
                 elif self.keep_current_index():
-                    self.generate_indices_from_keep(self._subtypes_return, tot_subtypes)
+                    self.indices_to_keep(self._subtypes_return, tot_subtypes)
 
     def append_sub_selection(self, tot_subtypes: list):
         """
@@ -304,7 +304,7 @@ class RestyleDataParser:
         """
         return self.restyledata[0]['visible'][0] == 'legendonly'
 
-    def generate_indices_from_ignore(self, subtypes_keep, tot_subtypes):
+    def indices_to_ignore(self, subtypes_keep, tot_subtypes):
         """
         Specify a list of subtypes and their ordinal indices to ignore
         :return: None
@@ -324,7 +324,7 @@ class RestyleDataParser:
         """
         return bool(self.restyledata[0]['visible'][0])
 
-    def generate_indices_from_keep(self, subtypes_keep, tot_subtypes):
+    def indices_to_keep(self, subtypes_keep, tot_subtypes):
         """
         Specify a list of subtypes and their ordinal indices to keep.
         return: None

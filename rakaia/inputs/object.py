@@ -180,10 +180,10 @@ def channel_expression_summary(measurements, cols_include=None, drop_cols=False,
                            orientation=orient))
     return fig
 
-def generate_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overlay: Union[str, None]=None,
-                       quantification_dict: Union[pd.DataFrame, dict, None]=None,
-                       cur_umap_fig: Union[go.Figure, dict, None]=None,
-                       categorical_size_limit: Union[int, float]=50) -> Union[go.Figure, dict]:
+def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overlay: Union[str, None]=None,
+                     quantification_dict: Union[pd.DataFrame, dict, None]=None,
+                     cur_umap_fig: Union[go.Figure, dict, None]=None,
+                     categorical_size_limit: Union[int, float]=50) -> Union[go.Figure, dict]:
     """
     Generate a data frame of UMAP coordinates for a dataset of segmented objects based on channel expression
     Overlay color groupings can be passed as either numerical or categorical. Categorical variables are either
@@ -247,9 +247,9 @@ def patch_umap_figure(quantification_dict: Union[pd.DataFrame, dict], channel_ov
                                                  channel_overlay + '=%{marker.color}<extra></extra>'
     return patched_figure
 
-def generate_expression_bar_plot_from_interactive_subsetting(quantification_dict, mode_value,
-                                               umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
-                                                category_column=None, category_subset=None):
+def expression_bar_plot_from_interactive_subsetting(quantification_dict, mode_value,
+                                                    umap_layout, embeddings, zoom_keys, triggered_id, cols_drop=None,
+                                                    category_column=None, category_subset=None):
     """
     Generate a bar plot of summarized channel expression using interactive umap subsetting
     """

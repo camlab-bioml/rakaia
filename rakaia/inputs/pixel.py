@@ -248,10 +248,10 @@ def set_range_slider_tick_markers(max_value, num_ticks=4, range_max: Union[int, 
     return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1
 
 
-def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
-                                use_cluster_annotations=False, cluster_colour_dict: dict = None,
-                                data_selection: str = None, cluster_selection_subset: list = None,
-                                cluster_id_col: str = "cluster"):
+def canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
+                       use_cluster_annotations=False, cluster_colour_dict: dict = None,
+                       data_selection: str = None, cluster_selection_subset: list = None,
+                       cluster_id_col: str = "cluster"):
     """
     Generate the string annotation text for a canvas based on the channels and selected colour of the channel
     """

@@ -67,7 +67,7 @@ class AnnotationPDFWriter:
             x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
         return x_min, x_max, y_min, y_max
 
-    def generate_annotation_pdf(self):
+    def write_annotation_pdf(self):
         """
         Write the annotation PDF to file
 
@@ -89,7 +89,7 @@ class AnnotationPDFWriter:
                             image = np.clip(image, 0, 255)
                         except KeyError:
                             image = None
-                        image = self.generate_additive_image_for_pdf(image, value)
+                        image = self.additive_image_for_pdf(image, value)
                         region = np.array(image[np.ix_(range(int(y_min), int(y_max), 1),
                                                range(int(x_min), int(x_max), 1))]).astype(np.uint8)
                         aspect_ratio = image.shape[1] / image.shape[0]
@@ -117,7 +117,7 @@ class AnnotationPDFWriter:
             return self.filepath
         return None
 
-    def generate_additive_image_for_pdf(self, image, value):
+    def additive_image_for_pdf(self, image, value):
         """
         Produce an additive blend image for a specific region
 

@@ -122,7 +122,9 @@ class ToolTips(BaseModel):
                       "cluster-proj": "IMPORTANT: Using circles for cluster projection for > 1000 mask objects will "
                                       "lead to slow performance.",
                       "image-similarity": "Search for images that are similar to the current ROI. Requires "
-                                          "image similarity scores for quantified images using a UMAP overlay."}
+                                          "image similarity scores for quantified images using a UMAP overlay.",
+                      "spatial-rad": "Set a custom spatial marker radius for spatial data sets. Should not be used "
+                                     "for 10X Visium as the spot size is inferred from the data set."}
 
 
 class PanelMismatchError(Exception):

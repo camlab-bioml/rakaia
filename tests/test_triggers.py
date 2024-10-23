@@ -50,7 +50,7 @@ def test_reset_layers_on_visium_spot_change():
     raw = {"visium_1": {"marker_1": np.zeros((100, 100)),
                         "marker_2": np.zeros((100, 100))}}
     layers = {"visium_1": {"marker_2": np.ones((100, 100))}}
-    raw_back, layers_back = reset_on_visium_spot_size_change("visium-spot-rad", raw, layers, "visium_1")
+    raw_back, layers_back = reset_on_visium_spot_size_change("spatial-spot-rad", raw, layers, "visium_1")
     assert all(elem is None for elem in raw_back['visium_1'].values())
     assert not layers_back['visium_1']
     raw_same, layers_same = reset_on_visium_spot_size_change("diff_trigger", raw, layers, "visium_1")

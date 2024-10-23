@@ -15,14 +15,14 @@ from rakaia.inputs.pixel import (
     render_default_annotation_canvas,
     add_local_file_dialog)
 from rakaia.inputs.loaders import wrap_child_in_loading
-from rakaia.utils.pixel import generate_default_swatches
+from rakaia.utils.pixel import default_picker_swatches
 from rakaia.utils.region import RegionStatisticGroups
 from rakaia.plugins import PluginDescriptors
 
 def register_app_layout(config, cache_dest):
 
     # set the default colours for the swatches from the config input
-    DEFAULT_SWATCHES = generate_default_swatches(config)
+    DEFAULT_SWATCHES = default_picker_swatches(config)
     DEFAULT_WIDGET_COLOUR = SessionTheme().widget_colour
     TOOLTIPS = ToolTips().tooltips
 
@@ -167,8 +167,10 @@ def register_app_layout(config, cache_dest):
                                                  style={"accent-color": DEFAULT_WIDGET_COLOUR})],
                                  style={"display": "flex"}),
                         html.Br(),
-                        html.Div([html.B("Custom visium spot radius", style={"margin-right": "20px"}),
-                                  dcc.Input(id='visium-spot-rad', type='number', value=None, debounce=True,
+                        html.Div([html.B("Custom spatial marker radius", style={"margin-right": "20px"},
+                                id="spatial-rad-label"),
+                                dbc.Tooltip(TOOLTIPS['spatial-rad'], target="spatial-rad-label"),
+                                  dcc.Input(id='spatial-spot-rad', type='number', value=None, debounce=True,
                                             style={"width": "20%", "height": "50%"},
                                             persistence=config['persistence'], persistence_type='local'),
                                   ], style={"display": "flex"}),
@@ -1656,6 +1658,8 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id='saved-blends'),
         dcc.Store(id='custom-metadata'),
         dcc.Store(id='image-prioritization-cor'),
+        # just used as a target store to keep the load screen working on data processing
+        wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

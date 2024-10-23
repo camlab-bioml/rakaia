@@ -28,10 +28,10 @@ rakaia.parsers.roi module
    :undoc-members:
    :show-inheritance:
 
-rakaia.parsers.visium module
-----------------------------
+rakaia.parsers.spatial module
+-----------------------------
 
-.. automodule:: rakaia.parsers.visium
+.. automodule:: rakaia.parsers.spatial
    :members:
    :undoc-members:
    :show-inheritance:

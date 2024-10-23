@@ -18,7 +18,7 @@ from rakaia.inputs.pixel import (
     wrap_canvas_in_loading_screen_for_large_images,
     invert_annotations_figure,
     set_range_slider_tick_markers,
-    generate_canvas_legend_text,
+    canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
     set_canvas_viewport, marker_correlation_children, reset_pixel_histogram)
 from rakaia.parsers.pixel import (
@@ -28,7 +28,7 @@ from rakaia.parsers.pixel import (
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, parse_files_for_h5ad)
-from rakaia.parsers.visium import visium_canvas_dimensions, check_spot_grid_multi_channel
+from rakaia.parsers.spatial import spatial_canvas_dimensions, check_spot_grid_multi_channel
 from rakaia.utils.decorator import (
     # time_taken_callback,
     DownloadDirGenerator)
@@ -61,8 +61,8 @@ from rakaia.io.display import (
     output_current_canvas_as_tiff,
     output_current_canvas_as_html,
     FullScreenCanvas,
-    generate_preset_options_preview_text,
-    annotation_preview_table, timestamp_download_child, generate_empty_region_table)
+    preset_options_preview_text,
+    annotation_preview_table, timestamp_download_child, empty_region_table)
 from rakaia.io.gallery import (
     channel_tile_gallery_children,
     replace_channel_gallery_aliases, channel_tiles, gallery_export_template, channel_tiles_from_gallery)
@@ -284,6 +284,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('canvas-div-holder', 'children'),
                        Output('data-collection-tooltip', 'children'),
                        Output('cur_roi_dimensions', 'data'),
+                       Output('roi-loaded', 'data'),
                        State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'),
@@ -305,7 +306,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # set the default canvas to return without a load screen
         if image_dict and data_selection and names:
             # set a small default grid width and height for no loading. if adding something like visium, add a loading
-            channels_return, grid_width, grid_height = sort_channel_dropdown(names, sort_channels), 1, 1
+            channels_return, grid_width, grid_height, dim_return = sort_channel_dropdown(names, sort_channels), 1, 1, dash.no_update
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
                 try:
                     image_dict = populate_image_dict_from_lazy_load(image_dict.copy(), dataset_selection=data_selection,
@@ -314,7 +315,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         # if 10x Visium, check the dimensions
                         if not parse_files_for_h5ad(session_config, data_selection, delimiter):
                             raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
-                        grid_width, grid_height, x_min, y_min = visium_canvas_dimensions(
+                        grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(
                             parse_files_for_h5ad(session_config, data_selection, delimiter))
                         dim_return = (grid_height, grid_width)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
@@ -343,15 +344,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         channels_selected = []
                     return channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
                         image_dict, key="upload_dict", use_unique_key=OVERWRITE), \
-                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return
+                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update
                 except Exception:
                     canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
                                     wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                     return [], [], SessionServerside(image_dict, key="upload_dict", use_unique_key=OVERWRITE), \
-                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return
+                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update
             elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                 return channel_dropdown_selection(channels_return, names), dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update
+                    dash.no_update, dash.no_update, dash.no_update, dash.no_update
             raise PreventUpdate
         raise PreventUpdate
 
@@ -516,7 +517,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('images_in_blend', 'value'),
                        State('autofill-channel-colors', 'value'),
                        State('session_config', 'data'),
-                       Input('visium-spot-rad', 'value'),
+                       Input('spatial-spot-rad', 'value'),
                        State('dataset-delimiter', 'value'),
                        Output('blending_colours', 'data', allow_duplicate=True),
                        Output('canvas-layers', 'data', allow_duplicate=True),
@@ -527,7 +528,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def update_blend_dict_on_channel_selection(add_to_layer, uploaded_w_data, current_blend_dict, data_selection,
                                                param_dict, all_layers, preset_selection, preset_dict,
                                                cur_image_in_mod_menu, autofill_channel_colours, session_dict,
-                                               visium_spot_size, delimiter):
+                                               spatial_spot_size, delimiter):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
@@ -537,7 +538,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 if any(uploaded_w_data[data_selection][elem] is None for elem in add_to_layer):
                     uploaded_w_data = check_spot_grid_multi_channel(uploaded_w_data, data_selection,
-                    parse_files_for_h5ad(session_dict, data_selection, delimiter), add_to_layer, visium_spot_size)
+                    parse_files_for_h5ad(session_dict, data_selection, delimiter), add_to_layer, spatial_spot_size)
                     uploaded_return = SessionServerside(uploaded_w_data, key="upload_dict", use_unique_key=OVERWRITE)
                 channel_modify = dash.no_update
                 if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}
@@ -881,8 +882,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 and len(channel_order) > 0 and not global_not_enabled and not channel_order_same and canvas_holder and \
                 data_selection in canvas_layers and canvas_layers[data_selection] and not dont_update and not empty_mask:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
-            legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
-                        cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
+            legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+                                             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
             try:
                 canvas = CanvasImage(canvas_layers, data_selection, currently_selected, mask_config, mask_selection,
                 mask_blending_level, overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
@@ -890,7 +891,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 raw_data_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
                 custom_scale_val, apply_gating, gating_cell_id_list, scale_color, clust_selected)
-                fig = canvas.generate_canvas()
+                fig = canvas.render_canvas()
                 if cluster_type == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask and cluster_cat:
@@ -997,9 +998,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             x_axis_placement = set_x_axis_placement_of_scalebar(image_shape[1], invert_annot)
             cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend", "channel-order"]:
-                legend_text = generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
-                            cluster_assignments_in_legend, cluster_assignments_dict,
-                            data_selection, clust_selected, cluster_cat) if toggle_legend else ''
+                legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+                                                 cluster_assignments_in_legend, cluster_assignments_dict,
+                                                 data_selection, clust_selected, cluster_cat) if toggle_legend else ''
                 canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
                 return CanvasLayout(canvas).clear_improper_shapes()
             elif ctx.triggered_id in ["toggle-canvas-scalebar", "scalebar-color"]:
@@ -1206,7 +1207,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                 stats_table_open):
         if None not in (graph, graph_layout, data_selection) and stats_table_open:
             return RegionSummary(graph, graph_layout, upload, layers, data_selection, aliases_dict).get_summary_frame()
-        elif stats_table_open: return generate_empty_region_table()
+        elif stats_table_open: return empty_region_table()
         raise PreventUpdate
 
     @dash_app.callback(Output('image-gallery-row', 'children'),
@@ -1574,7 +1575,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Update the hover information on the list of presets so that the user can preview the parameters before selecting
         """
         if preset_dict:
-            text = generate_preset_options_preview_text(preset_dict)
+            text = preset_options_preview_text(preset_dict)
             return html.Textarea(text, style={"width": "200px", "height": f"{100 * len(preset_dict)}px"})
         raise PreventUpdate
 

@@ -51,7 +51,7 @@ def is_rgb_color(value):
     _rgbstring = re.compile(r'#[a-fA-F0-9]{6}$')
     return bool(_rgbstring.match(value))
 
-def generate_default_swatches(config):
+def default_picker_swatches(config):
     """
     Return a list of default swatches for the mantine ColorPicker based on the contents of the config
     """
