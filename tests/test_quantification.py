@@ -8,7 +8,7 @@ from rakaia.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
     gating_label_children,
-    mask_object_counter_preview)
+    mask_object_counter_preview, limit_length_to_quantify)
 
 def test_quantification_one_channel(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
@@ -59,6 +59,9 @@ def test_quantification_multiple_channels(get_current_dir):
     assert 'set1_1' in multi_frame['sample'].tolist()
     assert 'set1_1' not in multi_frame['description'].tolist()
 
+    assert quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq_1", [],
+                                                     aliases, dataset_options) is None
+
 
 def test_quantification_multiple_rois(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
@@ -86,6 +89,12 @@ def test_quantification_multiple_rois(get_current_dir):
     merged = concat_quantification_frames_multi_roi(roi_1_quant, None, "set1+++slide0+++roi_2")
     assert len(merged) == len(roi_1_quant)
     assert 'roi_1' in merged['description'].tolist()
+
+    # if no channels quantified, all are None
+    roi_1_empty = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_1", [])
+    roi_2_empty = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_2", [])
+    merged_empty = concat_quantification_frames_multi_roi(roi_1_empty, roi_2_empty, "set1+++slide0+++roi_2")
+    assert merged_empty is None
 
 
 def test_populate_internal_gating_dict():
@@ -130,3 +139,9 @@ def test_generate_mask_counter_preview():
     assert not mask_object_counter_preview(None, "mask_1")
     mask_dict = {"mask_1": {"boundary": np.zeros((1000, 1000))}}
     assert not mask_object_counter_preview(mask_dict, "mask_1")
+
+def test_check_marker_lists_lengths():
+    marker_list_long = [f"gene_{elem}" for elem in range(2000)]
+    assert not limit_length_to_quantify(marker_list_long)
+    shorter = [f"gene_{elem}" for elem in range(999)]
+    assert limit_length_to_quantify(shorter) == shorter

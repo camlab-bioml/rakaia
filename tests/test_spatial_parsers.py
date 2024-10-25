@@ -1,4 +1,7 @@
 import os
+import numpy as np
+import anndata as ad
+import pytest
 from rakaia.parsers.pixel import (
     FileParser, parse_files_for_h5ad)
 from rakaia.parsers.spatial import (
@@ -8,9 +11,7 @@ from rakaia.parsers.spatial import (
     get_spatial_spot_radius,
     detect_spatial_capture_size,
     visium_has_scaling_factors)
-import numpy as np
-import anndata as ad
-import pytest
+from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
     uploads = {"uploads": [os.path.join(get_current_dir, "for_recolour.tiff"),
@@ -63,3 +64,14 @@ def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
             assert image_dict_back['visium_thalamus+++slide0+++acq'][marker].shape == (961, 1051)
         else:
             assert image_dict_back['visium_thalamus+++slide0+++acq'][marker] is None
+
+
+def test_parse_visium_spot_mask(get_current_dir):
+    uploads = {"uploads": [os.path.join(get_current_dir, "visium_thalamus.h5ad")]}
+    mask_dict, names = visium_mask({}, 'visium_thalamus+++slide0+++acq',
+                                   uploads)
+    assert 'visium_thalamus' in names
+    assert 'visium_thalamus' in mask_dict.value.keys()
+    assert mask_dict.value['visium_thalamus']['raw'].shape == (961, 1051)
+    assert (np.max(mask_dict.value['visium_thalamus']['raw']) ==
+            len(ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))))

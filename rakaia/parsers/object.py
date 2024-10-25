@@ -15,6 +15,8 @@ from sklearn.preprocessing import StandardScaler
 import scanpy as sc
 import dash
 from rakaia.io.readers import DashUploaderFileReader
+from rakaia.parsers.pixel import parse_files_for_h5ad
+from rakaia.parsers.spatial import spatial_grid_single_marker, is_visium_anndata
 from rakaia.utils.alert import add_warning_to_error_config
 from rakaia.utils.object import (
     set_mandatory_columns,
@@ -198,6 +200,31 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
         return SessionServerside(cur_mask_dict, key="mask-dict",
                                  use_unique_key=unique_key_serverside), list(cur_mask_dict.keys())
     raise PreventUpdate
+
+def visium_mask(mask_dict: dict, data_selection: str, upload_list: Union[list, dict],
+                delimiter: str="+++", unique_key_serverside: bool=True):
+    """
+    Generate a mask from 10X Visium spatial transcriptomics. The mask can be automatically
+    inferred from the spot positions and scale factors in the dataset
+    """
+    masks_return, names_return = dash.no_update, dash.no_update
+    if data_selection and upload_list:
+        exp, slide, acq = split_string_at_pattern(data_selection)
+        found_h5ad_match = parse_files_for_h5ad(upload_list, data_selection, delimiter)
+        if found_h5ad_match and is_visium_anndata(found_h5ad_match):
+            mask_dict = {} if mask_dict is None else mask_dict
+            mask_spots = spatial_grid_single_marker(found_h5ad_match, None, None,
+                                                    True, True)
+            boundary_import = np.array(Image.fromarray(
+                convert_mask_to_object_boundary(mask_spots.astype(np.uint32))).convert('RGB'))
+            mask_dict[exp] = {"array": np.array(Image.fromarray(mask_spots).convert('RGB')),
+                              "boundary": boundary_import,
+                            "hover": mask_spots.reshape((mask_spots.shape[0], mask_spots.shape[1], 1)),
+                                            "raw": mask_spots}
+            masks_return = SessionServerside(mask_dict, key="mask-dict",
+                                     use_unique_key=unique_key_serverside)
+            names_return = list(mask_dict.keys())
+    return masks_return, names_return
 
 
 def validate_quantification_from_anndata(anndata_obj, required_columns=set_mandatory_columns()):
@@ -533,11 +560,9 @@ def match_quantification_identifier_old_pipeline_syntax(mask_selection: str, cel
                     try:
                         if int(split[-1]) == int(index):
                             sam_id = sample
-                    except ValueError:
-                        pass
+                    except ValueError: pass
             return sam_id
-        except (KeyError, TypeError):
-            pass
+        except (KeyError, TypeError): pass
     return sam_id
 
 

@@ -124,7 +124,11 @@ class ToolTips(BaseModel):
                       "image-similarity": "Search for images that are similar to the current ROI. Requires "
                                           "image similarity scores for quantified images using a UMAP overlay.",
                       "spatial-rad": "Set a custom spatial marker radius for spatial data sets. Should not be used "
-                                     "for 10X Visium as the spot size is inferred from the data set."}
+                                     "for 10X Visium as the spot size is inferred from the data set.",
+                      "spatial-mask": "Currently only compatible with 10X Visium spot-based assays.",
+                      "quant-limit": "To maintain optimal performance, rakaia does not support in-app quantification "
+                                      "for more than 1000 markers. Additionally, if quantifying using a spatial dataset,"
+                                     " all markers to quantify need to be loaded into the current canvas."}
 
 
 class PanelMismatchError(Exception):

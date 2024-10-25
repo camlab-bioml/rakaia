@@ -50,6 +50,7 @@ from rakaia.utils.pixel import (
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
     MarkerCorrelation, high_low_values_from_zoom_layout, layers_exist, add_saved_blend)
+from rakaia.utils.quantification import limit_length_to_quantify
 from rakaia.utils.session import (
     validate_session_upload_config,
     channel_dropdown_selection,
@@ -387,7 +388,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         channel_list_selected = list(aliases.keys()) if ctx.triggered_id == 'alias-dict' else cur_selection
         if ctx.triggered_id == 'quant-toggle-list':
             channel_list_selected = [elem['value'] for elem in channel_list_options] if toggle_channels_quant else []
-        return channel_list_options, channel_list_selected, channel_list_options, channel_list_options
+        return limit_length_to_quantify(channel_list_options), channel_list_selected, channel_list_options, channel_list_options
 
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Output('images_in_blend', 'value'),

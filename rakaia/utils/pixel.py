@@ -598,7 +598,8 @@ class MarkerCorrelation:
         # the ratio of the target to the baseline inside the mask
         self.target_proportion_relative = None
 
-        if image_dict is not None and roi_selection in image_dict and target_channel in image_dict[roi_selection]:
+        if image_dict is not None and roi_selection in image_dict and target_channel in \
+                image_dict[roi_selection] and image_dict[roi_selection][target_channel] is not None:
             self.image_dict = image_dict
             self.roi_selection = roi_selection
             self.target_threshold = target_threshold
@@ -613,17 +614,18 @@ class MarkerCorrelation:
                                                         blend_dict, target_channel, roi_selection, self.bounds)
                 if self.mask is not None and self.target_array is not None:
                     self.set_target_proportion_in_mask()
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError):
                 pass
             try:
-                if baseline_channel and baseline_channel in image_dict[roi_selection]:
+                if baseline_channel and baseline_channel in image_dict[roi_selection] and \
+                    image_dict[roi_selection][baseline_channel] is not None:
                     self.baseline_array, self.baseline_threshold = self.set_baseline_array_from_blend(image_dict,
                                         use_blend_params, blend_dict, baseline_channel, roi_selection, self.bounds)
                     self.compute_basic_pearson_correlation()
                     if self.mask is not None and self.baseline_array is not None:
                         self.set_baseline_proportion_in_mask()
                         self.compute_correlation_statistics()
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError):
                 pass
 
     def set_mask(self, mask: Union[np.array, np.ndarray]):

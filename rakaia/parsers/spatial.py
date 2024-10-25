@@ -22,10 +22,11 @@ def visium_has_scaling_factors(adata: ad.AnnData):
     except KeyError:
         return False
 
-def is_visium_anndata(adata: ad.AnnData):
+def is_visium_anndata(adata: Union[ad.AnnData, str]):
     """
     Detect if an anndata object is from the 10X Visium spatial gene expression assay
     """
+    adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
     return ('spatial' in adata.obsm and 'array_col' in adata.obs and
             'array_row' in adata.obs and visium_has_scaling_factors(adata))
 
@@ -93,27 +94,23 @@ def spatial_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: 
         return grid_width, grid_height, x_min, y_min
     return None, None, None, None
 
-def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: str,
-                               spot_size: Union[int, None]=None, downscale: bool=True):
+def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union[str, None],
+                               spot_size: Union[int, None]=None, downscale: bool=True,
+                               as_mask: int=False):
     """
     Extracts spot values for a specific gene marker and arranges them in a 2D grid
-    based on the spatial coordinates.
-
-    Parameters:
-    adata (AnnData): The AnnData object containing spatial data.
-    gene_marker (str): The name of the gene marker to extract.
-
-    Returns:
-    np.ndarray: A 2D array where each (x, y) position corresponds to the gene expression value.
+    based on the spatial coordinates. Requires either a named marker for expression spots,
+    or the `as_mask` flag to render spot detection for all spots. The `downscale` flag controls if
+    scale factors are used to match the image to the experiment capture area and should be used.
     """
     adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
     # Ensure the gene exists in the dataset
-    if gene_marker not in adata.var_names:
+    if gene_marker not in adata.var_names and not as_mask:
         raise ValueError(f"Gene marker '{gene_marker}' not found in the dataset.")
 
     # Extract the expression data for the specified gene marker
-    gene_index = adata.var_names.get_loc(gene_marker)
-    spot_values = adata[:, gene_index].X
+    spot_values = np.array(range(1, (len(adata) + 1))) if as_mask else (
+        adata[:, adata.var_names.get_loc(gene_marker)].X)
 
     # Convert to dense array if the data is sparse
     if hasattr(spot_values, "toarray"):

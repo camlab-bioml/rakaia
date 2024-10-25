@@ -22,7 +22,7 @@ from rakaia.parsers.object import (
     umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    GatingObjectList)
+    GatingObjectList, visium_mask)
 from rakaia.plugins import run_quantification_model
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
@@ -296,6 +296,19 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
             return mask_dict, options, height_update
         raise PreventUpdate
+
+    @dash_app.callback(Output('mask-dict', 'data', allow_duplicate=True),
+                       Output('mask-options', 'options', allow_duplicate=True),
+                       Input('make-spatial-mask', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('dataset-delimiter', 'value'),
+                       State('session_config', 'data'),
+                       State('mask-dict', 'data'))
+    def create_visium_mask(create_mask, data_selection, delimiter, session_dict, mask_dict):
+        if create_mask and data_selection and delimiter:
+            return visium_mask(mask_dict, data_selection, session_dict, delimiter, OVERWRITE)
+        raise PreventUpdate
+
 
     @dash_app.callback(
         Input("annotations-dict", "data"),

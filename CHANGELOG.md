@@ -7,20 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-10-22
+## [0.21.0] - 2024-10-25
 
 ### Added
 
 - Ability to transfer annotations between ROIs
 - Option to export channel tile and ROI query galleries as HTML while retaining resolution
-- Support for reading 10X Visium anndata (h5ad) objects for marker-spot projection +
+- Support for reading 10X Visium anndata (.h5ad) objects for marker-spot projection +
 input for setting custom spot radius (radius parsed on default)
+- Ability to generate a visium spot mask in-app
 
 ### Fixed
 
 - Import filenames as sets (do not import duplicate filenames)
 - Improved scaling tick markers for smaller dynamic ranges and sparse matrices
 - Explicit sorting (descending) on value counts for quantification distribution tables
+- Quantification only on markers in memory to be compatible with spatial
 
 ### Changed
 
