@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-10-25
+## [0.21.0] - 2024-10-29
 
 ### Added
 
@@ -23,6 +23,7 @@ input for setting custom spot radius (radius parsed on default)
 - Improved scaling tick markers for smaller dynamic ranges and sparse matrices
 - Explicit sorting (descending) on value counts for quantification distribution tables
 - Quantification only on markers in memory to be compatible with spatial
+- tick mark bug when using custom range slider max and low values
 
 ### Changed
 

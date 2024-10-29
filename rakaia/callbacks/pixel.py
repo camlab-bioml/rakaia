@@ -163,7 +163,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             import wx
             app = wx.App(None)
             dialog = wx.FileDialog(None, 'Open', str(Path.home()), style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
-                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5|*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad")
+                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad|*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad")
             if dialog.ShowModal() == wx.ID_OK:
                 filenames = dialog.GetPaths()
                 if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
@@ -346,7 +346,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     return channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
                         image_dict, key="upload_dict", use_unique_key=OVERWRITE), \
                         canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update
-                except Exception:
+                except (TypeError, KeyError, IndexError):
                     canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
                                     wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                     return [], [], SessionServerside(image_dict, key="upload_dict", use_unique_key=OVERWRITE), \
@@ -402,13 +402,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Auto-fill the value with the latest channel if it doesn't match the current value in the modification
         """
         if chosen_for_blend is not None and len(chosen_for_blend) > 0:
-            try:
-                if not all([elem in names.keys() for elem in chosen_for_blend]): raise AssertionError
-                channel_auto_fill = dash.no_update
-                if chosen_for_blend[-1] != cur_channel_mod: channel_auto_fill = chosen_for_blend[-1]
-                return [{'label': names[i], 'value': i} for i in chosen_for_blend], channel_auto_fill
-            except (AssertionError, IndexError):
-                raise PreventUpdate
+            if not all([elem in names.keys() for elem in chosen_for_blend]): raise PreventUpdate
+            channel_auto_fill = dash.no_update
+            if chosen_for_blend[-1] != cur_channel_mod: channel_auto_fill = chosen_for_blend[-1]
+            return [{'label': names[i], 'value': i} for i in chosen_for_blend], channel_auto_fill
         raise PreventUpdate
 
     @dash_app.callback(Input('session_config', 'data'),
@@ -719,7 +716,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             gaussian_even = filter_name == "gaussian" and (int(filter_value) % 2 == 0)
 
             if not no_filter_in_both and not same_filter_params and not gaussian_even and array is not None:
-                # do not update if all of the channels are not in the Channel dict
+                # do not update if all the channels are not in the channel dict
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in cur_layers for elem in blend_options]):
 
@@ -1090,8 +1087,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input("imc-panel-editable", "data"),
         Output('alias-dict', 'data'))
     def create_channel_label_dict(metadata):
-        if metadata is not None:
-            return populate_alias_dict_from_editable_metadata(metadata)
+        if metadata is not None: return populate_alias_dict_from_editable_metadata(metadata)
 
     @dash_app.callback(
         Output("download-edited-table", "data"),
@@ -1277,10 +1273,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         views = {elem: gallery_data[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
                     # if exporting, want only thumbnails so that all the images are the same size
-                    tiles = channel_tiles(views, canvas_layout, ZOOM_KEYS,
-                                                         blend_colour_dict, preset_selection, preset_dict, aliases, nclicks, toggle_gallery_zoom,
-                                                         toggle_scaling_gallery, 0.75, 3000, channel_selected if (view_by_channel and
-                                                channel_selected) else None) if views else None
+                    tiles = channel_tiles(views, canvas_layout, ZOOM_KEYS, blend_colour_dict, preset_selection, preset_dict,
+                            aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery, 0.75, 3000,
+                            channel_selected if (view_by_channel and channel_selected) else None) if views else None
                     return channel_tile_gallery_children(tiles) if tiles else None, dash.no_update
             raise PreventUpdate
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError): raise PreventUpdate
@@ -1347,7 +1342,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         reset all the relevant input widgets and dropdown menus when there is no channel currently selected
         """
-        if blend is None or len(blend) == 0 and len(current_selection) > 0 and cur_canvas:
+        if blend is None or len(blend) == 0 and (len(current_selection) > 0 and cur_canvas):
             cur_canvas['data'] = []
             return reset_pixel_histogram(), cur_canvas, [None, None], [], None
         raise PreventUpdate
@@ -1383,7 +1378,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Create pixel histogram and output the default percentiles
         """
-        # TODO: currently, the pixel histogram will collapse on a slider change because of the blend dictionary.
+        # currently, the pixel histogram will collapse on a slider change because of the blend dictionary.
         # collapse is triggered by this object to prevent the pixel histogram from being empty on an ROI change
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict) and \
                 data_selection in uploaded and uploaded[data_selection][selected_channel] is not None:
@@ -1411,17 +1406,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         lower_bound = float(current_blend_dict[selected_channel]['x_lower_bound'])
                         upper_bound = float(current_blend_dict[selected_channel]['x_upper_bound'])
                     else:
-                        lower_bound = 0
+                        lower_bound = 0.0
                         upper_bound = get_default_channel_upper_bound_by_percentile(uploaded[data_selection][selected_channel])
                         current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                         current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                         blend_return = current_blend_dict
                     # if the upper bound is larger than the custom percentile, set it to the upper bound
                     if ' Set range max to current upper bound' in custom_max:
-                        hist_max = upper_bound
+                        hist_max = float(upper_bound)
                         tick_markers, step_size = set_range_slider_tick_markers(hist_max)
-                    # set tick spacing between marks on the rangeslider
-                    # have 4 tick markers
+                    # set tick spacing between marks on the rangeslider to have 4 tick markers
                     return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, step_size, hist_open
                 except (KeyError, ValueError):
                     return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False
@@ -1432,18 +1426,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     if (cur_slider_values[0] is None or cur_slider_values[1] is None) or (
                             float(current_blend_dict[selected_channel]['x_lower_bound']) != float(cur_slider_values[0])
                             or float(current_blend_dict[selected_channel]['x_upper_bound']) != float(cur_slider_values[1])):
+                        blend_return = dash.no_update
                         lower_bound = float(current_blend_dict[selected_channel]['x_lower_bound'])
                         upper_bound = float(current_blend_dict[selected_channel]['x_upper_bound'])
                         vals_return = [lower_bound, upper_bound]
                 else:
-                    lower_bound = 0
+                    lower_bound = 0.0
                     upper_bound = get_default_channel_upper_bound_by_percentile(uploaded[data_selection][selected_channel])
                     current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
                     vals_return = [lower_bound, upper_bound]
-                hist_max = hist_max if not custom_max else dash.no_update
+                # if using custom max, don't update these parameters as they will nudge the slider
+                hist_max = float(hist_max) if not custom_max else dash.no_update
                 tick_markers = tick_markers if not custom_max else dash.no_update
+                step_size = step_size if not custom_max else dash.no_update
                 return dash.no_update, hist_max, vals_return, tick_markers, blend_return, step_size, hist_open
             elif ctx.triggered_id == "pixel-hist-collapse":
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, hist_open
@@ -1484,7 +1481,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (selected_channel, uploaded, data_selection, current_blend_dict):
             hist_max = upper_bound_for_range_slider(uploaded[data_selection][selected_channel])
             upper_bound = float(get_default_channel_upper_bound_by_percentile(uploaded[data_selection][selected_channel]))
-            if int(cur_slider_values[0]) != 0 or (int(cur_slider_values[1]) != upper_bound):
+            if float(cur_slider_values[0]) != 0.0 or (float(cur_slider_values[1]) != upper_bound):
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                 return hist_max, [0, upper_bound], tick_markers, step_size, []
             raise PreventUpdate
@@ -1673,8 +1670,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         prevent_initial_call=True)
     def update_selected_preview_row_on_roi_selection(data_selection, dataset_options):
         if None not in (dataset_options, data_selection):
-            try:
-                return [dataset_options.index(data_selection)]
+            try: return [dataset_options.index(data_selection)]
             except KeyError: raise PreventUpdate
         raise PreventUpdate
 

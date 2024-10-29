@@ -360,7 +360,7 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     array_stack = np.hstack(array)
     data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
     upper_percentile = float(np.percentile(data, percentile))
-    return upper_percentile if upper_percentile > 0 else 1.0
+    return upper_percentile if upper_percentile > 0.0 else 1.0
 
 def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options,
                                                   cur_dataset_preview: Union[list, dict]=None):

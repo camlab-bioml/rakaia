@@ -94,6 +94,16 @@ def spatial_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: 
         return grid_width, grid_height, x_min, y_min
     return None, None, None, None
 
+def spatial_marker_to_dense_flat(spot_array: Union[np.array, np.ndarray]):
+    """
+    Convert a sparse spatial marker array into a dense flat array
+    """
+    if hasattr(spot_array, "toarray"):
+        spot_array = spot_array.toarray().flatten()
+    else:
+        spot_array = spot_array.flatten()
+    return spot_array
+
 def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union[str, None],
                                spot_size: Union[int, None]=None, downscale: bool=True,
                                as_mask: int=False):
@@ -113,10 +123,7 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
         adata[:, adata.var_names.get_loc(gene_marker)].X)
 
     # Convert to dense array if the data is sparse
-    if hasattr(spot_values, "toarray"):
-        spot_values = spot_values.toarray().flatten()
-    else:
-        spot_values = spot_values.flatten()
+    spot_values = spatial_marker_to_dense_flat(spot_values)
 
     # Extract spatial coordinates from the 'spatial' key in .obsm
     if 'spatial' not in adata.obsm.keys():
