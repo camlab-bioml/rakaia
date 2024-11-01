@@ -477,10 +477,11 @@ def create_new_blending_dict(uploaded):
     return current_blend_dict
 
 
-def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_config, array_store_type="float",
-                                       delimiter="+++"):
+def image_dict_from_lazy_load(dataset_selection: str, session_config: dict,
+                              array_store_type: str="float",
+                              delimiter: str="+++"):
     """
-    Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
+    Generate an ROI raw array dictionary with an ROI read from a filepath for lazy loading
     """
     # IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
     # is already contained in the dictionary
@@ -496,7 +497,7 @@ def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_c
                                      lazy_load=False, single_roi_parse=True, internal_name=dataset_selection,
                                      roi_name=acq_name, delimiter=delimiter).image_dict
         return upload_dict_new
-    return upload_dict
+    return None
 
 def sparse_array_to_dense(array):
     """

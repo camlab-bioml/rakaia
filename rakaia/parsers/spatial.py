@@ -5,8 +5,9 @@ import skimage
 
 class SpatialDefaults:
     """
-    Defines the default spot sizes and scale numerators for the capture areas
-    for both the 6.5um and 11um capture slides. The default spot size in microns is the same for both
+    Defines the default spot/marker sizes and scale numerators for spatial datasets.
+    For 10X Visium, the default spot size in microns is the same for both the 6.5um and 11um capture slides.
+    For non-Visium technologies, the default marker radius in pixels is 1, and can be changed in-session
     """
     visium_spot_size: int=55
     visium_scale_num: int=65
@@ -67,7 +68,7 @@ def set_spatial_scale(adata: ad.AnnData, spot_size: Union[int, None]=None, downs
         (downscale and is_visium_anndata(adata)) else 1
     return capture_size, spot_size, scale_factor
 
-def spatial_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: float=0.05,
+def spatial_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: float=0.03,
                               downscale: bool=True):
     """
     Set the dimensions for the 10x visium data set. Incorporates a border percentage that
@@ -81,12 +82,13 @@ def spatial_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: 
         x_min, y_min = np.min((adata.obsm['spatial'] * scale_factor), axis=0)
         x_max, y_max = np.max((adata.obsm['spatial'] * scale_factor), axis=0)
 
-        # give a 5% offset around the spots
-        y_min = int(y_min - int(border_percentage * (y_max - y_min)))
-        x_min = int(x_min - int(border_percentage * (x_max - x_min)))
+        # only use a border for visium because of the masks being able to match for other technologies
+        if is_visium_anndata(adata):
+            y_min = int(y_min - int(border_percentage * (y_max - y_min)))
+            x_min = int(x_min - int(border_percentage * (x_max - x_min)))
 
-        y_max = int(y_max + int(border_percentage * (y_max - y_min)))
-        x_max = int(x_max + int(border_percentage * (x_max - x_min)))
+            y_max = int(y_max + int(border_percentage * (y_max - y_min)))
+            x_max = int(x_max + int(border_percentage * (x_max - x_min)))
 
         # Create an empty grid to hold the gene expression values
         grid_width = int(x_max - x_min)

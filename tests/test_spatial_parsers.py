@@ -30,12 +30,12 @@ def test_basic_visium_anndata_parser(get_current_dir):
 def test_visium_generate_spot_grid(get_current_dir):
     grid_image = spatial_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
                                                 'Sox17')
-    assert grid_image[481, 700] == np.max(grid_image)
+    assert grid_image[461, 680] == np.max(grid_image)
     assert grid_image[10, 10] == 0
 
     grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(
         os.path.join(get_current_dir, "visium_thalamus.h5ad"))
-    assert grid_image.shape == (grid_height, grid_width) == (961, 1051)
+    assert grid_image.shape == (grid_height, grid_width) == (925, 1011)
 
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
     assert get_spatial_spot_radius(adata) == 89
@@ -61,7 +61,7 @@ def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
     for marker in image_dict_back['visium_thalamus+++slide0+++acq'].keys():
         if marker in list(adata.var_names)[0:2]:
             assert image_dict_back['visium_thalamus+++slide0+++acq'][marker] is not None
-            assert image_dict_back['visium_thalamus+++slide0+++acq'][marker].shape == (961, 1051)
+            assert image_dict_back['visium_thalamus+++slide0+++acq'][marker].shape == (925, 1011)
         else:
             assert image_dict_back['visium_thalamus+++slide0+++acq'][marker] is None
 
@@ -72,6 +72,6 @@ def test_parse_visium_spot_mask(get_current_dir):
                                    uploads)
     assert 'visium_thalamus' in names
     assert 'visium_thalamus' in mask_dict.value.keys()
-    assert mask_dict.value['visium_thalamus']['raw'].shape == (961, 1051)
+    assert mask_dict.value['visium_thalamus']['raw'].shape == (925, 1011)
     assert (np.max(mask_dict.value['visium_thalamus']['raw']) ==
             len(ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))))

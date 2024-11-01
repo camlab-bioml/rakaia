@@ -13,7 +13,7 @@ currently supports the following technologies:
 
 - imaging mass cytometry (IMC)
 - immunofluorescence (IF)
-- 10X Visium Spatial Gene Expression (V1 & V2)
+- spatial transcriptomics such as 10X Visium Spatial Gene Expression (V1 & V2), Xenium, and others
 
 Tools in the rakaia application include:
 
@@ -131,10 +131,11 @@ found [here](https://camlab-bioml.github.io/rakaia-doc/docs/installation)
 
 ## mongoDB
 
-From rakaia v0.12.0, users can use a registered mongoDB account for the
+Users can use a registered mongoDB account for the
 `rakaia-db` mongoDB instance to import, save, and remove past saved configurations.
-Please reach out to mwatson@lunenfeld.ca to request access to existing databases or to receive
-information on configuring custom database instances.
+Please reach out to mwatson@lunenfeld.ca to request access to existing databases or
+visit the documentation section [here](https://camlab-bioml.github.io/rakaia-doc/docs/database)
+to configure a custom Atlas mongoDB database instance.
 
 ## For developers
 

@@ -3,7 +3,7 @@ import pytest
 from rakaia.parsers.pixel import (
     FileParser,
     create_new_blending_dict,
-    populate_image_dict_from_lazy_load,
+    image_dict_from_lazy_load,
     sparse_array_to_dense,
     convert_between_dense_sparse_array,
     convert_rgb_to_greyscale,
@@ -81,7 +81,7 @@ def test_basic_parser_blend_dict_from_lazy_loading(get_current_dir):
     assert 'query+++slide0+++Xylene_5' in uploaded_dict.keys()
     assert all([elem is None for elem in uploaded_dict['query+++slide0+++Xylene_5'].values()])
     session_config = {"uploads": [os.path.join(get_current_dir, "query.mcd")]}
-    new_upload_dict = populate_image_dict_from_lazy_load(uploaded_dict, 'query+++slide0+++Xylene_5', session_config)
+    new_upload_dict = image_dict_from_lazy_load('query+++slide0+++Xylene_5', session_config)
     assert all([elem is not None for elem in new_upload_dict['query+++slide0+++Xylene_5'].values()])
 
 def test_basic_parser_lazy_loading_2(get_current_dir):
@@ -89,7 +89,7 @@ def test_basic_parser_lazy_loading_2(get_current_dir):
     uploaded_dict = uploaded.image_dict
     assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++acq'].values()])
     session_config = {"uploads": [os.path.join(get_current_dir, "query_from_text.txt")]}
-    new_upload_dict = populate_image_dict_from_lazy_load(uploaded_dict, 'query_from_text+++slide0+++acq', session_config)
+    new_upload_dict = image_dict_from_lazy_load('query_from_text+++slide0+++acq', session_config)
     assert all([elem is not None for elem in new_upload_dict['query_from_text+++slide0+++acq'].values()])
 
 

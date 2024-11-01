@@ -669,7 +669,7 @@ class CanvasLayout:
         Add a circle for each point annotation in a CSV file. Each annotation is validated against the
         image dimensions in the current canvas to ensure that the annotation lies within the dimensions
 
-        :param imported_annotations: pd.DatdFrame of imported click-point annotations
+        :param imported_annotations: pd.DataFrame of imported click-point annotations
         :param cur_image: RGB numpy array of the current canvas blend
         :param circle_size: Integer or float specifying the radius size of the circles to be drawn on the canvas
 

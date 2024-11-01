@@ -229,16 +229,50 @@ class FullScreenCanvas:
     def __init__(self, canvas: Union[dict, go.Figure], canvas_layout: dict):
         self.canvas = canvas
         self.canvas_layout = canvas_layout
+        if 'layout' in self.canvas.keys():
+            self.clear_canvas_annotation()
+            self.clear_canvas_shapes()
+        self.clear_layout_annotations()
+        self.clear_layout_shapes()
+
+    def clear_canvas_annotation(self):
+        """
+        Remove the canvas annotations for full screen mode
+
+        :return: None
+        """
+        if 'annotations' in self.canvas['layout'].keys() and \
+                len(self.canvas['layout']['annotations']) > 0:
+            self.canvas['layout']['annotations'] = []
+
+    def clear_canvas_shapes(self):
+        """
+        Remove the canvas shapes for full screen mode
+
+        :return: None
+        """
+        if 'shapes' in self.canvas['layout'].keys():
+            self.canvas['layout']['shapes'] = []
+
+    def clear_layout_annotations(self):
+        """
+        Remove the annotations for the canvas layout object for full screen mode
+
+        :return: None
+        """
         if 'layout' in self.canvas_layout.keys() and 'annotations' in self.canvas_layout['layout'].keys() and \
                 len(self.canvas_layout['layout']['annotations']) > 0:
             self.canvas_layout['layout']['annotations'] = []
-        if 'shapes' in canvas_layout.keys():
+
+    def clear_layout_shapes(self):
+        """
+        Remove the shapes for the canvas layout object for full screen mode
+
+        :return: None
+        """
+        if 'shapes' in self.canvas_layout.keys():
             self.canvas_layout['shapes'] = {}
-        if 'layout' in self.canvas.keys() and 'annotations' in self.canvas['layout'].keys() and \
-                len(self.canvas['layout']['annotations']) > 0:
-            self.canvas['layout']['annotations'] = []
-        if 'layout' in self.canvas.keys() and 'shapes' in self.canvas['layout'].keys():
-            self.canvas['layout']['shapes'] = []
+
 
     def get_canvas(self, as_fig: bool=False) -> Union[go.Figure, dict]:
 

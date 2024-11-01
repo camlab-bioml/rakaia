@@ -94,8 +94,9 @@ def test_query_parser_visium_h5ad(get_current_dir):
     roi_query = RegionThumbnail(session_config, blend_dict, selected, 1,
                 dataset_options=list(parse.keys())).get_image_dict()
     assert 'visium_thalamus+++slide0+++acq' in roi_query.keys()
-    assert list(roi_query['visium_thalamus+++slide0+++acq'][496, 481]) == [255, 0, 0]
-    assert list(roi_query['visium_thalamus+++slide0+++acq'][300, 1000]) == [0, 0, 255]
+
+    assert list(roi_query['visium_thalamus+++slide0+++acq'][460, 475]) == [255, 0, 0]
+    assert list(roi_query['visium_thalamus+++slide0+++acq'][540, 130]) == [0, 0, 255]
 
 def test_roi_query_parser_predefined(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")
