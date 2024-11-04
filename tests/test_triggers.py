@@ -5,7 +5,8 @@ from rakaia.callbacks.triggers import (
     channel_order_as_default,
     channel_already_added,
     set_annotation_indices_to_remove,
-    reset_on_visium_spot_size_change)
+    reset_on_visium_spot_size_change,
+    no_channel_for_view)
 import numpy as np
 
 def test_triggers():
@@ -32,6 +33,11 @@ def test_triggers():
     assert channel_order_as_default("channel-order", ["1", "2", "3"], ["1", "2", "3"])
     assert not channel_order_as_default("channel-order", ["1", "3", "2"], ["1", "2", "3"])
     assert not channel_order_as_default("diff", ["1", "2", "3"], ["1", "2", "3"])
+
+    assert no_channel_for_view("unique-channel-list", "chan-1", False)
+    assert not no_channel_for_view("unique-channel-list", "chan-1", True)
+    assert no_channel_for_view("toggle-gallery-view", None, True)
+    assert not no_channel_for_view("toggle-gallery-view", "chan-1", True)
 
 
 def test_annotation_index_triggers():

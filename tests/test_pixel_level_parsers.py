@@ -10,7 +10,7 @@ from rakaia.parsers.pixel import (
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict,
-    NoAcquisitionsParsedError)
+    NoAcquisitionsParsedError, set_current_channels)
 from scipy.sparse import csc_matrix
 import numpy as np
 from rakaia.utils.alert import PanelMismatchError
@@ -113,6 +113,12 @@ def test_basic_parser_from_h5py(get_current_dir):
     assert 'test---slide0---chr10-h54h54-Gd158_2_18' in uploaded_dict.keys()
     assert len(uploaded_dict['test---slide0---chr10-h54h54-Gd158_2_18'].keys()) == 12 == len(uploaded_dict['metadata'])
 
+    session_config = {"uploads": [os.path.join(get_current_dir, "data.h5")]}
+    new_upload_dict = image_dict_from_lazy_load('test---slide0---chr10-h54h54-Gd158_2_18', session_config,
+                                                delimiter="---")
+    # the h5py does not support lazy loading
+    assert not new_upload_dict
+
 def test_identify_sparse_matrices():
     array = np.full((700, 700), 3)
     array_return = sparse_array_to_dense(array)
@@ -172,3 +178,10 @@ def test_layer_dict_status():
     assert check_empty_missing_layer_dict(None, "roi_1") == {'roi_1': {}}
     assert check_empty_missing_layer_dict({'roi_1': {}}, "roi_2") == {'roi_2': {}}
     assert check_empty_missing_layer_dict({'roi_2': {"channel_1": 1}}, "roi_2") == {'roi_2': {"channel_1": 1}}
+
+def test_setting_current_channels(get_current_dir):
+    parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
+    uploaded_dict = parser.image_dict
+    assert set_current_channels(uploaded_dict, 'query+++slide0+++EtOH_6', ['Xe131']) == ['Xe131']
+    assert not set_current_channels(uploaded_dict, 'bad_query', ['Xe131'])
+    assert not set_current_channels(uploaded_dict, 'query+++slide0+++EtOH_6', ['missing'])

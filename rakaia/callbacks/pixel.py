@@ -27,7 +27,7 @@ from rakaia.parsers.pixel import (
     create_new_blending_dict,
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
-    check_empty_missing_layer_dict, parse_files_for_h5ad)
+    check_empty_missing_layer_dict, parse_files_for_h5ad, set_current_channels)
 from rakaia.parsers.spatial import spatial_canvas_dimensions, check_spot_grid_multi_channel
 from rakaia.utils.decorator import (
     # time_taken_callback,
@@ -103,7 +103,7 @@ from rakaia.callbacks.triggers import (
     global_filter_disabled,
     channel_order_as_default,
     new_roi_same_dims,
-    channel_already_added, reset_on_visium_spot_size_change)
+    channel_already_added, reset_on_visium_spot_size_change, no_channel_for_view)
 
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -297,7 +297,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-delimiter', 'value'),
                        Input('data-selection-refresh', 'n_clicks'),
                        prevent_initial_call=True)
-    def create_dropdown_options(upload_template, data_selection, names, currently_selected_channels, session_config,
+    def create_dropdown_options(upload_template, data_selection, names, cur_chan_selection, session_config,
                                 sort_channels, enable_zoom, cur_dimensions, delimiter, refresh):
         """
         Update the image layers and dropdown options when a new ROI is selected.
@@ -312,7 +312,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
                 try:
                     image_dict = image_dict_from_lazy_load(data_selection, session_config, app_config['array_store_type'], delimiter)
-                    # image_dict = image_dict_new if image_dict_new is not None else image_dict
+                    image_dict = image_dict if image_dict is not None else upload_template
                     if all([elem is None for elem in image_dict[data_selection].values()]):
                         # if 10x Visium, check the dimensions
                         if not parse_files_for_h5ad(session_config, data_selection, delimiter):
@@ -326,7 +326,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         # get the first image in the ROI and check the dimensions
                         first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
-                        # add a pause if the roi is really small to allow a full canvas update
+                        # add a pause if the roi is small to allow a full canvas dimension update
                         sleep_on_small_roi(dim_return)
                         # if the new dimensions match, do not update the canvas child to preserve the ui revision state
                         if new_roi_same_dims(ctx.triggered_id, cur_dimensions, first_image):
@@ -339,11 +339,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                         wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
 
                     # if all the currently selected channels are in the new ROI, keep them. otherwise, reset
-                    if currently_selected_channels is not None and len(currently_selected_channels) > 0 and \
-                            all([elem in image_dict[data_selection].keys() for elem in currently_selected_channels]):
-                        channels_selected = list(currently_selected_channels)
-                    else:
-                        channels_selected = []
+                    channels_selected = set_current_channels(image_dict, data_selection, cur_chan_selection)
                     return channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
                         image_dict, key="upload_dict", use_unique_key=OVERWRITE), \
                         canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update
@@ -1243,8 +1239,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                          all([elem is not None for elem in image_dict[data_selection].values()])
             # 1. if a channel is selected, but view by channel is not enabled
             # 2. if view by channel is enabled but no channel is selected
-            no_channel = ctx.triggered_id == "unique-channel-list" and not view_by_channel or \
-                         (ctx.triggered_id == "toggle-gallery-view" and not channel_selected)
+            no_channel = no_channel_for_view(ctx.triggered_id, channel_selected, view_by_channel)
             # don't use updated aliases if using single-channel view
             dont_need_aliases = ctx.triggered_id == "alias-dict" and (view_by_channel and channel_selected)
             if ctx.triggered_id == "btn-download-chan-tiles" and cur_gal:
@@ -1266,7 +1261,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                     blend_colour_dict, channel_selected, image_dict, data_selection)
                                 views = {key: apply_preset_to_array(value, blend_colour_dict[channel_selected]) for
                                          key, value in views.items()}
-                            except KeyError: pass
+                            except (KeyError, IndexError): pass
                     else:
                         views = {elem: image_dict[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
@@ -1276,7 +1271,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             channel_selected if (view_by_channel and channel_selected) else None) if views else None
                     return channel_tile_gallery_children(tiles) if tiles else None, dash.no_update
             raise PreventUpdate
-        except (dash.exceptions.LongCallbackError, AttributeError, KeyError): raise PreventUpdate
+        except (dash.exceptions.LongCallbackError, AttributeError, KeyError, IndexError): raise PreventUpdate
 
     @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
     def serve_static(path):

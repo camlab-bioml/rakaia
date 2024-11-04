@@ -143,9 +143,9 @@ class FileParser:
 
     def parse_h5(self, h5py_file):
         """
-        Parse a h5py ROI file generated from a previous session.
+        Parse an .h5py ROI file generated from a previous session.
 
-        :param h5py_file: path to a compatible h5py file.
+        :param h5py_file: path to a compatible .h5py file.
         :return: None
         """
         data_h5 = h5py.File(h5py_file, "r")
@@ -574,3 +574,14 @@ def parse_files_for_h5ad(uploads: Union[list, dict], data_selection: str, delimi
         if upload.endswith('.h5ad') and exp in upload:
             return upload
     return None
+
+def set_current_channels(image_dict: dict, data_selection: str, current_selection: list):
+    """
+    Set the currently selected channels by verifying that every selection is in the current ROI dictionary.
+    Called when switching ROIs with a current blend applied
+    """
+    if current_selection is not None and len(current_selection) > 0 and \
+        data_selection in image_dict and \
+            all([elem in image_dict[data_selection].keys() for elem in current_selection]):
+        return list(current_selection)
+    return []

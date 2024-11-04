@@ -68,3 +68,11 @@ def reset_on_visium_spot_size_change(triggered_id: str, raw_data_dict: dict,
         raw_data_dict[data_selection] = {marker: None for marker in raw_data_dict[data_selection].keys()}
         layer_dict[data_selection] = {}
     return raw_data_dict, layer_dict
+
+def no_channel_for_view(trigger: str, channel_selected: str, view_by_channel: Union[bool, list]):
+    """
+    Returns True if the conditions are met where the gallery view by channel mode is selected,
+    but cannot be toggled, either because no channel is selected, or the feature hasn't been enabled
+    """
+    return ((trigger == "unique-channel-list" and not view_by_channel) or
+            (trigger == "toggle-gallery-view" and not channel_selected))
