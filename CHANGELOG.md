@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-10-29
+## [0.21.0] - 2024-11-07
 
 ### Added
 
@@ -24,6 +24,8 @@ input for setting custom spot radius (radius parsed on default)
 - Explicit sorting (descending) on value counts for quantification distribution tables
 - Quantification only on markers in memory to be compatible with spatial
 - tick mark bug when using custom range slider max and low values
+- Check new cluster subtypes by category on a new upload and update only if different subtypes
+- Fix reset cluster subtype reassignment because of numerical to string casting
 
 ### Changed
 
