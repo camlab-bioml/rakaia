@@ -263,7 +263,9 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
             cur_canvas['layout']['shapes'] = filter_annotation_shapes(cur_canvas)
             # IMP: to avoid the phantom shape set by https://github.com/plotly/dash/issues/2741
             # set the uirevision status to something different from what it was, BUT must still be truthy
-            cur_canvas['layout']['uirevision'] = True if cur_canvas['layout']['uirevision'] not in [True] else "clear"
+            try:
+                cur_canvas['layout']['uirevision'] = True if cur_canvas['layout']['uirevision'] not in [True] else "clear"
+            except (KeyError, IndexError): pass
             fig = go.Figure(cur_canvas)
             fig.update_layout(dragmode="zoom")
             return fig, dash.no_update

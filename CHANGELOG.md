@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-11-07
+## [0.21.0] - 2024-11-11
 
 ### Added
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for reading 10X Visium anndata (.h5ad) objects for marker-spot projection +
 input for setting custom spot radius (radius parsed on default)
 - Ability to generate a visium spot mask in-app
+- Adaboost tree classifier for plugin/quant models
 
 ### Fixed
 
@@ -23,13 +24,14 @@ input for setting custom spot radius (radius parsed on default)
 - Improved scaling tick markers for smaller dynamic ranges and sparse matrices
 - Explicit sorting (descending) on value counts for quantification distribution tables
 - Quantification only on markers in memory to be compatible with spatial
-- tick mark bug when using custom range slider max and low values
+- Tick mark bug when using custom range slider max and low values
 - Check new cluster subtypes by category on a new upload and update only if different subtypes
 - Fix reset cluster subtype reassignment because of numerical to string casting
 
 ### Changed
 
 - Increase limits on raw image uploader
+- No default database connection string
 
 ## [0.20.0] - 2024-09-19
 

@@ -252,7 +252,7 @@ def register_app_layout(config, cache_dest):
                                         style={"width": "100%"}),
                                         html.Br(),
                                         html.Br(),
-                                        html.H5("Step 2: Optional imports", style={'width': '50%'}),
+                                        html.H5("Step 2: Optional imports", style={'width': '100%'}),
                                         html.H6("Mask"),
                                         dbc.Modal(children=dbc.ModalBody(
                                             [html.H6("Set the label for the imported mask"),
@@ -339,7 +339,7 @@ def register_app_layout(config, cache_dest):
                                 html.Br(),
                                 dbc.Form([
                                 html.Div([dbc.Label("Database connection string", html_for="db-connection-string"),
-                                dbc.Input(type="text", id="db-connection-string", value="rakaia-db.uzqznla.mongodb.net",
+                                dbc.Input(type="text", id="db-connection-string", value="",
                                 style={"width": "75%"}, persistence=config['persistence'],
                                 persistence_type='local')], className="mb-3"),
                                 html.Div([dbc.Label("Username", html_for="db-username"),
@@ -756,35 +756,21 @@ def register_app_layout(config, cache_dest):
                                                       "float": "center", "justify-content": "center"}),
                                     html.Div(dbc.Collapse(html.Div([html.H6("Pixel histogram", style={'width': '75%'}),
                                                                     html.Div([dcc.Loading(dcc.Graph(id="pixel-hist",
-                                                                                                    figure={
-                                                                                                        'layout': dict(
-                                                                                                            xaxis_showgrid=False,
-                                                                                                            yaxis_showgrid=False,
-                                                                                                            xaxis=XAxis(
-                                                                                                                showticklabels=False),
-                                                                                                            yaxis=YAxis(
-                                                                                                                showticklabels=False),
-                                                                                                            margin=dict(
-                                                                                                                l=5,
-                                                                                                                r=5,
-                                                                                                                b=15,
-                                                                                                                t=20,
-                                                                                                                pad=0))},
-                                                                                                    style={
-                                                                                                        'width': '60vh',
-                                                                                                        'height': '30vh',
-                                                                                                        'margin-left': '-30px'},
-                                                                                                    # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
-                                                                                                    # keep zoom and pan bars to be able to modify the histogram view
-                                                                                                    # 'modeBarButtonsToRemove': ['zoom', 'pan']
-                                                                                                    # },
-                                                                                                    config={
-                                                                                                        'displaylogo': False},
-                                                                                                    ), type="default",
-                                                                                          fullscreen=False,
-                                                                                          color=DEFAULT_WIDGET_COLOUR)])]),
-                                                          id="pixel-hist-collapse", is_open=False),
-                                             style={"minHeight": "100px", "float": "center", "justifyContent": "center"}),
+                                            figure={'layout': dict(xaxis_showgrid=False,
+                                                    yaxis_showgrid=False,xaxis=XAxis(
+                                                    showticklabels=False),
+                                                    yaxis=YAxis(showticklabels=False),
+                                            margin=dict(l=0,r=0, b=0, t=0,pad=0))},
+                                            style={'width': 'auto', 'height': '30vh',
+                                                'margin-left': '-30px', 'margin-right': '-55px'},
+                                            # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
+                                            # keep zoom and pan bars to be able to modify the histogram view
+                                            # 'modeBarButtonsToRemove': ['zoom', 'pan']},
+                                            config={'displaylogo': False}), type="default", fullscreen=False,
+                                            color=DEFAULT_WIDGET_COLOUR)], style={"width": "auto"})]),
+                                            id="pixel-hist-collapse", is_open=False),
+                                             style={"minHeight": "100px", "float": "center", "justifyContent": "center",
+                                                    "width": "auto"}),
                                     html.Div([
                                         dcc.RangeSlider(0, 100, 1, value=[None, None],
                                                         marks=dict([(i, str(i)) for i in range(0, 100, 25)]),
@@ -1067,18 +1053,18 @@ def register_app_layout(config, cache_dest):
                                                disabled=True, style={"margin-top": "5px"}),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-rectangle-list",
                                     style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                    html.Div("Show ROI annotations")], style={"display": "flex"}),
+                                    html.Div("Show annotations")], style={"display": "flex"}),
                                                id="show-annotation-table", className="mx-auto", color=None, n_clicks=0,
                                                style={"margin-top": "10px"}),
                                 ], style={"display": "flex", "width": "50%"}),
                                 html.Div([dbc.Button(children=html.Span([html.I(className="fa-solid fa-trash",
                                 style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
-                                html.Div("Clear annotation shapes")],style={"display": "flex"}),
+                                html.Div("Clear shapes")],style={"display": "flex"}),
                                 id="clear-region-annotation-shapes", className="mx-auto", color=None, n_clicks=0,
                                 disabled=False, style={"margin-top": "10px"}),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-trash",
                                 style={"display": "inline-block", "margin-right": "7.5px",
-                                "margin-top": "3px"}), html.Div("Clear ROI annotations")],
+                                "margin-top": "3px"}), html.Div("Clear annotations")],
                                 style={"display": "flex"}), id="clear-annotation_dict",
                                 className="mx-auto", color=None, n_clicks=0, style={"margin-top": "10px", "width": "80%"})],
                                 style={"display": "flex", "width": "50%"}),
