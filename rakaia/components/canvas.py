@@ -288,6 +288,7 @@ class CanvasImage:
         fig = self.add_canvas_hover_template(fig)
         # to remove the hover template completely
         # fig.update_traces(hovertemplate=None, hoverinfo='skip')
+
         return fig.to_dict()
 
     def get_shape(self) -> tuple:

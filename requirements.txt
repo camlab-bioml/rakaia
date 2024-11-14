@@ -57,7 +57,7 @@ kaleido==0.2.1
 kiwisolver==1.4.4
 lazy_loader==0.2
 leidenalg==0.9.1
-llvmlite==0.40.0
+llvmlite==0.42.0
 lxml==4.9.2
 MarkupSafe==2.1.3
 matplotlib==3.7.1
@@ -66,7 +66,7 @@ more-itertools==9.1.0
 multiprocess==0.70.14
 natsort==8.3.1
 networkx==3.1
-numba==0.57.0
+numba==0.59.0
 numexpr==2.8.7
 numpy==1.24.3
 oauthlib==3.2.2

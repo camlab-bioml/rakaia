@@ -23,9 +23,10 @@ def visium_has_scaling_factors(adata: ad.AnnData):
     except KeyError:
         return False
 
-def is_visium_anndata(adata: Union[ad.AnnData, str]):
+def is_spot_based_spatial(adata: Union[ad.AnnData, str]):
     """
-    Detect if an anndata object is from the 10X Visium spatial gene expression assay
+    Detect if an anndata object is from the 10X Visium spatial gene expression spot-based assay.
+    This includes Visium V1 & V2, but not Visium HD, which uses square bins
     """
     adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
     return ('spatial' in adata.obsm and 'array_col' in adata.obs and
@@ -38,9 +39,10 @@ def is_spatial_dataset(adata: ad.AnnData):
     return 'spatial' in adata.obsm
 
 
-def detect_spatial_capture_size(adata: ad.AnnData):
+def detect_spatial_capture_size():
     """
-    Get the capture area scale factor for a Visium anndata (65 for 6.5um, and 110 for 11um)
+    Get the capture area scale factor for a Visium spot-based dataset. This is currently set to 65
+    for both capture area resolutions (6.5 and 11mm)
     """
     # try:
     #     return VisiumDefaults.scale_num if (int(np.max(adata.obs['array_col'])) > 200 and
@@ -55,17 +57,17 @@ def set_spatial_spot_size(adata):
     """
     Set the marker spot size for a spatial dataset
     """
-    return SpatialDefaults.visium_spot_size if is_visium_anndata(adata) else SpatialDefaults.other_spatial_size
+    return SpatialDefaults.visium_spot_size if is_spot_based_spatial(adata) else SpatialDefaults.other_spatial_size
 
 def set_spatial_scale(adata: ad.AnnData, spot_size: Union[int, None]=None, downscale: bool=True):
     """
     Set the Visium scale factors and capture areas based on the metadata in the anndata object as well
     as a custom user provided spot size
     """
-    capture_size = detect_spatial_capture_size(adata)
+    capture_size = detect_spatial_capture_size()
     spot_size = get_spatial_spot_radius(adata, spot_size)
     scale_factor = float(capture_size / (spot_size * 2)) if \
-        (downscale and is_visium_anndata(adata)) else 1
+        (downscale and is_spot_based_spatial(adata)) else 1
     return capture_size, spot_size, scale_factor
 
 def spatial_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: float=0.03,
@@ -83,7 +85,7 @@ def spatial_canvas_dimensions(adata: Union[ad.AnnData, str], border_percentage: 
         x_max, y_max = np.max((adata.obsm['spatial'] * scale_factor), axis=0)
 
         # only use a border for visium because of the masks being able to match for other technologies
-        if is_visium_anndata(adata):
+        if is_spot_based_spatial(adata):
             y_min = int(y_min - int(border_percentage * (y_max - y_min)))
             x_min = int(x_min - int(border_percentage * (x_max - x_min)))
 
@@ -171,10 +173,11 @@ def get_spatial_spot_radius(adata: ad.AnnData, alt_spot_size: Union[int, None]=N
     used to render the spots in pixel format. If the value cannot be found, then the default is 55
     """
     # if a custom spot size if provided, use that first
-    if alt_spot_size:
+    if alt_spot_size and not is_spot_based_spatial(adata):
         return alt_spot_size
     try:
         spatial_meta = adata.uns['spatial'][list(adata.uns['spatial'].keys())[0]]
         return int(spatial_meta['scalefactors']['spot_diameter_fullres'] / 2)
     except KeyError:
-        return alt_spot_size if alt_spot_size else set_spatial_spot_size(adata)
+        return alt_spot_size if (alt_spot_size and not is_spot_based_spatial(adata)) else (
+            set_spatial_spot_size(adata))

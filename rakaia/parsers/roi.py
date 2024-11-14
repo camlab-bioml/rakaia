@@ -23,7 +23,7 @@ from rakaia.parsers.object import (
 from rakaia.parsers.spatial import (
     SpatialDefaults,
     spatial_canvas_dimensions, spatial_grid_single_marker, set_spatial_scale, get_spatial_spot_radius,
-    is_visium_anndata, is_spatial_dataset)
+    is_spot_based_spatial, is_spatial_dataset)
 
 
 class RegionThumbnail:
@@ -390,7 +390,7 @@ class RegionThumbnail:
             acq_image = []
             grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(adata)
             if (self.roi_within_dimension_threshold(grid_width, grid_height) and
-                    (is_visium_anndata(adata) or is_spatial_dataset(adata))):
+                    (is_spot_based_spatial(adata) or is_spatial_dataset(adata))):
                 spot_size = get_spatial_spot_radius(adata, self.spot_size)
                 for marker in self.currently_selected_channels:
                     if marker in self.blend_dict.keys():

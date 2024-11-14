@@ -552,7 +552,7 @@ def register_app_layout(config, cache_dest):
                                 dbc.Spinner(html.Div([], id='status-div'), color="dark"),
                                 ])],
                                 style={"margin-top": "-15px", "padding": "0px"})],
-                    style={"width": "37.5%", "padding": "5px", "margin-bottom": "0px",
+                    style={"width": "38%", "padding": "5px", "margin-bottom": "0px",
                            "#header": {"display": "None", "margin-top": "7.5px"}}, scrollable=True),
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([
@@ -1048,7 +1048,7 @@ def register_app_layout(config, cache_dest):
                                 html.Div([
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-layer-group",
                                 style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                    html.Div("Add region annotation")], style={"display": "flex"}),
+                                    html.Div("Region annotation")], style={"display": "flex"}),
                                                id="region-annotation", className="mx-auto", color=None, n_clicks=0,
                                                disabled=True, style={"margin-top": "5px"}),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-rectangle-list",

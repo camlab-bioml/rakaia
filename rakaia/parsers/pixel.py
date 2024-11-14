@@ -13,7 +13,7 @@ import anndata as ad
 
 from rakaia.parsers.spatial import (
     spatial_canvas_dimensions,
-    is_visium_anndata, is_spatial_dataset)
+    is_spot_based_spatial, is_spatial_dataset)
 from rakaia.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
@@ -411,7 +411,7 @@ class FileParser:
         :param h5ad_filepath: Filepath to 10x Visium filepath
         """
         anndata = ad.read_h5ad(h5ad_filepath)
-        if is_visium_anndata(anndata) or is_spatial_dataset(anndata):
+        if is_spot_based_spatial(anndata) or is_spatial_dataset(anndata):
             basename = str(Path(h5ad_filepath).stem)
             roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq"
             self.metadata_channels = list(anndata.var_names)

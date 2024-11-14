@@ -10,7 +10,8 @@ from rakaia.parsers.spatial import (
     check_spot_grid_multi_channel,
     get_spatial_spot_radius,
     detect_spatial_capture_size,
-    visium_has_scaling_factors)
+    visium_has_scaling_factors,
+    is_spatial_dataset)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -38,13 +39,14 @@ def test_visium_generate_spot_grid(get_current_dir):
     assert grid_image.shape == (grid_height, grid_width) == (925, 1011)
 
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
-    assert get_spatial_spot_radius(adata) == 89
+    assert get_spatial_spot_radius(adata, 3) == 89
     no_spatial = ad.AnnData(X=adata.X)
     no_spatial.var_names = adata.var_names
     assert all(elem is None for elem in spatial_canvas_dimensions(no_spatial))
     # if no radius is found, use the default of 1
     assert get_spatial_spot_radius(no_spatial) == 1
-    assert detect_spatial_capture_size(no_spatial) == 65
+    assert get_spatial_spot_radius(no_spatial, 3) == 3
+    assert detect_spatial_capture_size() == 65
     assert not visium_has_scaling_factors(no_spatial)
 
     with pytest.raises(ValueError):
@@ -55,6 +57,7 @@ def test_visium_generate_spot_grid(get_current_dir):
 
 def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
+    assert is_spatial_dataset(adata)
     image_dict = {'visium_thalamus+++slide0+++acq': {marker: None for marker in list(adata.var_names)}}
     image_dict_back = check_spot_grid_multi_channel(image_dict,
             'visium_thalamus+++slide0+++acq', adata, list(adata.var_names)[0:2])
