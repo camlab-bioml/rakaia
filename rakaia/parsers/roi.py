@@ -52,6 +52,7 @@ class RegionThumbnail:
     :param roi_keyword: String keyword used to search for ROI names.
     :param single_channel_view: Whether the thumbnail should be used to preview a single greyscale channel thumbnail.
     :param spatial_radius: Optional value for user-driven spatial marker radius. By default, inferred from the dataset.
+    :param enable_masks: Whether to use a matching mask, if found, for each thumbnail. Default: True
     :return: None
     """
     # define string attribute matches for the partial
@@ -64,7 +65,8 @@ class RegionThumbnail:
                  dimension_min: Union[int, float, None]=None,
                  dimension_max: Union[int, float, None]=None,
                  roi_keyword: str=None,
-                 single_channel_view: bool=False, spatial_radius: Union[int, None]=None):
+                 single_channel_view: bool=False, spatial_radius: Union[int, None]=None,
+                 enable_masks: bool=True):
 
         self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
@@ -95,6 +97,8 @@ class RegionThumbnail:
         self.dim_max = self.set_dimension_max(dimension_max)
         self.keyword = self.set_query_keywords(roi_keyword)
         self.spot_size = spatial_radius
+        # if random query, allow mask toggle, otherwise always include the mask
+        self.enable_masks = enable_masks if not predefined_indices else True
 
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
@@ -452,7 +456,8 @@ class RegionThumbnail:
                 summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
                 # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
                 if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
-                        validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]):
+                        validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]) and \
+                    self.enable_masks:
                     # requires reverse matching the sample or description to the ROI name in the app
                     # if the query cell is list exists, subset the mask
                     if self.query_cell_id_lists is not None:

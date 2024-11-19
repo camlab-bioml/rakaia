@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-11-11
+## [0.21.0] - 2024-11-19
 
 ### Added
 
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Custom input for setting custom spatial spot/marker radius (radius parsed on default)
 - Ability to generate a visium spot mask in-app
 - Adaboost tree classifier for plugin/quant models
+- Toggle for turning on/off masks in ROI gallery (default is True)
 
 ### Fixed
 

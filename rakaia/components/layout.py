@@ -147,7 +147,12 @@ def register_app_layout(config, cache_dest):
                                   daq.ToggleSwitch(label='Autofill channel colours', id='autofill-channel-colors',
                                                    labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False,
                                                    persistence=config['persistence'], persistence_type='local',
-                                                   style={"margin": "10px"})],
+                                                   style={"margin": "10px"}),
+                                  daq.ToggleSwitch(label='Enable mask in ROI gallery', id='mask-in-gallery',
+                                                   labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=True,
+                                                   persistence=config['persistence'], persistence_type='local',
+                                                   style={"margin": "10px"})
+                                  ],
                                     style={"display": "flex", "justify-content": "center", "textAlign": "center"}),
                     html.Br(),
                     html.Div([html.B("Set annotation circle radius", style={"margin-right": "20px"}),
