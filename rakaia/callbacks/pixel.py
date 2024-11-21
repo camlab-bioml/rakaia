@@ -1312,6 +1312,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
                        Output('pixel-intensity-slider', 'value', allow_duplicate=True),
+                       Output("pixel-hist-collapse", "is_open", allow_duplicate=True),
                        Input('data-collection', 'value'),
                        State('images_in_blend', 'value'),
                        prevent_initial_call=True)
@@ -1319,7 +1320,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Reset the pixel histogram and range slider on a new dataset selection
         """
-        if currently_in_blend is not None: return reset_pixel_histogram(), [None, None]
+        if currently_in_blend is not None: return reset_pixel_histogram(), [None, None], False
         raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
@@ -1377,10 +1378,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 data_selection in image_dict and image_dict[data_selection][selected_channel] is not None:
             blend_return, hist_open = dash.no_update, dash.no_update
             try:
-                if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend"]:
+                if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend", "blending_colours"]:
                     fig, hist_max = pixel_hist_from_array(image_dict[data_selection][selected_channel])
                 else:
-                    fig, hist_open = dash.no_update, False
+                    fig, hist_open = dash.no_update, dash.no_update
                     hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel])
             except (ValueError, TypeError, KeyError):
                 fig, hist_max, hist_open = dash.no_update, 100.0, False
@@ -1434,7 +1435,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 hist_max = float(hist_max) if not custom_max else dash.no_update
                 tick_markers = tick_markers if not custom_max else dash.no_update
                 step_size = step_size if not custom_max else dash.no_update
-                return dash.no_update, hist_max, vals_return, tick_markers, blend_return, step_size, hist_open
+                return fig, hist_max, vals_return, tick_markers, blend_return, step_size, hist_open
             elif ctx.triggered_id == "pixel-hist-collapse":
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, hist_open
             elif ctx.triggered_id == 'custom-slider-max':

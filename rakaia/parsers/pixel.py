@@ -406,9 +406,9 @@ class FileParser:
 
     def parse_h5ad(self, h5ad_filepath):
         """
-        Parse an h5ad filepath. Currently, only 10x Visium is supported as an h5ad raw image input
+        Parse an .h5ad filepath. Current technologies that are explicitly supported: 10X Visium, Xenium
 
-        :param h5ad_filepath: Filepath to 10x Visium filepath
+        :param h5ad_filepath: Filepath to a spatial dataset with an .h5ad extension
         """
         anndata = ad.read_h5ad(h5ad_filepath)
         if is_spot_based_spatial(anndata) or is_spatial_dataset(anndata):

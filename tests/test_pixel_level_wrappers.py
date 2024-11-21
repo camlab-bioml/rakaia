@@ -109,6 +109,8 @@ def test_bounds_text():
     assert len(children) == 3
     assert children[1].children == 'Current bounds: \n X: (0.0, 10), Y: (0.0, 10)'
     assert bounds == {'x_low': 0.0, 'x_high': 10, 'y_low': 0.0, 'y_high': 10}
+    children, bounds = bounds_text(0.121345, 10.0123, 0.000, 10.4567)
+    assert children[1].children == 'Current bounds: \n X: (0.1, 10.0), Y: (0.0, 10.5)'
     children, bounds = bounds_text(None, 100, None, 100)
     assert not children and not bounds
 

@@ -379,10 +379,10 @@ class RegionThumbnail:
 
     def additive_thumbnail_from_h5ad(self, h5ad_filepath):
         """
-        Generate an image thumbnail from an h5ad Anndata file. Current technologies supported are:
-        10X Visium V1 and V2
+        Generate an image thumbnail from an .h5ad Anndata file. Current technologies supported are:
+        10X Visium (V1, V2, HD), Xenium
 
-        :param h5ad_filepath: Path to an h5ad Anndata file.
+        :param h5ad_filepath: Path to an .h5ad Anndata file.
         :return: None
         """
         basename = str(Path(h5ad_filepath).stem)

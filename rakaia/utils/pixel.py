@@ -231,7 +231,7 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     hist = np.random.choice(hist_data, subset_number).astype(cast_type) if \
         hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
-    # ensure that the min of the hist max is 1
+    # ensure that the min of the hist max is 0
     try:
         if keep_max:
             hist = np.concatenate([np.array(hist).astype(cast_type),

@@ -177,8 +177,9 @@ def bounds_text(x_low: Union[int, float], x_high: Union[int, float], y_low: Unio
     Generate the bounds text for the html preview Div
     """
     if None not in (x_low, x_high, y_low, y_high):
-        return [html.Br(), html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}), "
-                        f"Y: ({round(y_low, 2)}, {round(y_high, 2)})", style={"color": "black", "white-space": "pre"}),
+        return [html.Br(), html.H6(f"Current bounds: \n X: ({round(x_low, 1)}, {round(x_high, 1)}), "
+                        f"Y: ({round(y_low, 1)}, {round(y_high, 1)})",
+                            style={"color": "black", "white-space": "pre", "width": "95%", "max-width": "95%"}),
      html.Br()], {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
     return [], {}
 

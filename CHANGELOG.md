@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.21.0] - 2024-11-19
+## [0.21.0] - 2024-11-21
 
 ### Added
 
@@ -28,11 +28,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Tick mark bug when using custom range slider max and low values
 - Check new cluster subtypes by category on a new upload and update only if different subtypes
 - Fix reset cluster subtype reassignment because of numerical to string casting
+- Pixel histogram close on ROI change and not blend update
 
 ### Changed
 
 - Increase limits on raw image uploader
 - No default database connection string
+- Favicon for browser tab #114
 
 ## [0.20.0] - 2024-09-19
 
