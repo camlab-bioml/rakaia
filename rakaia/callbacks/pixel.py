@@ -21,13 +21,15 @@ from rakaia.inputs.pixel import (
     canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
     set_canvas_viewport, marker_correlation_children, reset_pixel_histogram)
+from rakaia.parsers.lazy_load import parse_files_for_lazy_loading, SingleMarkerLazyLoader
 from rakaia.parsers.pixel import (
     FileParser,
     image_dict_from_lazy_load,
     create_new_blending_dict,
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
-    check_empty_missing_layer_dict, parse_files_for_h5ad, set_current_channels)
+    check_empty_missing_layer_dict, set_current_channels)
+
 from rakaia.parsers.spatial import spatial_canvas_dimensions, check_spot_grid_multi_channel
 from rakaia.utils.decorator import (
     # time_taken_callback,
@@ -313,16 +315,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 try:
                     image_dict = image_dict_from_lazy_load(data_selection, session_config, app_config['array_store_type'], delimiter)
                     image_dict = image_dict if image_dict is not None else upload_template
-                    if all([elem is None for elem in image_dict[data_selection].values()]):
-                        # if 10x Visium, check the dimensions
-                        if not parse_files_for_h5ad(session_config, data_selection, delimiter):
+                    if not image_dict[data_selection] or (image_dict[data_selection] and
+                        all([elem is None for elem in image_dict[data_selection].values()])):
+                        # datasets or for very large ROIs that meet the single lazy loading criteria
+                        if not parse_files_for_lazy_loading(session_config, data_selection, delimiter):
                             raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
-                        grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(
-                            parse_files_for_h5ad(session_config, data_selection, delimiter))
+                        # TODO: modify here so that lay loading single marker isn't just for spatial
+                        # grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(
+                        #     parse_files_for_lazy_loading(session_config, data_selection, delimiter))
+                        grid_width, grid_height, x_min, y_min = SingleMarkerLazyLoader(image_dict, data_selection, session_config,
+                        [], delimiter=delimiter).get_region_dim()
                         dim_return = (grid_height, grid_width)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
-                    if data_selection in image_dict.keys() and all([image_dict[data_selection][elem] is not None for
-                                                                    elem in image_dict[data_selection].keys()]):
+                    if (data_selection in image_dict.keys() and image_dict[data_selection] and
+                            all([image_dict[data_selection][elem] is not None for elem in image_dict[data_selection].keys()])):
                         # get the first image in the ROI and check the dimensions
                         first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
@@ -528,12 +534,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
         uploaded_return = dash.no_update
-        if None not in (add_to_layer, current_blend_dict, data_selection, image_dict) and data_selection in image_dict:
+        if None not in (add_to_layer, current_blend_dict, data_selection, image_dict) and add_to_layer and data_selection in image_dict:
             image_dict, rgb_layers = reset_on_visium_spot_size_change(ctx.triggered_id, image_dict, rgb_layers, data_selection)
             try:
-                if any(image_dict[data_selection][elem] is None for elem in add_to_layer):
-                    image_dict = check_spot_grid_multi_channel(image_dict, data_selection,
-                    parse_files_for_h5ad(session_dict, data_selection, delimiter), add_to_layer, spatial_spot_size)
+                if not image_dict[data_selection] or any(image_dict[data_selection][elem] is None for elem in add_to_layer):
+                    # TODO: add single marker lazy load parser here for both h5ad spatial and mcd
+                    image_dict = SingleMarkerLazyLoader(image_dict, data_selection, session_dict,
+                                add_to_layer, spatial_spot_size, delimiter).get_image_dict()
+                    # image_dict = check_spot_grid_multi_channel(image_dict, data_selection,
+                    # parse_files_for_lazy_loading(session_dict, data_selection, delimiter), add_to_layer, spatial_spot_size)
                     uploaded_return = SessionServerside(image_dict, key="upload_dict", use_unique_key=OVERWRITE)
                 channel_modify = dash.no_update
                 if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}
@@ -606,7 +615,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the blend dictionary and layer dictionary when a modification channel changes its colour
         """
-        if None not in (layer, current_blend_dict, data_selection):
+        if None not in (layer, current_blend_dict, data_selection) and image_dict[data_selection] and \
+                layer in image_dict[data_selection]:
             array = image_dict[data_selection][layer]
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
@@ -1374,8 +1384,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # currently, the pixel histogram will collapse on a slider change because of the blend dictionary.
         # collapse is triggered by this object to prevent the pixel histogram from being empty on an ROI change
-        if None not in (selected_channel, image_dict, data_selection, current_blend_dict) and \
-                data_selection in image_dict and image_dict[data_selection][selected_channel] is not None:
+        if (None not in (selected_channel, image_dict, data_selection, current_blend_dict) and
+            data_selection in image_dict and image_dict[data_selection] and selected_channel in image_dict[data_selection]
+                and image_dict[data_selection][selected_channel] is not None):
             blend_return, hist_open = dash.no_update, dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend", "blending_colours"]:
