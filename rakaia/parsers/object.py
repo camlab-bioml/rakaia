@@ -1,12 +1,12 @@
 from pathlib import Path
-from typing import Union, Any
+from typing import Union
 import re
 import os
 import sys
-
 import dash_uploader
 import pandas as pd
 from dash.exceptions import PreventUpdate
+from sklearn.decomposition import PCA
 from tifffile import TiffFile
 import numpy as np
 from PIL import Image
@@ -15,6 +15,8 @@ from sklearn.preprocessing import StandardScaler
 import scanpy as sc
 import dash
 from rakaia.io.readers import DashUploaderFileReader
+from rakaia.parsers.pixel import parse_files_for_h5ad
+from rakaia.parsers.spatial import spatial_grid_single_marker, is_spot_based_spatial
 from rakaia.utils.alert import add_warning_to_error_config
 from rakaia.utils.object import (
     set_mandatory_columns,
@@ -40,6 +42,24 @@ def drop_columns_from_measurements_csv(measurements_csv, drop: bool = True):
                 measurements_csv = pd.DataFrame(measurements_csv).drop(col, axis=1)
     return measurements_csv
 
+def umap_params(frame_to_cluster: pd.DataFrame, size_threshold: int=100000):
+    """
+    Define the default UMAP object parameters based on the size of the dataset
+    """
+    nn = 15 if len(frame_to_cluster) <= size_threshold else 10
+    epochs = 100 if len(frame_to_cluster) <= size_threshold else 25
+    dist = 0.1 if len(frame_to_cluster) <= size_threshold else 0.05
+    return {"n_neighbors": nn, "n_epochs": epochs, "min_dist": dist}
+
+def umap_transform(frame_to_cluster: pd.DataFrame, use_pca: bool=False):
+    """
+    Perform a preprocessing transformation on the data prior to UMAP clustering. By default,
+    standard scaling is used if PCA is not enabled
+    """
+    transform = PCA(n_components=min(25, int(len(frame_to_cluster.columns) / 2))) if \
+        use_pca else StandardScaler()
+    return transform.fit_transform(frame_to_cluster)
+
 
 def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame],
                                             current_umap: Union[dict, pd.DataFrame] = None,
@@ -62,12 +82,12 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
             if 'umap' not in sys.modules:
                 import umap
             try:
-                umap_obj = umap.UMAP()
+                umap_obj = umap.UMAP(**umap_params(data_frame))
             except UnboundLocalError:
                 import umap
-                umap_obj = umap.UMAP()
+                umap_obj = umap.UMAP(**umap_params(data_frame))
             if umap_obj:
-                scaled = StandardScaler().fit_transform(data_frame)
+                scaled = umap_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
                 return SessionServerside(embedding, key="umap-embedding",
                                          use_unique_key=unique_key_serverside)
@@ -199,6 +219,31 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                  use_unique_key=unique_key_serverside), list(cur_mask_dict.keys())
     raise PreventUpdate
 
+def visium_mask(mask_dict: dict, data_selection: str, upload_list: Union[list, dict],
+                delimiter: str="+++", unique_key_serverside: bool=True):
+    """
+    Generate a mask for a 10X Visium spot-based assay (currently not compatible with HD).
+    The mask can be automatically inferred from the spot positions and scale factors in the dataset
+    """
+    masks_return, names_return = dash.no_update, dash.no_update
+    if data_selection and upload_list:
+        exp, slide, acq = split_string_at_pattern(data_selection)
+        found_h5ad_match = parse_files_for_h5ad(upload_list, data_selection, delimiter)
+        if found_h5ad_match and is_spot_based_spatial(found_h5ad_match):
+            mask_dict = {} if mask_dict is None else mask_dict
+            mask_spots = spatial_grid_single_marker(found_h5ad_match, None, None,
+                                                    True, True)
+            boundary_import = np.array(Image.fromarray(
+                convert_mask_to_object_boundary(mask_spots.astype(np.uint32))).convert('RGB'))
+            mask_dict[exp] = {"array": np.array(Image.fromarray(mask_spots).convert('RGB')),
+                              "boundary": boundary_import,
+                            "hover": mask_spots.reshape((mask_spots.shape[0], mask_spots.shape[1], 1)),
+                                            "raw": mask_spots}
+            masks_return = SessionServerside(mask_dict, key="mask-dict",
+                                     use_unique_key=unique_key_serverside)
+            names_return = list(mask_dict.keys())
+    return masks_return, names_return
+
 
 def validate_quantification_from_anndata(anndata_obj, required_columns=set_mandatory_columns()):
     """
@@ -269,9 +314,9 @@ class RestyleDataParser:
                 self.append_sub_selection(tot_subtypes)
             elif self.subtypes_already_selected():
                 if self.ignore_selected_index():
-                    self.generate_indices_from_ignore(self._subtypes_return, tot_subtypes)
+                    self.indices_to_ignore(self._subtypes_return, tot_subtypes)
                 elif self.keep_current_index():
-                    self.generate_indices_from_keep(self._subtypes_return, tot_subtypes)
+                    self.indices_to_keep(self._subtypes_return, tot_subtypes)
 
     def append_sub_selection(self, tot_subtypes: list):
         """
@@ -304,7 +349,7 @@ class RestyleDataParser:
         """
         return self.restyledata[0]['visible'][0] == 'legendonly'
 
-    def generate_indices_from_ignore(self, subtypes_keep, tot_subtypes):
+    def indices_to_ignore(self, subtypes_keep, tot_subtypes):
         """
         Specify a list of subtypes and their ordinal indices to ignore
         :return: None
@@ -324,7 +369,7 @@ class RestyleDataParser:
         """
         return bool(self.restyledata[0]['visible'][0])
 
-    def generate_indices_from_keep(self, subtypes_keep, tot_subtypes):
+    def indices_to_keep(self, subtypes_keep, tot_subtypes):
         """
         Specify a list of subtypes and their ordinal indices to keep.
         return: None
@@ -533,11 +578,9 @@ def match_quantification_identifier_old_pipeline_syntax(mask_selection: str, cel
                     try:
                         if int(split[-1]) == int(index):
                             sam_id = sample
-                    except ValueError:
-                        pass
+                    except ValueError: pass
             return sam_id
-        except (KeyError, TypeError):
-            pass
+        except (KeyError, TypeError): pass
     return sam_id
 
 

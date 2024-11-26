@@ -5,6 +5,7 @@ from rakaia.parsers.pixel import (
     FileParser,
     create_new_blending_dict)
 import random
+import json
 
 def test_roi_query_parser(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")
@@ -82,6 +83,20 @@ def test_query_parser_txt(get_current_dir):
     assert 'query_from_text+++slide0+++acq' in roi_query.keys()
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
+
+def test_query_parser_visium_h5ad(get_current_dir):
+    session_config = {"uploads": [str(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))]}
+    parse = FileParser(session_config['uploads']).image_dict
+    with open(os.path.join(get_current_dir, 'visium_thalamus_blend.json')) as json_blend:
+        params = json.load(json_blend)
+        blend_dict = params['channels']
+        selected = params['config']['blend']
+    roi_query = RegionThumbnail(session_config, blend_dict, selected, 1,
+                dataset_options=list(parse.keys())).get_image_dict()
+    assert 'visium_thalamus+++slide0+++acq' in roi_query.keys()
+
+    assert list(roi_query['visium_thalamus+++slide0+++acq'][460, 475]) == [255, 0, 0]
+    assert list(roi_query['visium_thalamus+++slide0+++acq'][540, 130]) == [0, 0, 255]
 
 def test_roi_query_parser_predefined(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")

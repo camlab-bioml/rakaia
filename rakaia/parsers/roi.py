@@ -9,6 +9,7 @@ from readimc.data import Slide, Acquisition
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
 import numexpr as ne
+import anndata as ad
 from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
@@ -19,6 +20,11 @@ from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
     ROIMaskMatch,
     match_mask_name_to_quantification_sheet_roi)
+from rakaia.parsers.spatial import (
+    SpatialDefaults,
+    spatial_canvas_dimensions, spatial_grid_single_marker, set_spatial_scale, get_spatial_spot_radius,
+    is_spot_based_spatial, is_spatial_dataset)
+
 
 class RegionThumbnail:
     """
@@ -45,24 +51,28 @@ class RegionThumbnail:
     :param dimension_max: Maximum dimension in pixels for an ROI thumbnail to be generated.
     :param roi_keyword: String keyword used to search for ROI names.
     :param single_channel_view: Whether the thumbnail should be used to preview a single greyscale channel thumbnail.
+    :param spatial_radius: Optional value for user-driven spatial marker radius. By default, inferred from the dataset.
+    :param enable_masks: Whether to use a matching mask, if found, for each thumbnail. Default: True
     :return: None
     """
     # define string attribute matches for the partial
-    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt"}
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5ad": "h5ad"}
 
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
-                        predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
-                        global_apply_filter=False, global_filter_type="median", global_filter_val=3,
-                        global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
-                        dimension_min: Union[int, float, None]=None,
-                        dimension_max: Union[int, float, None]=None,
-                        roi_keyword: str=None,
-                        single_channel_view: bool=False):
+                 predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
+                 global_apply_filter=False, global_filter_type="median", global_filter_val=3,
+                 global_filter_sigma=1, delimiter: str="+++", use_greyscale: bool=False,
+                 dimension_min: Union[int, float, None]=None,
+                 dimension_max: Union[int, float, None]=None,
+                 roi_keyword: str=None,
+                 single_channel_view: bool=False, spatial_radius: Union[int, None]=None,
+                 enable_masks: bool=True):
 
         self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
         self.tiff = partial(self.additive_thumbnail_from_tiff)
         self.txt = partial(self.additive_thumbnail_from_txt)
+        self.h5ad = partial(self.additive_thumbnail_from_h5ad)
         self.session_config = session_config
 
         self.set_imported_files()
@@ -86,6 +96,9 @@ class RegionThumbnail:
         self.dim_min = self.set_dimension_min(dimension_min)
         self.dim_max = self.set_dimension_max(dimension_max)
         self.keyword = self.set_query_keywords(roi_keyword)
+        self.spot_size = spatial_radius
+        # if random query, allow mask toggle, otherwise always include the mask
+        self.enable_masks = enable_masks if not predefined_indices else True
 
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
@@ -100,7 +113,9 @@ class RegionThumbnail:
                     break
                 filename, file_extension = os.path.splitext(file_path)
                 # call the additive thumbnail partial function with the corresponding extension
-                getattr(self, self.MATCHES[file_extension])(file_path)
+                try:
+                    getattr(self, self.MATCHES[file_extension])(file_path)
+                except KeyError: pass
 
     def set_imported_files(self):
         """
@@ -362,6 +377,37 @@ class RegionThumbnail:
                         image_index += 1
                     self.process_additive_image(acq_image, label)
 
+    def additive_thumbnail_from_h5ad(self, h5ad_filepath):
+        """
+        Generate an image thumbnail from an .h5ad Anndata file. Current technologies supported are:
+        10X Visium (V1, V2, HD), Xenium
+
+        :param h5ad_filepath: Path to an .h5ad Anndata file.
+        :return: None
+        """
+        basename = str(Path(h5ad_filepath).stem)
+        label = self.parse_thumbnail_label_from_filepath(basename)
+        if label not in self.rois_exclude and (self.roi_keyword_in_roi_identifier(label) or
+                                               self.roi_keyword_in_roi_identifier(h5ad_filepath)):
+            adata = ad.read_h5ad(h5ad_filepath)
+            # get the visium anndata dimensions
+            acq_image = []
+            grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(adata)
+            if (self.roi_within_dimension_threshold(grid_width, grid_height) and
+                    (is_spot_based_spatial(adata) or is_spatial_dataset(adata))):
+                spot_size = get_spatial_spot_radius(adata, self.spot_size)
+                for marker in self.currently_selected_channels:
+                    if marker in self.blend_dict.keys():
+                        with_preset = apply_preset_to_array(spatial_grid_single_marker(
+                            adata, marker, spot_size), self.blend_dict[marker])
+                        colour_use = self.blend_dict[marker]['color'] if not \
+                            self.use_greyscale else '#FFFFFF'
+                        recoloured = np.array(recolour_greyscale(with_preset,
+                                            colour_use)).astype(np.float32)
+                        acq_image.append(recoloured)
+                self.process_additive_image(acq_image, label)
+
+
     def parse_thumbnail_label_from_filepath(self, file_basename) -> str:
         """
         Parse a list of imported dataset options and parse the list based on a file basename
@@ -410,7 +456,8 @@ class RegionThumbnail:
                 summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
                 # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
                 if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
-                        validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]):
+                        validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]) and \
+                    self.enable_masks:
                     # requires reverse matching the sample or description to the ROI name in the app
                     # if the query cell is list exists, subset the mask
                     if self.query_cell_id_lists is not None:

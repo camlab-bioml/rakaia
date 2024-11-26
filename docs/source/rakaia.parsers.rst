@@ -28,6 +28,14 @@ rakaia.parsers.roi module
    :undoc-members:
    :show-inheritance:
 
+rakaia.parsers.spatial module
+-----------------------------
+
+.. automodule:: rakaia.parsers.spatial
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 Module contents
 ---------------
 

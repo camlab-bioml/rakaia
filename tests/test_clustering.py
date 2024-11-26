@@ -13,7 +13,7 @@ from rakaia.utils.cluster import (
     match_cluster_hash_to_cluster_frame,
     set_default_cluster_col,
     QuantificationClusterMerge,
-    subset_cluster_frame)
+    subset_cluster_frame, check_diff_cluster_subtypes)
 
 def test_basic_colparse_cluster(get_current_dir):
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
@@ -62,6 +62,13 @@ def test_basic_cluster_colour_assignments():
     assert len(sidebar_labels) == (2 * len(colours["roi_1"]['cluster'])) + 2
 
     assert len(cluster_label_children()) == 0
+
+    # verify that updating existing categories with same subtypes doesn't overwrite
+    # here, categories are the same, so return false (don't update)
+    assert not check_diff_cluster_subtypes(colours, "roi_1", "cluster",
+                cluster_frame_2['cluster'].unique().tolist())
+    assert check_diff_cluster_subtypes(colours, "roi_1", "cluster",
+            (cluster_frame_2['cluster'].unique().tolist() + ["other_type"]))
 
 
 def test_matching_frame_to_hash(get_current_dir):

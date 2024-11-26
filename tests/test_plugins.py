@@ -10,7 +10,8 @@ from rakaia.plugins import (
 from rakaia.plugins.models import (
     QuantificationRandomForest,
     leiden_clustering,
-    ObjectMixingRF)
+    ObjectMixingRF,
+    AdaBoostTreeClassifier)
 
 def test_leiden_clustering(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -33,6 +34,21 @@ def test_quant_random_forest(get_current_dir):
                                                 **{"max_depth": 8, "n_estimators": 100}).quantification_with_labels())
     assert not pd.Series(with_predictions["area_predict_100"]).equals(pd.Series(with_predictions["area_predict_25"]))
 
+def test_quant_boosting(get_current_dir):
+    measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    # predict the area for test_2
+    measurements_csv['area_use'] = np.where(measurements_csv['sample'] == 'test_1', measurements_csv['area'],
+                                            'Unassigned')
+    with_predictions = AdaBoostTreeClassifier(measurements_csv, "area_use", "area_predict_25",
+                                                ).quantification_with_labels()
+    assert 'area_predict_25' in pd.DataFrame(with_predictions).columns
+    assert 'Unassigned' not in pd.DataFrame(with_predictions)['area_predict_25']
+    with_predictions = pd.DataFrame(QuantificationRandomForest(with_predictions, "area_use", "area_predict_100",
+                                                               **{"max_depth": 8,
+                                                                  "n_estimators": 100}).quantification_with_labels())
+    assert not pd.Series(with_predictions["area_predict_100"]).equals(pd.Series(with_predictions["area_predict_25"]))
+
+
 def test_object_mixing(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
     for prop in [0.2, 0.25, 0.3, 0.35]:
@@ -51,11 +67,18 @@ def test_run_quant_models(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
     leiden_as_model = run_quantification_model(measurements_csv, None, resolution=0.5)
     assert "out" in pd.DataFrame(leiden_as_model).columns
+
     rf_model = run_quantification_model(leiden_as_model, "area", "area_predict", "random forest", n_estimators=25)
     assert "area_predict" in pd.DataFrame(rf_model).columns
 
     mixing = run_quantification_model(rf_model, None, "mixing", "object mixing", n_estimators=100)
     assert "mixing" in pd.DataFrame(mixing).columns
+
+    adaboost = run_quantification_model(mixing, 'area', "boosted", "boosted trees", n_estimators=1,
+                                        max_depth=4)
+    assert "boosted" in pd.DataFrame(adaboost).columns
+
+    assert not pd.DataFrame(adaboost)['boosted'].equals(pd.DataFrame(adaboost)['area_predict'])
 
     with pytest.raises(PluginNotFoundError):
         run_quantification_model(measurements_csv, None, mode="not found")

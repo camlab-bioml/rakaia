@@ -120,16 +120,36 @@ def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_clu
             cluster_assignments[roi_selection] = {}
         cluster_assignments = match_cluster_hash_to_cluster_frame(cluster_frame_dict, cluster_assignments, roi_selection)
         for cluster_cat in cluster_frame_dict[roi_selection].keys():
+            unique_clusters = [str(i) for i in
+            pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_cat].unique().tolist()]
             if cluster_cat not in ClusterIdentifiers.id_cols and \
-                cluster_cat not in cluster_assignments[roi_selection].keys():
+                    check_diff_cluster_subtypes(cluster_assignments, roi_selection, cluster_cat,
+                                                unique_clusters):
                 cluster_assignments[roi_selection][cluster_cat] = {}
-                unique_clusters = pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_cat].unique().tolist()
                 unique_colours = glasbey_palette(len(unique_clusters))
                 for clust, colour in zip(unique_clusters, unique_colours):
-                    cluster_assignments[roi_selection][cluster_cat][clust] = colour
+                    cluster_assignments[roi_selection][cluster_cat][str(clust)] = colour
         return cluster_assignments
     except (KeyError, TypeError):
         return None
+
+def check_diff_cluster_subtypes(cluster_assignments: dict, roi_selection: str,
+                                cluster_cat: str, incoming_subtypes: list):
+    """
+    Check if the current cluster category has different incoming subtypes that the existing
+    dictionary. Could be caused by uploading subsequent cluster assignments with the same category name
+    i.e. cluster, but with different subtypes
+    """
+    if cluster_assignments and roi_selection and cluster_cat and incoming_subtypes and \
+        roi_selection in cluster_assignments and cluster_cat in cluster_assignments[roi_selection]:
+        current_types = [str(i) for i in list(cluster_assignments[roi_selection][cluster_cat].keys())]
+        incoming_subtypes = [str(i) for i in incoming_subtypes]
+        # return True if the lists are different so will update
+        return set(incoming_subtypes) != set(current_types)
+    # by default, process
+    return True
+
+
 
 def match_cluster_hash_to_cluster_frame(cluster_frame_dict: dict, cluster_assignments: dict,
                                         roi_selection: str) -> dict:

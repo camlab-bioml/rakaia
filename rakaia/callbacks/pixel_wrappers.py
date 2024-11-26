@@ -62,6 +62,7 @@ class AnnotationList:
                 elif shape['type'] == "rect":
                     key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}
                     self.annotations[tuple(sorted(key.items()))] = "rect"
+
     def get_annotations(self):
         """
         Return the list of annotations for a single annotation event.
@@ -95,7 +96,7 @@ def parse_local_path_imports(path: str, session_config: dict, error_config: dict
         error_config["error"] = None
         return session_config, dash.no_update
     elif os.path.isdir(path):
-        extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5"]
+        extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5", "*.h5ad"]
         for extension in extensions:
             session_config['uploads'].extend(Path(path).glob(extension))
         session_config['uploads'] = [str(elem) for elem in session_config['uploads']]
@@ -106,7 +107,7 @@ def parse_local_path_imports(path: str, session_config: dict, error_config: dict
 
 class SteinbockParserKeys:
     """
-    Define the sub-directories and permissible file extensions for parsing a steinbock output directory
+    Define the subdirectories and permissible file extensions for parsing a steinbock output directory
     """
     sub_directories = ['quantification', 'mcd', 'deepcell']
     extensions = ['.tiff', '.tif', '.h5ad', '.mcd']
@@ -123,7 +124,7 @@ def is_steinbock_dir(directory):
 
 def parse_steinbock_subdir(sub_dir, single_file_return: bool=False):
     """
-    Parse a specified steinbock output sub-directory
+    Parse a specified steinbock output subdirectory
     """
     files_found = []
     if os.path.isdir(sub_dir):
@@ -140,7 +141,7 @@ def parse_steinbock_subdir(sub_dir, single_file_return: bool=False):
 
 def check_valid_upload(upload: Union[dict, list]):
     """
-    DCheck for a valid upload component (existing filenames successfully parsed)
+    Check for a valid upload component (existing filenames successfully parsed)
     """
     if 'uploads' in upload:
         return upload if len(upload['uploads']) > 0 else dash.no_update
@@ -176,8 +177,9 @@ def bounds_text(x_low: Union[int, float], x_high: Union[int, float], y_low: Unio
     Generate the bounds text for the html preview Div
     """
     if None not in (x_low, x_high, y_low, y_high):
-        return [html.Br(), html.H6(f"Current bounds: \n X: ({round(x_low, 2)}, {round(x_high, 2)}), "
-                        f"Y: ({round(y_low, 2)}, {round(y_high, 2)})", style={"color": "black", "white-space": "pre"}),
+        return [html.Br(), html.H6(f"Current bounds: \n X: ({round(x_low, 1)}, {round(x_high, 1)}), "
+                        f"Y: ({round(y_low, 1)}, {round(y_high, 1)})",
+                            style={"color": "black", "white-space": "pre", "width": "95%", "max-width": "95%"}),
      html.Br()], {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
     return [], {}
 

@@ -3,7 +3,7 @@ import anndata
 import pandas as pd
 import scanpy as sc
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
 from rakaia.parsers.object import (
     quant_dataframe_to_anndata,
     parse_quantification_sheet_from_h5ad)
@@ -82,6 +82,27 @@ class QuantificationRandomForest:
             self.run_model()
         self.quantification[self.out_col] = self.labels
         return self.quantification.to_dict(orient="records") if return_as_dict else self.quantification
+
+
+class AdaBoostTreeClassifier(QuantificationRandomForest):
+    """
+    Run an Adaboost tree classifier on a set of quantified objects with channel intensities. Requires a column
+    specifying an existing annotation that will be used to predict the class for the remaining objects in the
+    dataset that have not been annotated
+
+    :param quantification: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
+    :param in_col: Existing annotation column in the object that specifies the classes used to fit the model
+    :param out_col: Column to store the output labels of the classifier prediction
+    :param kwargs: Keyword arguments to pass to `RandomForestClassifier`
+
+    :return: None
+    """
+    def __init__(self, quantification: Union[dict, pd.DataFrame], in_col: Union[str, None] = None,
+                 out_col: str = "adaboost", **kwargs):
+
+        super().__init__(quantification, in_col, out_col, **kwargs)
+        self.clf = AdaBoostClassifier(estimator=self.clf, n_estimators=100, random_state=10)
+
 
 class ObjectMixingRF(QuantificationRandomForest):
     """

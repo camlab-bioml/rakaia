@@ -1,13 +1,17 @@
+import os
+import tempfile
+import pickle
+
 import numpy as np
 from rakaia.io.gallery import (
-    generate_roi_query_gallery_children,
-    generate_channel_tile_gallery_children,
+    roi_query_gallery_children,
+    channel_tile_gallery_children,
     set_channel_thumbnail,
     set_gallery_thumbnail_from_signal_retention,
-    replace_channel_gallery_aliases)
+    replace_channel_gallery_aliases,
+    channel_tiles, gallery_export_template, channel_tiles_from_gallery)
 from rakaia.utils.pixel import resize_for_canvas
 import dash_bootstrap_components as dbc
-from numpy.testing import assert_array_equal
 
 def test_channel_thumbnail_signal_retention():
     # if the signal kept is low, keep the original array
@@ -63,13 +67,25 @@ def test_generate_channel_gallery_children():
                          "im_5": {"color": "#0000FF", "x_lower_bound": None,
                                   "x_upper_bound": None, "filter_type": None, "filter_val": None}}
     aliases = {key: key for key in blend_colour_dict.keys()}
-    row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
-                                                          blend_colour_dict, None, None, aliases, 0,
-                                                          toggle_gallery_zoom=True, toggle_scaling_gallery=True)
-    assert len(row_children) == len(gallery_dict)
+    tiles = channel_tiles(gallery_dict, canvas_layout, zoom_keys,
+                        blend_colour_dict, None, None, aliases, 0,
+                        toggle_gallery_zoom=True, toggle_scaling_gallery=True)
+    row_children = channel_tile_gallery_children(tiles)
+    assert len(tiles) == len(gallery_dict) == len(row_children)
     for elem in row_children:
         assert isinstance(elem, dbc.Col)
         assert isinstance(elem.children, dbc.Card)
+    # test exporting the channels to html
+
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file_path = os.path.join(tmpdirname, "out_chan_gallery.html")
+        assert not os.path.exists(file_path)
+        export = gallery_export_template(file_path, tiles)
+        assert os.path.exists(export)
+        if os.access(export, os.W_OK):
+            os.remove(export)
+        assert not os.path.exists(file_path)
+
 
     # assert that the gallery will still render if there is an index incompatibility
 
@@ -85,23 +101,39 @@ def test_generate_channel_gallery_children():
                                   "filter_type": None, "filter_val": None}}
 
     canvas_layout = {'xaxis.range[0]': 100, 'xaxis.range[1]': 200, 'yaxis.range[0]': 200, 'yaxis.range[1]': 100}
-    row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
-                                                          blend_colour_dict, None, None, aliases, 0,
-                                                          toggle_gallery_zoom=True, toggle_scaling_gallery=True)
-    assert len(row_children) == len(gallery_dict)
+    tiles = channel_tiles(gallery_dict, canvas_layout, zoom_keys,
+                                                 blend_colour_dict, None, None, aliases, 0,
+                                                 toggle_gallery_zoom=True, toggle_scaling_gallery=True)
+    row_children = channel_tile_gallery_children(tiles)
+    assert len(tiles) == len(gallery_dict) == len(row_children)
     for elem in row_children:
         assert isinstance(elem, dbc.Col)
         assert isinstance(elem.children, dbc.Card)
 
     # do not use a zoom feature for the channel gallery
     canvas_layout = {}
-    row_children = generate_channel_tile_gallery_children(gallery_dict, canvas_layout, zoom_keys,
-                                                          blend_colour_dict, None, None, aliases, 0,
-                                                          toggle_gallery_zoom=True, toggle_scaling_gallery=True)
-    assert len(row_children) == len(gallery_dict)
+    tiles = channel_tiles(gallery_dict, canvas_layout, zoom_keys,
+                                                 blend_colour_dict, None, None, aliases, 0,
+                                                 toggle_gallery_zoom=True, toggle_scaling_gallery=True)
+    row_children = channel_tile_gallery_children(tiles)
+    assert len(tiles) == len(gallery_dict) == len(row_children)
     for elem in row_children:
         assert isinstance(elem, dbc.Col)
         assert isinstance(elem.children, dbc.Card)
+
+def test_tiles_from_gallery_children(get_current_dir):
+    with open(os.path.join(get_current_dir, 'rois.pickle'), 'rb') as f:
+        channel_children = pickle.load(f)
+        tiles_from_gal = channel_tiles_from_gallery(channel_children)
+        assert len(tiles_from_gal) == 2
+        with tempfile.TemporaryDirectory() as tmpdirname:
+            file_path = os.path.join(tmpdirname, "out_chan_gallery.html")
+            assert not os.path.exists(file_path)
+            export = gallery_export_template(file_path, tiles_from_gal)
+            assert os.path.exists(export)
+            if os.access(export, os.W_OK):
+                os.remove(export)
+            assert not os.path.exists(file_path)
 
 
 def test_generate_roi_gallery_children():
@@ -109,7 +141,7 @@ def test_generate_roi_gallery_children():
     test that the ROI query function returns a list of children comprised of dbc columns and cards
     """
     roi_dict = {"roi_1": np.zeros((100, 100, 3)), "roi_2": np.zeros((1000, 1000)), "roi_3": np.zeros((1000, 100, 3))}
-    gallery_children, roi_list = generate_roi_query_gallery_children(roi_dict)
+    gallery_children, roi_list = roi_query_gallery_children(roi_dict)
     assert len(gallery_children) == len(roi_dict)
     for elem in gallery_children:
         assert isinstance(elem, dbc.Col)

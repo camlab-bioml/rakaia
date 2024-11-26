@@ -10,6 +10,8 @@ from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
+
+from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.parsers.object import (
     RestyleDataParser,
@@ -20,7 +22,7 @@ from rakaia.parsers.object import (
     umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    GatingObjectList)
+    GatingObjectList, visium_mask)
 from rakaia.plugins import run_quantification_model
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
@@ -31,21 +33,21 @@ from rakaia.utils.object import (
     quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
 from rakaia.inputs.object import (
     channel_expression_from_interactive_subsetting,
-    generate_umap_plot,
+    object_umap_plot,
     umap_eligible_patch,
     patch_umap_figure,
     reset_custom_gate_slider)
 from rakaia.io.pdf import AnnotationPDFWriter
 from rakaia.io.annotation import AnnotationRegionWriter
-from rakaia.utils.pixel import get_first_image_from_roi_dictionary
+from rakaia.utils.pixel import get_region_dim_from_roi_dictionary
 from rakaia.callbacks.object_wrappers import (
     AnnotationQuantificationMerge,
-    callback_remove_canvas_annotation_shapes, reset_annotation_import)
+    callback_remove_canvas_annotation_shapes, reset_annotation_import, transfer_annotations_by_index)
 from rakaia.io.annotation import AnnotationMaskWriter, export_point_annotations_as_csv
 from rakaia.inputs.loaders import adjust_option_height_from_list_length
 from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.io.readers import DashUploaderFileReader
-from rakaia.utils.roi import generate_dict_of_roi_cell_ids
+from rakaia.utils.roi import dict_of_roi_cell_ids
 from rakaia.io.session import SessionServerside
 from rakaia.utils.session import non_truthy_to_prevent_update
 from rakaia.utils.cluster import (
@@ -150,7 +152,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # also return the current count of the umap category selected to update the distribution table
                 if umap_layout is not None:
                     merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
-                    cell_id_dict = generate_dict_of_roi_cell_ids(merged)
+                    cell_id_dict = dict_of_roi_cell_ids(merged)
             # if the heatmap channel options are already set, do not update
             cols_selected = dash.no_update
             if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
@@ -198,7 +200,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay):
                     return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
                 else:
-                    umap = generate_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                    umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
                     display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
             except BadRequest: return dash.no_update, blank_umap
@@ -295,6 +297,19 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return mask_dict, options, height_update
         raise PreventUpdate
 
+    @dash_app.callback(Output('mask-dict', 'data', allow_duplicate=True),
+                       Output('mask-options', 'options', allow_duplicate=True),
+                       Input('make-spatial-mask', 'n_clicks'),
+                       State('data-collection', 'value'),
+                       State('dataset-delimiter', 'value'),
+                       State('session_config', 'data'),
+                       State('mask-dict', 'data'))
+    def create_visium_mask(create_mask, data_selection, delimiter, session_dict, mask_dict):
+        if create_mask and data_selection and delimiter:
+            return visium_mask(mask_dict, data_selection, session_dict, delimiter, OVERWRITE)
+        raise PreventUpdate
+
+
     @dash_app.callback(
         Input("annotations-dict", "data"),
         State('quantification-dict', 'data'),
@@ -310,21 +325,24 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('clear-annotation_dict', 'n_clicks'),
         Output('quantification-dict', 'data', allow_duplicate=True),
         Output("annotations-dict", "data", allow_duplicate=True),
-        Output('annotation-table', 'selected_rows', allow_duplicate=True))
+        Output('annotation-table', 'selected_rows', allow_duplicate=True),
+        Input('transfer-annotation-execute', 'n_clicks'),
+        State('transfer-collection-options', 'value'))
     def update_region_annotation_in_quantification_frame(annotations, quantification_frame,
                         data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
-                        delete_from_table, annot_table_selection, reimport_annots, clear_all_annots):
+                        delete_from_table, annot_table_selection, reimport_annots, clear_all_annots,
+                        execute_transfer, target_roi):
         """
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         Any selected rows in the annotation preview table are reset to avoid erroneous indices
         """
         if data_selection:
+            if ctx.triggered_id == "transfer-annotation-execute" and target_roi and annot_table_selection:
+                annotations = transfer_annotations_by_index(annotations, data_selection, target_roi, annot_table_selection)
+                data_selection = target_roi
             remove = ctx.triggered_id in ["delete-annotation-tabular", "clear-annotation_dict"]
-            if ctx.triggered_id == "clear-annotation_dict" and data_selection in annotations:
-                indices_remove = [int(i) for i in range(len(annotations[data_selection].keys()))]
-            else:
-                indices_remove = annot_table_selection if ctx.triggered_id == "delete-annotation-tabular" else None
+            indices_remove = set_annotation_indices_to_remove(ctx.triggered_id, annotations, data_selection, annot_table_selection)
             sample_name, id_column = ROIQuantificationMatch(data_selection, quantification_frame,
                         data_dropdown_options, delimiter, mask_selection).get_matches()
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
@@ -364,7 +382,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if download_pdf and None not in (annotations_dict, canvas_layers, data_selection):
             return dcc.send_file(non_truthy_to_prevent_update(AnnotationPDFWriter(download_pdf, annotations_dict, canvas_layers,
                 data_selection, mask_config, aliases, "annotations.pdf", blend_dict, global_apply_filter,
-                global_filter_type, global_filter_val, global_filter_sigma).generate_annotation_pdf()), type="application/pdf")
+                global_filter_type, global_filter_val, global_filter_sigma).write_annotation_pdf()), type="application/pdf")
         raise PreventUpdate
 
     @dash_app.callback(
@@ -382,7 +400,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                  data_selection, image_dict, mask_dict, apply_mask, mask_selection):
         if download_mask and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
-            first_image = get_first_image_from_roi_dictionary(image_dict[data_selection])
+            first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             # check that the mask is compatible with the current image
             if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
                                                                                 mask_dict[mask_selection]['raw']):
@@ -764,3 +782,19 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode),
                               key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("annotation-transfer-window", "is_open"),
+        Input('transfer-annotation-tabular', 'n_clicks'),
+        State("annotation-transfer-window", "is_open"),
+        Input('transfer-annotation-execute', 'n_clicks'),
+        State('transfer-collection-options', 'value'),
+        State('annotation-table', 'selected_rows'))
+    def toggle_show_annotation_transfer_modal(n, is_open, transfer_execute, transfer_to, annots_selected):
+        """
+        Show the annotation transfer modal with a list of the possible ROIs to transfer to
+        Close the modal if at least one annotation is transferred to a new ROI
+        """
+        if ctx.triggered_id == "transfer-annotation-execute":
+            return not is_open if (transfer_to and annots_selected) else is_open
+        return not is_open if n else is_open

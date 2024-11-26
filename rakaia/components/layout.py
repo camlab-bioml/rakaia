@@ -15,14 +15,14 @@ from rakaia.inputs.pixel import (
     render_default_annotation_canvas,
     add_local_file_dialog)
 from rakaia.inputs.loaders import wrap_child_in_loading
-from rakaia.utils.pixel import generate_default_swatches
+from rakaia.utils.pixel import default_picker_swatches
 from rakaia.utils.region import RegionStatisticGroups
 from rakaia.plugins import PluginDescriptors
 
 def register_app_layout(config, cache_dest):
 
     # set the default colours for the swatches from the config input
-    DEFAULT_SWATCHES = generate_default_swatches(config)
+    DEFAULT_SWATCHES = default_picker_swatches(config)
     DEFAULT_WIDGET_COLOUR = SessionTheme().widget_colour
     TOOLTIPS = ToolTips().tooltips
 
@@ -127,9 +127,9 @@ def register_app_layout(config, cache_dest):
                             html.Div([
                                 dcc.Input(id="set-preset", type="text",
                                           placeholder="Create a preset from the current channel", value=None,
-                                          style={"width": "65%", "margin-right": "10px"}),
+                                          style={"width": "70%", "margin-right": "10px"}),
                                 dbc.Button("Create preset", id="preset-button", className="me-1",
-                                           style={"background-color": DEFAULT_WIDGET_COLOUR, "width": "30%"}),
+                                           style={"background-color": DEFAULT_WIDGET_COLOUR, "width": "40%"}),
                             ], style={"display": "flex", "float": "center", "textAlign": "center", "width": "90%"}),
                             html.Br(),
                             dcc.Dropdown(options=[], value=None, id='preset-options', style={"width": "75%"}),
@@ -147,7 +147,12 @@ def register_app_layout(config, cache_dest):
                                   daq.ToggleSwitch(label='Autofill channel colours', id='autofill-channel-colors',
                                                    labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False,
                                                    persistence=config['persistence'], persistence_type='local',
-                                                   style={"margin": "10px"})],
+                                                   style={"margin": "10px"}),
+                                  daq.ToggleSwitch(label='Enable mask in ROI gallery', id='mask-in-gallery',
+                                                   labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=True,
+                                                   persistence=config['persistence'], persistence_type='local',
+                                                   style={"margin": "10px"})
+                                  ],
                                     style={"display": "flex", "justify-content": "center", "textAlign": "center"}),
                     html.Br(),
                     html.Div([html.B("Set annotation circle radius", style={"margin-right": "20px"}),
@@ -166,6 +171,14 @@ def register_app_layout(config, cache_dest):
                                                  persistence=config['persistence'], persistence_type='local',
                                                  style={"accent-color": DEFAULT_WIDGET_COLOUR})],
                                  style={"display": "flex"}),
+                        html.Br(),
+                        html.Div([html.B("Custom spatial marker radius", style={"margin-right": "20px"},
+                                id="spatial-rad-label"),
+                                dbc.Tooltip(TOOLTIPS['spatial-rad'], target="spatial-rad-label"),
+                                  dcc.Input(id='spatial-spot-rad', type='number', value=None, debounce=True,
+                                            style={"width": "20%", "height": "50%"},
+                                            persistence=config['persistence'], persistence_type='local'),
+                                  ], style={"display": "flex"}),
                     html.Br(),
                     ], style={"margin": "5px"})]),
                     html.H6(f"Session cache: {cache_dest}"),
@@ -212,12 +225,12 @@ def register_app_layout(config, cache_dest):
                                 className="mb-3", color=None, n_clicks=0, style={"width": "10%",
                                     "margin-top": "-3px"})], style={"display": "flex"}),
                                 dbc.Tooltip(TOOLTIPS['import-tour'], target="dash-import-tour"),
-                                du.Upload(id='upload-image', max_file_size=50000,
-                                text='Import/copy imaging data (.MCD, .tiff, .txt, etc.) files '
+                                du.Upload(id='upload-image', max_file_size=5000000,
+                                text='Import/copy imaging or spatial data (.MCD, .tiff, .txt, .h5ad, etc.) files '
                                      'using drag and drop or a file dialog (click here)',
-                                              chunk_size=100,
-                                              max_total_size=50000, max_files=200,
-                                              filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt'],
+                                    chunk_size=100,
+                                    max_total_size=5000000, max_files=1000,
+                                    filetypes=['png', 'tif', 'tiff', 'h5', 'mcd', 'txt', 'h5ad'],
                                               default_style={"margin-top": "12.5px",
                                                              "height": "7.5vh"}),
                                     html.H5("or", style={'width': '35%', 'margin-top': '5px'}),
@@ -244,7 +257,7 @@ def register_app_layout(config, cache_dest):
                                         style={"width": "100%"}),
                                         html.Br(),
                                         html.Br(),
-                                        html.H5("Step 2: Optional imports", style={'width': '50%'}),
+                                        html.H5("Step 2: Optional imports", style={'width': '100%'}),
                                         html.H6("Mask"),
                                         dbc.Modal(children=dbc.ModalBody(
                                             [html.H6("Set the label for the imported mask"),
@@ -331,7 +344,7 @@ def register_app_layout(config, cache_dest):
                                 html.Br(),
                                 dbc.Form([
                                 html.Div([dbc.Label("Database connection string", html_for="db-connection-string"),
-                                dbc.Input(type="text", id="db-connection-string", value="rakaia-db.uzqznla.mongodb.net",
+                                dbc.Input(type="text", id="db-connection-string", value="",
                                 style={"width": "75%"}, persistence=config['persistence'],
                                 persistence_type='local')], className="mb-3"),
                                 html.Div([dbc.Label("Username", html_for="db-username"),
@@ -446,7 +459,14 @@ def register_app_layout(config, cache_dest):
                                                                       style={"display": "flex"}),
                                                    id="btn-download-panel", className="mx-auto", color=None,
                                                    n_clicks=0, style={"margin-top": "10px"}),
-                                    dcc.Download(id="download-edited-table")
+                                    dcc.Download(id="download-edited-table"),
+                                    # dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                    # style={"display": "inline-block", "margin-right": "7.5px",
+                                    # "margin-top": "3px"}),
+                                    # html.Div("Channel gallery tiles (HTML)")], style={"display": "flex"}),
+                                    # id="btn-download-roi-tiles", className="mx-auto", color=None,
+                                    # n_clicks=0, style={"margin-top": "10px"}),
+                                    # dcc.Download(id="download-roi-tiles")
                                     ], style={"border":"1px black solid", "display": "inline-block",
                                                         "width": "auto", "padding": "7.5px",
                                               "justifyContent": "center", "float": "center"}),
@@ -514,10 +534,30 @@ def register_app_layout(config, cache_dest):
                                                         "width": "auto", "padding": "7.5px"}),
                                 html.Br(),
                                 html.Br(),
+                                html.H5("Download gallery tiles"),
+                                html.Div([
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                    style={"display": "inline-block", "margin-right": "7.5px",
+                                    "margin-top": "3px"}),
+                                html.Div("Channel gallery tiles (HTML)")], style={"display": "flex"}),
+                                id="btn-download-chan-tiles", className="mx-auto", color=None,
+                                n_clicks=0, style={"margin-top": "10px"}),
+                                dcc.Download(id="download-chan-tiles"),
+                                dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                style={"display": "inline-block", "margin-right": "7.5px",
+                                "margin-top": "3px"}),
+                                html.Div("Dataset gallery tiles (HTML)")], style={"display": "flex"}),
+                                id="btn-download-roi-tiles", className="mx-auto", color=None,
+                                n_clicks=0, style={"margin-top": "10px"}),
+                                dcc.Download(id="download-roi-tiles"),
+                                ], style={"border":"1px black solid", "display": "inline-block",
+                                                        "width": "100%", "padding": "7.5px"}),
+                                html.Br(),
+                                html.Br(),
                                 dbc.Spinner(html.Div([], id='status-div'), color="dark"),
                                 ])],
                                 style={"margin-top": "-15px", "padding": "0px"})],
-                    style={"width": "37.5%", "padding": "5px", "margin-bottom": "0px",
+                    style={"width": "38%", "padding": "5px", "margin-bottom": "0px",
                            "#header": {"display": "None", "margin-top": "7.5px"}}, scrollable=True),
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([
@@ -549,9 +589,9 @@ def register_app_layout(config, cache_dest):
                                         html.Div([
                                         html.Br(),
                                             html.Div([
-                                                dcc.Slider(50, 150, 2.5, value=100, id='annotation-canvas-size',
+                                                dcc.Slider(50, 155, 1.5, value=105, id='annotation-canvas-size',
                                                            persistence=config['persistence'], persistence_type='local',
-                                                           marks={50: 'small', 100: 'default', 150: 'large'})],
+                                                           marks={50: 'small', 105: 'default', 155: 'large'})],
                                                 style={"width": "100%", "height": "10%", "padding": "0px",
                                                        "margin-bottom": "-2px", "float": "right", "color": "#FFFFFF"}),
                                             html.Br(),
@@ -721,35 +761,21 @@ def register_app_layout(config, cache_dest):
                                                       "float": "center", "justify-content": "center"}),
                                     html.Div(dbc.Collapse(html.Div([html.H6("Pixel histogram", style={'width': '75%'}),
                                                                     html.Div([dcc.Loading(dcc.Graph(id="pixel-hist",
-                                                                                                    figure={
-                                                                                                        'layout': dict(
-                                                                                                            xaxis_showgrid=False,
-                                                                                                            yaxis_showgrid=False,
-                                                                                                            xaxis=XAxis(
-                                                                                                                showticklabels=False),
-                                                                                                            yaxis=YAxis(
-                                                                                                                showticklabels=False),
-                                                                                                            margin=dict(
-                                                                                                                l=5,
-                                                                                                                r=5,
-                                                                                                                b=15,
-                                                                                                                t=20,
-                                                                                                                pad=0))},
-                                                                                                    style={
-                                                                                                        'width': '60vh',
-                                                                                                        'height': '30vh',
-                                                                                                        'margin-left': '-30px'},
-                                                                                                    # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
-                                                                                                    # keep zoom and pan bars to be able to modify the histogram view
-                                                                                                    # 'modeBarButtonsToRemove': ['zoom', 'pan']
-                                                                                                    # },
-                                                                                                    config={
-                                                                                                        'displaylogo': False},
-                                                                                                    ), type="default",
-                                                                                          fullscreen=False,
-                                                                                          color=DEFAULT_WIDGET_COLOUR)])]),
-                                                          id="pixel-hist-collapse", is_open=False),
-                                             style={"minHeight": "100px", "float": "center", "justifyContent": "center"}),
+                                            figure={'layout': dict(xaxis_showgrid=False,
+                                                    yaxis_showgrid=False,xaxis=XAxis(
+                                                    showticklabels=False),
+                                                    yaxis=YAxis(showticklabels=False),
+                                            margin=dict(l=0,r=0, b=0, t=0,pad=0))},
+                                            style={'width': 'auto', 'height': '30vh',
+                                                'margin-left': '-30px', 'margin-right': '-55px'},
+                                            # config={"modeBarButtonsToAdd": ["drawrect", "eraseshape"],
+                                            # keep zoom and pan bars to be able to modify the histogram view
+                                            # 'modeBarButtonsToRemove': ['zoom', 'pan']},
+                                            config={'displaylogo': False}), type="default", fullscreen=False,
+                                            color=DEFAULT_WIDGET_COLOUR)], style={"width": "auto"})]),
+                                            id="pixel-hist-collapse", is_open=False),
+                                             style={"minHeight": "100px", "float": "center", "justifyContent": "center",
+                                                    "width": "auto"}),
                                     html.Div([
                                         dcc.RangeSlider(0, 100, 1, value=[None, None],
                                                         marks=dict([(i, str(i)) for i in range(0, 100, 25)]),
@@ -771,7 +797,7 @@ def register_app_layout(config, cache_dest):
                                                               "accent-color": DEFAULT_WIDGET_COLOUR})],
                                         style={"display": "flex", "margin": "20px"}),
                                     html.Div([dcc.Checklist(options=[' Apply/refresh filter'], value=[],
-                                                            id="bool-apply-filter", style={"width": "85%",
+                                                            id="bool-apply-filter", style={"width": "100%",
                                                             "accent-color": DEFAULT_WIDGET_COLOUR}),
                                               dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
                                                            style={"width": "85%", "display": "inline-block"}),
@@ -889,6 +915,15 @@ def register_app_layout(config, cache_dest):
                                                                                  "accent-color": DEFAULT_WIDGET_COLOUR},
                                                         persistence=config['persistence'], persistence_type='local')],
                                                            style={"display": "flex", "width": "90%"}),
+                                                  html.Br(),
+                                                  dbc.Button("Generate spatial mask", id="make-spatial-mask",
+                                                             className="me-1",
+                                                             size="sm", color='dark', outline=True,
+                                                             style={"align-items": "center",
+                                                                    "float": "center", "justify-content": "center",
+                                                                    "height": "50%"}),
+                                                  dbc.Tooltip(TOOLTIPS['spatial-mask'], target="make-spatial-mask"),
+                                                  html.Br(),
                                                   html.Br(),
                                                   dbc.Button("Refresh canvas", id="data-selection-refresh",
                                                              className="me-1",
@@ -1018,23 +1053,23 @@ def register_app_layout(config, cache_dest):
                                 html.Div([
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-layer-group",
                                 style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                    html.Div("Add region annotation")], style={"display": "flex"}),
+                                    html.Div("Region annotation")], style={"display": "flex"}),
                                                id="region-annotation", className="mx-auto", color=None, n_clicks=0,
                                                disabled=True, style={"margin-top": "5px"}),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-rectangle-list",
                                     style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                    html.Div("Show ROI annotations")], style={"display": "flex"}),
+                                    html.Div("Show annotations")], style={"display": "flex"}),
                                                id="show-annotation-table", className="mx-auto", color=None, n_clicks=0,
                                                style={"margin-top": "10px"}),
                                 ], style={"display": "flex", "width": "50%"}),
                                 html.Div([dbc.Button(children=html.Span([html.I(className="fa-solid fa-trash",
                                 style={"display": "inline-block","margin-right": "7.5px","margin-top": "3px"}),
-                                html.Div("Clear annotation shapes")],style={"display": "flex"}),
+                                html.Div("Clear shapes")],style={"display": "flex"}),
                                 id="clear-region-annotation-shapes", className="mx-auto", color=None, n_clicks=0,
                                 disabled=False, style={"margin-top": "10px"}),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-trash",
                                 style={"display": "inline-block", "margin-right": "7.5px",
-                                "margin-top": "3px"}), html.Div("Clear ROI annotations")],
+                                "margin-top": "3px"}), html.Div("Clear annotations")],
                                 style={"display": "flex"}), id="clear-annotation_dict",
                                 className="mx-auto", color=None, n_clicks=0, style={"margin-top": "10px", "width": "80%"})],
                                 style={"display": "flex", "width": "50%"}),
@@ -1070,9 +1105,20 @@ def register_app_layout(config, cache_dest):
                                 filter_action='native', row_selectable='multi', column_selectable='multi'),
                                 html.Br(),
                                 dbc.Button("Delete selected annotation(s)", id='delete-annotation-tabular',
-                                           style={"background-color": DEFAULT_WIDGET_COLOUR})
-                                 ]),
+                                           style={"background-color": DEFAULT_WIDGET_COLOUR}),
+                                dbc.Button("Transfer selected annotation(s)", id='transfer-annotation-tabular',
+                                            style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-left": "12px"})
+                                ]),
                                     id="annotation-preview", size='xl'),
+                                dbc.Modal(children=dbc.ModalBody([
+                                dcc.Dropdown(id='transfer-collection-options', multi=False, options=[],
+                                                 placeholder='Select an ROI to transfer the annotation(s) to',
+                                                 style={'justifyContent': 'right', 'white-space': 'initial',
+                                                        'overflow-wrap': 'anywhere'}),
+                                html.Br(),
+                                dbc.Button("Transfer selected annotation(s)", id='transfer-annotation-execute',
+                                style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-left": "12px"})]
+                                ), id='annotation-transfer-window', size='m'),
                                 html.Br(),
                                 html.B("Set canvas position"),
                                           html.Div([
@@ -1229,7 +1275,8 @@ def register_app_layout(config, cache_dest):
                                 dcc.Checklist(id="quant-toggle-list", value=[' select/deselect all'],
                                 options=[' select/deselect all'], style={"accent-color": DEFAULT_WIDGET_COLOUR}),
                                 html.Br(),
-                                html.H6("Select channels to quantify"),
+                                html.H6("Select channels to quantify", id='inform-chan-quant'),
+                                dbc.Tooltip(TOOLTIPS['quant-limit'], target="inform-chan-quant"),
                                 dcc.Checklist(id="channel-quantification-list", value=[], options=[],
                                               style={"accent-color": DEFAULT_WIDGET_COLOUR}),
                                 ])),
@@ -1471,7 +1518,7 @@ def register_app_layout(config, cache_dest):
             dbc.Tab(label="Dataset gallery", tab_id='dataset-query', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=[
                 dbc.Row([dbc.Col(width=1, children=[
-                    html.H6("Query number", style={"margin-top": "15px"}),
+                    html.H6("Query No.", style={"margin-top": "15px"}),
                     html.Div([dcc.Input(id="dataset-query-number", type="number",
                                         placeholder="Query number",
                                         value=3, style={"height": "25%", "width": "45%"}),
@@ -1568,7 +1615,7 @@ def register_app_layout(config, cache_dest):
                 ])
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),
-        wrap_child_in_loading(dcc.Store(id="uploaded_dict"), wrap=config['use_loading']),
+        dcc.Store(id="uploaded_dict"),
         # use a blank template for the lazy loading
         wrap_child_in_loading(dcc.Store(id="uploaded_dict_template"), wrap=config['use_loading']),
         dcc.Store(id="session_config"),
@@ -1612,6 +1659,8 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id='saved-blends'),
         dcc.Store(id='custom-metadata'),
         dcc.Store(id='image-prioritization-cor'),
+        # just used as a target store to keep the load screen working on data processing
+        wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

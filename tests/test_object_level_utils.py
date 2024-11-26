@@ -13,10 +13,10 @@ from rakaia.utils.object import (
     populate_obj_annotation_column_from_obj_id_list,
     populate_obj_annotation_column_from_clickpoint,
     subset_measurements_by_point,
-    generate_greyscale_grid_array,
+    greyscale_grid_array,
     ROIQuantificationMatch,
     populate_quantification_frame_column_from_umap_subsetting,
-    generate_mask_with_cluster_annotations,
+    mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
     quantification_distribution_table,
     custom_gating_id_list, compute_image_similarity_from_overlay, find_similar_images)
@@ -263,11 +263,11 @@ def test_generate_grid_overlay():
     """
     test that the greyscale grid overlay is generated for the correct dimensions
     """
-    normal_grid = generate_greyscale_grid_array((1000, 1000))
+    normal_grid = greyscale_grid_array((1000, 1000))
     assert np.min(normal_grid) == 0
     assert np.max(normal_grid) == 255
 
-    normal_grid = generate_greyscale_grid_array((75, 75))
+    normal_grid = greyscale_grid_array((75, 75))
     assert np.min(normal_grid) == 0
     assert np.max(normal_grid) == 0
 
@@ -345,8 +345,8 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
     cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
-    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
-                                                              obj_id_col="object_id")
+    with_annotations = mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                     obj_id_col="object_id")
     assert np.array_equal(with_annotations[532, 457], np.array([250, 228, 176]))
     assert with_annotations.shape == (mask.shape[0], mask.shape[1], 3)
     # assert where type 1 is
@@ -357,8 +357,8 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]
 
     # run without keeping the cells that are not annotated
-    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
-                                                              retain_objs=False, obj_id_col="object_id")
+    with_annotations = mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                     retain_objs=False, obj_id_col="object_id")
     # assert that where cells were before, there is nothing
     assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
 
@@ -367,14 +367,14 @@ def test_apply_cluster_annotations_with_gating(get_current_dir):
     cluster_dict = {'Type_1': '#932652', 'Type_2': '#FAE4B0', 'Type_3': '#DCCAFC'}
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
     gating_list = list(range(125, 175))
-    with_annotations = generate_mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
-                    use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id")
+    with_annotations = mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
+                                                     use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id")
     # assert that a position where the cell is not gated, is blank
     assert np.array_equal(with_annotations[532, 457], np.array([0, 0, 0]))
     fake_frame = pd.DataFrame({"missing_key": [1, 2, 3, 4, 5],
                                "cluster": ["immune"] * 5})
-    assert generate_mask_with_cluster_annotations(mask, cluster_assignments, fake_frame,
-        use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id") is None
+    assert mask_with_cluster_annotations(mask, cluster_assignments, fake_frame,
+                                         use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id") is None
 
 
 def test_remove_latest_annotation():

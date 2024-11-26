@@ -7,7 +7,7 @@ from flask_caching import Cache
 # from werkzeug.security import generate_password_hash, check_password_hash
 
 _program = "rakaia"
-__version__ = "0.20.0"
+__version__ = "0.21.0"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.

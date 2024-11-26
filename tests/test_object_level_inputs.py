@@ -9,8 +9,8 @@ from dash.exceptions import PreventUpdate
 from statistics import mean, median
 from rakaia.inputs.object import (
     get_cell_channel_expression_plot,
-    generate_umap_plot,
-    generate_expression_bar_plot_from_interactive_subsetting,
+    object_umap_plot,
+    expression_bar_plot_from_interactive_subsetting,
     channel_expression_summary,
     channel_expression_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
     reset_custom_gate_slider,
@@ -68,28 +68,28 @@ def test_umap_plot(get_current_dir):
     umap_dict = {"UMAP1": [random.random() for _ in range(len(validated_measurements))],
                  "UMAP2": [random.random() for _ in range(len(validated_measurements))]}
     assert isinstance(warning, dash._callback.NoUpdate)
-    umap_plot = generate_umap_plot(umap_dict, "fake_col", validated_measurements, None)
+    umap_plot = object_umap_plot(umap_dict, "fake_col", validated_measurements, None)
     assert isinstance(umap_plot, plotly.graph_objs._figure.Figure)
     assert umap_plot['layout']['uirevision']
-    assert isinstance(generate_umap_plot(None, None, None, None), dash._callback.NoUpdate)
-    umap_plot_2 = generate_umap_plot(umap_dict, "156Gd_FOXA1", validated_measurements, umap_plot)
+    assert isinstance(object_umap_plot(None, None, None, None), dash._callback.NoUpdate)
+    umap_plot_2 = object_umap_plot(umap_dict, "156Gd_FOXA1", validated_measurements, umap_plot)
     assert pd.Series(umap_plot_2['data'][0]['marker']['color']).equals(
         pd.Series(pd.DataFrame(validated_measurements)['156Gd_FOXA1']))
     assert isinstance(umap_plot_2, plotly.graph_objs._figure.Figure)
-    umap_plot_3 = generate_umap_plot(umap_dict, "sample", validated_measurements, umap_plot)
+    umap_plot_3 = object_umap_plot(umap_dict, "sample", validated_measurements, umap_plot)
     assert len(umap_plot_3['data']) == len(pd.DataFrame(validated_measurements)['sample'].value_counts())
     assert umap_plot_2['layout']['uirevision']
 
 def test_identify_patchable_umap(get_current_dir):
     umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
-    umap_plot_1 = generate_umap_plot(umap_dict, "156Gd_FOXA1", measurements_dict, None)
+    umap_plot_1 = object_umap_plot(umap_dict, "156Gd_FOXA1", measurements_dict, None)
     assert not umap_eligible_patch(umap_plot_1.to_dict(), measurements_dict, "156Gd_FOXA1")
     validated_measurements, cols, warning = parse_and_validate_measurements_csv(measurements_dict)
-    umap_plot_2 = generate_umap_plot(umap_dict, "156Gd_FOXA1", validated_measurements, None)
+    umap_plot_2 = object_umap_plot(umap_dict, "156Gd_FOXA1", validated_measurements, None)
     assert umap_eligible_patch(umap_plot_2, validated_measurements, "156Gd_FOXA1")
     # cannot use patch if categorical variable
-    umap_plot_3 = generate_umap_plot(umap_dict, "sample", validated_measurements, None)
+    umap_plot_3 = object_umap_plot(umap_dict, "sample", validated_measurements, None)
     assert not umap_eligible_patch(umap_plot_3, validated_measurements, "156Gd_FOXA1")
     # malformed fig
     assert not umap_eligible_patch({"data": [{"fake_key": "fake_val"}], "layout": None}, validated_measurements, "156Gd_FOXA1")
@@ -106,29 +106,29 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
     umap_dict = {"UMAP1": [1, 2, 3, 4, 5, 6], "UMAP2": [6, 7, 8, 9, 10, 11]}
     zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
     category_column = "sample"
-    interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean", {},
-                                                                                {}, umap_dict, zoom_keys, None,
-                                                                                category_column=category_column)
+    interactive_umap, frame = expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean", {},
+                                                                              {}, umap_dict, zoom_keys, None,
+                                                                              category_column=category_column)
     assert '(244 cells)' in interactive_umap['layout']['title']['text']
 
     umap_dict = {"UMAP1": list(range(900)), "UMAP2": list(range(900))}
     subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
-    interactive_umap, frame = generate_expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean",
-                                                                                       subset_layout,
-                                                                                umap_dict, zoom_keys,
+    interactive_umap, frame = expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean",
+                                                                              subset_layout,
+                                                                              umap_dict, zoom_keys,
                                                                                 "umap-plot", category_subset=["test_1"],
-                                                                                category_column="sample",
-                                                                                cols_drop=['sample'])
+                                                                              category_column="sample",
+                                                                              cols_drop=['sample'])
     assert interactive_umap['layout']['uirevision']
     assert '(0 cells)' in interactive_umap['layout']['title']['text']
 
     with pytest.raises(PreventUpdate):
-        generate_expression_bar_plot_from_interactive_subsetting(None,
+        expression_bar_plot_from_interactive_subsetting(None,
                                                                  "mean", subset_layout,
-                                                                 umap_dict, zoom_keys,
+                                                        umap_dict, zoom_keys,
                                                                  "umap-plot", category_subset=["test_1"],
-                                                                 category_column="sample",
-                                                                 cols_drop=['sample'])
+                                                        category_column="sample",
+                                                        cols_drop=['sample'])
 
 def test_quantification_expr_summary(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

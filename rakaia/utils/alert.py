@@ -9,8 +9,8 @@ class DataImportTour(BaseModel):
     :return: None
     """
     steps: list = [{'selector': '[id="upload-image"]',
-                    'content': "Option 1: Upload your images (.mcd, .tiff, etc.) using drag and drop. Should"
-                               " be used only for datasets < 2GB or if the app deployment is public/shared, "
+                    'content': "Option 1: Upload images or spatial datasets (.mcd, .tiff, .h5ad, etc.) using drag and drop. "
+                               "Should be used only for datasets < 2GB or if the app deployment is public/shared, "
                                "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
                 'content': "Option 2: For large datasets (> 2GB) on local deployments, "
@@ -19,7 +19,7 @@ class DataImportTour(BaseModel):
                 {'selector': '[id="show-dataset-info"]',
                 'content': 'View a list of imported datasets and regions of interest (ROIs).'
                            ' Multiple ROIs, files, and/or filetypes can be imported into the same session, '
-                           'provided that the biomarker panel is the same across all ROIs.'},
+                           'provided that the biomarker panel is identical across all ROIs.'},
                 {'selector': '[id="data-collection"]',
                 'content': 'Select an ROI from the dropdown menu to populate the image gallery'
                                ' and begin image analysis'},
@@ -73,7 +73,7 @@ class AlertMessage(BaseModel):
                       "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
                                          "delimiter does not have any overlapping characters with any of the filenames, "
                                          "or ROI names. ",
-                      "invalid_query": "Error when generating ROI query. Ensure that: \n\n"
+                      "invalid_query": "Error when generating/exporting ROI query. Ensure that: \n\n"
                                        "1. If querying a random subset, that images have been imported and "
                                        "the current canvas contains at least one marker. \n\n"
                                        "2. If querying from the quantification/UMAP tab: "
@@ -122,7 +122,13 @@ class ToolTips(BaseModel):
                       "cluster-proj": "IMPORTANT: Using circles for cluster projection for > 1000 mask objects will "
                                       "lead to slow performance.",
                       "image-similarity": "Search for images that are similar to the current ROI. Requires "
-                                          "image similarity scores for quantified images using a UMAP overlay."}
+                                          "image similarity scores for quantified images using a UMAP overlay.",
+                      "spatial-rad": "Set a custom spatial marker radius for spatial data sets. Should not be used "
+                                     "for 10X Visium as the spot size is inferred from the data set.",
+                      "spatial-mask": "Currently only compatible with 10X Visium spot-based assays.",
+                      "quant-limit": "To maintain optimal performance, rakaia does not support in-app quantification "
+                                      "for more than 1000 markers. Additionally, if quantifying using a spatial dataset,"
+                                     " all markers to quantify need to be loaded into the current canvas."}
 
 
 class PanelMismatchError(Exception):

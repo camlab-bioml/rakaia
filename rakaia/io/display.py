@@ -16,7 +16,7 @@ from rakaia.utils.region import (
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.components.canvas import CanvasLayout
 
-def generate_empty_region_table():
+def empty_region_table():
     """
     Generate a dictionary representation of an empty pandas Dataframe for channel region summaries
     """
@@ -51,7 +51,7 @@ class RegionSummary:
         # these are the zoom keys by default
         self.zoom_keys = ('xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]')
         self.selected_channels = layers
-        self.summary_frame = generate_empty_region_table()
+        self.summary_frame = empty_region_table()
         # if zoom is used
         if ('shapes' not in self.graph_layout or len(self.graph_layout['shapes']) <= 0) and \
              all(elem in self.graph_layout for elem in self.zoom_keys):
@@ -229,16 +229,50 @@ class FullScreenCanvas:
     def __init__(self, canvas: Union[dict, go.Figure], canvas_layout: dict):
         self.canvas = canvas
         self.canvas_layout = canvas_layout
+        if 'layout' in self.canvas.keys():
+            self.clear_canvas_annotation()
+            self.clear_canvas_shapes()
+        self.clear_layout_annotations()
+        self.clear_layout_shapes()
+
+    def clear_canvas_annotation(self):
+        """
+        Remove the canvas annotations for full screen mode
+
+        :return: None
+        """
+        if 'annotations' in self.canvas['layout'].keys() and \
+                len(self.canvas['layout']['annotations']) > 0:
+            self.canvas['layout']['annotations'] = []
+
+    def clear_canvas_shapes(self):
+        """
+        Remove the canvas shapes for full screen mode
+
+        :return: None
+        """
+        if 'shapes' in self.canvas['layout'].keys():
+            self.canvas['layout']['shapes'] = []
+
+    def clear_layout_annotations(self):
+        """
+        Remove the annotations for the canvas layout object for full screen mode
+
+        :return: None
+        """
         if 'layout' in self.canvas_layout.keys() and 'annotations' in self.canvas_layout['layout'].keys() and \
                 len(self.canvas_layout['layout']['annotations']) > 0:
             self.canvas_layout['layout']['annotations'] = []
-        if 'shapes' in canvas_layout.keys():
+
+    def clear_layout_shapes(self):
+        """
+        Remove the shapes for the canvas layout object for full screen mode
+
+        :return: None
+        """
+        if 'shapes' in self.canvas_layout.keys():
             self.canvas_layout['shapes'] = {}
-        if 'layout' in self.canvas.keys() and 'annotations' in self.canvas['layout'].keys() and \
-                len(self.canvas['layout']['annotations']) > 0:
-            self.canvas['layout']['annotations'] = []
-        if 'layout' in self.canvas.keys() and 'shapes' in self.canvas['layout'].keys():
-            self.canvas['layout']['shapes'] = []
+
 
     def get_canvas(self, as_fig: bool=False) -> Union[go.Figure, dict]:
 
@@ -260,7 +294,7 @@ class FullScreenCanvas:
     def get_canvas_layout(self):
         return self.canvas_layout
 
-def generate_preset_options_preview_text(preset_dict: dict=None):
+def preset_options_preview_text(preset_dict: dict=None):
     """
     Generate the HTML compatible text that supplies the list of possible presets that the user can select
     """
@@ -301,7 +335,7 @@ def annotation_preview_table(annotation_dict: dict=None, roi_selection: str=None
                     value = dict((k, value[k]) for k in columns_keep)
                     for sub_key, sub_value in value.items():
                         value[sub_key] = str(sub_value)
-                    value['preview'] = preview_writer.generate_annotation_preview(key, value['type'])
+                    value['preview'] = preview_writer.annotation_preview(key, value['type'])
                     annotation_list.append(value)
                 except (KeyError, ValueError, TypeError):
                     pass

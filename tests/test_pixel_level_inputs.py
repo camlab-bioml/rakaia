@@ -13,7 +13,7 @@ from rakaia.inputs.pixel import (
     invert_annotations_figure,
     deepcopy_canvas_layout_slot,
     set_range_slider_tick_markers,
-    generate_canvas_legend_text,
+    canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
     set_canvas_viewport,
     marker_correlation_children,
@@ -121,12 +121,14 @@ def test_invert_annotations_figure(channel_hash):
 
 
 def test_tick_marker_spacing_range_slider():
-
-    assert len(set_range_slider_tick_markers(3)[0]) == 4
-    assert len(set_range_slider_tick_markers(2)[0]) == 3
-    assert set_range_slider_tick_markers(100)[0] == {0: '0', 33: '33', 66: '66', 100: '100'}
+    med_range, step = set_range_slider_tick_markers(3)
+    assert len(med_range) == 4
+    assert step == 0.12
+    normal_range, normal_step = set_range_slider_tick_markers(100)
+    assert normal_range == {0: '0', 33: '33', 66: '66', 100: '100'}
+    assert normal_step == 1
     low_range, small_step = set_range_slider_tick_markers(0.3)
-    assert len(low_range) == 2
+    assert len(low_range) == 4
     assert small_step == 0.01
 
 def test_generate_legend_text_channels(channel_hash_2):
@@ -134,11 +136,11 @@ def test_generate_legend_text_channels(channel_hash_2):
     channel_order = list(blend_dict.keys())
     aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto", "Other_Nuclear": "nuclear"}
     orientation = "horizontal"
-    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, orientation)
+    legend_text = canvas_legend_text(blend_dict, channel_order, aliases, orientation)
     assert "<br>" not in legend_text
     assert "dna" in legend_text
     assert not "DNA" in legend_text
-    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical")
+    legend_text = canvas_legend_text(blend_dict, channel_order, aliases, "vertical")
     assert "<br>" in legend_text
     assert "dna" in legend_text
     assert not "DNA" in legend_text
@@ -154,14 +156,14 @@ def test_generate_legend_text_clustering(channel_hash_2):
     aliases = {"DNA": "dna", "Nuclear": "nuclear", "Cytoplasm": "cyto"}
     annot_dict = {"experiment0+++slide0+++acq0": {"type": {"cell_type_1": '#00FF66', "cell_type_2": "5500FF",
                                                   "cell_type_3": "FF009A"}}}
-    legend_text = generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
-                                              True, annot_dict, "experiment0+++slide0+++acq0",
-                                              cluster_id_col="type")
+    legend_text = canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
+                                     True, annot_dict, "experiment0+++slide0+++acq0",
+                                     cluster_id_col="type")
     assert legend_text == '<span style="color:#00FF66">cell_type_1</span><br><span style="color:5500FF">' \
                           'cell_type_2</span><br><span style="color:FF009A">cell_type_3</span><br>'
-    assert not generate_canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
-                                              True, annot_dict, "experiment0+++slide0+++acq1",
-                                           cluster_id_col="type")
+    assert not canvas_legend_text(blend_dict, channel_order, aliases, "vertical",
+                                  True, annot_dict, "experiment0+++slide0+++acq1",
+                                  cluster_id_col="type")
 
 
 def test_register_x_axis_placement_scalebar():

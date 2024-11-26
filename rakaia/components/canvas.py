@@ -10,7 +10,7 @@ import pandas as pd
 from skimage import measure
 from rakaia.parsers.object import validate_coordinate_set_for_image
 from rakaia.utils.cluster import get_cluster_proj_id_column
-from rakaia.utils.object import generate_greyscale_grid_array
+from rakaia.utils.object import greyscale_grid_array
 from rakaia.inputs.pixel import (
     add_scale_value_to_figure,
     set_x_axis_placement_of_scalebar,
@@ -20,7 +20,7 @@ from rakaia.utils.pixel import (
     get_additive_image,
     apply_filter_to_array,
     create_new_coord_bounds)
-from rakaia.utils.object import generate_mask_with_cluster_annotations
+from rakaia.utils.object import mask_with_cluster_annotations
 from rakaia.utils.shapes import is_cluster_annotation_circle, is_bad_shape
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 
@@ -148,14 +148,14 @@ class CanvasImage:
                         self.cluster_frame, self.cluster_cat) and \
                         self.data_selection in self.cluster_assignments_dict.keys() and \
                         self.cluster_cat in self.cluster_assignments_dict[self.data_selection] and self.cluster_type == 'mask':
-                    annot_mask = generate_mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
-                                self.cluster_frame[self.data_selection],
-                                self.cluster_assignments_dict[self.data_selection][self.cluster_cat],
-                                use_gating_subset=self.apply_gating,
-                                gating_subset_list=self.gating_cell_id_list,
-                                obj_id_col=get_cluster_proj_id_column(self.cluster_frame[self.data_selection]),
-                                cluster_option_subset=cluster_assignment_selection,
-                                cluster_col=self.cluster_cat)
+                    annot_mask = mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
+                                                               self.cluster_frame[self.data_selection],
+                                                               self.cluster_assignments_dict[self.data_selection][self.cluster_cat],
+                                                               use_gating_subset=self.apply_gating,
+                                                               gating_subset_list=self.gating_cell_id_list,
+                                                               obj_id_col=get_cluster_proj_id_column(self.cluster_frame[self.data_selection]),
+                                                               cluster_option_subset=cluster_assignment_selection,
+                                                               cluster_col=self.cluster_cat)
                     annot_mask = annot_mask if annot_mask is not None else \
                         np.where(self.mask_config[self.mask_selection]["array"].astype(np.uint8) > 0, 255, 0)
                     image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask.astype(np.uint8), mask_level, 0)
@@ -193,8 +193,8 @@ class CanvasImage:
         """
         if self.overlay_grid:
             image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                    generate_greyscale_grid_array((image.shape[0],
-                                    image.shape[1])).astype(np.uint8), 1, 0)
+                                    greyscale_grid_array((image.shape[0],
+                                                          image.shape[1])).astype(np.uint8), 1, 0)
         return image
 
     def apply_gating_to_canvas_mask_image(self, mask: Union[np.array, np.ndarray]) -> np.array:
@@ -224,7 +224,7 @@ class CanvasImage:
                                     self.mask_config[self.mask_selection]["boundary"].astype(np.uint8), 1, 0)
         return image
 
-    def generate_canvas(self) -> Union[go.Figure, dict]:
+    def render_canvas(self) -> Union[go.Figure, dict]:
         """
         Convert the blended channel image into a `go.Figure` object using `px.imshow`
         Applies the `px.imshow` function to the RGB array, and adds scalebar and legend annotations
@@ -288,6 +288,7 @@ class CanvasImage:
         fig = self.add_canvas_hover_template(fig)
         # to remove the hover template completely
         # fig.update_traces(hovertemplate=None, hoverinfo='skip')
+
         return fig.to_dict()
 
     def get_shape(self) -> tuple:
@@ -669,7 +670,7 @@ class CanvasLayout:
         Add a circle for each point annotation in a CSV file. Each annotation is validated against the
         image dimensions in the current canvas to ensure that the annotation lies within the dimensions
 
-        :param imported_annotations: pd.DatdFrame of imported click-point annotations
+        :param imported_annotations: pd.DataFrame of imported click-point annotations
         :param cur_image: RGB numpy array of the current canvas blend
         :param circle_size: Integer or float specifying the radius size of the circles to be drawn on the canvas
 

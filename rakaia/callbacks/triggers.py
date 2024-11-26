@@ -11,7 +11,7 @@ def new_roi_same_dims(triggered_id: str, cur_dimensions: Union[tuple, list], fir
 
 def channel_already_added(triggered_id: str, triggered_list: Union[list, tuple], session_vars: dict):
     """
-    Do not update if the trigger if the channel options and the current selection hasn't changed
+    Do not update the trigger if the channel options and the current selection haven't changed
     If an error occurs, play if safe and return False to re-trigger the callback
     """
     try:
@@ -45,3 +45,34 @@ def channel_order_as_default(triggered_id: str, channel_order: list, currently_s
     but the order has not changed
     """
     return triggered_id in ["channel-order"] and channel_order == currently_selected
+
+def set_annotation_indices_to_remove(trigger_id: str, annotations: dict, data_selection: str,
+                                     annot_table_indices: Union[list, None]=None):
+    """
+    Set the annotation indices to remove based on the trigger. Indices can come from a selection in the
+    ROI table or from bulk clearing
+    """
+    if trigger_id == "clear-annotation_dict" and data_selection in annotations:
+        return [int(i) for i in range(len(annotations[data_selection].keys()))]
+    return annot_table_indices if trigger_id == "delete-annotation-tabular" else None
+
+def reset_on_visium_spot_size_change(triggered_id: str, raw_data_dict: dict,
+                                     layer_dict: dict, data_selection: str):
+    """
+    Reset the raw channel and currently channel blend layers when the visium spot size is changed.
+    Changing the size of the visium spot requires all the raw and RGB layers for currently selected
+    channels to be reconstructed.
+    """
+    if triggered_id == "spatial-spot-rad" and data_selection in raw_data_dict and \
+            data_selection in layer_dict:
+        raw_data_dict[data_selection] = {marker: None for marker in raw_data_dict[data_selection].keys()}
+        layer_dict[data_selection] = {}
+    return raw_data_dict, layer_dict
+
+def no_channel_for_view(trigger: str, channel_selected: str, view_by_channel: Union[bool, list]):
+    """
+    Returns True if the conditions are met where the gallery view by channel mode is selected,
+    but cannot be toggled, either because no channel is selected, or the feature hasn't been enabled
+    """
+    return ((trigger == "unique-channel-list" and not view_by_channel) or
+            (trigger == "toggle-gallery-view" and not channel_selected))

@@ -28,10 +28,10 @@ from rakaia.utils.pixel import (
     select_random_colour_for_channel,
     apply_preset_to_blend_dict,
     is_rgb_color,
-    generate_default_swatches,
+    default_picker_swatches,
     random_hex_colour_generator,
     get_additive_image,
-    get_first_image_from_roi_dictionary,
+    get_region_dim_from_roi_dictionary,
     set_array_storage_type_from_config,
     apply_filter_to_array,
     split_string_at_pattern,
@@ -82,30 +82,30 @@ def test_random_hex_colour_generator():
 
 def test_generate_default_swatches():
     config = {'swatches': ["#0000FF", "#0000FF", "#0000FF", "#0000FF"]}
-    swatches = generate_default_swatches(config)
+    swatches = default_picker_swatches(config)
     assert len(swatches) == 4
     config = {'swatches': "#0000FF,#0000FF,#0000FF,#0000FF"}
-    swatches = generate_default_swatches(config)
+    swatches = default_picker_swatches(config)
     assert len(swatches) == 4
 
 
     config = {'swatches': ["#0000FF", "#0000FF", "fake", "#0000FF"]}
-    swatches = generate_default_swatches(config)
+    swatches = default_picker_swatches(config)
     assert len(swatches) == 3
     config = {'swatches': "#0000FF,fake,#0000FF,#0000FF"}
-    swatches = generate_default_swatches(config)
+    swatches = default_picker_swatches(config)
     assert len(swatches) == 3
 
     config = {'swatches': []}
-    swatches = generate_default_swatches(config)
+    swatches = default_picker_swatches(config)
     assert len(swatches) == 7
 
     config = {'swatches': "None"}
-    swatches = generate_default_swatches(config)
+    swatches = default_picker_swatches(config)
     assert len(swatches) == 7
 
     config = {'fake_key': "None"}
-    swatches = generate_default_swatches(config)
+    swatches = default_picker_swatches(config)
     assert len(swatches) == 7
 
 def test_basic_recolour_non_white(get_current_dir):
@@ -551,7 +551,7 @@ def test_retrieval_first_roi_dict_image():
     layer_dict = {"channel_1": np.full((200, 200, 3), 1000),
                   "channel_2": np.full((200, 200, 3), 2000),
                   "channel_3": np.full((200, 200, 3), 3000)}
-    first_array = get_first_image_from_roi_dictionary(layer_dict)
+    first_array = get_region_dim_from_roi_dictionary(layer_dict)
     assert first_array.shape == (200, 200, 3)
     assert np.mean(first_array) == 1000
 

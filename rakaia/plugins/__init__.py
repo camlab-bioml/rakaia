@@ -1,10 +1,12 @@
 from typing import Union
 from functools import partial
+
+import pandas as pd
 import plotly.graph_objs as go
 from rakaia.plugins.models import (
     QuantificationRandomForest,
     leiden_clustering,
-    ObjectMixingRF)
+    ObjectMixingRF, AdaBoostTreeClassifier)
 
 class PluginNotFoundError(Exception):
     """
@@ -18,7 +20,7 @@ class PluginDescriptors:
     :return: None
     """
     # the descriptors should be the string representation of the model in the application dropdown
-    descriptors = ["leiden", "random forest", "object mixing"]
+    descriptors = ["leiden", "random forest", "boosted trees", "object mixing"]
 
 class PluginModes:
     """
@@ -78,6 +80,21 @@ class PluginModes:
         return ObjectMixingRF(
             quantification_results, input_category, output_category, **kwargs).quantification_with_labels(True)
 
+    @staticmethod
+    def boosted_trees(quantification_results: Union[dict, go.Figure], input_category: str,
+                      output_category: str, **kwargs):
+        """
+        Train and predict using an Adaboost decision tree classifier
+
+        :param quantification_results: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
+        :param input_category: Existing annotation column in the object that specifies the classes used to fit the model
+        :param output_category: Column to store the output labels of the classifier prediction
+        :param kwargs: Keyword arguments to pass to `AdaBoostClassifier`
+
+        :return: Quantification results with the prediction labels added under the output column.
+        """
+        return AdaBoostTreeClassifier(
+            quantification_results, input_category, output_category, **kwargs).quantification_with_labels(True)
 
 
 class PluginModelModes:
@@ -90,8 +107,9 @@ class PluginModelModes:
     leiden = partial(PluginModes.leiden)
     random_forest = partial(PluginModes.random_forest)
     object_mixing = partial(PluginModes.object_mixing)
+    boosted_trees = partial(PluginModes.boosted_trees)
 
-def run_quantification_model(quantification_results: Union[dict, go.Figure], input_category: Union[str, None]=None,
+def run_quantification_model(quantification_results: Union[dict, pd.DataFrame], input_category: Union[str, None]=None,
                              output_category: str="out", mode: str="leiden", **kwargs):
     """
     Run a quantification model on a set of objects with quantified channel intensities. Requires a specific model

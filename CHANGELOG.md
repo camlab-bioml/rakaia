@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.21.0] - 2024-11-21
+
+### Added
+
+- Ability to transfer annotations between ROIs
+- Option to export channel tile and ROI query galleries as HTML while retaining resolution
+- Support for reading spatial transcriptomic datasets from Anndata (.h5ad)
+- Custom input for setting custom spatial spot/marker radius (radius parsed on default)
+- Ability to generate a visium spot mask in-app
+- Adaboost tree classifier for plugin/quant models
+- Toggle for turning on/off masks in ROI gallery (default is True)
+
+### Fixed
+
+- Import filenames as sets (do not import duplicate filenames)
+- Improved scaling tick markers for smaller dynamic ranges and sparse matrices
+- Explicit sorting (descending) on value counts for quantification distribution tables
+- Quantification only on markers in memory to be compatible with spatial
+- Tick mark bug when using custom range slider max and low values
+- Check new cluster subtypes by category on a new upload and update only if different subtypes
+- Fix reset cluster subtype reassignment because of numerical to string casting
+- Pixel histogram close on ROI change and not blend update
+
+### Changed
+
+- Increase limits on raw image uploader
+- No default database connection string
+- Favicon for browser tab #114
+
 ## [0.20.0] - 2024-09-19
 
 ### Added
@@ -635,4 +664,4 @@ percentile is at least 1 #49
 
 ## [0.1.0] - 2023-05-29
 
-Initial beta/development release for the Jackson lab group
+Initial beta/development release (internal)

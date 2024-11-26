@@ -12,7 +12,7 @@ import numpy as np
 from PIL import Image
 import plotly.express as px
 from rakaia.io.session import SessionTheme
-from rakaia.utils.pixel import split_string_at_pattern, get_first_image_from_roi_dictionary
+from rakaia.utils.pixel import split_string_at_pattern, get_region_dim_from_roi_dictionary
 from rakaia.utils.object import convert_mask_to_object_boundary
 
 
@@ -231,25 +231,27 @@ def invert_annotations_figure(cur_canvas: Union[go.Figure, dict]) -> Union[go.Fi
     return cur_canvas
 
 
-def set_range_slider_tick_markers(max_value, num_ticks=4):
+def set_range_slider_tick_markers(max_value, num_ticks=4, range_max: Union[int, float]=5.0):
     """
     Set the number and spacing of the tick markers used for the pixel range slider using the histogram maximum
     Note: the slider minimum is always set to 0
     """
-    if float(max_value) <= 1.0:
-        return dict([(i, str(i)) for i in [0, 1]]), float(round((float(max_value) / 25), 2))
+    if float(max_value) <= range_max:
+        return (dict([(float(i), str(float(round(i, 2)))) for i in
+                list(np.linspace(0, min(float(range_max), float(max_value)), num_ticks))]),
+                float(round((float(max_value) / 25), 2)))
     # set the default number of tick marks to 4
     # if the maximum value is less than 3, reduce the number of ticks accordingly
-    if int(max_value) < 3:
-        num_ticks = int(max_value) + 1
+    # if int(max_value) < range_max:
+    #     num_ticks = int(max_value) + 1
         # sets the dictionary for the string and int values to be shown in the pixel intensity range slider
     return dict([(int(i), str(int(i))) for i in list(np.linspace(0, int(max_value), num_ticks))]), 1
 
 
-def generate_canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
-                                use_cluster_annotations=False, cluster_colour_dict: dict = None,
-                                data_selection: str = None, cluster_selection_subset: list = None,
-                                cluster_id_col: str = "cluster"):
+def canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation="vertical",
+                       use_cluster_annotations=False, cluster_colour_dict: dict = None,
+                       data_selection: str = None, cluster_selection_subset: list = None,
+                       cluster_id_col: str = "cluster"):
     """
     Generate the string annotation text for a canvas based on the channels and selected colour of the channel
     """
@@ -359,7 +361,7 @@ def set_canvas_viewport(size_slider_val: Union[float, int] = None,
     """
     try:
         if not cur_dimensions:
-            cur_dimensions = get_first_image_from_roi_dictionary(image_dict[data_selection]).shape
+            cur_dimensions = get_region_dim_from_roi_dictionary(image_dict[data_selection]).shape
         aspect_ratio = int(cur_dimensions[1]) / int(cur_dimensions[0])
     except (KeyError, AttributeError, IndexError):
         aspect_ratio = canvas_aspect_ratio_from_layout(current_canvas)

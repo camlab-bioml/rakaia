@@ -9,6 +9,11 @@ from scipy.sparse import issparse, csc_matrix
 import pandas as pd
 from PIL import Image
 import h5py
+import anndata as ad
+
+from rakaia.parsers.spatial import (
+    spatial_canvas_dimensions,
+    is_spot_based_spatial, is_spatial_dataset)
 from rakaia.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
@@ -36,7 +41,8 @@ class FileParser:
     :param internal_name: When not using lazy loading, retain the current ROI selection string
     :return: None
     """
-    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5"}
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5",
+               ".h5ad": "h5ad"}
 
     def __init__(self, filepaths: list, array_store_type: str="float", lazy_load: bool=True,
                  single_roi_parse: bool=True, roi_name: Union[str, None]=None,
@@ -65,6 +71,8 @@ class FileParser:
             self.tiff = partial(self.parse_tiff, internal_name=self.internal_name)
             self.txt = partial(self.parse_txt, internal_name=self.internal_name)
             self.h5 = partial(self.parse_h5)
+            self.h5ad = partial(self.parse_h5ad)
+
             for upload in self.filepaths:
                 try:
                     # IMP: split reading a single mcd ROI from the entire mcd, as mcds can contain multiple ROIs
@@ -99,7 +107,7 @@ class FileParser:
         """
         if file_extension not in list(self.MATCHES.keys()):
             raise TypeError(f"{upload} is not one of the supported image filetypes:\n"
-                            ".mcd, .tiff, .txt, or .h5")
+                            ".mcd, .tiff, .txt, .h5, or .h5ad")
 
     def append_channel_identifier_to_collection(self, channel_name: str):
         """
@@ -135,9 +143,9 @@ class FileParser:
 
     def parse_h5(self, h5py_file):
         """
-        Parse a h5py ROI file generated from a previous session.
+        Parse an .h5py ROI file generated from a previous session.
 
-        :param h5py_file: path to a compatible h5py file.
+        :param h5py_file: path to a compatible .h5py file.
         :return: None
         """
         data_h5 = h5py.File(h5py_file, "r")
@@ -158,8 +166,7 @@ class FileParser:
                                 f"{self.image_dict[roi][channel].shape[1]}x"
                                 f"{self.image_dict[roi][channel].shape[0]}")
                             self.dataset_information_frame["Panel"].append(f"{len(data_h5[roi].keys())} markers")
-                    except KeyError:
-                        pass
+                    except KeyError: pass
                     self.append_channel_identifier_to_collection(channel)
                     self.append_channel_identifier_to_channel_list(channel)
                     self.append_channel_alias_to_label_list(channel)
@@ -171,8 +178,7 @@ class FileParser:
             meta_back[col] = meta_back[col].str.decode("utf-8")
         try:
             meta_back.columns = [i.decode("utf-8") for i in data_h5['metadata_columns']]
-        except KeyError:
-            pass
+        except KeyError: pass
         self.image_dict['metadata'] = meta_back
 
     def parse_h5_channel_blend_params(self, h5_roi, channel: str):
@@ -250,12 +256,7 @@ class FileParser:
                 self.append_channel_alias_to_label_list(identifier)
 
             if len(self.image_dict['metadata']) < 1:
-                self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
-                                           'Channel Name': self.metadata_channels,
-                                           'Channel Label': self.metadata_labels,
-                                           'rakaia Label': self.metadata_labels}
-                self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
-                                                   'rakaia Label']
+                self.set_hash_metadata(self.metadata_channels, self.metadata_labels)
         self.panel_length = len(tif.pages) if self.panel_length is None else self.panel_length
         self.acq_index += 1
 
@@ -294,12 +295,7 @@ class FileParser:
                     if channel_labels is None:
                         channel_labels = acq.channel_labels
                         channel_names = acq.channel_names
-                        self.image_dict['metadata'] = {'Channel Order': range(1, len(channel_names) + 1, 1),
-                                                   'Channel Name': channel_names,
-                                                   'Channel Label': channel_labels,
-                                                   'rakaia Label': channel_labels}
-                        self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
-                                                           'rakaia Label']
+                        self.set_hash_metadata(list(channel_names), list(channel_labels))
                     else:
                         # for now, just checking the that the length matches is sufficient in case
                         # there are slight spelling errors between mcds with the same panel
@@ -404,14 +400,47 @@ class FileParser:
                 self.append_channel_identifier_to_channel_list(identifier)
                 self.append_channel_alias_to_label_list(image_label)
             if len(self.image_dict['metadata']) < 1:
-                self.image_dict['metadata'] = {'Channel Order': range(1, len(self.metadata_channels) + 1, 1),
-                                           'Channel Name': self.metadata_channels,
-                                           'Channel Label': self.metadata_labels,
-                                           'rakaia Label': self.metadata_labels}
-                self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
-                                                   'rakaia Label']
+                self.set_hash_metadata(self.metadata_channels, self.metadata_labels)
             self.panel_length = len(txt_channel_names) if self.panel_length is None else self.panel_length
         self.acq_index += 1
+
+    def parse_h5ad(self, h5ad_filepath):
+        """
+        Parse an .h5ad filepath. Current technologies that are explicitly supported: 10X Visium, Xenium
+
+        :param h5ad_filepath: Filepath to a spatial dataset with an .h5ad extension
+        """
+        anndata = ad.read_h5ad(h5ad_filepath)
+        if is_spot_based_spatial(anndata) or is_spatial_dataset(anndata):
+            basename = str(Path(h5ad_filepath).stem)
+            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq"
+            self.metadata_channels = list(anndata.var_names)
+            self.metadata_labels = list(anndata.var_names)
+            # get the channel names from the var names
+            self.dataset_information_frame["ROI"].append(str(roi))
+            grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(anndata)
+            self.dataset_information_frame["Dimensions"].append(f"{grid_width}x{grid_height}")
+            self.dataset_information_frame["Panel"].append(
+                f"{len(list(anndata.var_names))} markers")
+            self.image_dict[roi] = {str(marker): None for marker in anndata.var_names}
+            self.panel_length = len(list(anndata.var_names))
+            self.set_hash_metadata(self.metadata_channels, self.metadata_labels)
+
+    def set_hash_metadata(self, identifiers: list, labels: list):
+        """
+        Set the image dictionary metadata table and column labels
+
+        :param identifiers: List of keys for each channel
+        :param labels: List of aliases/labels for each channel
+
+        :return: None
+        """
+        self.image_dict['metadata'] = {'Channel Order': range(1, len(identifiers) + 1, 1),
+                                       'Channel Name': identifiers,
+                                       'Channel Label': labels,
+                                       'rakaia Label': labels}
+        self.image_dict['metadata_columns'] = ['Channel Order', 'Channel Name', 'Channel Label',
+                                               'rakaia Label']
 
     def get_parsed_information(self) -> pd.DataFrame:
         """
@@ -448,10 +477,11 @@ def create_new_blending_dict(uploaded):
     return current_blend_dict
 
 
-def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_config, array_store_type="float",
-                                       delimiter="+++"):
+def image_dict_from_lazy_load(dataset_selection: str, session_config: dict,
+                              array_store_type: str="float",
+                              delimiter: str="+++"):
     """
-    Populate an existing upload dictionary with an ROI read from a filepath for lazy loading
+    Generate an ROI raw array dictionary with an ROI read from a filepath for lazy loading
     """
     # IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
     # is already contained in the dictionary
@@ -467,7 +497,7 @@ def populate_image_dict_from_lazy_load(upload_dict, dataset_selection, session_c
                                      lazy_load=False, single_roi_parse=True, internal_name=dataset_selection,
                                      roi_name=acq_name, delimiter=delimiter).image_dict
         return upload_dict_new
-    return upload_dict
+    return None
 
 def sparse_array_to_dense(array):
     """
@@ -533,3 +563,25 @@ def check_empty_missing_layer_dict(current_layers: Union[dict, None], data_selec
     if current_layers is None or data_selection not in current_layers.keys():
         current_layers = {data_selection: {}}
     return current_layers
+
+def parse_files_for_h5ad(uploads: Union[list, dict], data_selection: str, delimiter: str="+++"):
+    """
+    Parse the list of uploaded filepaths and search for an h5ad extension (represents 10x Visium)
+    """
+    uploads = uploads['uploads'] if isinstance(uploads, dict) and 'uploads' in uploads else uploads
+    exp, slide, acq =  split_string_at_pattern(data_selection, delimiter)
+    for upload in uploads:
+        if upload.endswith('.h5ad') and exp in upload:
+            return upload
+    return None
+
+def set_current_channels(image_dict: dict, data_selection: str, current_selection: list):
+    """
+    Set the currently selected channels by verifying that every selection is in the current ROI dictionary.
+    Called when switching ROIs with a current blend applied
+    """
+    if current_selection is not None and len(current_selection) > 0 and \
+        data_selection in image_dict and \
+            all([elem in image_dict[data_selection].keys() for elem in current_selection]):
+        return list(current_selection)
+    return []

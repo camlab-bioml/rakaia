@@ -27,7 +27,9 @@ from rakaia.parsers.object import (
     validate_quantification_from_anndata,
     umap_dataframe_from_quantification_dict,
     GatingObjectList,
-    is_steinbock_intensity_anndata, quant_dataframe_to_anndata)
+    is_steinbock_intensity_anndata,
+    quant_dataframe_to_anndata,
+    umap_transform)
 import anndata as adata
 
 def test_validation_of_measurements_csv(get_current_dir):
@@ -270,6 +272,17 @@ def test_return_umap_dataframe_from_quantification_dict(get_current_dir):
     umap = umap_dataframe_from_quantification_dict(quant_sheet, cur_umap, rerun=False,
                                                    cols_include=['Channel_1'])
     assert isinstance(umap, dash._callback.NoUpdate)
+
+def test_vary_umap_transform(get_current_dir):
+    anndata = adata.read_h5ad(os.path.join(get_current_dir, "quantification_anndata.h5ad"))
+    expr = pd.DataFrame(anndata.X, columns= anndata.var_names)
+    pca = umap_transform(expr, use_pca=True)
+    scaled = umap_transform(expr)
+    assert scaled.shape == expr.shape
+    assert pca.shape != scaled.shape
+
+    umap = umap_dataframe_from_quantification_dict(expr.sample(n = 100))
+    assert umap.value.shape == (100, 2)
 
 def test_csv_to_anndata(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

@@ -51,7 +51,7 @@ def is_rgb_color(value):
     _rgbstring = re.compile(r'#[a-fA-F0-9]{6}$')
     return bool(_rgbstring.match(value))
 
-def generate_default_swatches(config):
+def default_picker_swatches(config):
     """
     Return a list of default swatches for the mantine ColorPicker based on the contents of the config
     """
@@ -227,11 +227,11 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     # set the array cast type based on the max
     cast_type = np.uint16 if np.max(array) > 1 else np.float32
     hist_data = np.hstack(array).astype(cast_type)
-    max_hist = float(np.max(array)) if int(np.max(array)) > 1 else 1
+    max_hist = upper_bound_for_range_slider(array)
     hist = np.random.choice(hist_data, subset_number).astype(cast_type) if \
         hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
-    # ensure that the min of the hist max is 1
+    # ensure that the min of the hist max is 0
     try:
         if keep_max:
             hist = np.concatenate([np.array(hist).astype(cast_type),
@@ -360,7 +360,7 @@ def get_default_channel_upper_bound_by_percentile(array, percentile=99, subset_n
     array_stack = np.hstack(array)
     data = np.random.choice(array_stack, subset_number) if array.shape[0] > subset_number else array_stack
     upper_percentile = float(np.percentile(data, percentile))
-    return upper_percentile if upper_percentile > 0 else 1.0
+    return upper_percentile if upper_percentile > 0.0 else 1.0
 
 def delete_dataset_option_from_list_interactively(remove_clicks, cur_data_selection, cur_options,
                                                   cur_dataset_preview: Union[list, dict]=None):
@@ -454,15 +454,15 @@ def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
         return image.astype(np.float32)
     return None
 
-def get_first_image_from_roi_dictionary(roi_dictionary):
+def get_region_dim_from_roi_dictionary(roi_dictionary):
     """
-    Return the first image in a dictionary that specifies an ROI. This assumes that
-    all of the other channel arrays in the dictionary have the same shape
+    Return the first array in the ROI session dictionary that can specify an ROi shape. This assumes that
+    all the other channel arrays in the dictionary have the same shape
     """
-    first_image_name = list(roi_dictionary.keys())[0]
-    image_for_validation = roi_dictionary[first_image_name]
-    return image_for_validation
-
+    for value in roi_dictionary.values():
+        if value is not None:
+            return value
+    return None
 
 def apply_filter_to_array(image, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma):
     """
@@ -598,7 +598,8 @@ class MarkerCorrelation:
         # the ratio of the target to the baseline inside the mask
         self.target_proportion_relative = None
 
-        if image_dict is not None and roi_selection in image_dict and target_channel in image_dict[roi_selection]:
+        if image_dict is not None and roi_selection in image_dict and target_channel in \
+                image_dict[roi_selection] and image_dict[roi_selection][target_channel] is not None:
             self.image_dict = image_dict
             self.roi_selection = roi_selection
             self.target_threshold = target_threshold
@@ -613,17 +614,18 @@ class MarkerCorrelation:
                                                         blend_dict, target_channel, roi_selection, self.bounds)
                 if self.mask is not None and self.target_array is not None:
                     self.set_target_proportion_in_mask()
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError):
                 pass
             try:
-                if baseline_channel and baseline_channel in image_dict[roi_selection]:
+                if baseline_channel and baseline_channel in image_dict[roi_selection] and \
+                    image_dict[roi_selection][baseline_channel] is not None:
                     self.baseline_array, self.baseline_threshold = self.set_baseline_array_from_blend(image_dict,
                                         use_blend_params, blend_dict, baseline_channel, roi_selection, self.bounds)
                     self.compute_basic_pearson_correlation()
                     if self.mask is not None and self.baseline_array is not None:
                         self.set_baseline_proportion_in_mask()
                         self.compute_correlation_statistics()
-            except (ValueError, KeyError):
+            except (ValueError, KeyError, TypeError):
                 pass
 
     def set_mask(self, mask: Union[np.array, np.ndarray]):

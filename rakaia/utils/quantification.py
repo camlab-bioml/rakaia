@@ -60,37 +60,46 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
     Quantify multiple channels for a single ROI and concatenate into a dataframe with cells
     as rows and channels + metadata as columns
     """
-    exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
-    array = np.stack([channel_dict[data_selection][channel] for channel in list(channel_dict[data_selection].keys()) if
-                       channel in channels_to_quantify], axis=0)
-    chan_names = []
-    for chan in channels_to_quantify:
-        if aliases and chan in aliases.keys():
-            chan_names.append(aliases[chan])
-        else:
-            chan_names.append(chan)
-    channel_frame = measure_intensites(array, mask, chan_names, IntensityAggregation.MEAN).dropna()
-    description_name = roi_name
-    sample_name = mask_name
-    if dataset_options is not None:
-        for dataset in dataset_options:
-            exp, slide, roi = split_string_at_pattern(dataset, pattern=delimiter)
-            if roi == roi_name:
-                index = dataset_options.index(dataset) + 1
-                # this might not be the optimal way tot figure out the description name from different file types
-                if len(description_name) <= 5 and description_name.startswith("acq"):
-                    description_name = mask_name
-                    sample_name = f"{exp}_{index}"
-    channel_frame['description'] = description_name
-    # channel_frame['cell_id'] = pd.Series(range(0, (int(np.max(mask)))), dtype='int64')
-    channel_frame['cell_id'] = [int(i) for i in channel_frame.index]
-    channel_frame['sample'] = sample_name
-    props = ['area', 'centroid', 'axis_major_length', 'axis_minor_length', 'eccentricity']
     try:
-        region_props = measure_regionprops(array, mask, props)
-        to_return = channel_frame.join(region_props).reset_index(drop=True)
-    except TypeError: to_return = channel_frame
-    return to_return
+        exp, slide, roi_name = split_string_at_pattern(data_selection, pattern=delimiter)
+        # trim quantification channels to ones with an existing array, for example if quantifying spatial such as xenium
+        channels_to_quantify = [chan for chan in channels_to_quantify if
+                                chan in channel_dict[data_selection].keys() and
+                                channel_dict[data_selection][chan] is not None]
+        array = np.stack(
+            [channel_dict[data_selection][channel] for channel in list(channel_dict[data_selection].keys()) if
+             channel in channels_to_quantify], axis=0)
+        chan_names = []
+        for chan in channels_to_quantify:
+            if aliases and chan in aliases.keys():
+                chan_names.append(aliases[chan])
+            else:
+                chan_names.append(chan)
+        channel_frame = measure_intensites(array, mask, chan_names, IntensityAggregation.MEAN).dropna()
+        description_name = roi_name
+        sample_name = mask_name
+        if dataset_options is not None:
+            for dataset in dataset_options:
+                exp, slide, roi = split_string_at_pattern(dataset, pattern=delimiter)
+                if roi == roi_name:
+                    index = dataset_options.index(dataset) + 1
+                    # this might not be the optimal way tot figure out the description name from different file types
+                    if len(description_name) <= 5 and description_name.startswith("acq"):
+                        description_name = mask_name
+                        sample_name = f"{exp}_{index}"
+        channel_frame['description'] = description_name
+        # channel_frame['cell_id'] = pd.Series(range(0, (int(np.max(mask)))), dtype='int64')
+        channel_frame['cell_id'] = [int(i) for i in channel_frame.index]
+        channel_frame['sample'] = sample_name
+        props = ['area', 'centroid', 'axis_major_length', 'axis_minor_length', 'eccentricity']
+        try:
+            region_props = measure_regionprops(array, mask, props)
+            to_return = channel_frame.join(region_props).reset_index(drop=True)
+        except TypeError:
+            to_return = channel_frame
+        return to_return
+    except ValueError:
+        return None
 
 def concat_quantification_frames_multi_roi(existing_frame, new_frame, new_data_selection, delimiter: str="+++"):
     """
@@ -162,3 +171,11 @@ def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
                     html.Span(f"{len(object_id_list)} objects")]
         return children
     return []
+
+def limit_length_to_quantify(marker_list: list, size_threshold: int=1000):
+    """
+    Check the list of markers in the current session. If the list is longer than a set threshold,
+    do not pass the list for quantification selection. Ensures that datasets with too many markers
+    are not quantified in-app
+    """
+    return marker_list if len(marker_list) < size_threshold else []
