@@ -4,6 +4,14 @@ rakaia.parsers package
 Submodules
 ----------
 
+rakaia.parsers.lazy\_load module
+--------------------------------
+
+.. automodule:: rakaia.parsers.lazy_load
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rakaia.parsers.object module
 ----------------------------
 

@@ -157,13 +157,12 @@ def check_spot_grid_multi_channel(image_dict: dict, data_selection: str,
                                   adata: ad.AnnData, channel_list: list,
                                   spot_size: Union[int,float]=55):
     """
-    Check the current raw image dictionary for missing visium spot arrays using hte currently selected
+    Check the current raw image dictionary for missing visium spot arrays using the currently selected
     marker list. If markers are missing, add the spot grids to the dictionary
     """
     for selection in channel_list:
-        if image_dict[data_selection][selection] is None:
-            image_dict[data_selection][selection] = spatial_grid_single_marker(adata, selection,
-                                                                               spot_size)
+        if not image_dict[data_selection] or image_dict[data_selection][selection] is None:
+            image_dict[data_selection][selection] = spatial_grid_single_marker(adata, selection, spot_size)
     return image_dict
 
 

@@ -29,9 +29,9 @@ def roi_requires_single_marker_load(pixel_counter: Union[np.array, np.ndarray, i
                                     panel_length: int,
                                     pixel_threshold: int=20000000, panel_size_threshold: int=50):
     """
-    Returns True if the provided channel is larger than a specific size and part of a panel
-    of a certain length. For example, if the channel array provided has more total pixels than
-    `pixel_threshold` and is part of a panel size that is greater than `panel_size_threshold`
+    Determines if an ROI is sufficiently large to require single marker loading. For example, if the channel array
+    provided has more total pixels than `pixel_threshold` and is part of a panel size that is
+    greater than `panel_size_threshold` (these ROIs typically will not fit in most memory).
     """
     pixel_counter = int(pixel_counter.shape[0] * pixel_counter.shape[1]) if not \
     isinstance(pixel_counter, int) else pixel_counter
@@ -252,7 +252,9 @@ class FileParser:
             for page in tif.pages:
                 identifier = str("channel_" + str(multi_channel_index))
                 # tiff files could be RGB, so convert to greyscale for compatibility
-                self.image_dict[roi][identifier] = None if self.lazy_load else convert_rgb_to_greyscale(
+                self.image_dict[roi][identifier] = None if (self.lazy_load or
+                        roi_requires_single_marker_load(int(page.shape[0] * page.shape[1]),
+                        len(tif.pages))) else convert_rgb_to_greyscale(
                     page.asarray()).astype(set_array_storage_type_from_config(self.array_store_type))
                 # add in a generic description for the ROI per tiff file
                 if multi_channel_index == 1:
@@ -290,7 +292,7 @@ class FileParser:
         """
         Parse a mcd file.
 
-        :param mcd_filepath: path to a compatible tiff file.
+        :param mcd_filepath: path to a compatible mcd file.
         :return: None
         """
         with MCDFile(mcd_filepath) as mcd_file:
@@ -315,7 +317,7 @@ class FileParser:
                     channel_index = 0
                     for channel in acq.channel_names:
                         self.image_dict[roi][channel] = None if (self.lazy_load or
-                                                                 roi_requires_single_marker_load(channel, len(acq.channel_labels))) else channel.astype(
+                        roi_requires_single_marker_load(channel, len(acq.channel_labels))) else channel.astype(
                                     set_array_storage_type_from_config(self.array_store_type))
                         self.append_channel_identifier_to_collection(channel_names[channel_index])
                         # add information about the ROI into the description list
@@ -336,7 +338,7 @@ class FileParser:
 
     def read_single_roi_from_mcd(self, mcd_filepath, internal_name, roi_name):
         """
-        Read a single ROI into the dictionary from an mcd file.
+        Read a single ROI into the dictionary from a .mcd file.
 
         :param mcd_filepath: path to a compatible tiff file.
         :param roi_name: When parsing mcd files and not using lazy loading, pass a single ROI name to pull from an mcd.
