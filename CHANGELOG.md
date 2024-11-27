@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Single marker lazy loading for very large ROIs (both large dimensions + many markers): includes
 spatial datasets and extended to mcd & tiff
+- Update dependencies to address dependabot vulnerabilities
 
 ## [0.21.0] - 2024-11-21
 
