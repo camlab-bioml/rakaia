@@ -240,7 +240,10 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
         pass
     fig = go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist])
     fig.update_layout(showlegend=False, yaxis={'title': None},
-                                      xaxis={'title': None}, margin=dict(pad=0))
+                                      xaxis={'title': None}, margin=dict(pad=0),
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    font=dict(color="black"))
+
     return fig, float(np.max(array))
 
 def upper_bound_for_range_slider(array):

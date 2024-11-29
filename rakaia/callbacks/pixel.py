@@ -471,7 +471,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "db-config-options" and db_config_selection is not None:
             new_blend_dict = match_db_config_to_request_str(db_config_list, db_config_selection)
         metadata_return = extract_alias_labels_from_db_document(new_blend_dict, cur_metadata)
-        metadata_return = metadata_return if len(metadata_return) > 0 else dash.no_update
+        metadata_return = metadata_return if metadata_return else dash.no_update
         if None not in (image_dict, new_blend_dict, data_selection):
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
             current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}
@@ -1280,7 +1280,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery, 0.75, 3000,
                             channel_selected if (view_by_channel and channel_selected) else None) if views else None
                     return channel_tile_gallery_children(tiles) if tiles else None, dash.no_update
-            raise PreventUpdate
+            return html.H6(ALERT.warnings["no_channel_gallery"], style={"align": "center", "float":
+                "center", "justifyContent": "center", "display": "flex"}), dash.no_update
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError, IndexError): raise PreventUpdate
 
     @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
@@ -1942,7 +1943,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             - Use the arrow up button to toggle on/off the mask
         """
         if None not in (cur_data_selection, cur_options) and not (ctx.triggered_id == 'keyboard-listener' and not allow_arrow_change) and \
-            not annotating_region and active_tab == 'pixel-analysis' and not open_tour and valid_key_trigger(key_listener):
+            not annotating_region and active_tab == 'pixel-analysis' and not open_tour and valid_key_trigger(ctx.triggered_id, key_listener):
             cur_index = cur_options.index(cur_data_selection)
             mask_change = not mask_stat if mask_toggle_trigger(ctx.triggered_id, key_listener, n_events) else dash.no_update
             try:

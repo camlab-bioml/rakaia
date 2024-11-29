@@ -30,9 +30,10 @@ def test_blanking_graph_data():
     assert blanked['layout'] == graph['layout']
 
 def test_valid_listener():
-    assert valid_key_trigger({'keyCode': 37})
-    assert not valid_key_trigger({'keyCode': 36})
-    assert not valid_key_trigger({})
+    assert valid_key_trigger("keyboard-listener", {'keyCode': 37})
+    assert not valid_key_trigger("keyboard-listener", {'keyCode': 36})
+    assert not valid_key_trigger("keyboard-listener", {})
+    assert valid_key_trigger("other_trigger", {})
 
 def test_loaders_roi_triggers():
     assert previous_roi_trigger("prev-roi", 1, None, None)

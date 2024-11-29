@@ -7,13 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2024-11-26
+## [0.22.0] - 2024-11-29
 
 ### Changed
 
-- Single marker lazy loading for very large ROIs (both large dimensions + many markers): includes
-spatial datasets and extended to mcd & tiff
+- Single marker lazy loading for very large ROIs (both large dimensions + many markers,
+auto-detected): includes spatial datasets and extended to mcd & tiff
+- Channel gallery warning when tiles aren't rendered (spatial or large ROI as above)
 - Update dependencies to address dependabot vulnerabilities
+- prettify UMAPs #115
+
+### Fixed
+
+- Using prev or next ROI before a key listener has been initiated blocks the callback
 
 ## [0.21.0] - 2024-11-21
 

@@ -157,8 +157,8 @@ def parse_steinbock_dir(directory, error_config, **kwargs):
     mcd_files = parse_steinbock_subdir(os.path.join(directory, 'mcd'))
     mask_files = parse_steinbock_subdir(os.path.join(directory, 'deepcell', 'cell'))
     export_files = parse_steinbock_subdir(os.path.join(directory, 'export'))
-    quant = [str(file) for file in export_files if file.endswith('.h5ad')]
-    umap = [str(file) for file in export_files if file.endswith('.csv')]
+    quant = [str(file) for file in export_files if file.endswith('.h5ad')] if export_files else []
+    umap = [str(file) for file in export_files if file.endswith('.csv')] if export_files else []
     umap_return = SessionServerside(pd.read_csv(umap[0], names=['UMAP1', 'UMAP2'],
                 header=0).to_dict(orient="records"), **kwargs) if umap else dash.no_update
     return check_valid_upload({'uploads': mcd_files, 'from_steinbock': True}), \

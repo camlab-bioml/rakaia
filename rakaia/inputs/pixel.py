@@ -15,7 +15,6 @@ from rakaia.io.session import SessionTheme
 from rakaia.utils.pixel import split_string_at_pattern, get_region_dim_from_roi_dictionary
 from rakaia.utils.object import convert_mask_to_object_boundary
 
-
 def default_canvas_margins() -> dict:
     """
     Define the default margins for the canvas `go.Figure` as a dictionary
@@ -416,5 +415,8 @@ def reset_pixel_histogram(to_dict: bool = False):
     fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
                       xaxis=XAxis(showticklabels=False),
                       yaxis=YAxis(showticklabels=False),
-                      margin=dict(l=5, r=5, b=15, t=20, pad=0))
+                      margin=dict(l=5, r=5, b=15, t=20, pad=0),
+                      plot_bgcolor="white", paper_bgcolor="white",
+                      font=dict(color="black"))
+
     return fig.to_dict() if to_dict else fig

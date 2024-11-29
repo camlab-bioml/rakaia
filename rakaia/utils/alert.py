@@ -84,7 +84,9 @@ class AlertMessage(BaseModel):
                                        "\t\n -ROI naming in the quantification sheet matches the ROI names in the session.\n\n"
                                        "3. If querying using image similarity, that similarity scores have been computed "
                                        "using a UMAP overlay. Scores can be computed from the UMAP options under "
-                                       "the quantification tab."}
+                                       "the quantification tab.",
+                      "no_channel_gallery": "Note: Channel tile gallery not rendered for spatial datasets or "
+                                            "ROIs that can't load fully into memory."}
 
 
 class ToolTips(BaseModel):
