@@ -1,3 +1,6 @@
+"""Advanced functions that support the callbacks associated with
+pixel-level operations (blended images))"""
+
 from typing import Union
 from pathlib import Path
 import dash

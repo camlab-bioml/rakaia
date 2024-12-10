@@ -1,3 +1,5 @@
+"""Module containing the class associated With connecting to mongoDB/Atlas"""
+
 from typing import Union
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi

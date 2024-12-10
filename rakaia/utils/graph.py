@@ -1,3 +1,7 @@
+"""Module containing utility functions for maintaining proper component attributes
+for the main canvas
+"""
+
 from typing import Union
 import plotly.graph_objs as go
 def strip_invalid_shapes_from_graph_layout(cur_graph: Union[go.Figure, dict]):

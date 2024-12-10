@@ -1,3 +1,7 @@
+"""
+Module containing tools for outputting ROI annotations as PDF
+"""
+
 import os
 from typing import Union
 from matplotlib.backends.backend_pdf import PdfPages

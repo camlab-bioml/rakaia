@@ -1,3 +1,6 @@
+"""Module containing utility functions and classes for decorating nested session callbacks
+"""
+
 import time
 from rakaia.io.session import create_download_dir
 

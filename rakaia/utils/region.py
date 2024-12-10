@@ -1,3 +1,7 @@
+"""Module containing utility functions and classes summarizing channel expression
+statistics for different annotation/shape types
+"""
+
 import math
 from dataclasses import dataclass
 from typing import Union

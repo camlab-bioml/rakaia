@@ -1,3 +1,6 @@
+"""Module containing class for reading file imports from `dash_uploader` file upload components
+"""
+
 from typing import Union
 import dash_uploader as du
 

@@ -1,3 +1,7 @@
+"""Module containing functions and classes to support user help guides, warnings,
+and session messages
+"""
+
 import pathlib
 from typing import Union
 from pydantic import BaseModel

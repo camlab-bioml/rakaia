@@ -1,3 +1,5 @@
+"""Functions associated with plotting tabular metadata associations"""
+
 from typing import Union
 import pandas as pd
 import plotly.express as px

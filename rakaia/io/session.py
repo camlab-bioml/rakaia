@@ -1,3 +1,7 @@
+"""Module containing functions and classes for setting variable session configurations
+such as hover text, tab text, themes, download directory, etc.
+"""
+
 import os
 import json
 from typing import Union

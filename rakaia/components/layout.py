@@ -1,3 +1,6 @@
+"""Module containing the primary function to return the application layout
+as an `html.Div`"""
+
 from dash import dash_table
 import dash_uploader as du
 from dash_extensions import EventListener

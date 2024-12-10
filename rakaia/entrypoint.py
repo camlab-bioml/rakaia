@@ -1,3 +1,7 @@
+"""Module defining the main linking functions between the application dashboard and the
+Flask application backend
+"""
+
 import uuid
 import warnings
 import os

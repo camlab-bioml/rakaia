@@ -6,7 +6,7 @@ VERSION=$( rakaia -v | cut -d "v" -f 2 )
 
 export PYAPP_PROJECT_NAME="rakaia"
 export PYAPP_PROJECT_DEPENDENCY_FILE="$SCRIPTPATH/requirements.txt"
-export PYAPP_PROJECT_VERSION=$VERSIOn
+export PYAPP_PROJECT_VERSION=$VERSION
 export PYAPP_EXEC_SPEC="rakaia.wsgi:main"
 export PYAPP_PROJECT_PATH="$SCRIPTPATH/dist/rakaia-$VERSION-py3-none-any.whl"
 export PYAPP_PYTHON_VERSION=3.10

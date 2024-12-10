@@ -1,3 +1,7 @@
+"""Module defining the primary function to render the application dashboard with
+user-specified session parameters provided through CLI
+"""
+
 import tempfile
 import shutil
 import os

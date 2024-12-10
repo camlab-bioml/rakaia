@@ -1,3 +1,7 @@
+"""Module containing functions and classes to generate region-level thumbnails
+for gallery rendering
+"""
+
 from typing import Union
 from functools import partial
 import os
@@ -21,9 +25,10 @@ from rakaia.parsers.object import (
     ROIMaskMatch,
     match_mask_name_to_quantification_sheet_roi)
 from rakaia.parsers.spatial import (
-    SpatialDefaults,
-    spatial_canvas_dimensions, spatial_grid_single_marker, set_spatial_scale, get_spatial_spot_radius,
-    is_spot_based_spatial, is_spatial_dataset)
+    spatial_canvas_dimensions, spatial_grid_single_marker,
+    get_spatial_spot_radius,
+    is_spot_based_spatial,
+    is_spatial_dataset)
 
 
 class RegionThumbnail:
@@ -301,6 +306,7 @@ class RegionThumbnail:
                 else:
                     slide_index += 1
                     continue
+            mcd_file.close()
             # else:
             #     continue
             # break

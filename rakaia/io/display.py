@@ -1,3 +1,7 @@
+"""Module containing tools and classes for variable display options such as
+region expression summary, preview texts, fullscreen canvas configuration, etc.
+"""
+
 import os
 import datetime
 from typing import Union

@@ -1,5 +1,7 @@
-from typing import Union
+"""Functions associated with application loading, triggers, and responsive visual adjustments
+based on user-defined preferences"""
 
+from typing import Union
 import dash
 from dash import dcc
 from rakaia.io.session import SessionTheme

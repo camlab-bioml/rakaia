@@ -1,3 +1,7 @@
+"""Module containing functions and classes for parsing and validating raw spatial dataset
+file imports and user-defined spatial visualization preference such as marker size
+"""
+
 from typing import Union
 import anndata as ad
 import numpy as np

@@ -1,3 +1,7 @@
+"""Module containing tools for rendering object-related visual components such as
+summarized object expression plots, UMAP plots, etc.
+"""
+
 from typing import Union
 from functools import partial
 import dash

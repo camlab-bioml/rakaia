@@ -1,3 +1,5 @@
+"""Application callbacks associated with pixel-level operations (blended images)"""
+
 import os.path
 import uuid
 from pathlib import Path
@@ -471,7 +473,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "db-config-options" and db_config_selection is not None:
             new_blend_dict = match_db_config_to_request_str(db_config_list, db_config_selection)
         metadata_return = extract_alias_labels_from_db_document(new_blend_dict, cur_metadata)
-        metadata_return = metadata_return if metadata_return else dash.no_update
+        metadata_return = metadata_return if metadata_return is not None else dash.no_update
         if None not in (image_dict, new_blend_dict, data_selection):
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
             current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}

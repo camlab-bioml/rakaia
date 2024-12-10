@@ -1,3 +1,6 @@
+"""Advanced functions that support the callbacks associated with objects
+(masking, clustering, UMAP, annotation, etc.)"""
+
 from functools import partial
 from typing import Union
 import ast

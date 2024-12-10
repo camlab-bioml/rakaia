@@ -1,3 +1,7 @@
+"""Module defining the CLI entrypoint for users to execute rakaia using
+CLI arguments
+"""
+
 import tempfile
 import argparse
 import sys

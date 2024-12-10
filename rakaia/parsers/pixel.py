@@ -1,3 +1,7 @@
+"""Module containing functions and classes for parsing and validating raw images data
+file imports and defining internal raw data hash maps
+"""
+
 from pathlib import Path
 from typing import Union
 from functools import partial
@@ -334,6 +338,7 @@ class FileParser:
                     self.panel_length = len(acq.channel_labels) if self.panel_length is None else self.panel_length
                     acq_index += 1
                 slide_index += 1
+            mcd_file.close()
         self.experiment_index += 1
 
     def read_single_roi_from_mcd(self, mcd_filepath, internal_name, roi_name):
@@ -362,6 +367,7 @@ class FileParser:
                                 self.image_dict[internal_name][channel_names[channel_index]] = channel.astype(
                                 set_array_storage_type_from_config(self.array_store_type))
                                 channel_index += 1
+                        mcd_file.close()
 
     @staticmethod
     def initialize_empty_mcd_single_read(image_dict: dict, internal_name: str, channel_list: list):

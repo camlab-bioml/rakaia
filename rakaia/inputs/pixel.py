@@ -1,3 +1,7 @@
+"""Module containing tools for rendering pixel-related visual components such as
+primary and fullscreen canvas adjustments, marker expression histogram, figure appearance, etc.
+"""
+
 from typing import Union
 from copy import deepcopy
 import dash

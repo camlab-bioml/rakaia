@@ -1,3 +1,7 @@
+"""Module containing utility functions for modifying images as numpy arrays,
+such as recolouring, filtering/bounding, converting paths to arrays, etc.
+"""
+
 import re
 import random
 from typing import Union

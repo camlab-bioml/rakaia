@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2024-11-29
+## [0.22.0] - 2024-12-10
 
 ### Changed
 
@@ -20,6 +20,10 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 ### Fixed
 
 - Using prev or next ROI before a key listener has been initiated blocks the callback
+
+### Added
+
+- module docstrings
 
 ## [0.21.0] - 2024-11-21
 

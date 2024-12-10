@@ -1,3 +1,7 @@
+"""Module containing utility functions for pixel-level array filters such as Gaussian
+and median filtering, as well as logic parsers for the associated callbacks
+"""
+
 from typing import Union
 import dash
 import numpy as np

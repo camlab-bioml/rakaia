@@ -1,3 +1,6 @@
+"""Module containing functions and classes for the plugin/object model API
+"""
+
 from typing import Union
 from functools import partial
 

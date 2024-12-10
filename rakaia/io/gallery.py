@@ -1,3 +1,7 @@
+"""Module containing functions and classes for rendering thumbnail galleries
+(either channel or ROI) as `html` children and outputting thumbnail images as HTML
+"""
+
 import math
 from io import BytesIO
 import base64

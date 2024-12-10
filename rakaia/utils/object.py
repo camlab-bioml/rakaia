@@ -1,3 +1,7 @@
+"""Module containing utility functions for object-related files such as masks and
+quantification frames. Provides utilities for sub-setting and name matching
+"""
+
 from typing import Union
 import re
 from pydantic import BaseModel

@@ -1,3 +1,6 @@
+"""Application callbacks associated with objects
+(masking, clustering, UMAP, annotation, etc.)"""
+
 import os
 import uuid
 import dash

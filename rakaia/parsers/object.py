@@ -1,3 +1,7 @@
+"""Module containing functions and classes for importing and validating object-level
+data files such as UMAP coordinates, object quantification, mask files, etc.
+"""
+
 from pathlib import Path
 from typing import Union
 import re

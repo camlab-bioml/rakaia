@@ -1,3 +1,6 @@
+"""Application callbacks associated with region-level operations
+(quantification, region querying)"""
+
 import os
 import uuid
 

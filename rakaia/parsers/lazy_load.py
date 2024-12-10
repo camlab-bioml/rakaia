@@ -1,3 +1,7 @@
+"""Module defining functions and classes for single marker array lazy loading from disk
+into memory
+"""
+
 import os
 from functools import partial
 from typing import Union
@@ -110,6 +114,7 @@ class SingleMarkerLazyLoader:
                                         self.image_dict[self.data_selection][selection] is None:
                                     self.image_dict[self.data_selection][selection] = \
                                     img[acq.channel_names.index(selection)]
+            mcd_file.close()
 
     def set_tiff_region_dims(self, tiff: TiffFile):
         """

@@ -1,3 +1,5 @@
+"""Application callbacks associated with metadata variable visualization"""
+
 import dash
 import pandas as pd
 import matplotlib

@@ -1,3 +1,6 @@
+"""Module containing utility functions for marker quantification and object gating sets
+"""
+
 from typing import Union
 import numpy as np
 import pandas as pd
