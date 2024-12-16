@@ -12,7 +12,7 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 from rakaia.utils.pixel import (
     apply_filter_to_array,
-    get_bounding_box_for_svgpath)
+    get_bounding_box_for_svg_path)
 from rakaia.utils.object import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box)
@@ -68,7 +68,7 @@ class AnnotationPDFWriter:
         elif region['type'] == "rect":
             x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
         elif region['type'] == "path":
-            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
+            x_min, x_max, y_min, y_max = get_bounding_box_for_svg_path(key)
         return x_min, x_max, y_min, y_max
 
     def write_annotation_pdf(self):

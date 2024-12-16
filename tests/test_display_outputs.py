@@ -38,6 +38,7 @@ def test_generate_channel_statistics_dataframe():
     assert list(stats_1['Mean'] == [100, 300])
     assert list(stats_1['SD'] == [0.0, 0.0])
     assert list(stats_1['Total'] == [1100000.0, 3300000.0])
+    assert list(stats_1['hpf'] == [0.0, 0.0])
 
 
     # Second Option: when svg path is used for one channel
@@ -69,6 +70,7 @@ def test_generate_channel_statistics_dataframe():
     assert len(stats_2) == 1
     assert list(stats_2['Min']) == [200]
     assert list(stats_2['SD']) == [0]
+    assert list(stats_2['hpf']) == [0.0]
 
     # Option 3: when two rectangles are drawn for two channels
 

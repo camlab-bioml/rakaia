@@ -14,14 +14,14 @@ from rakaia.utils.object import (
 from rakaia.utils.pixel import (
     get_area_statistics_from_rect,
     get_area_statistics_from_closed_path,
-    get_bounding_box_for_svgpath,
-    RectangularKeys)
+    get_bounding_box_for_svg_path,
+    RectangularKeys, hpf_max_diff_from_rect, hpf_max_diff_from_path)
 
 class RegionStatisticGroups:
     """
     Define the columns used for the region statistics summary table
     """
-    columns = ('Channel', 'Mean', 'Max', 'Min', 'Median', 'SD', 'Total', 'Region')
+    columns = ('Channel', 'Mean', 'Max', 'Min', 'Median', 'SD', 'hpf', 'Total', 'Region')
 
 
 class ChannelRegion:
@@ -41,6 +41,7 @@ class ChannelRegion:
         self.median_exp = None
         self.std_dev = None
         self.integrated = None
+        self.hpf = None
 
     def compute_pixel_mean(self):
         """
@@ -79,6 +80,12 @@ class ChannelRegion:
         """
         return self.integrated
 
+    def compute_hot_pixel_difference(self):
+        """
+        return: Hot pixel difference based on 8-pixel neighborhood
+        """
+        return self.hpf
+
 class RectangleRegion(ChannelRegion):
     """
     Defines a rectangular channel region created using the zoom feature, or a drawn rectangle.
@@ -99,7 +106,7 @@ class RectangleRegion(ChannelRegion):
             self.required_keys = list(self.coordinate_dict.keys())
         else:
             self.required_keys = self.key_dict[self.type]
-        self.mean_exp, self.max_exp, self.min_exp, self.integrated = 0, 0, 0, 0
+        self.mean_exp, self.max_exp, self.min_exp, self.median_exp, self.integrated, self.hpf = 0, 0, 0, 0, 0, 0
         if all([elem in self.coordinate_dict] for elem in self.required_keys) and \
                 all(elem >= 0 for elem in self.coordinate_dict.keys() if isinstance(elem, float)):
             x_range_low = min(math.ceil(int(self.coordinate_dict[self.required_keys[0]])),
@@ -112,6 +119,8 @@ class RectangleRegion(ChannelRegion):
                                math.ceil(int(self.coordinate_dict[self.required_keys[3]])))
             self.mean_exp, self.max_exp, self.min_exp, self.median_exp, self.std_dev, self.integrated = \
                 get_area_statistics_from_rect(self.channel_array, x_range_low, x_range_high,
+                                              y_range_low, y_range_high)
+            self.hpf = hpf_max_diff_from_rect(self.channel_array, x_range_low, x_range_high,
                                               y_range_low, y_range_high)
 
 class FreeFormRegion(ChannelRegion):
@@ -137,9 +146,10 @@ class FreeFormRegion(ChannelRegion):
             self.mean_exp, self.max_exp, self.min_exp, self.median_exp, \
                 self.std_dev, self.integrated = get_area_statistics_from_closed_path(
                 self.channel_array, self.path)
+            self.hpf = hpf_max_diff_from_path(self.channel_array, self.path)
         else:
             self.mean_exp, self.max_exp, self.min_exp, self.median_exp, \
-                self.std_dev, self.integrated = 0, 0, 0, 0, 0, 0
+                self.std_dev, self.integrated, self.hpf = 0, 0, 0, 0, 0, 0, 0
 
 
 @dataclass(frozen=True)
@@ -224,7 +234,7 @@ class AnnotationPreviewGenerator:
         elif reg_type == "rect":
             x_min, x_max, y_min, y_max = get_min_max_values_from_rect_box(dict(key))
         elif reg_type == "path":
-            x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(key)
+            x_min, x_max, y_min, y_max = get_bounding_box_for_svg_path(key)
         return f"x: [{round(x_min)}, {round(x_max)}]\n y: [{round(y_min)}, {round(y_max)}]"
 
     @staticmethod

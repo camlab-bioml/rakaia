@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2024-12-13
+## [0.22.0] - 2024-12-16
 
 ### Changed
 
@@ -24,6 +24,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 ### Added
 
 - module docstrings
+- hot pixel filter (hpf) difference for region summary statistics as additional column per channel
 
 ## [0.21.0] - 2024-11-21
 
