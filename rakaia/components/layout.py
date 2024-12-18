@@ -11,7 +11,7 @@ from plotly.graph_objs.layout import YAxis, XAxis
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
-from rakaia.entrypoint import __version__
+from rakaia import __version__
 from rakaia.utils.alert import DataImportTour, ToolTips
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (

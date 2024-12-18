@@ -671,48 +671,47 @@ class GatingObjectList:
         to_add = quantification_frame[quantification_frame.columns.intersection(
             [self.designation_column, quantification_object_col])]
 
-        query = self.set_pandas_query_string(to_add)
+        # query = self.set_pandas_query_string(to_add)
         # set the mandatory columns that need to be appended for the search: including the ROI descriptor and
         # column to identify the cell ID
         mask_quant_match = None
         if None not in (mask_identifier, self.id_list):
             mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier,
                             self.id_list, quantification_sample_col)
-        if mask_quant_match is not None and query:
+        if mask_quant_match is not None and self.gating_selection:
             frame = quantification_frame
             if normalize:
                 frame = quantification_frame[quantification_frame.columns.intersection(gating_selection)]
                 frame = ((frame - frame.min()) / (frame.max() - frame.min()))
             frame = frame.reset_index(drop=True).join(to_add)
-            query = frame.query(query)
+            frame = frame[list(self.gating_selection) + [self.designation_column, self.quantification_object_col]]
+            query = self.loc_gating(frame, use_and=(self.type == "intersection"))
             # pull the cell ids from the subset of the quantification frame from the query where the
             # mask matches the one provided
             self.object_list = [int(i) for i in query[query[self.designation_column] ==
-                                              mask_quant_match][quantification_object_col].tolist()]
+                                              mask_quant_match][self.quantification_object_col].tolist()]
         else:
             self.object_list = []
 
-    def set_pandas_query_string(self, categorical_frame: Union[dict, pd.DataFrame]):
+    def loc_gating(self, df: pd.DataFrame, use_and=True):
         """
-        Generate the pandas compatible query string for the gating selection based on the categories selected,
-        min-max thresholds, and the query type (intersection vs. union)
+        Subset a frame of quantified objects using a gating selection
 
-        :param categorical_frame: The data frame containing the gating categories to be used for the query
-        :return: String query that is compatible with `pd.DataFrame.query(string)`
+        :param df: `pd.DataFrame` to query
+        :param use_and: Whether the combination of gating parameters should be an intersection or not.
+
+        :return: `pd.DataFrame` subset containing the objects in the requested gating parameters
         """
-        # set the query representation of intersection or union in query
-        combo = "& " if self.type == "intersection" else "| "
-        query = ""
-        # build a query string for each of the elements to gate on
-        gating_index = 0
-        for gating_elem in self.gating_selection:
-            if gating_elem not in categorical_frame.columns and gating_elem in list(self.quantification_frame.columns):
-                # do not add the string combo at the end
-                combo = combo if gating_index < (len(self.gating_selection) - 1) else ""
-                query = query + f'(`{gating_elem}` >= {self.gating_dict[gating_elem]["lower_bound"]} &' \
-                                f'`{gating_elem}` <= {self.gating_dict[gating_elem]["upper_bound"]}) {combo}'
-                gating_index += 1
-        return query
+        query = np.ones(len(df), dtype=bool) if use_and else np.zeros(len(df), dtype=bool)
+        for gating in self.gating_selection:
+            if gating in self.gating_dict.keys():
+                condition = ((df[gating] >= self.gating_dict[gating]['lower_bound']) &
+                             (df[gating] <= self.gating_dict[gating]['upper_bound']))
+                if use_and:
+                    query &= condition
+                else:
+                    query |= condition
+        return df.loc[query]
 
     def set_object_id_list(self):
         """

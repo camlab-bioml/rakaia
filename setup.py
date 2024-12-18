@@ -1,5 +1,8 @@
 from setuptools import setup, find_packages
-from rakaia.entrypoint import __version__, _program
+from rakaia import __version__, _program
+
+with open('requirements.txt') as f:
+    required = f.read().splitlines()
 
 setup(
     name=_program,
@@ -28,16 +31,6 @@ setup(
     {program} = rakaia.wsgi:main
     """.format(program="rakaia"),
     license="Unlicensed",
-    install_requires=["pillow", "pandas", "matplotlib",
-                      "pytest", "freeport", "numpy", "scikit-image", "anndata", "scanpy",
-                      "phenograph", "seaborn", "plotly",
-                      "opencv-python-headless>=4.8.1.78", 'scanpy', "Flask>=2.2.2", "jinja2",
-                      'dash-uploader==0.7.0a1', "dash-canvas", "packaging==21.3",
-                      "multiprocess", "dash-extensions==1.0.1", "dash_daq", "dash-google-auth",
-                      "dash-bootstrap-components", "imctools", "tifffile", "dash[testing]>=2.18.2", "selenium",
-                      "diskcache", "h5py", "dash>=2.18.2", "readimc>=0.7.0", "Cython", "dash-auth", "Flask-HTTPAuth",
-                      "scipy==1.10.1", "dash-draggable", "pytest-cov", "sd-material-ui", "dash-ag-grid",
-                      "dash-mantine-components==0.12.1", "numexpr", "pymongo", "pydantic>=1.10.13", "dash-tour-component",
-                      "shortuuid", "mongomock", "steinbock", "glasbey", "dash-bio==1.0.2", "statsmodels==0.14.0"],
+    install_requires=required,
     python_requires=">=3.9.0",
 )

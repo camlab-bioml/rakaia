@@ -16,6 +16,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - Channel gallery warning when tiles aren't rendered (spatial or large ROI as above)
 - Update dependencies to address dependabot and `safety scan` vulnerabilities
 - prettify UMAPs #115
+- change setuptools requirements explicitly to `requirements.txt`
 
 ### Fixed
 
@@ -25,6 +26,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 
 - module docstrings
 - hot pixel filter (hpf) difference for region summary statistics as additional column per channel
+- auto-detect frozen application (support for `pyinstaller`)
 
 ## [0.21.0] - 2024-11-21
 

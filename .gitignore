@@ -32,6 +32,9 @@ cache/
 cache-directory/
 tests/cache-directory/
 
+standalone/build/
+standalone/dist/
+
 sandbox/
 
 # Byte-compiled / optimized / DLL files
