@@ -131,7 +131,8 @@ class FreeFormRegion(ChannelRegion):
     :param coordinates: A dictionary of coordinates corresponding to the spatial location of the region
     :return: None
     """
-    def __init__(self, channel_array: Union[np.array, np.ndarray], coordinates: dict):
+    def __init__(self, channel_array: Union[np.array, np.ndarray],
+                 coordinates: Union[dict, str]):
         super().__init__(channel_array, coordinates)
         if 'path' in self.coordinate_dict:
             self.path = self.coordinate_dict['path']

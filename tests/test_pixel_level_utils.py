@@ -647,6 +647,8 @@ def test_ag_grid_cell_styling():
                             {'condition': "params.value == 'ch2'", 'style': {'color': '#E22424'}},
                             {'condition': "params.value == 'ch3'", 'style': {'color': '#CCFFE5'}}]
 
+    assert not ag_grid_cell_styling_conditions({}, list(blend_dict.keys()) + ["channel_4"], "roi_1", aliases)
+
 def test_extract_zoom_bounds():
     bounds = {'xaxis.range[0]': 597.512350562311, 'xaxis.range[1]': 767.7478344332787,
               'yaxis.range[0]': 419.1645161290323, 'yaxis.range[1]': 309.7838709677419}

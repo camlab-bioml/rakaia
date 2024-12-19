@@ -144,8 +144,7 @@ def populate_quantification_frame_column_from_umap_subsetting(measurements, umap
 
             measurements[annotation_column] = np.where(measurements.index.isin(list_indices),
                                                    annotation_value, measurements[annotation_column])
-    except KeyError:
-        pass
+    except KeyError: pass
     return measurements
 
 def send_alert_on_incompatible_mask(mask_dict, data_selection, upload_dict, error_config, mask_selection,
@@ -238,8 +237,7 @@ def populate_obj_annotation_column_from_obj_id_list(measurements, obj_list,
         measurements[annotation_column] = np.where((measurements[obj_identifier].isin(obj_list)) &
                                                (measurements[id_column] == sample_name), obj_type,
                                                measurements[annotation_column])
-    except KeyError:
-        pass
+    except KeyError: pass
     return measurements
 
 

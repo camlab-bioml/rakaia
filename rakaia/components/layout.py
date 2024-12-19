@@ -830,7 +830,7 @@ def register_app_layout(config, cache_dest):
                                         html.Br(),
                                         html.Div([
                                                   html.Div(
-                                                      [html.H6("Scalebar length (unzoomed)", style={'width': '75%',
+                                                      [html.H6("Scalebar (px, un-zoomed)", style={'width': '75%',
                                                         "margin-left": "30px"}),
                                                        dcc.Input(id="custom-scale-val", type="number", value=None,
                                                                  style={"width": "60%", "margin-left": "30px"},
@@ -943,8 +943,7 @@ def register_app_layout(config, cache_dest):
                                                 html.H6("Set gating categories (single/multiple)"),
                                                 dcc.Dropdown(id='gating-channel-options', multi=True,
                                                 placeholder='Gate objects on quantification/measurements',
-                                                options=[], style={'width': '100%', 'display': 'inline-block',
-                                                                    'margin-right': '-50'}),
+                                                options=[], style={'width': '100%', 'margin-right': '-50'}),
                                                 html.Br(),
                                                 html.Br(),
                                                 html.H6("Modify gating parameters (normalized range)"),
@@ -971,7 +970,8 @@ def register_app_layout(config, cache_dest):
                                                 labelPosition='bottom', value=False,
                                                 color=DEFAULT_WIDGET_COLOUR,
                                                 style={"width": "40%", "margin-left": "-10px", "margin-top": "2.5px"}),
-                                                html.H6(children=[], id="gating-param-display", style={"width": "60%"}),
+                                                html.H6(children=[], id="gating-param-display", style={"width": "55%",
+                                                'overflow-wrap': 'anywhere'}),
                                                 ], style={"display": "flex", "width": "100%", "justifyContent": "center"}),
                                             html.Br(),
                                             html.Div([

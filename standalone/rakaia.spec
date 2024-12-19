@@ -1,11 +1,17 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+from rakaia import __version__
+
+import distutils.util
+
+COMPILING_PLATFORM = distutils.util.get_platform()
+
 import sys ; sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 with open('../requirements.txt') as f:
     required = f.read().splitlines()
 
-keep_capital = ['Pillow', 'Cython', 'OpenSSL']
+keep_capital = ['Pillow', 'Cython', 'OpenSSL', 'Flask-HTTPAuth', 'PyWavelets']
 
 required = [elem.split("==")[0].replace("-", "_") for elem in required]
 required = [elem.lower() if elem not in keep_capital else elem for elem in required]
@@ -44,7 +50,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='rakaia',
+    name=f'rakaia_{COMPILING_PLATFORM}_{__version__}',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,

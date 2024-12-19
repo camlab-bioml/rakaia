@@ -9,6 +9,7 @@ import re
 from dash.exceptions import PreventUpdate
 from rakaia.parsers.object import (
     validate_incoming_measurements_csv,
+    validate_imported_csv_annotations,
     QuantificationFormatError,
     filter_measurements_csv_by_channel_percentile,
     get_quantification_filepaths_from_drag_and_drop,
@@ -46,6 +47,12 @@ def test_validation_of_measurements_csv(get_current_dir):
     valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None
     assert err is None
+
+def test_validate_incoming_point_annotations(get_current_dir):
+    points = pd.read_csv(os.path.join(get_current_dir, 'point_annotations.csv'))
+    assert validate_imported_csv_annotations(points)
+    points.columns = ["ROI", "centroid-0", "centroid-1", "annot", "col"]
+    assert not validate_imported_csv_annotations(points)
 
 def test_filtering_channel_measurements_by_percentile(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
