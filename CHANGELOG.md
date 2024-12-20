@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2024-12-19
+## [0.22.0] - 2024-12-20
 
 ### Changed
 
@@ -28,6 +28,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - module docstrings
 - hot pixel filter (hpf) difference for region summary statistics as additional column per channel
 - auto-detect frozen application (support for `pyinstaller`)
+- Input to apply gating to all quantified ROIs
 
 ## [0.21.0] - 2024-11-21
 

@@ -653,7 +653,8 @@ class GatingObjectList:
     def __init__(self, gating_dict: dict, gating_selection: list,
                                quantification_frame: Union[dict, pd.DataFrame] = None,
                                mask_identifier: str = None, quantification_sample_col: str = 'sample',
-                               quantification_object_col: str = 'cell_id', intersection=False, normalize=True):
+                               quantification_object_col: str = 'cell_id', intersection: bool=False,
+                               normalize: bool=True):
 
         self.gating_dict = gating_dict
         self.gating_selection = gating_selection
@@ -684,10 +685,10 @@ class GatingObjectList:
                 frame = ((frame - frame.min()) / (frame.max() - frame.min()))
             frame = frame.reset_index(drop=True).join(to_add)
             frame = frame[list(self.gating_selection) + [self.designation_column, self.quantification_object_col]]
-            query = self.loc_gating(frame, use_and=(self.type == "intersection"))
+            self.query = self.loc_gating(frame, use_and=(self.type == "intersection"))
             # pull the cell ids from the subset of the quantification frame from the query where the
             # mask matches the one provided
-            self.object_list = [int(i) for i in query[query[self.designation_column] ==
+            self.object_list = [int(i) for i in self.query[self.query[self.designation_column] ==
                                               mask_quant_match][self.quantification_object_col].tolist()]
         else:
             self.object_list = []
@@ -734,3 +735,31 @@ class GatingObjectList:
         :return: the parsed list of object IDs as integers.
         """
         return self.object_list
+
+    def get_query_indices_all(self):
+        """
+
+        :return: The query indices for all ROIs based on the gating thresholds applied.
+        Can be used to apply a gating to all ROIs
+        """
+        return list(self.query.index) if self.query is not None else []
+
+
+def apply_gating_to_all_rois(quantification: Union[dict, pd.DataFrame],
+                             gating_indices: Union[list, np.array],
+                             annotation_col: str,
+                             annotation_val: str,
+                             annotation_default: str='Unassigned',
+                             as_dict: bool=True):
+    """
+    Apply the current session gating to all ROIs. Assumes that the indices for all objects in the gating threshold
+    are taken from `GatingObjectList.get_query_indices_all` and passed as gating indices
+    """
+    quantification = pd.DataFrame(quantification)
+    if annotation_col and annotation_col not in quantification.columns:
+        quantification[annotation_col] = annotation_default
+    try:
+        quantification[annotation_col] = np.where(quantification.index.isin(gating_indices),
+                                              annotation_val, quantification[annotation_col])
+    except (ValueError, KeyError): pass
+    return quantification.to_dict(orient="records") if as_dict else quantification

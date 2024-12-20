@@ -30,7 +30,7 @@ from rakaia.parsers.object import (
     GatingObjectList,
     is_steinbock_intensity_anndata,
     quant_dataframe_to_anndata,
-    umap_transform)
+    umap_transform, apply_gating_to_all_rois)
 import anndata as adata
 
 def test_validation_of_measurements_csv(get_current_dir):
@@ -305,10 +305,26 @@ def test_gating_cell_ids(get_current_dir):
     gating_selection = ['191Ir_DNA1', '168Er_Ki67']
     gating_dict = {'191Ir_DNA1': {'lower_bound': 0.2, 'upper_bound': 0.4},
                    '168Er_Ki67': {'lower_bound': 0.5, 'upper_bound': 1}}
-    cell_ids = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1_mask").get_object_list()
+    gating_objects = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1_mask")
+    cell_ids = gating_objects.get_object_list()
     # test 1 has only cells up to 203, so can enforce that only one ROI was used
     assert max(cell_ids) < 203
     assert len(cell_ids) > 0
+
+    gating_objects_2 = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_2_mask")
+    cell_ids_2 = gating_objects_2.get_object_list()
+    all_indices = gating_objects.get_query_indices_all()
+    assert len(all_indices) == (len(cell_ids) + len(cell_ids_2))
+
+    # apply to all
+    apply_all = apply_gating_to_all_rois(measurements_csv, all_indices, 'gating_test',
+                                         'threshold_1', as_dict=False)
+    breakdown = apply_all['gating_test'].value_counts().to_dict()
+    assert int(breakdown['threshold_1']) == len(all_indices)
+
+    no_change = apply_gating_to_all_rois(measurements_csv, all_indices, None, None)
+    assert 'gating_test' not in list(pd.DataFrame(no_change).columns)
+
     cell_id_intersection = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1",
                                                       intersection=True).get_object_list()
     assert len(cell_ids) > len(cell_id_intersection)

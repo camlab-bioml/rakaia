@@ -25,7 +25,7 @@ from rakaia.parsers.object import (
     umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    GatingObjectList, visium_mask)
+    GatingObjectList, visium_mask, apply_gating_to_all_rois)
 from rakaia.plugins import run_quantification_model
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
@@ -702,6 +702,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('apply-gating-custom', 'value'))
     def update_gating_object_list(gating_dict, roi_selection, quantification_dict, mask_selection,
                                 cur_gate_selection, gating_type, id_str, apply_custom_gating):
+        """
+        Generate a threshold-based or custom id gating list for the current ROI
+        """
         # do not update if using custom list and the parameters are updated
         if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
         elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
@@ -714,6 +717,30 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
                 gating_label_children(True, gating_dict, cur_gate_selection, id_list), reset_custom_gate_slider(ctx.triggered_id)
         return [] if gating_dict is not None else dash.no_update, [], dash.no_update if cur_gate_selection else False
+
+    @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
+                       State('gating-dict', 'data'),
+                       State('data-collection', 'value'),
+                       State('quantification-dict', 'data'),
+                       State('mask-options', 'value'),
+                       State('gating-channel-options', 'value'),
+                       State('gating-blend-type', 'value'),
+                       State('quant-annotation-col-gating', 'value'),
+                       State('gating-annotation-assignment', 'value'),
+                       Input('gating-annotation-all', 'n_clicks'))
+    def apply_gating_all_rois(gating_dict, roi_selection, quantification_dict, mask_selection,
+                    cur_gate_selection, gating_type, gate_col, gate_val, gate_all_rois_trigger):
+        """
+        Gate all the quantified ROIs in the session based on the gating parameters and thresholds
+        set for the current ROI.
+        """
+        if None not in (roi_selection, quantification_dict, mask_selection, gate_val) and cur_gate_selection:
+            indices = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                mask_selection, intersection=(gating_type == 'intersection')).get_query_indices_all()
+            return SessionServerside(apply_gating_to_all_rois(quantification_dict, indices, gate_col, gate_val),
+                              key="quantification_dict", use_unique_key=OVERWRITE)
+        raise PreventUpdate
+
 
     @dash_app.callback(Output('imported-cluster-frame', 'data', allow_duplicate=True),
                        Output('cluster-col', 'options', allow_duplicate=True),
