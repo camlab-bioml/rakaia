@@ -46,13 +46,15 @@ def drop_columns_from_measurements_csv(measurements_csv, drop: bool = True):
                 measurements_csv = pd.DataFrame(measurements_csv).drop(col, axis=1)
     return measurements_csv
 
-def umap_params(frame_to_cluster: pd.DataFrame, size_threshold: int=100000):
+def umap_params(frame_to_cluster: pd.DataFrame, size_threshold: int=100000,
+                min_dist: Union[float, None]=None):
     """
     Define the default UMAP object parameters based on the size of the dataset
     """
     nn = 15 if len(frame_to_cluster) <= size_threshold else 10
     epochs = 100 if len(frame_to_cluster) <= size_threshold else 25
     dist = 0.1 if len(frame_to_cluster) <= size_threshold else 0.05
+    dist = min_dist if min_dist is not None else dist
     return {"n_neighbors": nn, "n_epochs": epochs, "min_dist": dist}
 
 def umap_transform(frame_to_cluster: pd.DataFrame, use_pca: bool=False):
@@ -69,7 +71,8 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
                                             current_umap: Union[dict, pd.DataFrame] = None,
                                             drop_col: bool = True,
                                             rerun: bool = True, unique_key_serverside: bool = True,
-                                            cols_include: list = None):
+                                            cols_include: list = None,
+                                            min_dist: Union[float, None]=0.1):
     """
     Generate a UMAP coordinate frame from a data frame of channel expression
     `cols_include`: Pass an optional list of channels to generate the coordinates from
@@ -86,10 +89,10 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
             if 'umap' not in sys.modules:
                 import umap
             try:
-                umap_obj = umap.UMAP(**umap_params(data_frame))
+                umap_obj = umap.UMAP(**umap_params(data_frame, min_dist=min_dist))
             except UnboundLocalError:
                 import umap
-                umap_obj = umap.UMAP(**umap_params(data_frame))
+                umap_obj = umap.UMAP(**umap_params(data_frame, min_dist=min_dist))
             if umap_obj:
                 scaled = umap_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)

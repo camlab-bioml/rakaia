@@ -17,6 +17,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - Update dependencies to address dependabot and `safety scan` vulnerabilities
 - prettify UMAPs #115
 - change setuptools requirements explicitly to `requirements.txt`
+- UMAP/heatmap channel selection to modal
 
 ### Fixed
 
@@ -29,6 +30,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - hot pixel filter (hpf) difference for region summary statistics as additional column per channel
 - auto-detect frozen application (support for `pyinstaller`)
 - Input to apply gating to all quantified ROIs
+- UMAP min distance input from 0 to 1
 
 ## [0.21.0] - 2024-11-21
 

@@ -288,7 +288,7 @@ def test_vary_umap_transform(get_current_dir):
     assert scaled.shape == expr.shape
     assert pca.shape != scaled.shape
 
-    umap = umap_dataframe_from_quantification_dict(expr.sample(n = 100))
+    umap = umap_dataframe_from_quantification_dict(expr.sample(n = 100), min_dist=1)
     assert umap.value.shape == (100, 2)
 
 def test_csv_to_anndata(get_current_dir):

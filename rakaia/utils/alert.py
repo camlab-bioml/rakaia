@@ -134,7 +134,9 @@ class ToolTips(BaseModel):
                       "spatial-mask": "Currently only compatible with 10X Visium spot-based assays.",
                       "quant-limit": "To maintain optimal performance, rakaia does not support in-app quantification "
                                       "for more than 1000 markers. Additionally, if quantifying using a spatial dataset,"
-                                     " all markers to quantify need to be loaded into the current canvas."}
+                                     " all markers to quantify need to be loaded into the current canvas.",
+                      "umap_min_dist": "From 0 to 1. Smaller distances pack the UMAP points more tightly together, "
+                                       "while larger values spread out clusters."}
 
 
 class PanelMismatchError(Exception):

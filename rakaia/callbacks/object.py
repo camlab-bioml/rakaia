@@ -172,8 +172,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('umap-projection', 'data'),
                        Input('execute-umap-button', 'n_clicks'),
                        State('quant-heatmap-channel-list', 'value'),
+                       State('umap-min-dist', 'value'),
                        prevent_initial_call=True)
-    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks, chan_include):
+    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks, chan_include, min_dist):
         """
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
@@ -182,8 +183,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns), \
                 list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         try:
-            return umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
-            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update, dash.no_update
+            return (umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
+            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include, min_dist=min_dist),
+                    dash.no_update, dash.no_update, dash.no_update)
         except ValueError: raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
@@ -529,6 +531,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "mask-options": return dash.no_update, preview
         if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False, preview
         return not is_open if n else is_open, preview
+
+    @dash_app.callback(
+        Output("quant-channel-modal", "is_open"),
+        Input('quant-channel-show', 'n_clicks'),
+        [State("quant-channel-modal", "is_open")])
+    def toggle_show_quant_channel_selection_modal(n, is_open):
+        return not is_open if n else is_open
 
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')
