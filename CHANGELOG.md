@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2024-12-20
+## [0.22.0] - 2024-12-30
 
 ### Changed
 
@@ -31,6 +31,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - auto-detect frozen application (support for `pyinstaller`)
 - Input to apply gating to all quantified ROIs
 - UMAP min distance input from 0 to 1
+- Standalone build docs converted to pyinstaller from pyapp
 
 ## [0.21.0] - 2024-11-21
 

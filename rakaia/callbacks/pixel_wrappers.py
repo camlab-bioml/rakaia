@@ -142,6 +142,13 @@ def parse_steinbock_subdir(sub_dir, single_file_return: bool=False):
         return files_found[0]
     return files_found if files_found else None
 
+def recursive_parse_umap_coordinates(sub_dir: Union[str, Path]):
+    """
+    Parse a steinbock project output directory recursively for a list of CSV files that contain
+    UMAP coordinate lists (i.e. those generated from the Steinbock pipeline)
+    """
+    return sorted([str(i) for i in Path(sub_dir).rglob('*coordinates.csv')])
+
 def check_valid_upload(upload: Union[dict, list]):
     """
     Check for a valid upload component (existing filenames successfully parsed)
@@ -160,9 +167,10 @@ def parse_steinbock_dir(directory, error_config, **kwargs):
     mcd_files = parse_steinbock_subdir(os.path.join(directory, 'mcd'))
     mask_files = parse_steinbock_subdir(os.path.join(directory, 'deepcell', 'cell'))
     export_files = parse_steinbock_subdir(os.path.join(directory, 'export'))
+    umap_files = recursive_parse_umap_coordinates(os.path.join(directory, 'export'))
     quant = [str(file) for file in export_files if file.endswith('.h5ad')] if export_files else []
-    umap = [str(file) for file in export_files if file.endswith('.csv')] if export_files else []
-    umap_return = SessionServerside(pd.read_csv(umap[0], names=['UMAP1', 'UMAP2'],
+    umap = umap_files[0] if umap_files else []
+    umap_return = SessionServerside(pd.read_csv(umap, names=['UMAP1', 'UMAP2'],
                 header=0).to_dict(orient="records"), **kwargs) if umap else dash.no_update
     return check_valid_upload({'uploads': mcd_files, 'from_steinbock': True}), \
         error_config, parse_masks_from_filenames(None, mask_files), \

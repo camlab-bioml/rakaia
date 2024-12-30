@@ -18,7 +18,7 @@ setup(
     package_dir={"rakaia": "rakaia"},
     package_data={'': ['*.json', "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml", "*.jpg"]},
     include_package_data=True,
-    description="Large scale multiplex image analysis in the browser",
+    description="Scalable multiplexed dataset analysis in the browser",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     keywords=["imaging cytometry classifier single-cell"],

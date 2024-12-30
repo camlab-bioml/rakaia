@@ -24,6 +24,7 @@ for extra in required:
     additional_deps += collect_data_files(extra)
     additional_deps += copy_metadata(extra)
 
+block_cipher = None
 
 all_data = additional_deps + [('../rakaia/templates', 'rakaia/templates'),
 ('../rakaia/static', 'rakaia/static'), ('../rakaia/assets', 'rakaia/assets')]
@@ -41,14 +42,16 @@ a = Analysis(
     excludes=[],
     noarchive=False,
     optimize=0,
+    cipher=block_cipher
 )
-pyz = PYZ(a.pure)
+pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
     pyz,
     a.scripts,
     a.binaries,
     a.datas,
+    a.zipfiles,
     [],
     name=f'rakaia_{COMPILING_PLATFORM}_{__version__}',
     debug=False,

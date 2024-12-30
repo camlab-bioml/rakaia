@@ -742,8 +742,7 @@ class GatingObjectList:
     def get_query_indices_all(self):
         """
 
-        :return: The query indices for all ROIs based on the gating thresholds applied.
-        Can be used to apply a gating to all ROIs
+        :return: The query indices for all ROIs based on the gating thresholds (can be used for pan-ROI gating).
         """
         return list(self.query.index) if self.query is not None else []
 
