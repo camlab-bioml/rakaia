@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2024-12-30
+## [0.22.0] - 2025-01-07
 
 ### Changed
 
@@ -23,11 +23,12 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 
 - Using prev or next ROI before a key listener has been initiated blocks the callback
 - Allow y-axis overflow for multiple gating selection dropdown
+- `pymongo` client uses `certifi.where()` for SSL certificate to be compatible with `pyinstaller`
 
 ### Added
 
 - module docstrings
-- hot pixel filter (hpf) difference for region summary statistics as additional column per channel
+- hot pixel filter (hpf) difference for region summary statistics as additional column per channel #116
 - auto-detect frozen application (support for `pyinstaller`)
 - Input to apply gating to all quantified ROIs
 - UMAP min distance input from 0 to 1

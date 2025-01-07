@@ -14,7 +14,7 @@ class DataImportTour(BaseModel):
     """
     steps: list = [{'selector': '[id="upload-image"]',
                     'content': "Option 1: Upload images or spatial datasets (.mcd, .tiff, .h5ad, etc.) using drag and drop. "
-                               "Should be used only for datasets < 2GB or if the app deployment is public/shared, "
+                               "Should be used only for datasets < 2GB, or if the app deployment is public/shared, "
                                "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
                 'content': "Option 2: For large datasets (> 2GB) on local deployments, "
@@ -39,12 +39,11 @@ class AlertMessage(BaseModel):
 
     :return: None
     """
-    warnings: dict = {"blend_json_success": "Blend parameters successfully updated from JSON.",
-                      "invalid_path": "Invalid filepath ir directory provided. Please verify the following: \n\n" \
+    warnings: dict = {"invalid_path": "Invalid filepath or directory provided. Please verify the following: \n\n" \
                                         "- That the file path provided is a valid local file. \n" \
                                         "- That the directory provided exists and contains imaging files. \n"
-                                        "- If running using Docker or a web version, " \
-                                        "local file paths will not be available.",
+                                        "- If running using Docker or a shared web version, " \
+                                        "local file paths will not be available unless explicitly mounted.",
                       "multiple_filetypes": "Warning: Multiple different file types were detected on upload. " \
                                         "This may cause problems during analysis. For best performance, " \
                                         "it is recommended to analyze datasets all from the same file type extension " \
@@ -66,7 +65,7 @@ class AlertMessage(BaseModel):
                       "invalid_annotation_shapes": "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes.",
                       "invalid_dimensions": "The dimensions of the mask do not agree with the current ROI.",
-                      "quantification_missing": "Quantification requires the following inputs: \n\n"
+                      "quantification_missing": "In-app quantification requires the following inputs: \n\n"
                                                 "- an ROI with a compatible mask that has been applied to the canvas. \n"
                                                 "- at least one channel/biomarker selected for quantification. \n\n"
                                                 "Please review the required inputs.",
@@ -76,7 +75,7 @@ class AlertMessage(BaseModel):
                                                      "imported files share the same panel.",
                       "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
                                          "delimiter does not have any overlapping characters with any of the filenames, "
-                                         "or ROI names. ",
+                                         "or ROI names.",
                       "invalid_query": "Error when generating/exporting ROI query. Ensure that: \n\n"
                                        "1. If querying a random subset, that images have been imported and "
                                        "the current canvas contains at least one marker. \n\n"
