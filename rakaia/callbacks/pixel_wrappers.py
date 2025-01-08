@@ -176,6 +176,34 @@ def parse_steinbock_dir(directory, error_config, **kwargs):
         error_config, parse_masks_from_filenames(None, mask_files), \
         get_quantification_filepaths_from_drag_and_drop(None, quant), umap_return
 
+def parse_steinbock_umap(directory: Union[str, Path],
+                         seek_png: bool=True):
+    """
+    Return a list of UMAP coordinate plots from the `steinbock` pipeline
+    """
+    if is_steinbock_dir(directory):
+        search_term = "*.png" if seek_png else "*coordinates.csv"
+        return [str(i) for i in Path(directory).rglob(search_term)]
+    return []
+
+def umap_coordinates_from_gallery_click(umap_selection: str,
+                                        directory: Union[str, Path],
+                                        use_unique_key: bool=True):
+    """
+    Return a `pd.DataFrame` of UMAP coordinates based on a UMAP gallery selection by partial filename
+    """
+    if umap_selection and directory:
+        umap_files = parse_steinbock_umap(directory, seek_png=False)
+        umap_return = None
+        for umap_dist in umap_files:
+            if str(Path(umap_dist).stem) == f'{str(umap_selection)}_coordinates':
+                umap_return = SessionServerside(pd.read_csv(str(umap_dist), names=['UMAP1', 'UMAP2'],
+                header=0).to_dict(orient="records"),
+                key="umap_coordinates", use_unique_key=use_unique_key)
+                break
+        return umap_return if umap_return is not None else dash.no_update
+    return dash.no_update
+
 def mask_options_from_json(config: dict):
     mask_options = ["mask_toggle", "mask_level", "mask_boundary", "mask_hover"]
     if 'mask' in config and all([key in config['mask'].keys() for key in mask_options]):

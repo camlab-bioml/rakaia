@@ -1,3 +1,5 @@
+import pandas as pd
+
 from rakaia.callbacks.pixel_wrappers import (
     parse_global_filter_values_from_json,
     parse_local_path_imports,
@@ -6,7 +8,7 @@ from rakaia.callbacks.pixel_wrappers import (
     AnnotationList,
     no_json_db_updates,
     is_steinbock_dir,
-    parse_steinbock_dir)
+    parse_steinbock_dir, parse_steinbock_umap, umap_coordinates_from_gallery_click)
 import dash
 import os
 
@@ -119,3 +121,24 @@ def test_null_json_update():
     assert len(no_json_db_updates(None)) == 19
     tup_return = no_json_db_updates({"error": "No error here"})
     assert tup_return[2] == {"error": "No error here"}
+
+def test_umap_png_parse(get_current_dir):
+    umap_files = parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    assert len(umap_files) == 3
+    for dist in [0, 0.1, 0.25]:
+        assert any([str(dist) in file_name for file_name in umap_files])
+    assert not parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock'))
+
+def test_umap_gallery_reactive_search(get_current_dir):
+
+    coords_from_click = umap_coordinates_from_gallery_click('umap_min_dist_0.25',
+                        os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    coord_frame = pd.read_csv(os.path.join(get_current_dir, 'steinbock', 'test_mcd',
+                                           'export', 'umap', 'umap_min_dist_0.25_coordinates.csv'))
+    assert coord_frame.equals(pd.DataFrame(coords_from_click.value))
+    none_found = umap_coordinates_from_gallery_click('umap_min_dist_0.25',
+                        os.path.join(get_current_dir, 'steinbock'))
+    assert isinstance(none_found, dash._callback.NoUpdate)
+    none_found_2 = umap_coordinates_from_gallery_click('umap_min_dist_1',
+                        os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    assert isinstance(none_found_2, dash._callback.NoUpdate)

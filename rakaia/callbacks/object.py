@@ -5,7 +5,7 @@ import os
 import uuid
 import dash
 import pandas as pd
-from dash import dcc
+from dash import dcc, ALL
 import matplotlib
 from werkzeug.exceptions import BadRequest
 import dash_uploader as du
@@ -14,8 +14,10 @@ from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 
+from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap, umap_coordinates_from_gallery_click, is_steinbock_dir
 from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import set_roi_identifier_from_length
+from rakaia.io.gallery import umap_gallery_children, umap_pipeline_tiles
 from rakaia.parsers.object import (
     RestyleDataParser,
     parse_and_validate_measurements_csv,
@@ -837,3 +839,27 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "transfer-annotation-execute":
             return not is_open if (transfer_to and annots_selected) else is_open
         return not is_open if n else is_open
+
+    @dash_app.callback(
+        Output("umap-gallery-modal", "is_open"),
+        Output('umap-gallery_row', 'children'),
+        Input('umap-gal-pipeline', 'n_clicks'),
+        State("umap-gallery-modal", "is_open"),
+        State('read-filepath', 'value'))
+    def show_umap_options_in_gallery_modal(n, is_open, local_filepath):
+        # TODO: add warning here if pipeline directory not used
+        if local_filepath and is_steinbock_dir(local_filepath):
+            tiles = umap_gallery_children(umap_pipeline_tiles
+                                  (parse_steinbock_umap(local_filepath)))
+            return not is_open if n else is_open, tiles
+        return False, None
+
+    @dash_app.callback(
+        Output('umap-projection', 'data', allow_duplicate=True),
+        Input({'type': 'umap', "index": ALL}, "n_clicks"),
+        State('read-filepath', 'value'),
+        prevent_initial_call=True)
+    def load_umap_coordinates_from_gallery(value, local_filepath):
+        if any([elem is not None for elem in value]) and local_filepath and is_steinbock_dir(local_filepath):
+            return umap_coordinates_from_gallery_click(ctx.triggered_id['index'], local_filepath, OVERWRITE)
+        raise PreventUpdate

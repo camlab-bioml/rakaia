@@ -1,15 +1,15 @@
 import os
 import tempfile
 import pickle
-
 import numpy as np
+from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap
 from rakaia.io.gallery import (
     roi_query_gallery_children,
     channel_tile_gallery_children,
     set_channel_thumbnail,
     set_gallery_thumbnail_from_signal_retention,
     replace_channel_gallery_aliases,
-    channel_tiles, gallery_export_template, channel_tiles_from_gallery)
+    channel_tiles, gallery_export_template, channel_tiles_from_gallery, umap_pipeline_tiles, umap_gallery_children)
 from rakaia.utils.pixel import resize_for_canvas
 import dash_bootstrap_components as dbc
 
@@ -170,3 +170,14 @@ def test_recursive_gallery_children(recursive_gallery_children, recursive_aliase
     malformed = {"other": {"key_1": {"props": None}, "key_2": {"one": 1}}}
     assert replace_channel_gallery_aliases(malformed, recursive_aliases_2) == malformed == \
            {'other': {'key_1': {'props': None}, 'key_2': {'one': 1}}}
+
+def test_umap_gallery_tiles(get_current_dir):
+    umap_files = parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    umap_tiles = umap_pipeline_tiles(umap_files)
+    assert len(umap_tiles) == len(umap_files) == 3
+    for dist in [0, 0.1, 0.25]:
+        assert any([str(dist) in file_base for file_base in list(umap_tiles.keys())])
+
+    gallery_children_umap = umap_gallery_children(umap_tiles)
+    assert len(gallery_children_umap) == len(umap_tiles)
+    assert not umap_gallery_children({})

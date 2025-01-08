@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2025-01-07
+## [0.22.0] - 2025-01-08
 
 ### Changed
 
@@ -33,6 +33,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - Input to apply gating to all quantified ROIs
 - UMAP min distance input from 0 to 1
 - Standalone build docs converted to pyinstaller from pyapp
+- UMAP gallery modal for UMAP min distance plots from `steinbock` snakemake pipeline output
 
 ## [0.21.0] - 2024-11-21
 

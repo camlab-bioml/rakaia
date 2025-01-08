@@ -1460,6 +1460,11 @@ def register_app_layout(config, cache_dest):
                                         dcc.Input(type="number", value=0.1, id='umap-min-dist', style={"width": "25%"},
                                                   min=0, max=1, step=0.01),
                                         html.Br(),
+                                        dbc.Button("Load UMAP gallery from pipeline", id="umap-gal-pipeline", style={
+                                        "margin-top": "7.5px", "float": "left", "display": "inline-block",
+                                        "justifyContent": "left"}, color="dark", outline=True),
+                                        html.Br(),
+                                        html.Br(),
                                         html.Br(),
                                         html.H6("Add annotation to UMAP"),
                                         dcc.Input(id="annotation-col-quantification", type="text",
@@ -1487,6 +1492,9 @@ def register_app_layout(config, cache_dest):
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
                                         ]),
                                         id="umap-config-modal", size='l'),
+                                    dbc.Modal(children=dbc.ModalBody([html.Div([
+                                    dbc.Row(id="umap-gallery_row"),
+                                    ])]), id='umap-gallery-modal', size='xl'),
                                     dbc.Modal(children=dbc.ModalBody([html.Div([
                                     html.B("Choose plugin", style={"float": "left"}),
                                     html.Br(),

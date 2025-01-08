@@ -3,8 +3,10 @@
 """
 
 import math
+import os.path
 from io import BytesIO
 import base64
+from pathlib import Path
 from typing import Union
 import dash_bootstrap_components as dbc
 from dash import html
@@ -189,6 +191,28 @@ def channel_tiles(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
             tiles[key] = {"label": label, "tile": image_render}
     return tiles
 
+def umap_pipeline_tiles(umap_files: list):
+    """
+    Return a dictionary of tiles for UMAP min distance plots from the steinbock pipeline output
+    """
+    if umap_files:
+        tiles = {}
+        for umap_tile in umap_files:
+            tiles[str(Path(umap_tile).stem)] = np.array(Image.open(
+                str(umap_tile)).convert('RGB')).astype(np.uint8)
+        return tiles
+    return None
+
+def thumbnail_load_button(gallery_type: str, thumbnail_index: str):
+    """
+    Generate a `dbc.Button` input that says `Load`. Used for the ROI and UMAP thumbnail galleries.
+    The gallery_type should be specified as either `data-query-gallery` or `umap`
+    """
+    return dbc.Button("Load",
+            id={'type': str(gallery_type), 'index': str(thumbnail_index)},
+            outline=True, color="dark", className="me-1", size="sm",
+            style={"padding": "5px", "margin-left": "10px", "margin-top": "2.5px"})
+
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
 def channel_tile_gallery_children(tiles: Union[dict, None]):
@@ -217,6 +241,22 @@ def channel_tile_gallery_children(tiles: Union[dict, None]):
     return row_children
 
 
+def umap_gallery_children(tiles: Union[dict, None]):
+    """
+    Generate the children for the umap image gallery for min distance plots from the `steinbock` pipeline
+    """
+    row_children = []
+    for key, value in tiles.items():
+            row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(str(key),
+                        className="card-text", id=key),
+                        thumbnail_load_button('umap', key),
+                        dbc.Tooltip(f'Load {str(key)} in UMAP plot',
+                        target={'type': 'umap', 'index': key})]),
+                        dbc.CardImg(src=Image.fromarray(value).convert('RGB'),
+                        bottom=True)]), width=6))
+    return row_children
+
+
 def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_ratio_tall=0.9):
     """
     Return a series of columns and rows for across dataset ROi queries. Each element will be a dbc Card preview
@@ -237,10 +277,7 @@ def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_
             else:
                 style = None
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                    dbc.Button("Load",
-                    id={'type': 'data-query-gallery', 'index': key},
-                    outline=True, color="dark", className="me-1", size="sm",
-                    style={"padding": "5px", "margin-left": "10px", "margin-top": "2.5px"})]),
+                    thumbnail_load_button('data-query-gallery', key)]),
                     dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
                     bottom=True, style=style,
                     className='align-self-center')]),
