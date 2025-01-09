@@ -14,7 +14,7 @@ from dash.exceptions import PreventUpdate
 import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
-from natsort import natsorted
+from natsort import natsorted, ns
 import shortuuid
 from rakaia.inputs.pixel import (
     wrap_canvas_in_loading_screen_for_large_images,
@@ -32,7 +32,6 @@ from rakaia.parsers.pixel import (
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
 
-from rakaia.parsers.spatial import spatial_canvas_dimensions, check_spot_grid_multi_channel
 from rakaia.utils.decorator import (
     # time_taken_callback,
     DownloadDirGenerator)
@@ -216,7 +215,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         The image dictionary template is used to populate the actual images using lazy load
         """
         if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-            files = natsorted(set(session_dict['uploads'])) if natsort else set(session_dict['uploads'])
+            files = natsorted(set(session_dict['uploads']), alg=ns.REAL) if natsort else set(session_dict['uploads'])
             message, unique_suffixes = file_import_message(files)
             suffix_add = ALERT.warnings["multiple_filetypes"] if len(unique_suffixes) > 1 else ""
             error_config = add_warning_to_error_config(error_config, suffix_add + message) if 'from_steinbock' \

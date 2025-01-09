@@ -239,7 +239,8 @@ def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overla
     return dash.no_update
 
 def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict, None], quantification_dict: Union[pd.DataFrame, dict, None],
-                        channel_overlay: Union[str, None], categorical_threshold: Union[int, float]=50):
+                        channel_overlay: Union[str, None], categorical_threshold: Union[int, float]=50,
+                        use_patch: bool=True):
     """
     Check if the current UMAP is available for a dash-style Patch for channel overlay
     Must already have a channel overlay applied so that the only updates to the figure
@@ -256,7 +257,7 @@ def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict, None], quantificati
                     not cur_umap_fig['data'][0]['legendgroup'] and \
                     cur_umap_fig['data'][0]['hovertemplate'] != 'UMAP1=%{x}<br>UMAP2=%{y}<extra></extra>' and \
             str(pd.DataFrame(quantification_dict)[channel_overlay].dtype) not in ["object"] and \
-            len(pd.DataFrame(quantification_dict)[channel_overlay].value_counts()) >= categorical_threshold
+            len(pd.DataFrame(quantification_dict)[channel_overlay].value_counts()) >= categorical_threshold and use_patch
         except KeyError:
             return False
     return False

@@ -29,6 +29,7 @@ from rakaia.parsers.object import (
     validate_imported_csv_annotations,
     GatingObjectList, visium_mask, apply_gating_to_all_rois)
 from rakaia.plugins import run_quantification_model
+from rakaia.utils.alert import add_warning_to_error_config, AlertMessage
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
@@ -197,14 +198,17 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        Input('quantify-cur-roi-execute', 'n_clicks'),
+                       State('read-filepath', 'value'),
                        prevent_initial_call=True)
-    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant):
+    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant, local_filepath):
         blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame(quantification_dict)) or
                                              ctx.triggered_id == 'quantify-cur-roi-execute') else dash.no_update
         if ctx.triggered_id != 'quantify-cur-roi-execute':
             if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
             try:
-                if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay):
+                # do not use patch if updating the coordinates
+                use_patch = False if (ctx.triggered_id == "umap-projection") else True
+                if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay, use_patch=use_patch):
                     return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
                 else:
                     umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
@@ -843,16 +847,21 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("umap-gallery-modal", "is_open"),
         Output('umap-gallery_row', 'children'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
         Input('umap-gal-pipeline', 'n_clicks'),
         State("umap-gallery-modal", "is_open"),
-        State('read-filepath', 'value'))
-    def show_umap_options_in_gallery_modal(n, is_open, local_filepath):
-        # TODO: add warning here if pipeline directory not used
+        State('read-filepath', 'value'),
+        State('session_alert_config', 'data'))
+    def show_umap_options_in_gallery_modal(n, is_open, local_filepath, error_config):
+        """
+        Trigger rendering of the UMAP gallery from the png outputs from the steinbock snakemake pipeline.
+        """
         if local_filepath and is_steinbock_dir(local_filepath):
-            tiles = umap_gallery_children(umap_pipeline_tiles
-                                  (parse_steinbock_umap(local_filepath)))
-            return not is_open if n else is_open, tiles
-        return False, None
+            tiles = umap_gallery_children(umap_pipeline_tiles(parse_steinbock_umap(local_filepath)))
+            err_return = add_warning_to_error_config(error_config, AlertMessage().warnings["no_umap_gallery"]) if \
+                not tiles else dash.no_update
+            return (not is_open if n else is_open) if tiles else False, tiles, err_return
+        return False, None, add_warning_to_error_config(error_config, AlertMessage().warnings["no_umap_gallery"])
 
     @dash_app.callback(
         Output('umap-projection', 'data', allow_duplicate=True),
@@ -860,6 +869,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('read-filepath', 'value'),
         prevent_initial_call=True)
     def load_umap_coordinates_from_gallery(value, local_filepath):
+        """
+        Load a UMAP coordinate CSV based on the selection of a UMAP png min distance thumbnail from the UMAP gallery.
+        """
         if any([elem is not None for elem in value]) and local_filepath and is_steinbock_dir(local_filepath):
             return umap_coordinates_from_gallery_click(ctx.triggered_id['index'], local_filepath, OVERWRITE)
         raise PreventUpdate

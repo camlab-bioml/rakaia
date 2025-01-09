@@ -246,6 +246,7 @@ def umap_gallery_children(tiles: Union[dict, None]):
     Generate the children for the umap image gallery for min distance plots from the `steinbock` pipeline
     """
     row_children = []
+    tiles = tiles if tiles else {}
     for key, value in tiles.items():
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(str(key),
                         className="card-text", id=key),

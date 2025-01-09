@@ -8,6 +8,7 @@ import os
 from dash import html
 import plotly.graph_objs as go
 import pandas as pd
+from natsort import natsorted, ns
 
 from rakaia.io.session import SessionServerside
 from rakaia.parsers.object import get_quantification_filepaths_from_drag_and_drop, parse_masks_from_filenames
@@ -145,9 +146,9 @@ def parse_steinbock_subdir(sub_dir, single_file_return: bool=False):
 def recursive_parse_umap_coordinates(sub_dir: Union[str, Path]):
     """
     Parse a steinbock project output directory recursively for a list of CSV files that contain
-    UMAP coordinate lists (i.e. those generated from the Steinbock pipeline)
+    UMAP coordinate lists (i.e. those generated from the steinbock snakemake pipeline)
     """
-    return sorted([str(i) for i in Path(sub_dir).rglob('*coordinates.csv')])
+    return natsorted([str(i) for i in Path(sub_dir).rglob('*coordinates.csv')], alg=ns.REAL)
 
 def check_valid_upload(upload: Union[dict, list]):
     """
@@ -179,11 +180,12 @@ def parse_steinbock_dir(directory, error_config, **kwargs):
 def parse_steinbock_umap(directory: Union[str, Path],
                          seek_png: bool=True):
     """
-    Return a list of UMAP coordinate plots from the `steinbock` pipeline
+    Return a list of UMAP coordinate plots from the `steinbock` pipeline.
+    Use seek_png to search for the UMAP plots (True), or set False to retrieve the CSV coordinate lists
     """
     if is_steinbock_dir(directory):
         search_term = "*.png" if seek_png else "*coordinates.csv"
-        return [str(i) for i in Path(directory).rglob(search_term)]
+        return natsorted([str(i) for i in Path(directory).rglob(search_term)], alg=ns.REAL)
     return []
 
 def umap_coordinates_from_gallery_click(umap_selection: str,

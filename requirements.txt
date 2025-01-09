@@ -65,7 +65,7 @@ matplotlib==3.7.1
 mongomock==4.1.2
 more-itertools==9.1.0
 multiprocess==0.70.14
-natsort==8.3.1
+natsort==8.4.0
 networkx==3.1
 numba==0.59.0
 numexpr==2.8.8

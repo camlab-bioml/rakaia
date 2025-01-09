@@ -1493,6 +1493,8 @@ def register_app_layout(config, cache_dest):
                                         ]),
                                         id="umap-config-modal", size='l'),
                                     dbc.Modal(children=dbc.ModalBody([html.Div([
+                                    html.B("Select UMAP projection from pipeline"),
+                                    html.Br(),
                                     dbc.Row(id="umap-gallery_row"),
                                     ])]), id='umap-gallery-modal', size='xl'),
                                     dbc.Modal(children=dbc.ModalBody([html.Div([

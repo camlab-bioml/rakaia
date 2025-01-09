@@ -89,7 +89,11 @@ class AlertMessage(BaseModel):
                                        "using a UMAP overlay. Scores can be computed from the UMAP options under "
                                        "the quantification tab.",
                       "no_channel_gallery": "Note: Channel tile gallery not rendered for spatial datasets or "
-                                            "ROIs that can't load fully into memory."}
+                                            "ROIs that can't load fully into memory.",
+                      "no_umap_gallery": "UMAP gallery not rendered. The UMAP gallery requires outputs "
+                                         "from the steinbock snakemake pipeline v0.0.4 or greater. Ensure that: "
+                                         "\n - pipeline outputs have been imported from a directory using the local filepath"
+                                         "\n - UMAP pngs and CSV coordinates exist in the export -> umap sub-directory" }
 
 
 class ToolTips(BaseModel):

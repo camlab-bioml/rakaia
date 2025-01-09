@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2025-01-08
+## [0.22.0] - 2025-01-09
 
 ### Changed
 
@@ -18,6 +18,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - prettify UMAPs #115
 - change setuptools requirements explicitly to `requirements.txt`
 - UMAP/heatmap channel selection to modal
+- Avoid UMAP patching when updating coordinates (to be compatible with UMAP gallery selection)
 
 ### Fixed
 
