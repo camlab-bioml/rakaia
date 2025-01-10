@@ -143,6 +143,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('mask-uploads', 'data', allow_duplicate=True),
                        Output('session_config_quantification', 'data', allow_duplicate=True),
                        Output('umap-projection', 'data', allow_duplicate=True),
+                       Output('blending_colours', 'data', allow_duplicate=True),
                        State('read-filepath', 'value'),
                        Input('add-file-by-path', 'n_clicks'),
                        State('session_config', 'data'),
@@ -154,7 +155,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if is_steinbock_dir(path):
                 return parse_steinbock_dir(path, error_config, key="umap_coordinates", use_unique_key=OVERWRITE)
             paths, error = parse_local_path_imports(path, validate_session_upload_config(cur_session), error_config)
-            return paths, error, dash.no_update, dash.no_update, dash.no_update
+            return paths, error, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
@@ -186,7 +187,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def populate_session_uploads_from_drag_and_drop(upload_list, cur_session):
         """
-        populate the session uploads list from the list of uploads from a given execution.
+        Populate the session uploads list from the list of uploads from a given execution.
         Requires the intermediate list as the callback is restricted to one output
         """
         session_config = validate_session_upload_config(cur_session)
@@ -198,7 +199,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('uploaded_dict_template', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
-                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('blending_colours', 'data'),
                        Output('dataset-preview-table', 'columns'),
                        Output('dataset-preview-table', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -226,6 +227,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
                 data = pd.DataFrame(fileparser.get_parsed_information()).to_dict(orient='records')
                 blend_return = fileparser.blend_config if (current_blend is None or len(current_blend) == 0) else dash.no_update
+                # blend_return = blend_return if blend_return else dash.no_update
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
                 return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
@@ -415,7 +417,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Input('session_config', 'data'),
                        State('uploaded_dict_template', 'data'),
                        State('blending_colours', 'data'),
-                       Output('blending_colours', 'data'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data'),
                        State('data-collection', 'value'),
                        State('session_alert_config', 'data'),
@@ -462,7 +464,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('main-tabs', 'active_tab', allow_duplicate=True),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(image_dict, new_blend_dict, db_config_selection, data_selection,
-                                                 current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
+                            current_blend_dict, error_config, db_config_list, cur_metadata, delimiter):
         """
         Update the blend layer dictionary and currently selected channels from a JSON-formatted upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
@@ -539,7 +541,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             image_dict, rgb_layers = reset_on_visium_spot_size_change(ctx.triggered_id, image_dict, rgb_layers, data_selection)
             try:
                 if not image_dict[data_selection] or any(image_dict[data_selection][elem] is None for elem in add_to_layer):
-                    # TODO: add single marker lazy load parser here for both h5ad spatial and mcd
                     image_dict = SingleMarkerLazyLoader(image_dict, data_selection, session_dict,
                                 add_to_layer, spatial_spot_size, delimiter).get_image_dict()
                     # image_dict = check_spot_grid_multi_channel(image_dict, data_selection,
@@ -646,7 +647,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def set_blend_params_on_pixel_range_adjustment(layer, image_dict, current_blend_dict, data_selection,
                                                    rgb_layers, slider_values):
-
         if None not in (slider_values, layer, data_selection, current_blend_dict) and \
                 all([elem is not None for elem in slider_values]):
             # do not update if the range values in the slider match the current blend params:

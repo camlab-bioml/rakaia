@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2025-01-09
+## [0.22.0] - 2025-01-10
 
 ### Changed
 
@@ -35,6 +35,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - UMAP min distance input from 0 to 1
 - Standalone build docs converted to pyinstaller from pyapp
 - UMAP gallery modal for UMAP min distance plots from `steinbock` snakemake pipeline output
+- Import scaling JSON when reading pipeline directory (local path)
 
 ## [0.21.0] - 2024-11-21
 

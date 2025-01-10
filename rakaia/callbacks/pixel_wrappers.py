@@ -1,6 +1,6 @@
 """Advanced functions that support the callbacks associated with
 pixel-level operations (blended images))"""
-
+import json
 from typing import Union
 from pathlib import Path
 import dash
@@ -121,7 +121,7 @@ def is_steinbock_dir(directory):
     """
     Check if a local filepath is a directory for steinbock outputs
     """
-    if os.path.isdir(directory):
+    if directory and os.path.isdir(directory):
         sub_dirs = os.listdir(directory)
         return all(elem in sub_dirs for elem in SteinbockParserKeys.sub_directories)
     return False
@@ -154,17 +154,16 @@ def check_valid_upload(upload: Union[dict, list]):
     """
     Check for a valid upload component (existing filenames successfully parsed)
     """
-    if 'uploads' in upload:
-        return upload if len(upload['uploads']) > 0 else dash.no_update
+    if upload is not None and 'uploads' in upload:
+        return upload if upload['uploads'] else dash.no_update
     return upload if upload else dash.no_update
 
 def parse_steinbock_dir(directory, error_config, **kwargs):
     """
-    Parse a steinbock output directory. Returns a list of mcd/raw image files, list of mask names, and
-    quantification/.h5ad filepaths
+    Parse a steinbock output directory. Returns a list of mcd/raw image files, list of mask names,
+    quantification/.h5ad filepaths, UMAP coordinate dataframe, and scaling JSON dictionary
     """
     error_config = {"error": 'Error'} if not error_config else error_config
-    error_config['error'] = f'Successfully parsed steinbock output directory {str(directory)}'
     mcd_files = parse_steinbock_subdir(os.path.join(directory, 'mcd'))
     mask_files = parse_steinbock_subdir(os.path.join(directory, 'deepcell', 'cell'))
     export_files = parse_steinbock_subdir(os.path.join(directory, 'export'))
@@ -173,9 +172,12 @@ def parse_steinbock_dir(directory, error_config, **kwargs):
     umap = umap_files[0] if umap_files else []
     umap_return = SessionServerside(pd.read_csv(umap, names=['UMAP1', 'UMAP2'],
                 header=0).to_dict(orient="records"), **kwargs) if umap else dash.no_update
+    scaling = parse_steinbock_scaling(directory) if parse_steinbock_scaling(directory) is not None else dash.no_update
+    message = 'Successfully parsed' if mcd_files else 'Error parsing'
+    error_config['error'] = f'{message} steinbock output directory {str(directory)}'
     return check_valid_upload({'uploads': mcd_files, 'from_steinbock': True}), \
         error_config, parse_masks_from_filenames(None, mask_files), \
-        get_quantification_filepaths_from_drag_and_drop(None, quant), umap_return
+        get_quantification_filepaths_from_drag_and_drop(None, quant), umap_return, scaling
 
 def parse_steinbock_umap(directory: Union[str, Path],
                          seek_png: bool=True):
@@ -187,6 +189,14 @@ def parse_steinbock_umap(directory: Union[str, Path],
         search_term = "*.png" if seek_png else "*coordinates.csv"
         return natsorted([str(i) for i in Path(directory).rglob(search_term)], alg=ns.REAL)
     return []
+
+def parse_steinbock_scaling(directory: Union[str, Path]):
+    """
+    Parse a steinbock pipeline output directory for a `scaling.json` file used for channel scaling visualization
+    """
+    files = [str(i) for i in Path(directory).rglob("*scaling.json")]
+    json_parsed = json.load(open(files[0])) if files else None
+    return json_parsed['channels'] if json_parsed and 'channels' in json_parsed else None
 
 def umap_coordinates_from_gallery_click(umap_selection: str,
                                         directory: Union[str, Path],

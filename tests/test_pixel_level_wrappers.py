@@ -8,8 +8,12 @@ from rakaia.callbacks.pixel_wrappers import (
     AnnotationList,
     no_json_db_updates,
     is_steinbock_dir,
-    parse_steinbock_dir, parse_steinbock_umap, umap_coordinates_from_gallery_click)
+    parse_steinbock_dir,
+    parse_steinbock_umap,
+    umap_coordinates_from_gallery_click,
+    parse_steinbock_scaling)
 import dash
+import anndata as ad
 import os
 
 from rakaia.io.session import SessionServerside
@@ -18,13 +22,27 @@ def test_parse_steinbock_dir(get_current_dir):
     assert not is_steinbock_dir(os.path.join(get_current_dir, 'cell_measurements.csv'))
     steinbock_dir = str(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
     assert is_steinbock_dir(steinbock_dir)
-    mcd, error, masks, quant, umap = parse_steinbock_dir(steinbock_dir, None,
+    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(steinbock_dir, None,
                                     key="umap_coordinates", use_unique_key=True)
+    assert 'Successfully parsed' in error['error']
     assert mcd['uploads'] == [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'mcd', 'test.mcd')]
     assert len(masks) == 1
     assert quant['uploads'] == [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'export', 'test_mcd.h5ad')]
     assert isinstance(umap, SessionServerside)
     assert umap.key == "umap_coordinates"
+    scaling_direct = parse_steinbock_scaling(steinbock_dir)
+    assert scaling_direct == scaling
+    assert isinstance(scaling, dict)
+    expr = ad.read_h5ad(quant['uploads'][0])
+    assert len(expr.var_names) == len(scaling)
+
+    assert parse_steinbock_scaling(os.path.join(get_current_dir, 'steinbock', 'deepcell')) is None
+
+def test_invalid_steinbock_dir(get_current_dir):
+    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(get_current_dir, None,
+                                key="umap_coordinates", use_unique_key=True)
+    assert type(mcd) == type(masks) == type(quant) == dash._callback.NoUpdate
+    assert 'Error parsing' in error['error']
 
 def test_generate_annotation_lists():
     layout_1 = {'xaxis.range[0]': 259.7134146341464, 'xaxis.range[1]': 414.2865853658536,

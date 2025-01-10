@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Union
 from functools import partial
 import os
+
+import dash
 import numpy as np
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
@@ -511,7 +513,7 @@ def create_new_blending_dict(uploaded):
         current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
                                        'filter_type': None, 'filter_val': None, 'filter_sigma': None}
         current_blend_dict[channel]['color'] = '#FFFFFF'
-    return current_blend_dict
+    return current_blend_dict if current_blend_dict else dash.no_update
 
 
 def image_dict_from_lazy_load(dataset_selection: str, session_config: dict,
