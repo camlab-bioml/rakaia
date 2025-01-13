@@ -8,6 +8,9 @@ import numpy as np
 import cv2
 from scipy.ndimage import median_filter
 
+from rakaia.utils.pixel import get_default_channel_upper_bound_by_percentile
+
+
 def apply_filter_to_channel(channel_array: Union[np.array, np.ndarray]=None, filter_chosen: Union[bool, list]=True,
                                 filter_name: str="median", filter_value: int=3, filter_sigma: Union[int, float]=1.0):
     """
@@ -103,3 +106,17 @@ def set_blend_parameters_for_channel(blend_dict: dict, channel_selection:str=Non
         blend_dict[channel_selection]['filter_val'] = filter_value if not clear else None
         blend_dict[channel_selection]['filter_sigma'] = filter_sigma if not clear else None
     return blend_dict
+
+def set_slider_lower_bound_default(current_value: Union[int, float, None]):
+    """
+    Set the pixel intensity slider lower bound default by checking the current dictionary value
+    """
+    return float(current_value) if current_value is not None else 0.0
+
+def set_slider_upper_bound_default(current_value: Union[int, float, None],
+                                   image_for_percentile: Union[np.array, None]=None):
+    """
+    Set the pixel intensity slider upper bound default by checking the current dictionary value
+    """
+    return float(current_value) if current_value is not None else (
+        get_default_channel_upper_bound_by_percentile(image_for_percentile))

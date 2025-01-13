@@ -100,7 +100,8 @@ from rakaia.utils.filter import (
     get_current_channel_blend_params,
     get_current_or_default_channel_color,
     get_current_default_params_with_preset,
-    apply_filter_to_channel, set_blend_parameters_for_channel)
+    apply_filter_to_channel, set_blend_parameters_for_channel, set_slider_lower_bound_default,
+    set_slider_upper_bound_default)
 from rakaia.callbacks.triggers import (
     no_canvas_mask,
     global_filter_disabled,
@@ -199,7 +200,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('uploaded_dict_template', 'data'),
                        Output('session_config', 'data', allow_duplicate=True),
-                       Output('blending_colours', 'data'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
                        Output('dataset-preview-table', 'columns'),
                        Output('dataset-preview-table', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -226,8 +227,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 session_dict['unique_images'] = fileparser.unique_image_names
                 columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
                 data = pd.DataFrame(fileparser.get_parsed_information()).to_dict(orient='records')
-                blend_return = fileparser.blend_config if (current_blend is None or len(current_blend) == 0) else dash.no_update
-                # blend_return = blend_return if blend_return else dash.no_update
+                blend_return = fileparser.blend_config if ((current_blend is None or len(current_blend) == 0) and fileparser.blend_config) else dash.no_update
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
                 return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
@@ -323,9 +323,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         # datasets or for very large ROIs that meet the single lazy loading criteria
                         if not parse_files_for_lazy_loading(session_config, data_selection, delimiter):
                             raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
-                        # TODO: modify here so that lay loading single marker isn't just for spatial
-                        # grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(
-                        #     parse_files_for_lazy_loading(session_config, data_selection, delimiter))
                         grid_width, grid_height, x_min, y_min = SingleMarkerLazyLoader(image_dict, data_selection, session_config,
                         [], delimiter=delimiter).get_region_dim()
                         dim_return = (grid_height, grid_width)
@@ -417,7 +414,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Input('session_config', 'data'),
                        State('uploaded_dict_template', 'data'),
                        State('blending_colours', 'data'),
-                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('blending_colours', 'data'),
                        Output('session_alert_config', 'data'),
                        State('data-collection', 'value'),
                        State('session_alert_config', 'data'),
@@ -1407,17 +1404,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # set the min of the hist max to be 1 for very low images to also match the min for the pixel hist max
             if ctx.triggered_id in ["images_in_blend"]:
                 try:
-                    # if the current selection has already had a histogram bound on it, update the histogram with it
-                    if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
-                            current_blend_dict[selected_channel]['x_upper_bound'] is not None:
-                        lower_bound = float(current_blend_dict[selected_channel]['x_lower_bound'])
-                        upper_bound = float(current_blend_dict[selected_channel]['x_upper_bound'])
-                    else:
-                        lower_bound = 0.0
-                        upper_bound = get_default_channel_upper_bound_by_percentile(image_dict[data_selection][selected_channel])
-                        current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
-                        current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
-                        blend_return = current_blend_dict
+                    lower_bound = set_slider_lower_bound_default(current_blend_dict[selected_channel]['x_lower_bound'])
+                    upper_bound = set_slider_upper_bound_default(current_blend_dict[selected_channel]['x_upper_bound'],
+                                                                 image_dict[data_selection][selected_channel])
+                    blend_return = current_blend_dict
                     # if the upper bound is larger than the custom percentile, set it to the upper bound
                     if ' Set range max to current upper bound' in custom_max:
                         hist_max = float(upper_bound)
@@ -1427,23 +1417,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 except (KeyError, ValueError):
                     return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False
             elif ctx.triggered_id == 'blending_colours':
-                vals_return = dash.no_update
-                if current_blend_dict[selected_channel]['x_lower_bound'] is not None and \
-                        current_blend_dict[selected_channel]['x_upper_bound'] is not None:
-                    if (cur_slider_values[0] is None or cur_slider_values[1] is None) or (
-                            float(current_blend_dict[selected_channel]['x_lower_bound']) != float(cur_slider_values[0])
-                            or float(current_blend_dict[selected_channel]['x_upper_bound']) != float(cur_slider_values[1])):
-                        blend_return = dash.no_update
-                        lower_bound = float(current_blend_dict[selected_channel]['x_lower_bound'])
-                        upper_bound = float(current_blend_dict[selected_channel]['x_upper_bound'])
-                        vals_return = [lower_bound, upper_bound]
-                else:
-                    lower_bound = 0.0
-                    upper_bound = get_default_channel_upper_bound_by_percentile(image_dict[data_selection][selected_channel])
+                # vals_return = dash.no_update
+                lower_bound = set_slider_lower_bound_default(current_blend_dict[selected_channel]['x_lower_bound'])
+                upper_bound = set_slider_upper_bound_default(current_blend_dict[selected_channel]['x_upper_bound'],
+                                                             image_dict[data_selection][selected_channel])
+                vals_return = [lower_bound, upper_bound]
+                if ((cur_slider_values[0] is None or cur_slider_values[1] is None) or (
+                        current_blend_dict[selected_channel]['x_lower_bound'] is not None and
+                        float(current_blend_dict[selected_channel]['x_lower_bound']) != float(cur_slider_values[0]))
+                        or (current_blend_dict[selected_channel]['x_lower_bound'] is not None and
+                            float(current_blend_dict[selected_channel]['x_upper_bound']) != float(cur_slider_values[1]))):
+                    # blend_return = dash.no_update
                     current_blend_dict[selected_channel]['x_lower_bound'] = lower_bound
                     current_blend_dict[selected_channel]['x_upper_bound'] = upper_bound
                     blend_return = current_blend_dict
-                    vals_return = [lower_bound, upper_bound]
                 # if using custom max, don't update these parameters as they will nudge the slider
                 hist_max = float(hist_max) if not custom_max else dash.no_update
                 tick_markers = tick_markers if not custom_max else dash.no_update
