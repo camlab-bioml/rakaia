@@ -33,7 +33,6 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 
 from rakaia.utils.decorator import (
-    # time_taken_callback,
     DownloadDirGenerator)
 from rakaia.utils.pixel import (
     delete_dataset_option_from_list_interactively,

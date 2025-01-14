@@ -99,6 +99,20 @@ def test_basic_callback_import_annotations_quantification_frame(get_current_dir,
                     quantification_frame["cell_id"] == 403]["rakaia_cell_annotation"]) == ["mature"]
 
 
+    annotations_dict = {"roi_1": {svgpath: {'title': 'fake_title', 'body': 'fake_body',
+                  'cell_type': 'mature', 'imported': False, 'type': 'path',
+                  'annotation_column': 'rakaia_cell_annotation'}}}
+    quantification_frame, serverside = AnnotationQuantificationMerge(annotations_dict,
+                                                                     measurements.to_dict(orient="records"), "roi_1",
+                                                                     {}, False, None,
+                                                                     sample_name='Dilution_series_1_1',
+                                                                     config=app_config).get_callback_structures()
+    quantification_frame = pd.DataFrame(quantification_frame)
+    assert len(quantification_frame[
+                   quantification_frame["rakaia_cell_annotation"] == "mature"]) == 1
+    assert quantification_frame[
+                   quantification_frame["rakaia_cell_annotation"] == "mature"]['cell_id'].to_list() == [4125]
+
     annotations_dict = {'roi_1': {
         "{'points': [{'x': 582, 'y': 465}]}":
             {'title': 'fake_title', 'body': 'fake_body',
