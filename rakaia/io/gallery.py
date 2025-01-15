@@ -3,7 +3,6 @@
 """
 
 import math
-import os.path
 from io import BytesIO
 import base64
 from pathlib import Path
@@ -13,6 +12,8 @@ from dash import html
 import plotly.graph_objs as go
 from PIL import Image
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib.colors import Normalize
 from rakaia.utils.pixel import (
     resize_for_canvas,
     get_default_channel_upper_bound_by_percentile,
@@ -213,16 +214,49 @@ def thumbnail_load_button(gallery_type: str, thumbnail_index: str):
             outline=True, color="dark", className="me-1", size="sm",
             style={"padding": "5px", "margin-left": "10px", "margin-top": "2.5px"})
 
+def tile_greyscale_conversion(tile_array: np.array,
+                              use_greyscale: bool=True):
+    """
+    Set the conversion for a channel gallery tile based on using greyscale or using
+    an RGB spectrum
+    """
+    tile_array = tile_array[:, :, :3] if len(tile_array.shape) > 3 else tile_array
+    return Image.fromarray(tile_array).convert('RGB') if (
+        use_greyscale) else (
+        Image.fromarray(tile_array.astype(np.uint8)))
+
+def rainbow_spectrum(tile_array: np.array):
+    # tile_array = np.array(Image.fromarray(tile_array).convert('L')) if (
+    #         len(tile_array.shape) > 2) else tile_array
+    # Normalize the image to [0, 1]
+    norm = Normalize(vmin=tile_array.min(), vmax=tile_array.max())
+    normalized_image = norm(tile_array)
+
+    # Get the rainbow colormap
+    colormap = plt.cm.rainbow
+
+    # Apply the colormap
+    colored_image = colormap(normalized_image)
+    colored_image[tile_array == 0] = [0, 0, 0, 1]
+
+    # Remove the alpha channel (4th channel) if not needed
+    return (colored_image[:, :, :3] * 255).astype(np.uint8)
+
+
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
-def channel_tile_gallery_children(tiles: Union[dict, None]):
+def channel_tile_gallery_children(tiles: Union[dict, None],
+                                  use_greyscale: bool=False):
     """
     Generate the children for the image gallery comprised of the single channel images for one ROI
     """
+    # TODO: rainbow gradient looks different when using single channel view
     row_children = []
     for key, value in tiles.items():
             label = value['label'] if 'label' in value else key
             tile_image = value['tile']
+            if not use_greyscale:
+                tile_image = rainbow_spectrum(tile_image)
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label,
                         className="card-text", id=key),
                         dbc.Button(children=html.Span(
@@ -236,7 +270,7 @@ def channel_tile_gallery_children(tiles: Union[dict, None]):
                         "margin-top": "2.5px"}),
                         dbc.Tooltip(f'Add {label} to canvas',
                         target={'type': 'gallery-channel', 'index': key})]),
-                        dbc.CardImg(src=Image.fromarray(tile_image).convert('RGB'),
+                        dbc.CardImg(src=tile_greyscale_conversion(tile_image, use_greyscale),
                         bottom=True)]), width=3))
     return row_children
 

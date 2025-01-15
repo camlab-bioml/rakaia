@@ -1329,6 +1329,9 @@ def register_app_layout(config, cache_dest):
                                                          color=DEFAULT_WIDGET_COLOUR,
                                                          style={"margin-right": "7px", "margin-top": "10px",
                                                                 "textAlign": "center"}),
+                                        dcc.Dropdown(id='chan-gallery-spectrum', multi=False, value=None,
+                                                     options=["rainbow", "greyscale"],
+                                        style={"width": "75%", "margin": "10px"}, placeholder="Choose gallery gradient"),
                                         dbc.Button(
                                             children=html.Span([html.I(className="fa-solid fa-circle-question",
                                                                        style={"display": "inline-block",
@@ -1341,8 +1344,8 @@ def register_app_layout(config, cache_dest):
                                                    "float": "left", "justifyContent": "left", "display": "flex"}),
                                     dbc.Tooltip(TabText().channel_tiles, target="gallery-help-hover",
                                                 placement='right')
-                                    ], style={"display": "flex", "width": "70%"}),
-                                    style={"display": "flex", "width": "70%"})],
+                                    ], style={"display": "flex", "width": "90%"}),
+                                    style={"display": "flex", "width": "90%"})],
                                            style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
                         dbc.Row(id="image-gallery-row")], style={"margin-top": "15px"}),

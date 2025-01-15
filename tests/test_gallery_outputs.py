@@ -2,6 +2,7 @@ import os
 import tempfile
 import pickle
 import numpy as np
+from PIL import Image
 from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap
 from rakaia.io.gallery import (
     roi_query_gallery_children,
@@ -9,8 +10,11 @@ from rakaia.io.gallery import (
     set_channel_thumbnail,
     set_gallery_thumbnail_from_signal_retention,
     replace_channel_gallery_aliases,
-    channel_tiles, gallery_export_template, channel_tiles_from_gallery, umap_pipeline_tiles, umap_gallery_children)
-from rakaia.utils.pixel import resize_for_canvas
+    channel_tiles, gallery_export_template,
+    channel_tiles_from_gallery, umap_pipeline_tiles,
+    umap_gallery_children,
+    rainbow_spectrum)
+from rakaia.utils.pixel import resize_for_canvas, filter_by_upper_and_lower_bound
 import dash_bootstrap_components as dbc
 
 def test_channel_thumbnail_signal_retention():
@@ -181,3 +185,12 @@ def test_umap_gallery_tiles(get_current_dir):
     gallery_children_umap = umap_gallery_children(umap_tiles)
     assert len(gallery_children_umap) == len(umap_tiles)
     assert not umap_gallery_children({})
+
+def test_rainbow_spectrum(get_current_dir):
+    greyscale_image = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
+    filtered = filter_by_upper_and_lower_bound(greyscale_image, 0,
+                                               np.percentile(greyscale_image, 99))
+    rainbow = rainbow_spectrum(filtered)
+    assert np.array_equal(rainbow[161, 90], np.array([255, 0, 0]))
+    assert np.array_equal(rainbow[110, 59], np.array([0, 0, 0]))
+    assert np.array_equal(rainbow[111, 46], np.array([121, 9, 254]))

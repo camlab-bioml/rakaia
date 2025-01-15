@@ -1228,12 +1228,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('data-collection', 'options'),
                        State('image-gallery-row', 'children'),
                        Input('chan-gallery-zoom-update', 'n_clicks'),
+                       Input('chan-gallery-spectrum', 'value'),
                        prevent_initial_call=True)
     @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
     def create_channel_tile_gallery_grid(download_tiles, image_dict, data_selection, canvas_layout, toggle_gallery_zoom,
                                          preset_selection, preset_dict, view_by_channel, channel_selected, aliases,
                                          nclicks, blend_colour_dict, toggle_scaling_gallery, session_config, delimiter,
-                                         options, cur_gal, update_zoom):
+                                         options, cur_gal, update_zoom, spectrum):
         """
         Create a tiled image gallery of the current ROI. If the current dataset selection does not yet have
         default percentile scaling applied, apply before rendering
@@ -1266,7 +1267,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             try:
                                 blend_colour_dict = check_blend_dictionary_for_blank_bounds_by_channel(
                                     blend_colour_dict, channel_selected, image_dict, data_selection)
-                                views = {key: apply_preset_to_array(value, blend_colour_dict[channel_selected]) for
+                                views = {key: apply_preset_to_array(value,
+                                        blend_colour_dict[channel_selected]).astype(np.float32) for
                                          key, value in views.items()}
                             except (KeyError, IndexError): pass
                     else:
@@ -1276,7 +1278,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     tiles = channel_tiles(views, canvas_layout, ZOOM_KEYS, blend_colour_dict, preset_selection, preset_dict,
                             aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery, 0.75, 3000,
                             channel_selected if (view_by_channel and channel_selected) else None) if views else None
-                    return channel_tile_gallery_children(tiles) if tiles else None, dash.no_update
+                    use_greyscale = spectrum in [None, "greyscale"]
+                    return channel_tile_gallery_children(tiles, use_greyscale) if tiles else None, dash.no_update
             return html.H6(ALERT.warnings["no_channel_gallery"], style={"align": "center", "float":
                 "center", "justifyContent": "center", "display": "flex"}), dash.no_update
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError, IndexError): raise PreventUpdate

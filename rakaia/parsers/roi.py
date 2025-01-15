@@ -277,7 +277,7 @@ class RegionThumbnail:
                                     colour_use = self.blend_dict[channel_names[channel_index]]['color'] if not \
                                         self.use_greyscale else '#FFFFFF'
                                     recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(
-                                        np.float32)
+                                        np.float32) if not self.single_channel_view else with_preset.astype(np.float32)
                                     acq_image.append(recoloured)
                                 channel_index += 1
                             label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
@@ -343,7 +343,8 @@ class RegionThumbnail:
                                 colour_use = self.blend_dict[channel_name]['color'] if not \
                                     self.use_greyscale else '#FFFFFF'
                                 recoloured = np.array(recolour_greyscale(with_preset.astype(np.uint8),
-                                                                             colour_use)).astype(np.float32)
+                                        colour_use)).astype(np.float32) if not self.single_channel_view else\
+                                    with_preset.astype(np.float32)
                             else:
                                 recoloured = convert_rgb_to_greyscale(page.asarray())
                             acq_image.append(recoloured)
@@ -378,7 +379,8 @@ class RegionThumbnail:
                                         self.blend_dict[channel_name])
                             colour_use = self.blend_dict[channel_name]['color'] if not \
                                 self.use_greyscale else '#FFFFFF'
-                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
+                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32) if not \
+                                self.single_channel_view else with_preset.astype(np.float32)
                             acq_image.append(recoloured)
                         image_index += 1
                     self.process_additive_image(acq_image, label)
@@ -409,7 +411,8 @@ class RegionThumbnail:
                         colour_use = self.blend_dict[marker]['color'] if not \
                             self.use_greyscale else '#FFFFFF'
                         recoloured = np.array(recolour_greyscale(with_preset,
-                                            colour_use)).astype(np.float32)
+                                    colour_use)).astype(np.float32) if not self.single_channel_view else \
+                            with_preset.astype(np.float32)
                         acq_image.append(recoloured)
                 self.process_additive_image(acq_image, label)
 
