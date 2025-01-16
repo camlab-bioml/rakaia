@@ -9,7 +9,9 @@ from rakaia.io.gallery import (
     set_channel_thumbnail,
     set_gallery_thumbnail_from_signal_retention,
     replace_channel_gallery_aliases,
-    channel_tiles, gallery_export_template, channel_tiles_from_gallery, umap_pipeline_tiles, umap_gallery_children)
+    channel_tiles, gallery_export_template, channel_tiles_from_gallery,
+    umap_pipeline_tiles, umap_gallery_children,
+    channel_thumbnail_conversion)
 from rakaia.utils.pixel import resize_for_canvas
 import dash_bootstrap_components as dbc
 
@@ -181,3 +183,11 @@ def test_umap_gallery_tiles(get_current_dir):
     gallery_children_umap = umap_gallery_children(umap_tiles)
     assert len(gallery_children_umap) == len(umap_tiles)
     assert not umap_gallery_children({})
+
+def test_channel_thumbnail_conversion():
+    channel_array = np.full((1000, 1000, 3), 24).astype(np.uint8)
+    thumbnail_converted = channel_thumbnail_conversion(channel_array)
+    assert str(thumbnail_converted.mode) == "RGB"
+    greyscale = np.full((1000, 1000), 1000).astype(np.float32)
+    thumbnail_converted = channel_thumbnail_conversion(greyscale)
+    assert str(thumbnail_converted.mode) == "RGB"

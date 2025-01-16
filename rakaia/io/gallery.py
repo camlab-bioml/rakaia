@@ -3,7 +3,6 @@
 """
 
 import math
-import os.path
 from io import BytesIO
 import base64
 from pathlib import Path
@@ -146,9 +145,9 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
     if toggle_scaling_gallery:
         try:
             if blend_colour_dict[key]['x_lower_bound'] is None:
-                blend_colour_dict[key]['x_lower_bound'] = 0
+                    blend_colour_dict[key]['x_lower_bound'] = 0
             if blend_colour_dict[key]['x_upper_bound'] is None:
-                blend_colour_dict[key]['x_upper_bound'] = \
+                    blend_colour_dict[key]['x_upper_bound'] = \
                     get_default_channel_upper_bound_by_percentile(raw_channel_array)
             image_render = apply_preset_to_array(image_render,
                                                  blend_colour_dict[channel_key])
@@ -213,6 +212,13 @@ def thumbnail_load_button(gallery_type: str, thumbnail_index: str):
             outline=True, color="dark", className="me-1", size="sm",
             style={"padding": "5px", "margin-left": "10px", "margin-top": "2.5px"})
 
+def channel_thumbnail_conversion(channel_array: np.array):
+    """
+    Define the dtype transformation for the incoming channel array
+    """
+    return Image.fromarray(channel_array).convert('RGB') if (
+            len(channel_array.shape) < 3) else Image.fromarray(channel_array.astype(np.uint8))
+
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
 def channel_tile_gallery_children(tiles: Union[dict, None]):
@@ -236,7 +242,7 @@ def channel_tile_gallery_children(tiles: Union[dict, None]):
                         "margin-top": "2.5px"}),
                         dbc.Tooltip(f'Add {label} to canvas',
                         target={'type': 'gallery-channel', 'index': key})]),
-                        dbc.CardImg(src=Image.fromarray(tile_image).convert('RGB'),
+                        dbc.CardImg(src=channel_thumbnail_conversion(tile_image),
                         bottom=True)]), width=3))
     return row_children
 
