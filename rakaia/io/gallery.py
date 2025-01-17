@@ -135,7 +135,7 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
                         raw_channel_array: Union[np.array, np.ndarray],
                         blend_colour_dict: dict, preset_dict: dict=None, preset_selection: str=None,
                         nclicks_preset: int=0,
-                        toggle_scaling_gallery=False,
+                        toggle_scaling_gallery=True,
                         resize_signal_retention_threshold: float = 0.75,
                         resize_dimension_threshold: int = 3000,
                         single_channel_identifier: str=None):
@@ -143,16 +143,17 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
     Verify a channel tile. Checks the appropriate default scaling bounds and evaluates
     if a preset should be used or if the entire array should be used for signal retention
     """
-    channel_key = single_channel_identifier if single_channel_identifier else key
+    channel_key = single_channel_identifier if (single_channel_identifier and
+                single_channel_identifier in blend_colour_dict.keys()) else key
     if toggle_scaling_gallery:
         try:
-            if blend_colour_dict[key]['x_lower_bound'] is None:
-                blend_colour_dict[key]['x_lower_bound'] = 0
-            if blend_colour_dict[key]['x_upper_bound'] is None:
-                blend_colour_dict[key]['x_upper_bound'] = \
+            if blend_colour_dict[channel_key]['x_lower_bound'] is None:
+                    blend_colour_dict[channel_key]['x_lower_bound'] = 0
+            if blend_colour_dict[channel_key]['x_upper_bound'] is None:
+                    blend_colour_dict[channel_key]['x_upper_bound'] = \
                     get_default_channel_upper_bound_by_percentile(raw_channel_array)
             image_render = apply_preset_to_array(image_render,
-                                                 blend_colour_dict[channel_key])
+                            blend_colour_dict[channel_key])
         except (KeyError, TypeError):
             pass
     if None not in (preset_selection, preset_dict) and nclicks_preset > 0:
@@ -171,7 +172,7 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
 
 def channel_tiles(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
                                            preset_selection, preset_dict, aliases, nclicks_preset,
-                                           toggle_gallery_zoom=False, toggle_scaling_gallery=False,
+                                           toggle_gallery_zoom=False, toggle_scaling_gallery=True,
                                            resize_signal_retention_threshold: float = 0.75,
                                            resize_dimension_threshold: int = 3000,
                                            single_channel_identifier: str=None):
@@ -223,7 +224,7 @@ def tile_greyscale_conversion(tile_array: np.array,
     tile_array = tile_array[:, :, :3] if len(tile_array.shape) > 3 else tile_array
     return Image.fromarray(tile_array).convert('RGB') if (
         use_greyscale) else (
-        Image.fromarray(tile_array.astype(np.uint8)))
+        Image.fromarray(tile_array))
 
 def rainbow_spectrum(tile_array: np.array):
     # tile_array = np.array(Image.fromarray(tile_array).convert('L')) if (
@@ -237,26 +238,33 @@ def rainbow_spectrum(tile_array: np.array):
 
     # Apply the colormap
     colored_image = colormap(normalized_image)
-    colored_image[tile_array == 0] = [0, 0, 0, 1]
+    colored_image[tile_array == 0] = [0, 0, 0, 0]
 
     # Remove the alpha channel (4th channel) if not needed
     return (colored_image[:, :, :3] * 255).astype(np.uint8)
 
+# def channel_thumbnail_conversion(channel_array: np.array):
+#     """
+#     Define the dtype transformation for the incoming channel array
+#     """
+#     return Image.fromarray(channel_array).convert('RGB') if (
+#             len(channel_array.shape) < 3) else Image.fromarray(channel_array.astype(np.uint8))
 
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
+
+
 def channel_tile_gallery_children(tiles: Union[dict, None],
                                   use_greyscale: bool=False):
     """
     Generate the children for the image gallery comprised of the single channel images for one ROI
     """
-    # TODO: rainbow gradient looks different when using single channel view
     row_children = []
     for key, value in tiles.items():
             label = value['label'] if 'label' in value else key
             tile_image = value['tile']
             if not use_greyscale:
-                tile_image = rainbow_spectrum(tile_image)
+                tile_image = rainbow_spectrum(tile_image.astype(np.float32))
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label,
                         className="card-text", id=key),
                         dbc.Button(children=html.Span(

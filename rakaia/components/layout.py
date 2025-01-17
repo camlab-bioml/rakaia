@@ -1314,7 +1314,7 @@ def register_app_layout(config, cache_dest):
                                       dbc.Button("Update from zoom", id="chan-gallery-zoom-update",
                                                  className="mb-3", color='dark', n_clicks=0, outline=True,
                                                  style={"margin-top": "10px", "height": "50%"}),
-                                    daq.ToggleSwitch(label='Default scaling',
+                                    daq.ToggleSwitch(label='Percentile scaling',
                                                      value=True,
                                                              id='default-scaling-gallery', labelPosition='bottom',
                                                              color=DEFAULT_WIDGET_COLOUR, style={"margin-left": "15px",

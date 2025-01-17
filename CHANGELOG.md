@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2025-01-10
+## [0.22.0] - 2025-01-16
 
 ### Changed
 
@@ -26,6 +26,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - Allow y-axis overflow for multiple gating selection dropdown
 - `pymongo` client uses `certifi.where()` for SSL certificate to be compatible with `pyinstaller`
 - `None` pixel intensity lower and upper bounds for channels on slider checked separately
+- Gallery autoscaling when using single channel view
 
 ### Added
 

@@ -13,7 +13,8 @@ from rakaia.io.gallery import (
     channel_tiles, gallery_export_template,
     channel_tiles_from_gallery, umap_pipeline_tiles,
     umap_gallery_children,
-    rainbow_spectrum)
+    rainbow_spectrum,
+    tile_greyscale_conversion)
 from rakaia.utils.pixel import resize_for_canvas, filter_by_upper_and_lower_bound
 import dash_bootstrap_components as dbc
 
@@ -194,3 +195,12 @@ def test_rainbow_spectrum(get_current_dir):
     assert np.array_equal(rainbow[161, 90], np.array([255, 0, 0]))
     assert np.array_equal(rainbow[110, 59], np.array([0, 0, 0]))
     assert np.array_equal(rainbow[111, 46], np.array([121, 9, 254]))
+
+def test_channel_thumbnail_conversion():
+    channel_array = np.full((1000, 1000), 24).astype(np.float32)
+    rainbow = rainbow_spectrum(channel_array)
+    thumbnail_converted = tile_greyscale_conversion(rainbow, False)
+    assert str(thumbnail_converted.mode) == "RGB"
+    greyscale = np.full((1000, 1000), 1000).astype(np.float32)
+    thumbnail_converted = tile_greyscale_conversion(greyscale, True)
+    assert str(thumbnail_converted.mode) == "RGB"

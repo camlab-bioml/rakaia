@@ -1262,15 +1262,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # decide if channel view or ROI view is selected
                     if view_by_channel and channel_selected:
                         views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 1000000,
-                        delimiter=delimiter, use_greyscale=True, dataset_options=options, single_channel_view=True).get_image_dict()
-                        if toggle_scaling_gallery:
-                            try:
-                                blend_colour_dict = check_blend_dictionary_for_blank_bounds_by_channel(
-                                    blend_colour_dict, channel_selected, image_dict, data_selection)
-                                views = {key: apply_preset_to_array(value,
-                                        blend_colour_dict[channel_selected]).astype(np.float32) for
-                                         key, value in views.items()}
-                            except (KeyError, IndexError): pass
+                        delimiter=delimiter, use_greyscale=True, dataset_options=options, single_channel_view=True,
+                        use_scaling=False).get_image_dict()
                     else:
                         views = {elem: image_dict[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
@@ -1280,6 +1273,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             channel_selected if (view_by_channel and channel_selected) else None) if views else None
                     use_greyscale = spectrum in [None, "greyscale"]
                     return channel_tile_gallery_children(tiles, use_greyscale) if tiles else None, dash.no_update
+            elif data_there: raise PreventUpdate
             return html.H6(ALERT.warnings["no_channel_gallery"], style={"align": "center", "float":
                 "center", "justifyContent": "center", "display": "flex"}), dash.no_update
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError, IndexError): raise PreventUpdate
