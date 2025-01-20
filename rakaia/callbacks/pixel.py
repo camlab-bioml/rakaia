@@ -1271,8 +1271,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     tiles = channel_tiles(views, canvas_layout, ZOOM_KEYS, blend_colour_dict, preset_selection, preset_dict,
                             aliases, nclicks, toggle_gallery_zoom, toggle_scaling_gallery, 0.75, 3000,
                             channel_selected if (view_by_channel and channel_selected) else None) if views else None
-                    use_greyscale = spectrum in [None, "greyscale"]
-                    return channel_tile_gallery_children(tiles, use_greyscale) if tiles else None, dash.no_update
+                    return channel_tile_gallery_children(tiles, spectrum) if tiles else None, dash.no_update
             elif data_there: raise PreventUpdate
             return html.H6(ALERT.warnings["no_channel_gallery"], style={"align": "center", "float":
                 "center", "justifyContent": "center", "display": "flex"}), dash.no_update

@@ -12,8 +12,8 @@ from dash import html
 import plotly.graph_objs as go
 from PIL import Image
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib.colors import Normalize
+
+from rakaia.utils.gradient import ChannelGradient
 from rakaia.utils.pixel import (
     resize_for_canvas,
     get_default_channel_upper_bound_by_percentile,
@@ -146,6 +146,8 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
     channel_key = single_channel_identifier if (single_channel_identifier and
                 single_channel_identifier in blend_colour_dict.keys()) else key
     if toggle_scaling_gallery:
+        # TODO: view can be different from the ROI gallery view if thresholds aren't set yet
+        # decide if should add check for single channel identifier here
         try:
             if blend_colour_dict[channel_key]['x_lower_bound'] is None:
                     blend_colour_dict[channel_key]['x_lower_bound'] = 0
@@ -226,23 +228,6 @@ def tile_greyscale_conversion(tile_array: np.array,
         use_greyscale) else (
         Image.fromarray(tile_array))
 
-def rainbow_spectrum(tile_array: np.array):
-    # tile_array = np.array(Image.fromarray(tile_array).convert('L')) if (
-    #         len(tile_array.shape) > 2) else tile_array
-    # Normalize the image to [0, 1]
-    norm = Normalize(vmin=tile_array.min(), vmax=tile_array.max())
-    normalized_image = norm(tile_array)
-
-    # Get the rainbow colormap
-    colormap = plt.cm.rainbow
-
-    # Apply the colormap
-    colored_image = colormap(normalized_image)
-    colored_image[tile_array == 0] = [0, 0, 0, 0]
-
-    # Remove the alpha channel (4th channel) if not needed
-    return (colored_image[:, :, :3] * 255).astype(np.uint8)
-
 # def channel_thumbnail_conversion(channel_array: np.array):
 #     """
 #     Define the dtype transformation for the incoming channel array
@@ -255,16 +240,17 @@ def rainbow_spectrum(tile_array: np.array):
 
 
 def channel_tile_gallery_children(tiles: Union[dict, None],
-                                  use_greyscale: bool=False):
+                                  gradient: str="greyscale"):
     """
     Generate the children for the image gallery comprised of the single channel images for one ROI
     """
+    use_greyscale = gradient in ["greyscale", None]
+    gradient = gradient if gradient else "greyscale"
     row_children = []
     for key, value in tiles.items():
             label = value['label'] if 'label' in value else key
             tile_image = value['tile']
-            if not use_greyscale:
-                tile_image = rainbow_spectrum(tile_image.astype(np.float32))
+            tile_image = ChannelGradient(tile_image).apply_gradient(gradient)
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label,
                         className="card-text", id=key),
                         dbc.Button(children=html.Span(

@@ -17,7 +17,7 @@ import anndata as ad
 from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
-    apply_filter_to_array)
+    apply_filter_to_array, set_array_storage_type_from_config)
 from rakaia.utils.object import validate_mask_shape_matches_image
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
@@ -72,7 +72,7 @@ class RegionThumbnail:
                  roi_keyword: str=None,
                  single_channel_view: bool=False, spatial_radius: Union[int, None]=None,
                  enable_masks: bool=True,
-                 use_scaling: bool=True):
+                 use_scaling: bool=True, arr_type: str="float"):
 
         self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
@@ -106,6 +106,7 @@ class RegionThumbnail:
         # if random query, allow mask toggle, otherwise always include the mask
         self.enable_masks = enable_masks if not predefined_indices else True
         self.use_scaling = use_scaling
+        self.arr_type = arr_type if arr_type else "float"
 
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
@@ -256,7 +257,7 @@ class RegionThumbnail:
         :return: Scaled numpy channel array based on condition
         """
         return apply_preset_to_array(arr, self.blend_dict[channel_name]) if \
-            self.use_scaling else arr.astype(np.float32)
+            self.use_scaling else arr.astype(set_array_storage_type_from_config(self.arr_type))
 
     def set_colour(self, channel_name: str):
         """
@@ -323,9 +324,6 @@ class RegionThumbnail:
                                 # if the channel is in the current blend, use it
                                 if channel_names[channel_index] in self.currently_selected_channels and \
                                         channel_names[channel_index] in self.blend_dict.keys():
-                                    # with_preset = self.apply_preset_based_on_view(channel, channel_names[channel_index])
-                                    # colour_use = self.set_colour(channel_names[channel_index])
-                                    # recoloured = self.apply_colouring_based_on_view(with_preset, colour_use)
                                     recoloured = self.single_channel_process(channel, channel_names[channel_index])
                                     acq_image.append(recoloured)
                                 channel_index += 1
@@ -386,9 +384,6 @@ class RegionThumbnail:
                         channel_name = str(f"channel_{channel_index}")
                         if channel_name in self.currently_selected_channels and \
                                 channel_name in self.blend_dict.keys():
-                            # with_preset = self.apply_preset_based_on_view(page.asarray(), channel_name)
-                            # colour_use = self.set_colour(channel_name)
-                            # recoloured = self.apply_colouring_based_on_view(with_preset, colour_use)
                             recoloured = self.single_channel_process(page.asarray(), channel_name)
                             acq_image.append(recoloured)
                         channel_index += 1
@@ -418,9 +413,6 @@ class RegionThumbnail:
                         channel_name = txt_channel_names[image_index - 1]
                         if channel_name in self.currently_selected_channels and \
                                 channel_name in self.blend_dict.keys():
-                            # with_preset = self.apply_preset_based_on_view(image, channel_name)
-                            # colour_use = self.set_colour(channel_name)
-                            # recoloured = self.apply_colouring_based_on_view(with_preset, colour_use)
                             recoloured = self.single_channel_process(image, channel_name)
                             acq_image.append(recoloured)
                         image_index += 1
@@ -447,10 +439,6 @@ class RegionThumbnail:
                 spot_size = get_spatial_spot_radius(adata, self.spot_size)
                 for marker in self.currently_selected_channels:
                     if marker in self.blend_dict.keys():
-                        # with_preset = self.apply_preset_based_on_view(spatial_grid_single_marker(
-                        #     adata, marker, spot_size), marker)
-                        # colour_use = self.set_colour(marker)
-                        # recoloured = self.apply_colouring_based_on_view(with_preset, colour_use)
                         recoloured = self.single_channel_process(spatial_grid_single_marker(
                             adata, marker, spot_size), marker)
                         acq_image.append(recoloured)

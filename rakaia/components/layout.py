@@ -1330,7 +1330,8 @@ def register_app_layout(config, cache_dest):
                                                          style={"margin-right": "7px", "margin-top": "10px",
                                                                 "textAlign": "center"}),
                                         dcc.Dropdown(id='chan-gallery-spectrum', multi=False, value=None,
-                                                     options=["rainbow", "greyscale"],
+                                                     # TODO: potentially add back in jet, just the reverse of rainbow
+                                                     options=["rainbow", "blue gold", "greyscale"],
                                         style={"width": "75%", "margin": "10px"}, placeholder="Choose gallery gradient"),
                                         dbc.Button(
                                             children=html.Span([html.I(className="fa-solid fa-circle-question",

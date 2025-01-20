@@ -44,6 +44,14 @@ rakaia.utils.filter module
    :undoc-members:
    :show-inheritance:
 
+rakaia.utils.gradient module
+----------------------------
+
+.. automodule:: rakaia.utils.gradient
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rakaia.utils.graph module
 -------------------------
 
