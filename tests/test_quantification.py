@@ -8,7 +8,9 @@ from rakaia.utils.quantification import (
     populate_gating_dict_with_default_values,
     update_gating_dict_with_slider_values,
     gating_label_children,
-    mask_object_counter_preview, limit_length_to_quantify)
+    mask_object_counter_preview,
+    limit_length_to_quantify,
+    GatingZoomSubset)
 
 def test_quantification_one_channel(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
@@ -129,6 +131,10 @@ def test_gating_label_children():
     assert len(children_custom) == 3
     assert 'Gating (custom ID list)' in str(children_custom[0])
 
+    children_w_zoom = gating_label_children(True, gating_dict, current_gate, [int(i) for i in range(100)],
+                                            False, [1, 2, 3, 4, 5])
+    assert len(children_w_zoom) == 10
+    assert 'in view' in str(children_w_zoom[-1])
 
 def test_generate_mask_counter_preview():
     mask_dict = {"mask_1": {"raw": np.zeros((1000, 1000))}}
@@ -145,3 +151,24 @@ def test_check_marker_lists_lengths():
     assert not limit_length_to_quantify(marker_list_long)
     shorter = [f"gene_{elem}" for elem in range(999)]
     assert limit_length_to_quantify(shorter) == shorter
+
+
+def test_gating_object_lists_zoom(get_current_dir):
+    mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff"))).astype(np.uint16)
+    obj_list = [18, 81, 153, 167, 219, 288, 294, 338, 342, 475, 505, 517,
+                543, 560, 563, 577, 578, 625, 637, 682,
+                691, 709, 728, 909, 925, 947, 966, 981, 986, 994,
+                1051, 1052, 1055, 1057, 1064, 1118, 1133, 1144, 1169, 1219,
+                1225, 1248, 1250, 1252, 1253, 1260, 1262, 1264, 1275, 1280,
+                1283, 1312, 1314, 1323, 1327, 1333, 1375, 1395, 1419, 1420, 1429,
+                1436, 1452, 1528, 1559, 1560, 1562]
+    graph_layout = {"xaxis.range[0]": 607.2, "xaxis.range[1]": 842.5, "yaxis.range[0]": 610.1,
+                    "yaxis.range[1]": 378.2}
+
+    objs_in_zoom = GatingZoomSubset(mask, graph_layout).generate_list(obj_list)
+    assert all(int(elem) in obj_list for elem in objs_in_zoom)
+    assert len(objs_in_zoom) < len(obj_list)
+
+    assert GatingZoomSubset(mask, {}).generate_list(obj_list) is None
+    assert GatingZoomSubset(None, graph_layout).generate_list(obj_list) is None
+    assert len(GatingZoomSubset(mask, graph_layout).generate_list([])) == 0

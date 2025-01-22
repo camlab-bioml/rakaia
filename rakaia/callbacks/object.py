@@ -69,7 +69,8 @@ from rakaia.utils.quantification import (
     update_gating_dict_with_slider_values,
     gating_label_children,
     mask_object_counter_preview,
-    DistributionTableColumns)
+    DistributionTableColumns,
+    GatingZoomSubset)
 
 def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -705,7 +706,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(Output('gating-cell-list', 'data'),
-                       Output('gating-param-display', 'children'),
                        Output('apply-gating-custom', 'value'),
                        Input('gating-dict', 'data'),
                        Input('data-collection', 'value'),
@@ -714,24 +714,44 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('gating-channel-options', 'value'),
                        Input('gating-blend-type', 'value'),
                        Input('custom-id-gating', 'value'),
-                       Input('apply-gating-custom', 'value'))
+                       Input('apply-gating-custom', 'value'),
+                       State('mask-dict', 'data'))
     def update_gating_object_list(gating_dict, roi_selection, quantification_dict, mask_selection,
-                                cur_gate_selection, gating_type, id_str, apply_custom_gating):
+                cur_gate_selection, gating_type, id_str, apply_custom_gating, mask_dict):
         """
         Generate a threshold-based or custom id gating list for the current ROI
         """
         # do not update if using custom list and the parameters are updated
-        if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
-        elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
-            id_list = custom_gating_id_list(id_str)
-            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
-                gating_label_children(False, None, None, id_list, True), dash.no_update
-        elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
-            id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
-                        mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
-            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
-                gating_label_children(True, gating_dict, cur_gate_selection, id_list), reset_custom_gate_slider(ctx.triggered_id)
-        return [] if gating_dict is not None else dash.no_update, [], dash.no_update if cur_gate_selection else False
+        if None not in (mask_dict, mask_selection) and mask_selection in mask_dict:
+            if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
+            elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
+                return SessionServerside(custom_gating_id_list(id_str), key="gating_cell_id_list", use_unique_key=OVERWRITE), dash.no_update
+            elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
+                id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                                mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
+                return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), reset_custom_gate_slider(ctx.triggered_id)
+            return [] if gating_dict is not None else dash.no_update, dash.no_update if cur_gate_selection else False
+        raise PreventUpdate
+
+    @dash_app.callback(Output('gating-param-display', 'children'),
+                       Input('gating-cell-list', 'data'),
+                       State('mask-options', 'value'),
+                       State('mask-dict', 'data'),
+                       Input('annotation_canvas', 'relayoutData'),
+                       State('apply-gating-custom', 'value'),
+                       State('gating-dict', 'data'),
+                       State('gating-channel-options', 'value'),
+                       Input('apply-gating', 'value'))
+    def update_gating_obj_display(gating_obj_list, mask_selection, mask_dict, canvas_layout, apply_cust_gating,
+                                  gating_dict, cur_gate_selection, show_gating):
+        """
+        Update the gating object number display
+        """
+        if None not in (gating_obj_list, mask_selection, mask_dict):
+            gating_zoom_subset = GatingZoomSubset(mask_dict[mask_selection]['raw'], canvas_layout, show_gating).generate_list(gating_obj_list)
+            return gating_label_children((not apply_cust_gating), gating_dict, cur_gate_selection, gating_obj_list,
+                                          apply_cust_gating, gating_zoom_subset)
+        raise PreventUpdate
 
     @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
                        State('gating-dict', 'data'),
