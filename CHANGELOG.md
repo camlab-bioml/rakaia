@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.22.0] - 2025-01-22
+## [0.22.0] - 2025-01-23
 
 ### Changed
 
@@ -33,7 +33,7 @@ auto-detected): includes spatial datasets and extended to mcd & tiff
 - module docstrings
 - hot pixel filter (hpf) difference for region summary statistics as additional column per channel #116
 - auto-detect frozen application (support for `pyinstaller`)
-- Input to apply gating to all quantified ROIs
+- Input to apply or reset gating annotation to all quantified ROIs
 - UMAP min distance input from 0 to 1
 - Standalone build docs converted to pyinstaller from pyapp
 - UMAP gallery modal for UMAP min distance plots from `steinbock` snakemake pipeline output

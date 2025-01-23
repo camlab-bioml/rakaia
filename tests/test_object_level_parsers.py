@@ -322,6 +322,33 @@ def test_gating_cell_ids(get_current_dir):
     breakdown = apply_all['gating_test'].value_counts().to_dict()
     assert int(breakdown['threshold_1']) == len(all_indices)
 
+    # Apply a second category to all, then remove both gate annotations
+
+    gating_dict_2 = {'191Ir_DNA1': {'lower_bound': 0.25, 'upper_bound': 0.4},
+                   '168Er_Ki67': {'lower_bound': 0.7, 'upper_bound': 1}}
+    gating_objects_2 = GatingObjectList(gating_dict_2, gating_selection, measurements_csv, "test_1_mask")
+    cell_ids_2 = gating_objects_2.get_object_list()
+    # test 1 has only cells up to 203, so can enforce that only one ROI was used
+    assert len(cell_ids_2) < len(cell_ids)
+    assert len(cell_ids_2) > 0
+    all_indices_2 = gating_objects_2.get_query_indices_all()
+
+    apply_all_2 = apply_gating_to_all_rois(apply_all, all_indices_2, 'gating_test',
+                                         'threshold_2', as_dict=False)
+
+    assert len(apply_all_2['gating_test'].value_counts()) == 3
+    assert 'threshold_2' in list(apply_all_2['gating_test'].value_counts().to_dict().keys())
+
+    remove_last = apply_gating_to_all_rois(apply_all_2, all_indices_2, 'gating_test',
+                                'threshold_2', reset_to_default=True, as_dict=False)
+    assert len(remove_last['gating_test'].value_counts()) == 2
+    assert 'threshold_2' not in list(remove_last['gating_test'].value_counts().to_dict().keys())
+
+    remove_all = apply_gating_to_all_rois(remove_last, all_indices, 'gating_test',
+                                           'threshold_1', reset_to_default=True, as_dict=False)
+    assert len(remove_all['gating_test'].value_counts()) == 1
+    assert list(remove_all['gating_test'].value_counts().to_dict().keys()) == ['Unassigned']
+
     no_change = apply_gating_to_all_rois(measurements_csv, all_indices, None, None)
     assert 'gating_test' not in list(pd.DataFrame(no_change).columns)
 

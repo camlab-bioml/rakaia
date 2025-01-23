@@ -762,9 +762,10 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('gating-blend-type', 'value'),
                        State('quant-annotation-col-gating', 'value'),
                        State('gating-annotation-assignment', 'value'),
-                       Input('gating-annotation-all', 'n_clicks'))
+                       Input('gating-annotation-all', 'n_clicks'),
+                       Input('gating-annotation-all-reset', 'n_clicks'))
     def apply_gating_all_rois(gating_dict, roi_selection, quantification_dict, mask_selection,
-                    cur_gate_selection, gating_type, gate_col, gate_val, gate_all_rois_trigger):
+                    cur_gate_selection, gating_type, gate_col, gate_val, gate_all_rois_trigger, reset_gate_all):
         """
         Gate all the quantified ROIs in the session based on the gating parameters and thresholds
         set for the current ROI.
@@ -772,8 +773,8 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (roi_selection, quantification_dict, mask_selection, gate_val) and cur_gate_selection:
             indices = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
                 mask_selection, intersection=(gating_type == 'intersection')).get_query_indices_all()
-            return SessionServerside(apply_gating_to_all_rois(quantification_dict, indices, gate_col, gate_val),
-                              key="quantification_dict", use_unique_key=OVERWRITE)
+            return SessionServerside(apply_gating_to_all_rois(quantification_dict, indices, gate_col, gate_val,
+            reset_to_default=(ctx.triggered_id == "gating-annotation-all-reset")), key="quantification_dict", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
 

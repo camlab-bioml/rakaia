@@ -752,11 +752,14 @@ def apply_gating_to_all_rois(quantification: Union[dict, pd.DataFrame],
                              annotation_col: str,
                              annotation_val: str,
                              annotation_default: str='Unassigned',
+                             reset_to_default: bool=False,
                              as_dict: bool=True):
     """
     Apply the current session gating to all ROIs. Assumes that the indices for all objects in the gating threshold
-    are taken from `GatingObjectList.get_query_indices_all` and passed as gating indices
+    are taken from `GatingObjectList.get_query_indices_all` and passed as gating indices. Use `reset_to_default` to
+    reset an existing gating annotation to the default
     """
+    annotation_val = annotation_val if not reset_to_default else annotation_default
     quantification = pd.DataFrame(quantification)
     if annotation_col and annotation_col not in quantification.columns:
         quantification[annotation_col] = annotation_default

@@ -112,8 +112,7 @@ class ChannelGradient:
 
         :param gradient: String identifier for the gradient to apply
 
-        :return: Channel array with the gradient applied as either greyscale float32 or
-        RGB
+        :return: Channel array with the gradient applied as either greyscale float32 or RGB
         """
         try:
             return partial(getattr(self,
