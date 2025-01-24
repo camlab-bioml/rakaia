@@ -28,6 +28,9 @@ SPECTRUM_COLS = {"blue_gold":
         (1, "blue")]}
 
 def apply_map(tile_array: np.array, mapping: LinearSegmentedColormap):
+    """
+    Apply a linear segmented colormap to a channel image array. Returns an RGB recoloured with the gradient
+    """
     # tile_array = np.array(Image.fromarray(tile_array).convert('L')) if (
     #         len(tile_array.shape) > 2) else tile_array
 
@@ -45,7 +48,7 @@ def apply_map(tile_array: np.array, mapping: LinearSegmentedColormap):
 
 class ChannelGradient:
     """
-    Apply a grey scale or RGB color map gradient oto the expression values for a single
+    Apply a grey scale or RGB color map gradient to the expression values for a single
     channel array. Colormaps include rainbow, blue gold, and jet (rainbow reversed).
 
     :param channel_array: The 2D image array to process

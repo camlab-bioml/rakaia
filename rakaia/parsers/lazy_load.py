@@ -43,6 +43,7 @@ class SingleMarkerLazyLoader:
 
     :return: None
     """
+    # defines the file types that are currently supported for single channel lazy loading
     MATCHES = {".mcd": "mcd", ".h5ad": "h5ad", ".tiff": "tiff"}
 
     def __init__(self, image_dict: dict, data_selection: str,

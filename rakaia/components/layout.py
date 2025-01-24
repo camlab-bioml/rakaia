@@ -1,6 +1,8 @@
 """Module containing the primary function to return the application layout
 as an `html.Div`"""
 
+from typing import Union
+from pathlib import Path
 from dash import dash_table
 import dash_uploader as du
 from dash_extensions import EventListener
@@ -22,7 +24,10 @@ from rakaia.utils.pixel import default_picker_swatches
 from rakaia.utils.region import RegionStatisticGroups
 from rakaia.plugins import PluginDescriptors
 
-def register_app_layout(config, cache_dest):
+def register_app_layout(config: dict, cache_dest: Union[str, Path]):
+    """
+    Define the application UI layout using user-defined CLI arguments
+    """
 
     # set the default colours for the swatches from the config input
     DEFAULT_SWATCHES = default_picker_swatches(config)

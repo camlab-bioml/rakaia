@@ -99,7 +99,8 @@ from rakaia.utils.filter import (
     get_current_channel_blend_params,
     get_current_or_default_channel_color,
     get_current_default_params_with_preset,
-    apply_filter_to_channel, set_blend_parameters_for_channel, set_slider_lower_bound_default,
+    apply_filter_to_channel, set_blend_parameters_for_channel,
+    set_slider_lower_bound_default,
     set_slider_upper_bound_default)
 from rakaia.callbacks.triggers import (
     no_canvas_mask,
@@ -539,8 +540,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if not image_dict[data_selection] or any(image_dict[data_selection][elem] is None for elem in add_to_layer):
                     image_dict = SingleMarkerLazyLoader(image_dict, data_selection, session_dict,
                                 add_to_layer, spatial_spot_size, delimiter).get_image_dict()
-                    # image_dict = check_spot_grid_multi_channel(image_dict, data_selection,
-                    # parse_files_for_lazy_loading(session_dict, data_selection, delimiter), add_to_layer, spatial_spot_size)
                     uploaded_return = SessionServerside(image_dict, key="upload_dict", use_unique_key=OVERWRITE)
                 channel_modify = dash.no_update
                 if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}
@@ -620,9 +619,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
                     # if upper and lower bounds have been set before for this layer, use them before recolouring
-                    if current_blend_dict[layer]['x_lower_bound'] is not None and \
-                            current_blend_dict[layer]['x_upper_bound'] is not None:
-                        array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
+                    # TODO: check the logic here
+                    current_blend_dict[layer]['x_lower_bound'] = set_slider_lower_bound_default(current_blend_dict[layer]['x_lower_bound'])
+                    current_blend_dict[layer]['x_upper_bound'] = set_slider_upper_bound_default(current_blend_dict[layer]['x_upper_bound'])
+                    array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
                                                                 float(current_blend_dict[layer]['x_upper_bound']))
                     array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
                     current_blend_dict[layer]['color'] = colour['hex']
@@ -723,12 +723,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # do not update if all the channels are not in the channel dict
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in cur_layers for elem in blend_options]):
-
-                    if current_blend_dict[layer]['x_lower_bound'] is not None and \
-                            current_blend_dict[layer]['x_upper_bound'] is not None:
-                        array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
+                    # TODO: check logic here
+                    current_blend_dict[layer]['x_lower_bound'] = set_slider_lower_bound_default(current_blend_dict[layer]['x_lower_bound'])
+                    current_blend_dict[layer]['x_upper_bound'] = set_slider_upper_bound_default(current_blend_dict[layer]['x_upper_bound'])
+                    array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
                                                                 float(current_blend_dict[layer]['x_upper_bound']))
-
                     if len(filter_chosen) > 0 and filter_name is not None:
                         array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
                         current_blend_dict = set_blend_parameters_for_channel(current_blend_dict, layer,
@@ -741,6 +740,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     rgb_layers[data_selection][layer] = np.array(recolour_greyscale(array,
                                                         current_blend_dict[layer]['color'])).astype(np.uint8)
                     return current_blend_dict, SessionServerside(rgb_layers, key="layer_dict", use_unique_key=OVERWRITE)
+                raise PreventUpdate
             raise PreventUpdate
         raise PreventUpdate
 
