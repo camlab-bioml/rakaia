@@ -612,22 +612,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the blend dictionary and layer dictionary when a modification channel changes its colour
         """
-        if None not in (layer, current_blend_dict, data_selection) and image_dict[data_selection] and \
-                layer in image_dict[data_selection]:
+        if None not in (layer, current_blend_dict, data_selection) and image_dict[data_selection] and layer in image_dict[data_selection]:
             array = image_dict[data_selection][layer]
             if current_blend_dict[layer]['color'] != colour['hex']:
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in add_to_layer for elem in blend_options]):
                     # if upper and lower bounds have been set before for this layer, use them before recolouring
-                    # TODO: check the logic here
-                    current_blend_dict[layer]['x_lower_bound'] = set_slider_lower_bound_default(current_blend_dict[layer]['x_lower_bound'])
-                    current_blend_dict[layer]['x_upper_bound'] = set_slider_upper_bound_default(current_blend_dict[layer]['x_upper_bound'])
-                    array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
-                                                                float(current_blend_dict[layer]['x_upper_bound']))
+                    current_blend_dict[layer]['x_lower_bound'] = set_slider_lower_bound_default(
+                        current_blend_dict[layer]['x_lower_bound'])
+                    current_blend_dict[layer]['x_upper_bound'] = set_slider_upper_bound_default(
+                        current_blend_dict[layer]['x_upper_bound'], array)
+                    array = filter_by_upper_and_lower_bound(array,
+                                                            float(current_blend_dict[layer]['x_lower_bound']),
+                                                            float(current_blend_dict[layer]['x_upper_bound']))
                     array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
                     current_blend_dict[layer]['color'] = colour['hex']
-                    rgb_layers[data_selection][layer] = np.array(recolour_greyscale(array, colour['hex'])).astype(np.uint8)
-                    return current_blend_dict, SessionServerside(rgb_layers, key="layer_dict", use_unique_key=OVERWRITE)
+                    rgb_layers[data_selection][layer] = np.array(recolour_greyscale(array, colour['hex'])).astype(
+                        np.uint8)
+                    return current_blend_dict, SessionServerside(rgb_layers, key="layer_dict",
+                                                                 use_unique_key=OVERWRITE)
                 raise PreventUpdate
             raise PreventUpdate
         raise PreventUpdate
@@ -723,9 +726,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # do not update if all the channels are not in the channel dict
                 blend_options = [elem['value'] for elem in blend_options]
                 if all([elem in cur_layers for elem in blend_options]):
-                    # TODO: check logic here
                     current_blend_dict[layer]['x_lower_bound'] = set_slider_lower_bound_default(current_blend_dict[layer]['x_lower_bound'])
-                    current_blend_dict[layer]['x_upper_bound'] = set_slider_upper_bound_default(current_blend_dict[layer]['x_upper_bound'])
+                    current_blend_dict[layer]['x_upper_bound'] = set_slider_upper_bound_default(
+                        current_blend_dict[layer]['x_upper_bound'], array)
                     array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
                                                                 float(current_blend_dict[layer]['x_upper_bound']))
                     if len(filter_chosen) > 0 and filter_name is not None:
