@@ -1712,6 +1712,8 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id='saved-blends'),
         dcc.Store(id='custom-metadata'),
         dcc.Store(id='image-prioritization-cor'),
+        # used as a boolean placeholder to prevent appended ROI gallery children from triggering key events
+        dcc.Store(id='roi_gallery_allow_click'),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),

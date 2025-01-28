@@ -62,7 +62,7 @@ def default_picker_swatches(config):
     """
     Return a list of default swatches for the mantine ColorPicker based on the contents of the config
     """
-    DEFAULTS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
+    DEFAULTS = ["#FF0000", "#00FF00", "#0000FF", "#00FFFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
     try:
         # set the split based on if the swatches are given as a string or list
         if isinstance(config['swatches'], str):

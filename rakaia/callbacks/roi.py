@@ -46,6 +46,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('main-tabs', 'active_tab', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('download-roi-tiles', 'data'),
+                       Output('roi_gallery_allow_click', 'data'),
                        Input('btn-download-roi-tiles', 'n_clicks'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -94,10 +95,11 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # do not execute query if triggered from the quantification tab and no sample indices exist
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
         no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
+        allow_click = True
         if ctx.triggered_id == "btn-download-roi-tiles" and existing_gallery:
             return (dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update,
                     dcc.send_file(gallery_export_template(os.path.join(export_roi, 'rois.html'),
-                            channel_tiles_from_gallery(existing_gallery), 3)))
+                            channel_tiles_from_gallery(existing_gallery), 3)), allow_click)
         elif None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not \
             quant_empty and len(currently_selected) > 0 and not no_similarity_scores and ctx.triggered_id != "btn-download-roi-tiles":
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
@@ -112,7 +114,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # if the query is being extended, append on top of the existing gallery
             if ctx.triggered_id == "dataset-query-additional-load" and load_additional > 0:
                 # cant use existing gallery, need to somehow get the names in the current gallery and remake
-                rois_exclude, row_children = rois_exclude, existing_gallery
+                rois_exclude, row_children, allow_click = rois_exclude, existing_gallery, False
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
             currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
@@ -124,24 +126,26 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id == "dataset-query-additional-load": roi_list = list(set(rois_exclude + roi_list))
             roi_list.append(data_selection)
             row_children = row_children + new_row_children if row_children else new_row_children
-            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update, dash.no_update
+            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update, dash.no_update, allow_click
         error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_query"])
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update
 
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),
         Output('main-tabs', 'active_tab', allow_duplicate=True),
+        Output('roi_gallery_allow_click', 'data', allow_duplicate=True),
         Input({'type': 'data-query-gallery', "index": ALL}, "n_clicks"),
         State('data-collection', 'options'),
         State('data-collection', 'value'),
+        State('roi_gallery_allow_click', 'data'),
         prevent_initial_call=True)
-    def load_roi_through_query_click(roi_query, dataset_options, current_roi):
-        if dataset_options is not None and not all([elem is None for elem in roi_query]):
+    def load_roi_through_query_click(roi_query, dataset_options, current_roi, allow_click):
+        if dataset_options is not None and not all([elem is None for elem in roi_query]) and allow_click:
             index_from = ctx.triggered_id["index"]
             if index_from in dataset_options and index_from != current_roi:
-                return index_from, "pixel-analysis"
-            raise PreventUpdate
-        raise PreventUpdate
+                return index_from, "pixel-analysis", True
+            return dash.no_update, dash.no_update, True
+        return dash.no_update, dash.no_update, True
 
     @dash_app.callback(
         Output('quantification-dict', 'data', allow_duplicate=True),
