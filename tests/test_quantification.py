@@ -167,7 +167,7 @@ def test_gating_object_lists_zoom(get_current_dir):
 
     objs_in_zoom = GatingZoomSubset(mask, graph_layout).generate_list(obj_list)
     assert all(int(elem) in obj_list for elem in objs_in_zoom)
-    assert len(objs_in_zoom) < len(obj_list)
+    assert 13 == len(objs_in_zoom) < len(obj_list)
 
     assert GatingZoomSubset(mask, {}).generate_list(obj_list) is None
     assert GatingZoomSubset(None, graph_layout).generate_list(obj_list) is None

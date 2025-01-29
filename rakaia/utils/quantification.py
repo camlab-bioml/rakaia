@@ -179,7 +179,7 @@ class GatingZoomSubset:
                 'yaxis.range[0]', 'yaxis.range[1]']) and self.show_gating:
             x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(self.layout, cast_type=int)
             mask_subset = self.mask[y_low:y_high, x_low:x_high]
-            return [obj_in for obj_in in list(np.unique(mask_subset)) if obj_in in obj_list]
+            return list(set(list(np.unique(mask_subset))).intersection(set(obj_list)))
         return None
 
     def generate_list(self, obj_list: Union[list, None]):
