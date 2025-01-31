@@ -1372,10 +1372,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input("pixel-hist-collapse", "is_open"),
                        State('pixel-intensity-slider', 'value'),
                        Input('custom-slider-max', 'value'),
+                       Input('allow_update_hist', 'data'),
                        prevent_initial_call=True)
     def update_pixel_histogram_and_intensity_sliders(selected_channel, image_dict, data_selection,
                                                      current_blend_dict, show_pixel_hist, cur_slider_values,
-                                                     custom_max):
+                                                     custom_max, allow_update):
         """
         Create pixel histogram and output the default percentiles
         """
@@ -1383,7 +1384,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # collapse is triggered by this object to prevent the pixel histogram from being empty on an ROI change
         if (None not in (selected_channel, image_dict, data_selection, current_blend_dict) and
             data_selection in image_dict and image_dict[data_selection] and selected_channel in image_dict[data_selection]
-                and image_dict[data_selection][selected_channel] is not None):
+                and image_dict[data_selection][selected_channel] is not None) and allow_update:
             blend_return, hist_open = dash.no_update, dash.no_update
             try:
                 if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend", "blending_colours"]:
@@ -1484,6 +1485,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('kernel-val-filter', 'value'),
                        Output('sigma-val-filter', 'value'),
                        Output("annotation-color-picker", 'value'),
+                       Output('allow_update_hist', 'data'),
                        Input('images_in_blend', 'value'),
                        State('data-collection', 'value'),
                        Input('blending_colours', 'data'),
@@ -1514,13 +1516,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             filter_val_return = get_current_or_default_filter_param(cur_filter_val, filter_val)
             filter_sigma_return = get_current_or_default_filter_param(cur_filter_sigma, filter_sigma)
             color_return = get_current_or_default_channel_color(cur_colour, color, col_autofill)
-            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return, True
         if ctx.triggered_id in ['preset-options'] and None not in \
                 (preset_selection, preset_dict, selected_channel, data_selection, current_blend_dict):
             filter_type, filter_val, filter_sigma, color = get_current_channel_blend_params(current_blend_dict, selected_channel)
             to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return = \
                 get_current_default_params_with_preset(filter_type, filter_val, filter_sigma, color)
-            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return
+            return to_apply_filter, filter_type_return, filter_val_return, filter_sigma_return, color_return, True
         raise PreventUpdate
 
     @dash_app.callback(Output('sigma-val-filter', 'disabled'),

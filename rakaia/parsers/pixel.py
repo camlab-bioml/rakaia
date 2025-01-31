@@ -33,15 +33,18 @@ class NoAcquisitionsParsedError(Exception):
 
 def roi_requires_single_marker_load(pixel_counter: Union[np.array, np.ndarray, int],
                                     panel_length: int,
-                                    pixel_threshold: int=20000000, panel_size_threshold: int=50):
+                                    lower_pixel_threshold: int=20000000, panel_size_threshold: int=50,
+                                    upper_pixel_threshold: int=100000000):
     """
     Determines if an ROI is sufficiently large to require single marker loading. For example, if the channel array
     provided has more total pixels than `pixel_threshold` and is part of a panel size that is
     greater than `panel_size_threshold` (these ROIs typically will not fit in most memory).
+    or if a single ROI dimension has more pixels than a 10000x10000 image
     """
-    pixel_counter = int(pixel_counter.shape[0] * pixel_counter.shape[1]) if not \
-    isinstance(pixel_counter, int) else pixel_counter
-    return pixel_counter >= pixel_threshold and panel_length >= panel_size_threshold
+    pixel_counter = int(pixel_counter.shape[0] * pixel_counter.shape[1]) if (
+    isinstance(pixel_counter, np.ndarray)) else int(pixel_counter)
+    return (pixel_counter >= lower_pixel_threshold and panel_length >= panel_size_threshold) or (
+        pixel_counter >= upper_pixel_threshold)
 
 class FileParser:
     """

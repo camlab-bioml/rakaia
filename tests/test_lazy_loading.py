@@ -15,6 +15,8 @@ def test_requirements_single_marker_lazy_load():
     assert not roi_requires_single_marker_load(np.zeros((1000, 1000)), 1000)
     assert not roi_requires_single_marker_load(10000, 100)
 
+    assert roi_requires_single_marker_load(2e10, 1)
+
 def test_lazy_loading_single_marker_mcd(get_current_dir):
     parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
     uploaded_dict = parser.image_dict
