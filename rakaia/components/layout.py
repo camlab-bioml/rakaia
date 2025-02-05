@@ -1665,7 +1665,11 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                margin=dict(l=5, r=5, b=15, t=20, pad=0))},
                                         responsive=True, config={'displaylogo': False})]),
                                     )),
-                ])
+                ]),
+                dbc.Tab(label='H & E', id='osd-tab', tab_id='coregister', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                        children = [html.B("H & E co-registered image"),
+                                    html.Br(),
+                                    html.Div(id='openseadragon-container')])
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),
         dcc.Store(id="uploaded_dict"),
