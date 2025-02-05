@@ -1,3 +1,8 @@
+"""Module containing the primary function to return the application layout
+as an `html.Div`"""
+
+from typing import Union
+from pathlib import Path
 from dash import dash_table
 import dash_uploader as du
 from dash_extensions import EventListener
@@ -8,7 +13,7 @@ from plotly.graph_objs.layout import YAxis, XAxis
 from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
-from rakaia.entrypoint import __version__
+from rakaia import __version__
 from rakaia.utils.alert import DataImportTour, ToolTips
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
@@ -19,7 +24,10 @@ from rakaia.utils.pixel import default_picker_swatches
 from rakaia.utils.region import RegionStatisticGroups
 from rakaia.plugins import PluginDescriptors
 
-def register_app_layout(config, cache_dest):
+def register_app_layout(config: dict, cache_dest: Union[str, Path]):
+    """
+    Define the application UI layout using user-defined CLI arguments
+    """
 
     # set the default colours for the swatches from the config input
     DEFAULT_SWATCHES = default_picker_swatches(config)
@@ -42,7 +50,7 @@ def register_app_layout(config, cache_dest):
                               "max-width": "none", "max-height": "none"}),
         dbc.Modal(children=dbc.ModalBody([html.H6(TabText().dataset_preview),
                 html.Div([dash_table.DataTable(id='dataset-preview-table', columns=[], data=None,
-                                     style_table={"max-width": "inherit"},
+                                     style_table={"max-width": "inherit", "overflowX": "auto"},
                 editable=False, filter_action='native', row_selectable='single', column_selectable='single')],
                 style={"max-width": "2000px"}),
                 html.Br(),
@@ -380,6 +388,7 @@ def register_app_layout(config, cache_dest):
                                                               editable=False, filter_action='native',
                                                               row_selectable='single',
                                                               column_selectable='single',
+                                                      style_table={"max-width": "100%", "overflowX": "auto"}
                                                       )]),
                                 id='db-config-preview', size='xl'),
                                 html.Br(),
@@ -389,7 +398,7 @@ def register_app_layout(config, cache_dest):
                                 html.Div([
                                 dbc.Input(type="text", id="db-config-name", placeholder="Enter configuration name",
                                                   style={"width": "75%"}),
-                                dbc.FormText("Set the name of the current configuration to save to the database",
+                                dbc.FormText("Set the name of the current configuration to save or remove.",
                                 color="secondary"),
                                     ], className="mb-3"),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-database",
@@ -798,9 +807,9 @@ def register_app_layout(config, cache_dest):
                                         style={"display": "flex", "margin": "20px"}),
                                     html.Div([dcc.Checklist(options=[' Apply/refresh filter'], value=[],
                                                             id="bool-apply-filter", style={"width": "100%",
-                                                            "accent-color": DEFAULT_WIDGET_COLOUR}),
+                                                            "accent-color": DEFAULT_WIDGET_COLOUR, "margin": "5px"}),
                                               dcc.Dropdown(['median', 'gaussian'], 'median', id='filter-type',
-                                                           style={"width": "85%", "display": "inline-block"}),
+                                                           style={"width": "100%", "display": "inline-block"}),
                                               dcc.Input(id="kernel-val-filter", type="number", value=3,
                                                         style={"width": "50%"},
                                                         min=0, max=9, step=1, debounce=True),
@@ -827,7 +836,7 @@ def register_app_layout(config, cache_dest):
                                         html.Br(),
                                         html.Div([
                                                   html.Div(
-                                                      [html.H6("Scalebar length (unzoomed)", style={'width': '75%',
+                                                      [html.H6("Scalebar (px, un-zoomed)", style={'width': '75%',
                                                         "margin-left": "30px"}),
                                                        dcc.Input(id="custom-scale-val", type="number", value=None,
                                                                  style={"width": "60%", "margin-left": "30px"},
@@ -940,8 +949,7 @@ def register_app_layout(config, cache_dest):
                                                 html.H6("Set gating categories (single/multiple)"),
                                                 dcc.Dropdown(id='gating-channel-options', multi=True,
                                                 placeholder='Gate objects on quantification/measurements',
-                                                options=[], style={'width': '100%', 'display': 'inline-block',
-                                                                    'margin-right': '-50'}),
+                                                options=[], style={'width': '100%', 'margin-right': '-50'}),
                                                 html.Br(),
                                                 html.Br(),
                                                 html.H6("Modify gating parameters (normalized range)"),
@@ -968,7 +976,8 @@ def register_app_layout(config, cache_dest):
                                                 labelPosition='bottom', value=False,
                                                 color=DEFAULT_WIDGET_COLOUR,
                                                 style={"width": "40%", "margin-left": "-10px", "margin-top": "2.5px"}),
-                                                html.H6(children=[], id="gating-param-display", style={"width": "60%"}),
+                                                html.H6(children=[], id="gating-param-display", style={"width": "55%",
+                                                'overflow-wrap': 'anywhere'}),
                                                 ], style={"display": "flex", "width": "100%", "justifyContent": "center"}),
                                             html.Br(),
                                             html.Div([
@@ -992,11 +1001,22 @@ def register_app_layout(config, cache_dest):
                                             style={"justifyContent": "center", "display": "flex"}),
                                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-layer-group",
                                             style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                                            html.Div("Create gating annotation")], style={"display": "flex"}),
+                                            html.Div("Annotate gating selection (current ROI only)")], style={"display": "flex"}),
                                             id="gating-annotation-create", className="mx-auto", color=None, n_clicks=0,
                                             style={"margin-top": "10px"}),
                                             html.Br(),
-                                            ]),
+                                            dbc.Button(children=html.Span([html.I(className="fa-solid fa-layer-group",
+                                            style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                            html.Div("Annotate gating selection (all ROIs)")], style={"display": "flex"}),
+                                            id="gating-annotation-all", className="mx-auto", color=None,
+                                            n_clicks=0, style={"margin-top": "10px"}),
+                                            html.Br(),
+                                            dbc.Button(children=html.Span([html.I(className="fa-solid fa-refresh",
+                                            style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                            html.Div("Reset gating selection (all ROIs)")],
+                                            style={"display": "flex"}),
+                                            id="gating-annotation-all-reset", className="mx-auto", color=None,
+                                            n_clicks=0, style={"margin-top": "10px"})]),
                                 ]),
                                 dbc.Tab(label='Marker/blend', label_style={"color": DEFAULT_WIDGET_COLOUR},
                                             children=[
@@ -1048,7 +1068,8 @@ def register_app_layout(config, cache_dest):
                                 style={'width': '75%'}),
                                 html.Div([dash_table.DataTable(id='selected-area-table',
                                 columns=[{'id': p, 'name': p} for p in RegionStatisticGroups.columns],
-                                data=None)], style={"width": "100%"}, className="region-stats")]),
+                                data=None, style_table={"max-width": "inherit", "overflowX": "auto"})],
+                                         style={"width": "100%"}, className="region-stats")]),
                                 id="area-stats-collapse", is_open=False), style={"margin-bottom": "0px", "margin-top": "20px"}),
                                 html.Div([
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-layer-group",
@@ -1102,7 +1123,8 @@ def register_app_layout(config, cache_dest):
                                 dbc.Alert([], color='success', is_open=False, duration=1200, id='click-annotation-alert'),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dash_table.DataTable(id='annotation-table', columns=[], data=None, editable=False,
-                                filter_action='native', row_selectable='multi', column_selectable='multi'),
+                                filter_action='native', row_selectable='multi', column_selectable='multi',
+                                style_table={"max-width": "inherit", "overflowX": "auto"}),
                                 html.Br(),
                                 dbc.Button("Delete selected annotation(s)", id='delete-annotation-tabular',
                                            style={"background-color": DEFAULT_WIDGET_COLOUR}),
@@ -1259,7 +1281,8 @@ def register_app_layout(config, cache_dest):
                                 dbc.Button("Show cluster labels", id="toggle-cluster-labels",
                                 style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
                                 dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='clust-dist-table',
-                                columns=[], data=None, editable=False, filter_action='native')]),
+                                columns=[], data=None, editable=False, filter_action='native',
+                                style_table={"max-width": "inherit", "overflowX": "auto"})]),
                                 id="show-clust-dist-table", size='l'),
                                 dbc.Collapse(html.Div([
                                 html.Br(),
@@ -1302,7 +1325,7 @@ def register_app_layout(config, cache_dest):
                                       dbc.Button("Update from zoom", id="chan-gallery-zoom-update",
                                                  className="mb-3", color='dark', n_clicks=0, outline=True,
                                                  style={"margin-top": "10px", "height": "50%"}),
-                                    daq.ToggleSwitch(label='Default scaling',
+                                    daq.ToggleSwitch(label='Percentile scaling',
                                                      value=True,
                                                              id='default-scaling-gallery', labelPosition='bottom',
                                                              color=DEFAULT_WIDGET_COLOUR, style={"margin-left": "15px",
@@ -1317,6 +1340,10 @@ def register_app_layout(config, cache_dest):
                                                          color=DEFAULT_WIDGET_COLOUR,
                                                          style={"margin-right": "7px", "margin-top": "10px",
                                                                 "textAlign": "center"}),
+                                        dcc.Dropdown(id='chan-gallery-spectrum', multi=False, value=None,
+                                                     # TODO: potentially add back in jet, just the reverse of rainbow
+                                                     options=["rainbow", "blue gold", "greyscale"],
+                                        style={"width": "75%", "margin": "10px"}, placeholder="Choose gallery gradient"),
                                         dbc.Button(
                                             children=html.Span([html.I(className="fa-solid fa-circle-question",
                                                                        style={"display": "inline-block",
@@ -1329,8 +1356,8 @@ def register_app_layout(config, cache_dest):
                                                    "float": "left", "justifyContent": "left", "display": "flex"}),
                                     dbc.Tooltip(TabText().channel_tiles, target="gallery-help-hover",
                                                 placement='right')
-                                    ], style={"display": "flex", "width": "70%"}),
-                                    style={"display": "flex", "width": "70%"})],
+                                    ], style={"display": "flex", "width": "90%"}),
+                                    style={"display": "flex", "width": "90%"})],
                                            style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
                         dbc.Row(id="image-gallery-row")], style={"margin-top": "15px"}),
@@ -1370,7 +1397,7 @@ def register_app_layout(config, cache_dest):
                                         id="heatmap-config-button", className="mx-auto", color=None,
                                         n_clicks=0, style={"margin-top": "-5px", "justifyContent": "left"}),
                                 dbc.Modal(children=dbc.ModalBody([
-                                html.B("Plot settings"),
+                                html.B("Expression plot settings"),
                                 html.Br(),
                                 html.Br(),
                                 html.Div([
@@ -1395,9 +1422,19 @@ def register_app_layout(config, cache_dest):
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
                                     yaxis=YAxis(showticklabels=False), margin=dict(l=5, r=5, b=15,
                                     t=20, pad=0))}, responsive=False, config={'displaylogo': False}),
+                                    html.Br(),
+                                    dbc.Button(children=html.Span([html.I(className="fa-regular fa-chart-bar",
+                                    style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
+                                    html.Div("Select channels for expression plot/UMAP")],
+                                    style={"display": "flex", "margin-top": "-5px", "margin-left": "15px"}),
+                                    id="quant-channel-show", className="mx-auto", color=None,
+                                    n_clicks=0, style={"margin-top": "-5px", "justifyContent": "left"}),
+                                    dbc.Modal(dbc.ModalBody([
                                     dcc.Checklist(options=[], value=[], id="quant-heatmap-channel-list",
-                                    style={"margin-top": "12px", "accent-color": DEFAULT_WIDGET_COLOUR},
-                                    inline=True, labelStyle={"margin": "0.12rem"}),
+                                    style={"margin-top": "12px", "accent-color": DEFAULT_WIDGET_COLOUR,
+                                           'display': 'block'},
+                                    inline=True, labelStyle={"margin": "0.12rem", 'display': 'block'}),
+                                    ]), id='quant-channel-modal'),
                                     html.Br(),
                                     html.Br(),
                                 ]), width=6),
@@ -1433,14 +1470,24 @@ def register_app_layout(config, cache_dest):
                                                 "margin-top": "-5px", "margin-left": "30px", "float": "left",
                                                 "justifyContent": "left"}, color="dark", outline=True),
                                         ])])], style={"width": "auto"}),
+                                        html.H6("UMAP min distance", id='umap-min-dist-label'),
+                                        dbc.Tooltip(TOOLTIPS['umap_min_dist'], target="umap-min-dist-label"),
+                                        dcc.Input(type="number", value=0.1, id='umap-min-dist', style={"width": "25%"},
+                                                  min=0, max=1, step=0.01),
+                                        html.Br(),
+                                        dbc.Button("Load UMAP gallery from pipeline", id="umap-gal-pipeline", style={
+                                        "margin-top": "7.5px", "float": "left", "display": "inline-block",
+                                        "justifyContent": "left"}, color="dark", outline=True),
+                                        html.Br(),
+                                        html.Br(),
                                         html.Br(),
                                         html.H6("Add annotation to UMAP"),
                                         dcc.Input(id="annotation-col-quantification", type="text",
                                         value="", placeholder="New annotation category",
-                                        style={"width": "55%", "margin-right": "10px", "height": "100%",
+                                        style={"width": "52.5%", "margin-right": "10px", "height": "100%",
                                                "margin-top": "5px"}),
                                         dbc.Button("Add new category", id="add-annot-col-quantification",
-                                                       className="me-1", style={"margin-top": "10px",
+                                        className="me-1", style={"margin-top": "10px", "margin-bottom": "12.5px",
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
                                         dcc.Dropdown(id='quant-annotation-col-in-tab',
                                         multi=False, options=['object_annotation_1'],
@@ -1452,7 +1499,7 @@ def register_app_layout(config, cache_dest):
                                         dbc.Button("Annotate UMAP", id="create-annotation-umap",
                                             className="me-1", style={"margin-top": "10px",
                                             "background-color": DEFAULT_WIDGET_COLOUR}),
-                                        dbc.Button("Current overlay -> Cluster", id="overlay-to-clust",
+                                        dbc.Button("Apply overlay inside mask", id="overlay-to-clust",
                                             className="me-1", style={"margin-top": "10px",
                                             "background-color": DEFAULT_WIDGET_COLOUR}),
                                         dbc.Button("Image Similarity w/ overlay", id="compute-image-similarity",
@@ -1460,6 +1507,11 @@ def register_app_layout(config, cache_dest):
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
                                         ]),
                                         id="umap-config-modal", size='l'),
+                                    dbc.Modal(children=dbc.ModalBody([html.Div([
+                                    html.B("Select UMAP projection from pipeline"),
+                                    html.Br(),
+                                    dbc.Row(id="umap-gallery_row"),
+                                    ])]), id='umap-gallery-modal', size='xl'),
                                     dbc.Modal(children=dbc.ModalBody([html.Div([
                                     html.B("Choose plugin", style={"float": "left"}),
                                     html.Br(),
@@ -1496,7 +1548,8 @@ def register_app_layout(config, cache_dest):
                                         style={"float": "right", "justifyContent": "right", "margin-left": "15px"})
                                     ], width=5)])], style={"margin-top": "7.5px"}),
                                     dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='quant-dist-table',
-                                    columns=[], data=None, editable=False, filter_action='native')]),
+                                    columns=[], data=None, editable=False, filter_action='native',
+                                    style_table={"max-width": "inherit", "overflowX": "auto"})]),
                                     id="show-quant-dist-table", size='l'),
                                     html.Div([dcc.Graph(id="umap-plot", figure={'layout': dict(xaxis_showgrid=False,
                                     yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
@@ -1659,6 +1712,9 @@ def register_app_layout(config, cache_dest):
         dcc.Store(id='saved-blends'),
         dcc.Store(id='custom-metadata'),
         dcc.Store(id='image-prioritization-cor'),
+        # used as a boolean placeholder to prevent appended ROI gallery children from triggering key events
+        dcc.Store(id='roi_gallery_allow_click'),
+        dcc.Store(id='allow_update_hist', data=False),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),

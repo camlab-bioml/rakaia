@@ -1,3 +1,6 @@
+"""Module containing utility functions for marker quantification and object gating sets
+"""
+
 from typing import Union
 import numpy as np
 import pandas as pd
@@ -7,7 +10,8 @@ from steinbock.measurement.intensities import (
     measure_intensites)
 from steinbock.measurement.regionprops import measure_regionprops
 from rakaia.utils.object import validate_mask_shape_matches_image
-from rakaia.utils.pixel import split_string_at_pattern
+from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
+
 
 class DistributionTableColumns:
     """
@@ -145,9 +149,52 @@ def update_gating_dict_with_slider_values(current_gate_dict: dict=None, gate_sel
     current_gate_dict[gate_selected]['upper_bound'] = float(max(gating_vals))
     return current_gate_dict
 
+class GatingZoomSubset:
+    """
+    Subset a list of gated object ids to a current canvas zoom
+
+    :param mask: Current ROI mask selection with segmented objects as integers
+    :param canvas_layout: Dictionary containing the current `relayoutData` for the main canvas
+    :param show_gating: Whether the gating zoom subset should be computed or not. (Default: True)
+
+    :return: None
+    """
+    def __init__(self, mask: Union[np.array, None],
+                 canvas_layout: Union[dict, None],
+                 show_gating: bool=True):
+        self.mask = mask
+        self.layout = canvas_layout
+        self.show_gating = show_gating
+
+    def _gating_objects_in_zoom(self, obj_list: Union[list, None]=None):
+        """
+        Generate the list of gated object ids in the current view
+
+        :param obj_list: List of total gated objects in the current ROI
+
+        :return: list of objects (Subset of `obj_list` contained in the current zoom level)
+        """
+        if None not in (obj_list, self.layout) and self.mask is not None and \
+                all(elem in self.layout for elem in ['xaxis.range[0]', 'xaxis.range[1]',
+                'yaxis.range[0]', 'yaxis.range[1]']) and self.show_gating:
+            x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(self.layout, cast_type=int)
+            mask_subset = self.mask[y_low:y_high, x_low:x_high]
+            return list(set(list(np.unique(mask_subset))).intersection(set(obj_list)))
+        return None
+
+    def generate_list(self, obj_list: Union[list, None]):
+        """
+        Generate the list of gated object ids in the current view
+
+        :param obj_list: List of total gated objects in the current ROI
+
+        :return: list of objects (Subset of `obj_list` contained in the current zoom level)
+        """
+        return self._gating_objects_in_zoom(obj_list)
+
 def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
                           current_gating_params: list=None, object_id_list: Union[list, None]=None,
-                          from_custom_list: bool=False):
+                          from_custom_list: bool=False, zoom_obj_list: Union[list, None]=None):
     """
     Generate the HTML legend for the current parameters used for mask gating
     """
@@ -163,14 +210,24 @@ def gating_label_children(use_gating: bool = True, gating_dict: dict = None,
             except KeyError:
                 pass
         if object_id_list is not None and isinstance(object_id_list, list):
-            children.append(html.Span(f"{len(object_id_list)} objects"))
-        return children
+            children.append(html.Span(f"{len(object_id_list)} objects\n"))
+        return gating_label_zoom(children, zoom_obj_list)
     if from_custom_list and object_id_list:
         children = [html.B("Gating (custom ID list)\n",
                            style={"color": "black"}), html.Br(),
                     html.Span(f"{len(object_id_list)} objects")]
-        return children
+        return gating_label_zoom(children, zoom_obj_list)
     return []
+
+def gating_label_zoom(children: list, zoom_obj_list: list=None):
+    """
+    Append an `html.Span` displaying the number of gated objects in the current zoom
+    if ths lists exists.
+    """
+    if zoom_obj_list is not None:
+        return children + [html.Br(),
+                html.Span(f"\n({len(zoom_obj_list)} object(s) in view)")]
+    return children
 
 def limit_length_to_quantify(marker_list: list, size_threshold: int=1000):
     """

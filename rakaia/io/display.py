@@ -1,3 +1,7 @@
+"""Module containing tools and classes for variable display options such as
+region expression summary, preview texts, fullscreen canvas configuration, etc.
+"""
+
 import os
 import datetime
 from typing import Union
@@ -91,6 +95,7 @@ class RegionSummary:
         median_panel = []
         std_panel = []
         total_panel = []
+        hpf_panel = []
         aliases = []
         region = []
         region_index = 1
@@ -108,6 +113,7 @@ class RegionSummary:
                         median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
                         std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
                         total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
+                        hpf_panel.append(round(float(region_shape.compute_hot_pixel_difference()), 2))
                         aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                         region.append(region_index)
                     # option 2: if a closed form shape is drawn
@@ -120,6 +126,7 @@ class RegionSummary:
                         median_panel.append(round(float(region_shape.compute_pixel_median()), 2))
                         std_panel.append(round(float(region_shape.compute_pixel_dev()), 2))
                         total_panel.append(round(float(region_shape.compute_integrated_signal()), 2))
+                        hpf_panel.append(round(float(region_shape.compute_hot_pixel_difference()), 2))
                         aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
                         region.append(region_index)
                 region_index += 1
@@ -130,7 +137,8 @@ class RegionSummary:
                 pass
 
         layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
-                      'Median': median_panel, 'SD': std_panel, 'Total': total_panel, 'Region': region}
+                      'Median': median_panel, 'SD': std_panel, 'Total': total_panel, 'hpf':
+                          hpf_panel, 'Region': region}
         self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
 
@@ -149,6 +157,7 @@ class RegionSummary:
             median_panel = []
             std_panel = []
             total_panel = []
+            hpf_panel = []
             aliases = []
 
             for layer in self.selected_channels:
@@ -160,10 +169,11 @@ class RegionSummary:
                 median_panel.append(round(float(region.compute_pixel_median()), 2))
                 std_panel.append(round(float(region.compute_pixel_dev()), 2))
                 total_panel.append(round(float(region.compute_integrated_signal()), 2))
+                hpf_panel.append(round(float(region.compute_hot_pixel_difference()), 2))
                 aliases.append(self.aliases[layer] if layer in self.aliases.keys() else layer)
 
             layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
-                          'Median': median_panel, 'SD': std_panel, 'Total': total_panel}
+                          'Median': median_panel, 'SD': std_panel, 'hpf': hpf_panel, 'Total': total_panel}
             self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
         except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):

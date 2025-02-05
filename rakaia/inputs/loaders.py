@@ -1,5 +1,7 @@
-from typing import Union
+"""Functions associated with application loading, triggers, and responsive visual adjustments
+based on user-defined preferences"""
 
+from typing import Union
 import dash
 from dash import dcc
 from rakaia.io.session import SessionTheme
@@ -21,12 +23,14 @@ def reset_graph_data(graph):
         graph['data'] = []
     return graph
 
-def valid_key_trigger(key_listener: dict):
+def valid_key_trigger(trigger_id: str, key_listener: dict):
     """
     Specify the valid key codes that can be used for listening. Currently only the key codes for the left
     and right arrows are permitted (for ROI switching), and the up arrow for mask toggling
     """
-    return 'keyCode' in key_listener and key_listener['keyCode'] in [37, 38, 39]
+    if trigger_id == "keyboard-listener":
+        return 'keyCode' in key_listener and key_listener['keyCode'] in [37, 38, 39]
+    return True
 
 def mask_toggle_trigger(triggered_id, key_listener, key_events):
     try:

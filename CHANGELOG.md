@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.22.0] - 2025-01-31
+
+### Changed
+
+- Single marker lazy loading for very large ROIs (both large dimensions + many markers,
+auto-detected): includes spatial datasets and extended to mcd & tiff
+- Channel gallery warning when tiles aren't rendered (spatial or large ROI as above)
+- Update dependencies to address dependabot and `safety scan` vulnerabilities
+- prettify UMAPs #115
+- change setuptools requirements explicitly to `requirements.txt`
+- UMAP/heatmap channel selection to modal
+- Avoid UMAP patching when updating coordinates (to be compatible with UMAP gallery selection)
+
+### Fixed
+
+- Using prev or next ROI before a key listener has been initiated blocks the callback
+- Allow y-axis overflow for multiple gating selection dropdown
+- `pymongo` client uses `certifi.where()` for SSL certificate to be compatible with `pyinstaller`
+- `None` pixel intensity lower and upper bounds for channels on slider checked separately
+- Gallery autoscaling when using single channel view
+- Do not allow key event triggers from appending children to ROI gallery
+- specific order for filter/hist callbacks w/ autofill colours
+
+### Added
+
+- module docstrings
+- hot pixel filter (hpf) difference for region summary statistics as additional column per channel #116
+- auto-detect frozen application (support for `pyinstaller`)
+- Input to apply or reset gating annotation to all quantified ROIs
+- UMAP min distance input from 0 to 1
+- Standalone build docs converted to pyinstaller from pyapp
+- UMAP gallery modal for UMAP min distance plots from `steinbock` snakemake pipeline output
+- Import scaling JSON when reading pipeline directory (local path)
+- Spectrum filters on channel tiles (rainbow, blue gold)
+- Show gating objects within current zoom level
+
 ## [0.21.0] - 2024-11-21
 
 ### Added

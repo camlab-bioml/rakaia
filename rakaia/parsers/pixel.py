@@ -1,7 +1,13 @@
+"""Module containing functions and classes for parsing and validating raw images data
+file imports and defining internal raw data hash maps
+"""
+
 from pathlib import Path
 from typing import Union
 from functools import partial
 import os
+
+import dash
 import numpy as np
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
@@ -24,6 +30,21 @@ class NoAcquisitionsParsedError(Exception):
     """
     Passed when the session upload dictionary produces no viable ROIs
     """
+
+def roi_requires_single_marker_load(pixel_counter: Union[np.array, np.ndarray, int],
+                                    panel_length: int,
+                                    lower_pixel_threshold: int=20000000, panel_size_threshold: int=50,
+                                    upper_pixel_threshold: int=100000000):
+    """
+    Determines if an ROI is sufficiently large to require single marker loading. For example, if the channel array
+    provided has more total pixels than `pixel_threshold` and is part of a panel size that is
+    greater than `panel_size_threshold` (these ROIs typically will not fit in most memory).
+    or if a single ROI dimension has more pixels than a 10000x10000 image
+    """
+    pixel_counter = int(pixel_counter.shape[0] * pixel_counter.shape[1]) if (
+    isinstance(pixel_counter, np.ndarray)) else int(pixel_counter)
+    return (pixel_counter >= lower_pixel_threshold and panel_length >= panel_size_threshold) or (
+        pixel_counter >= upper_pixel_threshold)
 
 class FileParser:
     """
@@ -240,7 +261,9 @@ class FileParser:
             for page in tif.pages:
                 identifier = str("channel_" + str(multi_channel_index))
                 # tiff files could be RGB, so convert to greyscale for compatibility
-                self.image_dict[roi][identifier] = None if self.lazy_load else convert_rgb_to_greyscale(
+                self.image_dict[roi][identifier] = None if (self.lazy_load or
+                        roi_requires_single_marker_load(int(page.shape[0] * page.shape[1]),
+                        len(tif.pages))) else convert_rgb_to_greyscale(
                     page.asarray()).astype(set_array_storage_type_from_config(self.array_store_type))
                 # add in a generic description for the ROI per tiff file
                 if multi_channel_index == 1:
@@ -278,7 +301,7 @@ class FileParser:
         """
         Parse a mcd file.
 
-        :param mcd_filepath: path to a compatible tiff file.
+        :param mcd_filepath: path to a compatible mcd file.
         :return: None
         """
         with MCDFile(mcd_filepath) as mcd_file:
@@ -302,7 +325,8 @@ class FileParser:
                         self.check_for_valid_mcd_panel(acq, channel_labels)
                     channel_index = 0
                     for channel in acq.channel_names:
-                        self.image_dict[roi][channel] = None if self.lazy_load else channel.astype(
+                        self.image_dict[roi][channel] = None if (self.lazy_load or
+                        roi_requires_single_marker_load(channel, len(acq.channel_labels))) else channel.astype(
                                     set_array_storage_type_from_config(self.array_store_type))
                         self.append_channel_identifier_to_collection(channel_names[channel_index])
                         # add information about the ROI into the description list
@@ -319,11 +343,12 @@ class FileParser:
                     self.panel_length = len(acq.channel_labels) if self.panel_length is None else self.panel_length
                     acq_index += 1
                 slide_index += 1
+            mcd_file.close()
         self.experiment_index += 1
 
     def read_single_roi_from_mcd(self, mcd_filepath, internal_name, roi_name):
         """
-        Read a single ROI into the dictionary from an mcd file.
+        Read a single ROI into the dictionary from a .mcd file.
 
         :param mcd_filepath: path to a compatible tiff file.
         :param roi_name: When parsing mcd files and not using lazy loading, pass a single ROI name to pull from an mcd.
@@ -336,13 +361,30 @@ class FileParser:
                 for acq in slide_inside.acquisitions:
                     pattern = f"{str(acq.description)}_{str(acq.id)}"
                     if pattern == roi_name:
+                        self.image_dict = self.initialize_empty_mcd_single_read(self.image_dict,
+                                        internal_name, list(acq.channel_names))
                         channel_names = acq.channel_names
-                        channel_index = 0
-                        img = mcd_file.read_acquisition(acq, strict=False)
-                        for channel in img:
-                            self.image_dict[internal_name][channel_names[channel_index]] = channel.astype(
+                        if not roi_requires_single_marker_load(int(int(acq.metadata['MaxX']) * int(acq.metadata['MaxY'])),
+                                len(acq.channel_names)):
+                            channel_index = 0
+                            img = mcd_file.read_acquisition(acq, strict=False)
+                            for channel in img:
+                                self.image_dict[internal_name][channel_names[channel_index]] = channel.astype(
                                 set_array_storage_type_from_config(self.array_store_type))
-                            channel_index += 1
+                                channel_index += 1
+                        mcd_file.close()
+
+    @staticmethod
+    def initialize_empty_mcd_single_read(image_dict: dict, internal_name: str, channel_list: list):
+        """
+        Initialize an image dictionary for a single ROI parse prior to checking that it requires single marker
+        lazy loading.
+        """
+        if internal_name and channel_list and internal_name in image_dict:
+            for channel in channel_list:
+                image_dict[internal_name][channel] = None
+        return image_dict
+
 
     def check_for_valid_txt_panel(self, txt_channel_names, txt_channel_labels):
         """
@@ -474,7 +516,7 @@ def create_new_blending_dict(uploaded):
         current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
                                        'filter_type': None, 'filter_val': None, 'filter_sigma': None}
         current_blend_dict[channel]['color'] = '#FFFFFF'
-    return current_blend_dict
+    return current_blend_dict if current_blend_dict else dash.no_update
 
 
 def image_dict_from_lazy_load(dataset_selection: str, session_config: dict,
@@ -563,17 +605,6 @@ def check_empty_missing_layer_dict(current_layers: Union[dict, None], data_selec
     if current_layers is None or data_selection not in current_layers.keys():
         current_layers = {data_selection: {}}
     return current_layers
-
-def parse_files_for_h5ad(uploads: Union[list, dict], data_selection: str, delimiter: str="+++"):
-    """
-    Parse the list of uploaded filepaths and search for an h5ad extension (represents 10x Visium)
-    """
-    uploads = uploads['uploads'] if isinstance(uploads, dict) and 'uploads' in uploads else uploads
-    exp, slide, acq =  split_string_at_pattern(data_selection, delimiter)
-    for upload in uploads:
-        if upload.endswith('.h5ad') and exp in upload:
-            return upload
-    return None
 
 def set_current_channels(image_dict: dict, data_selection: str, current_selection: list):
     """

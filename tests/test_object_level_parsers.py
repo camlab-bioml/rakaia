@@ -9,6 +9,7 @@ import re
 from dash.exceptions import PreventUpdate
 from rakaia.parsers.object import (
     validate_incoming_measurements_csv,
+    validate_imported_csv_annotations,
     QuantificationFormatError,
     filter_measurements_csv_by_channel_percentile,
     get_quantification_filepaths_from_drag_and_drop,
@@ -29,7 +30,7 @@ from rakaia.parsers.object import (
     GatingObjectList,
     is_steinbock_intensity_anndata,
     quant_dataframe_to_anndata,
-    umap_transform)
+    umap_transform, apply_gating_to_all_rois)
 import anndata as adata
 
 def test_validation_of_measurements_csv(get_current_dir):
@@ -46,6 +47,12 @@ def test_validation_of_measurements_csv(get_current_dir):
     valid, err = validate_incoming_measurements_csv(measurements_csv)
     assert valid is not None
     assert err is None
+
+def test_validate_incoming_point_annotations(get_current_dir):
+    points = pd.read_csv(os.path.join(get_current_dir, 'point_annotations.csv'))
+    assert validate_imported_csv_annotations(points)
+    points.columns = ["ROI", "centroid-0", "centroid-1", "annot", "col"]
+    assert not validate_imported_csv_annotations(points)
 
 def test_filtering_channel_measurements_by_percentile(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -281,7 +288,7 @@ def test_vary_umap_transform(get_current_dir):
     assert scaled.shape == expr.shape
     assert pca.shape != scaled.shape
 
-    umap = umap_dataframe_from_quantification_dict(expr.sample(n = 100))
+    umap = umap_dataframe_from_quantification_dict(expr.sample(n = 100), min_dist=1)
     assert umap.value.shape == (100, 2)
 
 def test_csv_to_anndata(get_current_dir):
@@ -298,10 +305,53 @@ def test_gating_cell_ids(get_current_dir):
     gating_selection = ['191Ir_DNA1', '168Er_Ki67']
     gating_dict = {'191Ir_DNA1': {'lower_bound': 0.2, 'upper_bound': 0.4},
                    '168Er_Ki67': {'lower_bound': 0.5, 'upper_bound': 1}}
-    cell_ids = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1_mask").get_object_list()
+    gating_objects = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1_mask")
+    cell_ids = gating_objects.get_object_list()
     # test 1 has only cells up to 203, so can enforce that only one ROI was used
     assert max(cell_ids) < 203
     assert len(cell_ids) > 0
+
+    gating_objects_2 = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_2_mask")
+    cell_ids_2 = gating_objects_2.get_object_list()
+    all_indices = gating_objects.get_query_indices_all()
+    assert len(all_indices) == (len(cell_ids) + len(cell_ids_2))
+
+    # apply to all
+    apply_all = apply_gating_to_all_rois(measurements_csv, all_indices, 'gating_test',
+                                         'threshold_1', as_dict=False)
+    breakdown = apply_all['gating_test'].value_counts().to_dict()
+    assert int(breakdown['threshold_1']) == len(all_indices)
+
+    # Apply a second category to all, then remove both gate annotations
+
+    gating_dict_2 = {'191Ir_DNA1': {'lower_bound': 0.25, 'upper_bound': 0.4},
+                   '168Er_Ki67': {'lower_bound': 0.7, 'upper_bound': 1}}
+    gating_objects_2 = GatingObjectList(gating_dict_2, gating_selection, measurements_csv, "test_1_mask")
+    cell_ids_2 = gating_objects_2.get_object_list()
+    # test 1 has only cells up to 203, so can enforce that only one ROI was used
+    assert len(cell_ids_2) < len(cell_ids)
+    assert len(cell_ids_2) > 0
+    all_indices_2 = gating_objects_2.get_query_indices_all()
+
+    apply_all_2 = apply_gating_to_all_rois(apply_all, all_indices_2, 'gating_test',
+                                         'threshold_2', as_dict=False)
+
+    assert len(apply_all_2['gating_test'].value_counts()) == 3
+    assert 'threshold_2' in list(apply_all_2['gating_test'].value_counts().to_dict().keys())
+
+    remove_last = apply_gating_to_all_rois(apply_all_2, all_indices_2, 'gating_test',
+                                'threshold_2', reset_to_default=True, as_dict=False)
+    assert len(remove_last['gating_test'].value_counts()) == 2
+    assert 'threshold_2' not in list(remove_last['gating_test'].value_counts().to_dict().keys())
+
+    remove_all = apply_gating_to_all_rois(remove_last, all_indices, 'gating_test',
+                                           'threshold_1', reset_to_default=True, as_dict=False)
+    assert len(remove_all['gating_test'].value_counts()) == 1
+    assert list(remove_all['gating_test'].value_counts().to_dict().keys()) == ['Unassigned']
+
+    no_change = apply_gating_to_all_rois(measurements_csv, all_indices, None, None)
+    assert 'gating_test' not in list(pd.DataFrame(no_change).columns)
+
     cell_id_intersection = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1",
                                                       intersection=True).get_object_list()
     assert len(cell_ids) > len(cell_id_intersection)

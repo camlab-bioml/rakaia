@@ -1,3 +1,7 @@
+"""Module defining the primary function to render the application dashboard with
+user-specified session parameters provided through CLI
+"""
+
 import tempfile
 import shutil
 import os
@@ -50,6 +54,7 @@ def init_dashboard(server, authentic_id, config=None):
                         routes_pathname_prefix="/rakaia/",
                         suppress_callback_exceptions=True,
                         prevent_initial_callbacks=True)
+
         dash_app._favicon = 'rakaia.ico'
         dash_app.title = "rakaia"
         server.config['APPLICATION_ROOT'] = "/rakaia"
@@ -58,7 +63,7 @@ def init_dashboard(server, authentic_id, config=None):
 
         # Can configure a custom http request handler for public instances
         # https://github.com/fohrloop/dash-uploader/blob/dev/docs/dash-uploader.md#4-custom-handling-of-http-requests
-        du.configure_upload(dash_app, cache_dest)
+        du.configure_upload(dash_app, str(cache_dest))
 
     # for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
     # useful when serverside components can cache large stores much more effectively

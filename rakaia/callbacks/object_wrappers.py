@@ -1,3 +1,6 @@
+"""Advanced functions that support the callbacks associated with objects
+(masking, clustering, UMAP, annotation, etc.)"""
+
 from functools import partial
 from typing import Union
 import ast
@@ -12,7 +15,7 @@ from rakaia.utils.object import (
     populate_obj_annotation_column_from_obj_id_list,
     populate_obj_annotation_column_from_clickpoint,
     remove_annotation_entry_by_indices)
-from rakaia.utils.pixel import get_bounding_box_for_svgpath
+from rakaia.utils.pixel import get_bounding_box_for_svg_path
 from rakaia.components.canvas import CanvasLayout
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.utils.shapes import filter_annotation_shapes
@@ -188,7 +191,7 @@ class AnnotationQuantificationMerge:
         :param annotation: The ROI annotation dict
         :return: `pd.DataFrame` of quantification results with the annotated objects in the annotation category column
         """
-        x_min, x_max, y_min, y_max = get_bounding_box_for_svgpath(annotation)
+        x_min, x_max, y_min, y_max = get_bounding_box_for_svg_path(annotation)
         val_dict = {'xaxis.range[0]': x_min, 'xaxis.range[1]': x_max,
                     'yaxis.range[0]': y_max, 'yaxis.range[1]': y_min}
         return populate_object_annotation_column_from_bounding_box(

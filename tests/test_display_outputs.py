@@ -8,6 +8,7 @@ from rakaia.io.display import (
     annotation_preview_table,
     timestamp_download_child,
     empty_region_table)
+from rakaia.utils.region import FreeFormRegion
 import numpy as np
 import pandas as pd
 import tempfile
@@ -38,6 +39,7 @@ def test_generate_channel_statistics_dataframe():
     assert list(stats_1['Mean'] == [100, 300])
     assert list(stats_1['SD'] == [0.0, 0.0])
     assert list(stats_1['Total'] == [1100000.0, 3300000.0])
+    assert list(stats_1['hpf'] == [0.0, 0.0])
 
 
     # Second Option: when svg path is used for one channel
@@ -69,6 +71,7 @@ def test_generate_channel_statistics_dataframe():
     assert len(stats_2) == 1
     assert list(stats_2['Min']) == [200]
     assert list(stats_2['SD']) == [0]
+    assert list(stats_2['hpf']) == [0.0]
 
     # Option 3: when two rectangles are drawn for two channels
 
@@ -142,6 +145,22 @@ def test_generate_channel_statistics_dataframe():
                                            aliases).get_summary_frame())
     assert len(stats_6) == 0
 
+def test_other_region_forms():
+    channel = np.full((1000, 1000), 100)
+    string_path = FreeFormRegion(channel, 'M349.3502994011976,346.2065868263473L366.4161676646707,'
+                                        '266.26646706586826L267.6137724550898,'
+                                        '275.248502994012L257.73353293413174,277.04491017964074L234.3802395209581,'
+                                        '308.4820359281437L210.12874251497004,327.3443113772455L186.7754491017964,'
+                                        '336.3263473053892L184.0808383233533,339.9191616766467L185.87724550898204,'
+                                        '372.2544910179641L190.3682634730539,389.32035928143716L214.6197604790419,'
+                                        '428.84131736526945L244.26047904191617,454.88922155688624L287.374251497006,'
+                                        '480.93712574850304L290.9670658682635,480.93712574850304L294.55988023952096,'
+                                        '465.6676646706587L329.5898203592814,395.60778443113776L338.57185628742513,'
+                                        '392.0149700598802L343.062874251497,392.0149700598802Z')
+    assert string_path.compute_pixel_max() == string_path.compute_pixel_min() == 100
+    assert string_path.compute_integrated_signal() >= 2430000
+    empty_freeform = FreeFormRegion(channel, {})
+    assert empty_freeform.compute_pixel_max() == empty_freeform.compute_pixel_dev() == 0
 
 def test_generate_channel_statistics_dataframe_errors():
     """

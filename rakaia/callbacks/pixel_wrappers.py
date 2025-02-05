@@ -1,3 +1,6 @@
+"""Advanced functions that support the callbacks associated with
+pixel-level operations (blended images))"""
+import json
 from typing import Union
 from pathlib import Path
 import dash
@@ -5,6 +8,7 @@ import os
 from dash import html
 import plotly.graph_objs as go
 import pandas as pd
+from natsort import natsorted, ns
 
 from rakaia.io.session import SessionServerside
 from rakaia.parsers.object import get_quantification_filepaths_from_drag_and_drop, parse_masks_from_filenames
@@ -117,7 +121,7 @@ def is_steinbock_dir(directory):
     """
     Check if a local filepath is a directory for steinbock outputs
     """
-    if os.path.isdir(directory):
+    if directory and os.path.isdir(directory):
         sub_dirs = os.listdir(directory)
         return all(elem in sub_dirs for elem in SteinbockParserKeys.sub_directories)
     return False
@@ -139,31 +143,78 @@ def parse_steinbock_subdir(sub_dir, single_file_return: bool=False):
         return files_found[0]
     return files_found if files_found else None
 
+def recursive_parse_umap_coordinates(sub_dir: Union[str, Path]):
+    """
+    Parse a steinbock project output directory recursively for a list of CSV files that contain
+    UMAP coordinate lists (i.e. those generated from the steinbock snakemake pipeline)
+    """
+    return natsorted([str(i) for i in Path(sub_dir).rglob('*coordinates.csv')], alg=ns.REAL)
+
 def check_valid_upload(upload: Union[dict, list]):
     """
     Check for a valid upload component (existing filenames successfully parsed)
     """
-    if 'uploads' in upload:
-        return upload if len(upload['uploads']) > 0 else dash.no_update
+    if upload is not None and 'uploads' in upload:
+        return upload if upload['uploads'] else dash.no_update
     return upload if upload else dash.no_update
 
 def parse_steinbock_dir(directory, error_config, **kwargs):
     """
-    Parse a steinbock output directory. Returns a list of mcd/raw image files, list of mask names, and
-    quantification/.h5ad filepaths
+    Parse a steinbock output directory. Returns a list of mcd/raw image files, list of mask names,
+    quantification/.h5ad filepaths, UMAP coordinate dataframe, and scaling JSON dictionary
     """
     error_config = {"error": 'Error'} if not error_config else error_config
-    error_config['error'] = f'Successfully parsed steinbock output directory {str(directory)}'
     mcd_files = parse_steinbock_subdir(os.path.join(directory, 'mcd'))
     mask_files = parse_steinbock_subdir(os.path.join(directory, 'deepcell', 'cell'))
     export_files = parse_steinbock_subdir(os.path.join(directory, 'export'))
-    quant = [str(file) for file in export_files if file.endswith('.h5ad')]
-    umap = [str(file) for file in export_files if file.endswith('.csv')]
-    umap_return = SessionServerside(pd.read_csv(umap[0], names=['UMAP1', 'UMAP2'],
+    umap_files = recursive_parse_umap_coordinates(os.path.join(directory, 'export'))
+    quant = [str(file) for file in export_files if file.endswith('.h5ad')] if export_files else []
+    umap = umap_files[0] if umap_files else []
+    umap_return = SessionServerside(pd.read_csv(umap, names=['UMAP1', 'UMAP2'],
                 header=0).to_dict(orient="records"), **kwargs) if umap else dash.no_update
+    scaling = parse_steinbock_scaling(directory) if parse_steinbock_scaling(directory) is not None else dash.no_update
+    message = 'Successfully parsed' if mcd_files else 'Error parsing'
+    error_config['error'] = f'{message} steinbock output directory {str(directory)}'
     return check_valid_upload({'uploads': mcd_files, 'from_steinbock': True}), \
         error_config, parse_masks_from_filenames(None, mask_files), \
-        get_quantification_filepaths_from_drag_and_drop(None, quant), umap_return
+        get_quantification_filepaths_from_drag_and_drop(None, quant), umap_return, scaling
+
+def parse_steinbock_umap(directory: Union[str, Path],
+                         seek_png: bool=True):
+    """
+    Return a list of UMAP coordinate plots from the `steinbock` pipeline.
+    Use seek_png to search for the UMAP plots (True), or set False to retrieve the CSV coordinate lists
+    """
+    if is_steinbock_dir(directory):
+        search_term = "*.png" if seek_png else "*coordinates.csv"
+        return natsorted([str(i) for i in Path(directory).rglob(search_term)], alg=ns.REAL)
+    return []
+
+def parse_steinbock_scaling(directory: Union[str, Path]):
+    """
+    Parse a steinbock pipeline output directory for a `scaling.json` file used for channel scaling visualization
+    """
+    files = [str(i) for i in Path(directory).rglob("*scaling.json")]
+    json_parsed = json.load(open(files[0])) if files else None
+    return json_parsed['channels'] if json_parsed and 'channels' in json_parsed else None
+
+def umap_coordinates_from_gallery_click(umap_selection: str,
+                                        directory: Union[str, Path],
+                                        use_unique_key: bool=True):
+    """
+    Return a `pd.DataFrame` of UMAP coordinates based on a UMAP gallery selection by partial filename
+    """
+    if umap_selection and directory:
+        umap_files = parse_steinbock_umap(directory, seek_png=False)
+        umap_return = None
+        for umap_dist in umap_files:
+            if str(Path(umap_dist).stem) == f'{str(umap_selection)}_coordinates':
+                umap_return = SessionServerside(pd.read_csv(str(umap_dist), names=['UMAP1', 'UMAP2'],
+                header=0).to_dict(orient="records"),
+                key="umap_coordinates", use_unique_key=use_unique_key)
+                break
+        return umap_return if umap_return is not None else dash.no_update
+    return dash.no_update
 
 def mask_options_from_json(config: dict):
     mask_options = ["mask_toggle", "mask_level", "mask_boundary", "mask_hover"]

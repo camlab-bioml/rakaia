@@ -24,7 +24,7 @@ from rakaia.utils.pixel import (
     path_to_indices,
     path_to_mask,
     get_area_statistics_from_closed_path,
-    get_bounding_box_for_svgpath,
+    get_bounding_box_for_svg_path,
     select_random_colour_for_channel,
     apply_preset_to_blend_dict,
     is_rgb_color,
@@ -41,7 +41,10 @@ from rakaia.utils.pixel import (
     MarkerCorrelation, high_low_values_from_zoom_layout,
     glasbey_palette,
     layers_exist,
-    add_saved_blend)
+    add_saved_blend,
+    hpf_max_diff,
+    hpf_max_diff_from_path,
+    hpf_max_diff_from_rect)
 
 def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
@@ -420,6 +423,35 @@ def test_get_statistics_from_rect_array(get_current_dir):
     bad_stats = get_area_statistics_from_rect(array, 10000, 20000, 100, 200)
     assert all([elem is None for elem in bad_stats])
 
+
+def test_hpf_detection_from_array():
+    array = np.full((1000, 1000), 150)
+    array[100, 100] = 175
+    assert hpf_max_diff(array) == 25
+    array[200, 200] = 151
+    assert hpf_max_diff(array) == 25
+    array[600, 600] = 200
+    assert hpf_max_diff(array) == 50
+    assert hpf_max_diff_from_rect(array, 10,
+        201, 10, 201) == 25
+    assert not hpf_max_diff_from_rect(array, -1, 10, 201, 10)
+
+def test_hpf_detection_from_path():
+    array = np.full((600, 600), 255)
+    svg_path = "M222.86561906127866,131.26498798809564L232.88973251102587,145.5851500591631L235.75376492523935," \
+              "151.8860213704328L235.467361683818,158.18689268170246L231.74411954534048,161.33732833733728L224.58403850980676," \
+              "162.4829413030227L212.84150561153143,161.33732833733728L204.82221485173366,157.3276829574384L201.67177919609884," \
+              "152.45882785327547L199.6669565061494,145.0123435763204L199.95335974757074,138.99787550647207L202.24458567894152," \
+              "135.84743985083725L202.5309889203629,133.55621391946644L202.5309889203629,133.84261716088778Z"
+    assert hpf_max_diff_from_path(array, svg_path) == 0
+    # inside path
+    array[143, 219] = 301
+    assert hpf_max_diff_from_path(array, svg_path) == 41
+    # outside path
+    array[500, 500] = 302
+    assert hpf_max_diff_from_path(array, svg_path) == 41
+
+
 def test_basic_dataset_dropdown_removal():
     dataset_options = ["dataset1", "dataset2"]
     removed = delete_dataset_option_from_list_interactively(1, "dataset2", dataset_options)
@@ -446,16 +478,16 @@ def test_basic_channel_ordering():
     channel_order = set_channel_list_order(1, rowdata, channel_order, [], aliases, "image_layers")
     assert len(channel_order) == 0
 
-def test_basic_svgpath_pixel_mask():
+def test_basic_svg_path_pixel_mask():
     array = np.zeros((600, 600))
-    svgpath = "M222.86561906127866,131.26498798809564L232.88973251102587,145.5851500591631L235.75376492523935," \
+    svg_path = "M222.86561906127866,131.26498798809564L232.88973251102587,145.5851500591631L235.75376492523935," \
               "151.8860213704328L235.467361683818,158.18689268170246L231.74411954534048,161.33732833733728L224.58403850980676," \
               "162.4829413030227L212.84150561153143,161.33732833733728L204.82221485173366,157.3276829574384L201.67177919609884," \
               "152.45882785327547L199.6669565061494,145.0123435763204L199.95335974757074,138.99787550647207L202.24458567894152," \
               "135.84743985083725L202.5309889203629,133.55621391946644L202.5309889203629,133.84261716088778Z"
-    path_to_coords = path_to_indices(svgpath)
+    path_to_coords = path_to_indices(svg_path)
     assert list(list(path_to_coords)[0]) == [223, 131]
-    bool_inside = path_to_mask(svgpath, array.shape)
+    bool_inside = path_to_mask(svg_path, array.shape)
     x_inside = np.where(bool_inside == True)[1]
     y_inside = np.where(bool_inside == True)[0]
     assert np.min(x_inside) == 200
@@ -465,31 +497,31 @@ def test_basic_svgpath_pixel_mask():
     assert bool_inside[131, 223]
     assert not bool_inside[130, 223]
     # Edit pixels inside and outside of the path to compute the statistics
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0, 0, 0, 0)
+    assert get_area_statistics_from_closed_path(array, svg_path) == (0.0, 0, 0, 0, 0, 0)
     array[130, 223] = 5000
     array[131, 237] = 5000
-    assert get_area_statistics_from_closed_path(array, svgpath) == (0.0, 0, 0, 0, 0, 0)
+    assert get_area_statistics_from_closed_path(array, svg_path) == (0.0, 0, 0, 0, 0, 0)
     array[131, 223] = 5000
-    mean, max, min, median, sd, total = get_area_statistics_from_closed_path(array, svgpath)
+    mean, max, min, median, sd, total = get_area_statistics_from_closed_path(array, svg_path)
     assert mean > 0
     assert max == 5000.0
     assert min == 0.0
     assert total == max
     assert 170 < sd < 171
     array[150, 220] = 500
-    mean_2, max_2, min_2, median_2, sd_2, total_2 = get_area_statistics_from_closed_path(array, svgpath)
+    mean_2, max_2, min_2, median_2, sd_2, total_2 = get_area_statistics_from_closed_path(array, svg_path)
     assert mean_2 > mean
     assert max_2 == 5000.0
     assert min_2 == 0.0
     assert 171 < sd_2 < 172
     array[152, 230] = -1.0
     assert total_2 > max_2
-    mean_3, max_3, min_3, median_3, sd_3, total_3 = get_area_statistics_from_closed_path(array, svgpath)
+    mean_3, max_3, min_3, median_3, sd_3, total_3 = get_area_statistics_from_closed_path(array, svg_path)
     assert mean_2 > mean_3
     assert max_2 == 5000.0
     assert min_3 == -1.0
     assert 171 < sd_2 < 172
-    assert get_bounding_box_for_svgpath(svgpath) == (200, 236, 131, 162)
+    assert get_bounding_box_for_svg_path(svg_path) == (200, 236, 131, 162)
 
 def test_path_to_mask_over_boundary():
     # test that a path that goes over the border stops at the border
@@ -614,6 +646,8 @@ def test_ag_grid_cell_styling():
     assert cell_styling == [{'condition': "params.value == 'ch1'", 'style': {'color': 'black'}},
                             {'condition': "params.value == 'ch2'", 'style': {'color': '#E22424'}},
                             {'condition': "params.value == 'ch3'", 'style': {'color': '#CCFFE5'}}]
+
+    assert not ag_grid_cell_styling_conditions({}, list(blend_dict.keys()) + ["channel_4"], "roi_1", aliases)
 
 def test_extract_zoom_bounds():
     bounds = {'xaxis.range[0]': 597.512350562311, 'xaxis.range[1]': 767.7478344332787,

@@ -1,3 +1,7 @@
+"""Module containing functions and classes to support user help guides, warnings,
+and session messages
+"""
+
 import pathlib
 from typing import Union
 from pydantic import BaseModel
@@ -10,7 +14,7 @@ class DataImportTour(BaseModel):
     """
     steps: list = [{'selector': '[id="upload-image"]',
                     'content': "Option 1: Upload images or spatial datasets (.mcd, .tiff, .h5ad, etc.) using drag and drop. "
-                               "Should be used only for datasets < 2GB or if the app deployment is public/shared, "
+                               "Should be used only for datasets < 2GB, or if the app deployment is public/shared, "
                                "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
                 'content': "Option 2: For large datasets (> 2GB) on local deployments, "
@@ -35,12 +39,11 @@ class AlertMessage(BaseModel):
 
     :return: None
     """
-    warnings: dict = {"blend_json_success": "Blend parameters successfully updated from JSON.",
-                      "invalid_path": "Invalid filepath ir directory provided. Please verify the following: \n\n" \
+    warnings: dict = {"invalid_path": "Invalid filepath or directory provided. Please verify the following: \n\n" \
                                         "- That the file path provided is a valid local file. \n" \
                                         "- That the directory provided exists and contains imaging files. \n"
-                                        "- If running using Docker or a web version, " \
-                                        "local file paths will not be available.",
+                                        "- If running using Docker or a shared web version, " \
+                                        "local file paths will not be available unless explicitly mounted.",
                       "multiple_filetypes": "Warning: Multiple different file types were detected on upload. " \
                                         "This may cause problems during analysis. For best performance, " \
                                         "it is recommended to analyze datasets all from the same file type extension " \
@@ -62,7 +65,7 @@ class AlertMessage(BaseModel):
                       "invalid_annotation_shapes": "There are annotation shapes in the current layout. \n" \
                                 "Switch to zoom or pan before removing the annotation shapes.",
                       "invalid_dimensions": "The dimensions of the mask do not agree with the current ROI.",
-                      "quantification_missing": "Quantification requires the following inputs: \n\n"
+                      "quantification_missing": "In-app quantification requires the following inputs: \n\n"
                                                 "- an ROI with a compatible mask that has been applied to the canvas. \n"
                                                 "- at least one channel/biomarker selected for quantification. \n\n"
                                                 "Please review the required inputs.",
@@ -72,7 +75,7 @@ class AlertMessage(BaseModel):
                                                      "imported files share the same panel.",
                       "lazy-load-error": "Error when loading data from the imported file. Check that the dataset "
                                          "delimiter does not have any overlapping characters with any of the filenames, "
-                                         "or ROI names. ",
+                                         "or ROI names.",
                       "invalid_query": "Error when generating/exporting ROI query. Ensure that: \n\n"
                                        "1. If querying a random subset, that images have been imported and "
                                        "the current canvas contains at least one marker. \n\n"
@@ -84,7 +87,13 @@ class AlertMessage(BaseModel):
                                        "\t\n -ROI naming in the quantification sheet matches the ROI names in the session.\n\n"
                                        "3. If querying using image similarity, that similarity scores have been computed "
                                        "using a UMAP overlay. Scores can be computed from the UMAP options under "
-                                       "the quantification tab."}
+                                       "the quantification tab.",
+                      "no_channel_gallery": "Note: Channel tile gallery not rendered for spatial datasets or "
+                                            "ROIs that can't load fully into memory.",
+                      "no_umap_gallery": "UMAP gallery not rendered. The UMAP gallery requires outputs "
+                                         "from the steinbock snakemake pipeline v0.0.4 or greater. Ensure that: "
+                                         "\n - pipeline outputs have been imported from a directory using the local filepath"
+                                         "\n - UMAP pngs and CSV coordinates exist in the export -> umap sub-directory" }
 
 
 class ToolTips(BaseModel):
@@ -128,7 +137,9 @@ class ToolTips(BaseModel):
                       "spatial-mask": "Currently only compatible with 10X Visium spot-based assays.",
                       "quant-limit": "To maintain optimal performance, rakaia does not support in-app quantification "
                                       "for more than 1000 markers. Additionally, if quantifying using a spatial dataset,"
-                                     " all markers to quantify need to be loaded into the current canvas."}
+                                     " all markers to quantify need to be loaded into the current canvas.",
+                      "umap_min_dist": "From 0 to 1. Smaller distances pack the UMAP points more tightly together, "
+                                       "while larger values spread out clusters."}
 
 
 class PanelMismatchError(Exception):

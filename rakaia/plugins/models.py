@@ -1,3 +1,7 @@
+"""Module containing functions and classes for defining classification models
+for quantified objects in `Anndata` format
+"""
+
 from typing import Union
 import anndata
 import pandas as pd

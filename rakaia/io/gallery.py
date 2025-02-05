@@ -1,12 +1,19 @@
+"""Module containing functions and classes for rendering thumbnail galleries
+(either channel or ROI) as `html` children and outputting thumbnail images as HTML
+"""
+
 import math
 from io import BytesIO
 import base64
+from pathlib import Path
 from typing import Union
 import dash_bootstrap_components as dbc
 from dash import html
 import plotly.graph_objs as go
 from PIL import Image
 import numpy as np
+
+from rakaia.utils.gradient import ChannelGradient
 from rakaia.utils.pixel import (
     resize_for_canvas,
     get_default_channel_upper_bound_by_percentile,
@@ -128,7 +135,7 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
                         raw_channel_array: Union[np.array, np.ndarray],
                         blend_colour_dict: dict, preset_dict: dict=None, preset_selection: str=None,
                         nclicks_preset: int=0,
-                        toggle_scaling_gallery=False,
+                        toggle_scaling_gallery=True,
                         resize_signal_retention_threshold: float = 0.75,
                         resize_dimension_threshold: int = 3000,
                         single_channel_identifier: str=None):
@@ -136,16 +143,19 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
     Verify a channel tile. Checks the appropriate default scaling bounds and evaluates
     if a preset should be used or if the entire array should be used for signal retention
     """
-    channel_key = single_channel_identifier if single_channel_identifier else key
+    channel_key = single_channel_identifier if (single_channel_identifier and
+                single_channel_identifier in blend_colour_dict.keys()) else key
     if toggle_scaling_gallery:
+        # TODO: view can be different from the ROI gallery view if thresholds aren't set yet
+        # decide if should add check for single channel identifier here
         try:
-            if blend_colour_dict[key]['x_lower_bound'] is None:
-                blend_colour_dict[key]['x_lower_bound'] = 0
-            if blend_colour_dict[key]['x_upper_bound'] is None:
-                blend_colour_dict[key]['x_upper_bound'] = \
+            if blend_colour_dict[channel_key]['x_lower_bound'] is None:
+                    blend_colour_dict[channel_key]['x_lower_bound'] = 0
+            if blend_colour_dict[channel_key]['x_upper_bound'] is None:
+                    blend_colour_dict[channel_key]['x_upper_bound'] = \
                     get_default_channel_upper_bound_by_percentile(raw_channel_array)
             image_render = apply_preset_to_array(image_render,
-                                                 blend_colour_dict[channel_key])
+                            blend_colour_dict[channel_key])
         except (KeyError, TypeError):
             pass
     if None not in (preset_selection, preset_dict) and nclicks_preset > 0:
@@ -164,7 +174,7 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
 
 def channel_tiles(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
                                            preset_selection, preset_dict, aliases, nclicks_preset,
-                                           toggle_gallery_zoom=False, toggle_scaling_gallery=False,
+                                           toggle_gallery_zoom=False, toggle_scaling_gallery=True,
                                            resize_signal_retention_threshold: float = 0.75,
                                            resize_dimension_threshold: int = 3000,
                                            single_channel_identifier: str=None):
@@ -185,16 +195,62 @@ def channel_tiles(gallery_dict, canvas_layout, zoom_keys, blend_colour_dict,
             tiles[key] = {"label": label, "tile": image_render}
     return tiles
 
+def umap_pipeline_tiles(umap_files: list):
+    """
+    Return a dictionary of tiles for UMAP min distance plots from the steinbock pipeline output
+    """
+    if umap_files:
+        tiles = {}
+        for umap_tile in umap_files:
+            tiles[str(Path(umap_tile).stem)] = np.array(Image.open(
+                str(umap_tile)).convert('RGB')).astype(np.uint8)
+        return tiles
+    return None
+
+def thumbnail_load_button(gallery_type: str, thumbnail_index: str):
+    """
+    Generate a `dbc.Button` input that says `Load`. Used for the ROI and UMAP thumbnail galleries.
+    The gallery_type should be specified as either `data-query-gallery` or `umap`
+    """
+    return dbc.Button("Load",
+            id={'type': str(gallery_type), 'index': str(thumbnail_index)},
+            outline=True, color="dark", className="me-1", size="sm",
+            style={"padding": "5px", "margin-left": "10px", "margin-top": "2.5px"})
+
+def tile_greyscale_conversion(tile_array: np.array,
+                              use_greyscale: bool=True):
+    """
+    Set the conversion for a channel gallery tile based on using greyscale or using
+    an RGB spectrum
+    """
+    tile_array = tile_array[:, :, :3] if len(tile_array.shape) > 3 else tile_array
+    return Image.fromarray(tile_array).convert('RGB') if (
+        use_greyscale) else (
+        Image.fromarray(tile_array))
+
+# def channel_thumbnail_conversion(channel_array: np.array):
+#     """
+#     Define the dtype transformation for the incoming channel array
+#     """
+#     return Image.fromarray(channel_array).convert('RGB') if (
+#             len(channel_array.shape) < 3) else Image.fromarray(channel_array.astype(np.uint8))
+
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
-def channel_tile_gallery_children(tiles: Union[dict, None]):
+
+
+def channel_tile_gallery_children(tiles: Union[dict, None],
+                                  gradient: str="greyscale"):
     """
     Generate the children for the image gallery comprised of the single channel images for one ROI
     """
+    use_greyscale = gradient in ["greyscale", None]
+    gradient = gradient if gradient else "greyscale"
     row_children = []
     for key, value in tiles.items():
             label = value['label'] if 'label' in value else key
             tile_image = value['tile']
+            tile_image = ChannelGradient(tile_image).apply_gradient(gradient)
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label,
                         className="card-text", id=key),
                         dbc.Button(children=html.Span(
@@ -208,8 +264,25 @@ def channel_tile_gallery_children(tiles: Union[dict, None]):
                         "margin-top": "2.5px"}),
                         dbc.Tooltip(f'Add {label} to canvas',
                         target={'type': 'gallery-channel', 'index': key})]),
-                        dbc.CardImg(src=Image.fromarray(tile_image).convert('RGB'),
+                        dbc.CardImg(src=tile_greyscale_conversion(tile_image, use_greyscale),
                         bottom=True)]), width=3))
+    return row_children
+
+
+def umap_gallery_children(tiles: Union[dict, None]):
+    """
+    Generate the children for the umap image gallery for min distance plots from the `steinbock` pipeline
+    """
+    row_children = []
+    tiles = tiles if tiles else {}
+    for key, value in tiles.items():
+            row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(str(key),
+                        className="card-text", id=key),
+                        thumbnail_load_button('umap', key),
+                        dbc.Tooltip(f'Load {str(key)} in UMAP plot',
+                        target={'type': 'umap', 'index': key})]),
+                        dbc.CardImg(src=Image.fromarray(value).convert('RGB'),
+                        bottom=True)]), width=6))
     return row_children
 
 
@@ -233,10 +306,7 @@ def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_
             else:
                 style = None
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
-                    dbc.Button("Load",
-                    id={'type': 'data-query-gallery', 'index': key},
-                    outline=True, color="dark", className="me-1", size="sm",
-                    style={"padding": "5px", "margin-left": "10px", "margin-top": "2.5px"})]),
+                    thumbnail_load_button('data-query-gallery', key)]),
                     dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
                     bottom=True, style=style,
                     className='align-self-center')]),

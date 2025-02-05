@@ -1,3 +1,7 @@
+"""Module containing utility functions for modifying images as numpy arrays,
+such as recolouring, filtering/bounding, converting paths to arrays, etc.
+"""
+
 import re
 import random
 from typing import Union
@@ -11,7 +15,10 @@ import plotly.express as px
 from pydantic import BaseModel
 from skimage import draw
 from scipy import ndimage
-from scipy.ndimage import median_filter
+from scipy.ndimage import (
+    median_filter,
+    uniform_filter,
+    maximum_filter)
 import dash
 from dash.exceptions import PreventUpdate
 import cv2
@@ -55,7 +62,7 @@ def default_picker_swatches(config):
     """
     Return a list of default swatches for the mantine ColorPicker based on the contents of the config
     """
-    DEFAULTS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
+    DEFAULTS = ["#FF0000", "#00FF00", "#0000FF", "#00FFFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
     try:
         # set the split based on if the swatches are given as a string or list
         if isinstance(config['swatches'], str):
@@ -96,7 +103,11 @@ def recolour_greyscale(array, colour):
     image = image.convert('RGB')
     return np.array(image)
 
-def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low, y_range_high):
+def get_area_statistics_from_rect(array: np.array,
+                                  x_range_low: Union[float, int],
+                                  x_range_high: Union[float, int],
+                                  y_range_low: Union[float, int],
+                                  y_range_high: Union[float, int]):
     """
     Return a series of region statistics for a rectangular slice of a channel array
     mean, max, min, and integrated (total) signal
@@ -105,17 +116,55 @@ def get_area_statistics_from_rect(array, x_range_low, x_range_high, y_range_low,
         subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
                           range(int(x_range_low), int(x_range_high), 1))]
         return np.average(subset), np.max(subset), np.min(subset), np.median(subset), np.std(subset), np.sum(subset)
-    except IndexError:
+    except (IndexError, ValueError):
         return None, None, None, None, None
 
-def path_to_indices(path):
+def hpf_max_diff(array: np.array, n_size: int=8):
+    """
+    Get the largest hot pixel difference in an array for a specified pixel neighborhood.
+    A hot pixel value is defined as the difference between the maximum and mean pixel values in the neighborhood.
+    When computed across multiple regions, the largest difference is returned
+    """
+    # TODO: check steinbock implementation
+    # https://github.com/BodenmillerGroup/steinbock/blob/7b73f2925b68a351925e89aa145a7a739741b2b7/steinbock/preprocessing/imc.py#L257
+    smoothed_mean = uniform_filter(array, size=n_size)
+    max_vals = maximum_filter(array, size=n_size, mode="mirror").astype(np.float32)
+    return float(np.max(max_vals - smoothed_mean))
+
+def hpf_max_diff_from_rect(array: np.array,
+                                  x_range_low: Union[float, int],
+                                  x_range_high: Union[float, int],
+                                  y_range_low: Union[float, int],
+                                  y_range_high: Union[float, int],
+                                  n_size: int=8):
+    """
+    Get the largest hot pixel difference in a rectangular region for a specified pixel neighborhood.
+    A hot pixel value is defined as the difference between the maximum and mean pixel values in the neighborhood.
+    When computed across multiple regions, the largest difference is returned
+    """
+    try:
+        subset = array[np.ix_(range(int(y_range_low), int(y_range_high), 1),
+                              range(int(x_range_low), int(x_range_high), 1))]
+        return hpf_max_diff(subset, n_size=n_size)
+    except (IndexError, ValueError): return None
+
+def hpf_max_diff_from_path(array: np.array, svg_path: str, n_size: int=8):
+    """
+    Get the largest hot pixel difference in a freeform path region for a specified pixel neighborhood.
+    A hot pixel value is defined as the difference between the maximum and mean pixel values in the neighborhood.
+    When computed across multiple regions, the largest difference is returned
+    """
+    masked_array = path_to_mask(svg_path, array.shape)
+    return hpf_max_diff(array[masked_array], n_size=n_size)
+
+def path_to_indices(path: str):
     """
     From SVG path to numpy array of coordinates, each row being a (row, col) point
     """
     indices_str = [el.replace("M", "").replace("Z", "").split(",") for el in path.split("L")]
     return np.rint(np.array(indices_str, dtype=float)).astype(int)
 
-def path_to_mask(path, shape):
+def path_to_mask(path: str, shape: tuple):
     """
     From SVG path to a boolean array where all pixels enclosed by the path
     are True, and the other pixels are False.
@@ -123,7 +172,7 @@ def path_to_mask(path, shape):
     cols, rows = path_to_indices(path).T
     rr_row, cc_col = draw.polygon(rows, cols)
     mask = np.zeros(shape, dtype=bool)
-    # trim the indices to only those that are inside of the border of the image
+    # trim the indices to only those that are inside the border of the image
     col_inside = cc_col < shape[1]
     row_inside = rr_row < shape[0]
     both_inside = np.logical_and(col_inside, row_inside)
@@ -133,16 +182,16 @@ def path_to_mask(path, shape):
     mask = ndimage.binary_fill_holes(mask)
     return mask
 
-def get_bounding_box_for_svgpath(svgpath):
+def get_bounding_box_for_svg_path(svg_path: str):
     """
     Return the x and y min and max that defines the bounding box for a non-convex or convex svgpath
     Return values are: x_min, x_max, y_min, y_max
     """
-    cols, rows = path_to_indices(svgpath).T
+    cols, rows = path_to_indices(svg_path).T
     return min(cols), max(cols), min(rows), max(rows)
 
 
-def get_area_statistics_from_closed_path(array, svgpath):
+def get_area_statistics_from_closed_path(array: np.array, svg_path: str):
     """
     Subset an array based on coordinates contained within a svg path drawn on the canvas
     Return a series of region statistics for a rectangular slice of a channel array
@@ -150,7 +199,7 @@ def get_area_statistics_from_closed_path(array, svgpath):
     """
     # https://dash.plotly.com/annotations?_gl=1*9dqxqk*_ga*ODM0NzUyNzQ3LjE2NjQyODUyNDc.*_ga_6G7EE0JNSC*MTY4MzU2MDY0My4xMDUuMS4xNjgzNTYyNDM3LjAuMC4w
 
-    masked_array = path_to_mask(svgpath, array.shape)
+    masked_array = path_to_mask(svg_path, array.shape)
     # masked_subset_data = ma.array(array, mask=masked_array)
     return np.average(array[masked_array]), np.max(array[masked_array]), np.min(array[masked_array]), \
         np.median(array[masked_array]), np.std(array[masked_array]), np.sum(array[masked_array])
@@ -236,11 +285,13 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
         if keep_max:
             hist = np.concatenate([np.array(hist).astype(cast_type),
                                    np.array([max_hist]).astype(cast_type)])
-    except ValueError:
-        pass
+    except ValueError: pass
     fig = go.Figure(px.histogram(hist, range_x=[min(hist), max_hist]), layout_xaxis_range=[0, max_hist])
     fig.update_layout(showlegend=False, yaxis={'title': None},
-                                      xaxis={'title': None}, margin=dict(pad=0))
+                                      xaxis={'title': None}, margin=dict(pad=0),
+                    plot_bgcolor="white", paper_bgcolor="white",
+                    font=dict(color="black"))
+
     return fig, float(np.max(array))
 
 def upper_bound_for_range_slider(array):
@@ -262,8 +313,7 @@ def apply_preset_to_array(array, preset):
                 int(preset['filter_val']) >= 1:
             try:
                 array = median_filter(array, int(preset['filter_val']))
-            except ValueError:
-                pass
+            except ValueError: pass
         elif preset['filter_val'] is not None:
             if int(preset['filter_val']) % 2 != 0 and int(preset['filter_val']) >= 1:
                 array = cv2.GaussianBlur(array, (int(preset['filter_val']), int(preset['filter_val'])),

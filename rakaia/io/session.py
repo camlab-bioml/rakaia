@@ -1,3 +1,7 @@
+"""Module containing functions and classes for setting variable session configurations
+such as hover text, tab text, themes, download directory, etc.
+"""
+
 import os
 import json
 from typing import Union
@@ -180,8 +184,7 @@ def write_session_data_to_h5py(dest_dir, metadata_frame, data_dict, data_selecti
     h5_out = None
     try:
         h5_out = h5py.File(relative_filename, 'w')
-    except OSError:
-        os.remove(relative_filename)
+    except OSError: os.remove(relative_filename)
     if h5_out is None:
         h5_out = h5py.File(relative_filename, 'w')
 
@@ -208,9 +211,7 @@ def write_session_data_to_h5py(dest_dir, metadata_frame, data_dict, data_selecti
                     pass
     try:
         h5_out.close()
-    except (Exception,):
-        pass
-
+    except (Exception,): pass
     return str(relative_filename)
 
 

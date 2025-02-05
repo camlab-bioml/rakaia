@@ -1,3 +1,7 @@
+"""Module containing functions and classes for importing and validating object-level
+data files such as UMAP coordinates, object quantification, mask files, etc.
+"""
+
 from pathlib import Path
 from typing import Union
 import re
@@ -15,7 +19,7 @@ from sklearn.preprocessing import StandardScaler
 import scanpy as sc
 import dash
 from rakaia.io.readers import DashUploaderFileReader
-from rakaia.parsers.pixel import parse_files_for_h5ad
+from rakaia.parsers.lazy_load import parse_files_for_lazy_loading
 from rakaia.parsers.spatial import spatial_grid_single_marker, is_spot_based_spatial
 from rakaia.utils.alert import add_warning_to_error_config
 from rakaia.utils.object import (
@@ -42,13 +46,15 @@ def drop_columns_from_measurements_csv(measurements_csv, drop: bool = True):
                 measurements_csv = pd.DataFrame(measurements_csv).drop(col, axis=1)
     return measurements_csv
 
-def umap_params(frame_to_cluster: pd.DataFrame, size_threshold: int=100000):
+def umap_params(frame_to_cluster: pd.DataFrame, size_threshold: int=100000,
+                min_dist: Union[float, None]=None):
     """
     Define the default UMAP object parameters based on the size of the dataset
     """
     nn = 15 if len(frame_to_cluster) <= size_threshold else 10
     epochs = 100 if len(frame_to_cluster) <= size_threshold else 25
     dist = 0.1 if len(frame_to_cluster) <= size_threshold else 0.05
+    dist = min_dist if min_dist is not None else dist
     return {"n_neighbors": nn, "n_epochs": epochs, "min_dist": dist}
 
 def umap_transform(frame_to_cluster: pd.DataFrame, use_pca: bool=False):
@@ -65,7 +71,8 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
                                             current_umap: Union[dict, pd.DataFrame] = None,
                                             drop_col: bool = True,
                                             rerun: bool = True, unique_key_serverside: bool = True,
-                                            cols_include: list = None):
+                                            cols_include: list = None,
+                                            min_dist: Union[float, None]=0.1):
     """
     Generate a UMAP coordinate frame from a data frame of channel expression
     `cols_include`: Pass an optional list of channels to generate the coordinates from
@@ -82,10 +89,10 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
             if 'umap' not in sys.modules:
                 import umap
             try:
-                umap_obj = umap.UMAP(**umap_params(data_frame))
+                umap_obj = umap.UMAP(**umap_params(data_frame, min_dist=min_dist))
             except UnboundLocalError:
                 import umap
-                umap_obj = umap.UMAP(**umap_params(data_frame))
+                umap_obj = umap.UMAP(**umap_params(data_frame, min_dist=min_dist))
             if umap_obj:
                 scaled = umap_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
@@ -228,7 +235,7 @@ def visium_mask(mask_dict: dict, data_selection: str, upload_list: Union[list, d
     masks_return, names_return = dash.no_update, dash.no_update
     if data_selection and upload_list:
         exp, slide, acq = split_string_at_pattern(data_selection)
-        found_h5ad_match = parse_files_for_h5ad(upload_list, data_selection, delimiter)
+        found_h5ad_match = parse_files_for_lazy_loading(upload_list, data_selection, delimiter)
         if found_h5ad_match and is_spot_based_spatial(found_h5ad_match):
             mask_dict = {} if mask_dict is None else mask_dict
             mask_spots = spatial_grid_single_marker(found_h5ad_match, None, None,
@@ -406,8 +413,7 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
             roi_counts = merged['sample'].value_counts().to_dict()
             indices_query = {'indices': [int(i.split("_")[-1]) - 1 for i in list(roi_counts.keys())]}
         # may occur if the split doesn't give integers i.e. if there are other underscores in the name
-        except ValueError:
-            indices_query = None
+        except (ValueError, KeyError): indices_query = None
     freq_counts = merged[umap_col_selection].value_counts().to_dict() if umap_col_selection is \
                                                                          not None else None
     return indices_query, freq_counts
@@ -650,7 +656,8 @@ class GatingObjectList:
     def __init__(self, gating_dict: dict, gating_selection: list,
                                quantification_frame: Union[dict, pd.DataFrame] = None,
                                mask_identifier: str = None, quantification_sample_col: str = 'sample',
-                               quantification_object_col: str = 'cell_id', intersection=False, normalize=True):
+                               quantification_object_col: str = 'cell_id', intersection: bool=False,
+                               normalize: bool=True):
 
         self.gating_dict = gating_dict
         self.gating_selection = gating_selection
@@ -667,48 +674,47 @@ class GatingObjectList:
         to_add = quantification_frame[quantification_frame.columns.intersection(
             [self.designation_column, quantification_object_col])]
 
-        query = self.set_pandas_query_string(to_add)
+        # query = self.set_pandas_query_string(to_add)
         # set the mandatory columns that need to be appended for the search: including the ROI descriptor and
         # column to identify the cell ID
         mask_quant_match = None
         if None not in (mask_identifier, self.id_list):
             mask_quant_match = match_mask_name_to_quantification_sheet_roi(mask_identifier,
                             self.id_list, quantification_sample_col)
-        if mask_quant_match is not None and query:
+        if mask_quant_match is not None and self.gating_selection:
             frame = quantification_frame
             if normalize:
                 frame = quantification_frame[quantification_frame.columns.intersection(gating_selection)]
                 frame = ((frame - frame.min()) / (frame.max() - frame.min()))
             frame = frame.reset_index(drop=True).join(to_add)
-            query = frame.query(query)
+            frame = frame[list(self.gating_selection) + [self.designation_column, self.quantification_object_col]]
+            self.query = self.loc_gating(frame, use_and=(self.type == "intersection"))
             # pull the cell ids from the subset of the quantification frame from the query where the
             # mask matches the one provided
-            self.object_list = [int(i) for i in query[query[self.designation_column] ==
-                                              mask_quant_match][quantification_object_col].tolist()]
+            self.object_list = [int(i) for i in self.query[self.query[self.designation_column] ==
+                                              mask_quant_match][self.quantification_object_col].tolist()]
         else:
             self.object_list = []
 
-    def set_pandas_query_string(self, categorical_frame: Union[dict, pd.DataFrame]):
+    def loc_gating(self, df: pd.DataFrame, use_and=True):
         """
-        Generate the pandas compatible query string for the gating selection based on the categories selected,
-        min-max thresholds, and the query type (intersection vs. union)
+        Subset a frame of quantified objects using a gating selection
 
-        :param categorical_frame: The data frame containing the gating categories to be used for the query
-        :return: String query that is compatible with `pd.DataFrame.query(string)`
+        :param df: `pd.DataFrame` to query
+        :param use_and: Whether the combination of gating parameters should be an intersection or not.
+
+        :return: `pd.DataFrame` subset containing the objects in the requested gating parameters
         """
-        # set the query representation of intersection or union in query
-        combo = "& " if self.type == "intersection" else "| "
-        query = ""
-        # build a query string for each of the elements to gate on
-        gating_index = 0
-        for gating_elem in self.gating_selection:
-            if gating_elem not in categorical_frame.columns and gating_elem in list(self.quantification_frame.columns):
-                # do not add the string combo at the end
-                combo = combo if gating_index < (len(self.gating_selection) - 1) else ""
-                query = query + f'(`{gating_elem}` >= {self.gating_dict[gating_elem]["lower_bound"]} &' \
-                                f'`{gating_elem}` <= {self.gating_dict[gating_elem]["upper_bound"]}) {combo}'
-                gating_index += 1
-        return query
+        query = np.ones(len(df), dtype=bool) if use_and else np.zeros(len(df), dtype=bool)
+        for gating in self.gating_selection:
+            if gating in self.gating_dict.keys():
+                condition = ((df[gating] >= self.gating_dict[gating]['lower_bound']) &
+                             (df[gating] <= self.gating_dict[gating]['upper_bound']))
+                if use_and:
+                    query &= condition
+                else:
+                    query |= condition
+        return df.loc[query]
 
     def set_object_id_list(self):
         """
@@ -732,3 +738,33 @@ class GatingObjectList:
         :return: the parsed list of object IDs as integers.
         """
         return self.object_list
+
+    def get_query_indices_all(self):
+        """
+
+        :return: The query indices for all ROIs based on the gating thresholds (can be used for pan-ROI gating).
+        """
+        return list(self.query.index) if self.query is not None else []
+
+
+def apply_gating_to_all_rois(quantification: Union[dict, pd.DataFrame],
+                             gating_indices: Union[list, np.array],
+                             annotation_col: str,
+                             annotation_val: str,
+                             annotation_default: str='Unassigned',
+                             reset_to_default: bool=False,
+                             as_dict: bool=True):
+    """
+    Apply the current session gating to all ROIs. Assumes that the indices for all objects in the gating threshold
+    are taken from `GatingObjectList.get_query_indices_all` and passed as gating indices. Use `reset_to_default` to
+    reset an existing gating annotation to the default
+    """
+    annotation_val = annotation_val if not reset_to_default else annotation_default
+    quantification = pd.DataFrame(quantification)
+    if annotation_col and annotation_col not in quantification.columns:
+        quantification[annotation_col] = annotation_default
+    try:
+        quantification[annotation_col] = np.where(quantification.index.isin(gating_indices),
+                                              annotation_val, quantification[annotation_col])
+    except (ValueError, KeyError): pass
+    return quantification.to_dict(orient="records") if as_dict else quantification

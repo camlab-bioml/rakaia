@@ -1,3 +1,6 @@
+"""Module containing functions and classes for object clustering within segmentation masks
+"""
+
 from typing import Union
 import pandas as pd
 from dash import html

@@ -1,11 +1,12 @@
-import cv2
 from rakaia.utils.filter import (
     get_current_or_default_filter_apply,
     get_current_or_default_filter_param,
     get_current_channel_blend_params,
     get_current_or_default_channel_color,
     get_current_default_params_with_preset,
-    apply_filter_to_channel, set_blend_parameters_for_channel)
+    apply_filter_to_channel, set_blend_parameters_for_channel,
+    set_slider_lower_bound_default,
+    set_slider_upper_bound_default)
 import dash
 import numpy as np
 
@@ -71,3 +72,25 @@ def test_setting_blend_dictionary():
     assert blend_dict['channel_1']['filter_type'] == 'gaussian'
     blend_dict = set_blend_parameters_for_channel(blend_dict, 'channel_1', "gaussian", 5, 0.6, clear=True)
     assert all([elem is None for elem in blend_dict['channel_1'].values() if elem != '#FFFFFF'])
+
+def test_set_slider_defaults():
+    cur_blend = {'chan_1': {'color': '#FFFFFF', 'x_lower_bound': 4.56,
+                            'x_upper_bound': 1250.5357142857142,
+                            'filter_type': None, 'filter_val': None,
+                            'filter_sigma': None, 'alias': 'chan_1'},
+                'chan_2': {'color': '#FFFFFF', 'x_lower_bound': None,
+                        'x_upper_bound': None,
+                        'filter_type': None, 'filter_val': None,
+                        'filter_sigma': None, 'alias': 'chan_2'},
+                 'chan_3': {'color': '#FFFFFF', 'x_lower_bound': None,
+                           'x_upper_bound': 5.25, 'filter_type': None,
+                           'filter_val': None, 'filter_sigma': None, 'alias': 'chan_3'}}
+
+    assert (set_slider_lower_bound_default(cur_blend['chan_2']['x_lower_bound']) ==
+            set_slider_lower_bound_default(cur_blend['chan_3']['x_lower_bound']) == 0.0)
+    assert set_slider_lower_bound_default(cur_blend['chan_1']['x_lower_bound']) == cur_blend['chan_1']['x_lower_bound']
+
+    chan_2_array = np.full((1000, 1000), 47)
+    assert set_slider_upper_bound_default(cur_blend['chan_2']['x_upper_bound'],
+                                          chan_2_array) == 47
+    assert set_slider_upper_bound_default(cur_blend['chan_1']['x_upper_bound']) == cur_blend['chan_1']['x_upper_bound']

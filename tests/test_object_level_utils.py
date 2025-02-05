@@ -234,6 +234,10 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
     subset = subset_measurements_by_point(measurements, 53, 33)
     assert len(subset) == 1
 
+    random_measurements = pd.DataFrame({'col_1': [1, 2, 3, 4, 5],
+                                        'col_2': [1, 2, 3, 4, 5]})
+    assert not subset_measurements_by_point(random_measurements, 5, 5)
+
     measurements = pd.read_csv(os.path.join(get_current_dir, "measurements_for_query.csv")).drop(['x_min', 'y_min'],
                                                                                                  axis=1)
 
@@ -320,6 +324,16 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options,
                                                           delimiter="---", mask_name=mask_option).get_matches()
     assert name == mask_option
+
+    # imitate the steinbock naming
+    steinbock_measure = pd.DataFrame({"chan_1": [1, 2, 3, 4, 5],
+                                 "sample": "pos1_3_3",
+                                 "cell_id": [1, 2, 3, 4, 5]})
+    name, column = ROIQuantificationMatch("Patient1---slide0---pos_1_3_3",
+                    steinbock_measure, ["Patient1---slide0---pos_1_3_3"],
+                    delimiter="---", mask_name="Patient1_003").get_matches()
+    assert name == "Patient1_003"
+    assert column == 'sample'
 
 def test_annotation_column_from_umap_(get_current_dir):
     measurements = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))

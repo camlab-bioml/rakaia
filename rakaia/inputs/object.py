@@ -1,3 +1,7 @@
+"""Module containing tools for rendering object-related visual components such as
+summarized object expression plots, UMAP plots, etc.
+"""
+
 from typing import Union
 from functools import partial
 import dash
@@ -178,12 +182,17 @@ def channel_expression_summary(measurements, cols_include=None, drop_cols=False,
                            color_continuous_scale='viridis',
                            title=f"Channel expression ({len(measurements)}/{total_objects} shown)",
                            orientation=orient))
+    fig.update_layout(
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(color="black"))
+
     return fig
 
 def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overlay: Union[str, None]=None,
                      quantification_dict: Union[pd.DataFrame, dict, None]=None,
                      cur_umap_fig: Union[go.Figure, dict, None]=None,
-                     categorical_size_limit: Union[int, float]=50) -> Union[go.Figure, dict]:
+                     categorical_size_limit: Union[int, float]=100) -> Union[go.Figure, dict]:
     """
     Generate a data frame of UMAP coordinates for a dataset of segmented objects based on channel expression
     Overlay color groupings can be passed as either numerical or categorical. Categorical variables are either
@@ -193,6 +202,7 @@ def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overla
         quant_frame = pd.DataFrame(quantification_dict)
         umap_frame = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
         palette = None
+        opacity_setting = 0.5 if len(umap_frame) > 1000 else None
         try:
             if channel_overlay:
                 if is_string_dtype(quant_frame[channel_overlay]) or \
@@ -201,20 +211,36 @@ def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overla
                     palette = glasbey_palette(len(quant_frame[channel_overlay].value_counts()))
                 umap_frame[channel_overlay] = quant_frame[channel_overlay]
             fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2", color=channel_overlay,
-                             color_discrete_sequence=palette)
+                             color_discrete_sequence=palette, opacity=opacity_setting)
         except KeyError:
-            fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2")
+            fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2", opacity=opacity_setting)
             fig['data'][0]['showlegend'] = True
         if cur_umap_fig is None:
             fig['layout']['uirevision'] = True
         else:
             fig['layout'] = cur_umap_fig['layout']
             fig['layout']['uirevision'] = True
+
+        fig.update_layout(
+            plot_bgcolor="white",
+            paper_bgcolor="white",
+            font=dict(color="black"),
+            xaxis=dict(
+                showline=True,
+                linecolor="black",
+                linewidth=1
+            ),
+            yaxis=dict(
+                showline=True,
+                linecolor="black",
+                linewidth=1
+            ))
         return fig
     return dash.no_update
 
 def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict, None], quantification_dict: Union[pd.DataFrame, dict, None],
-                        channel_overlay: Union[str, None], categorical_threshold: Union[int, float]=50):
+                        channel_overlay: Union[str, None], categorical_threshold: Union[int, float]=50,
+                        use_patch: bool=True):
     """
     Check if the current UMAP is available for a dash-style Patch for channel overlay
     Must already have a channel overlay applied so that the only updates to the figure
@@ -231,7 +257,7 @@ def umap_eligible_patch(cur_umap_fig: Union[go.Figure, dict, None], quantificati
                     not cur_umap_fig['data'][0]['legendgroup'] and \
                     cur_umap_fig['data'][0]['hovertemplate'] != 'UMAP1=%{x}<br>UMAP2=%{y}<extra></extra>' and \
             str(pd.DataFrame(quantification_dict)[channel_overlay].dtype) not in ["object"] and \
-            len(pd.DataFrame(quantification_dict)[channel_overlay].value_counts()) >= categorical_threshold
+            len(pd.DataFrame(quantification_dict)[channel_overlay].value_counts()) >= categorical_threshold and use_patch
         except KeyError:
             return False
     return False
@@ -289,7 +315,7 @@ def column_min_max_measurements(measurements: Union[dict, pd.DataFrame], normali
     return measurements
 
 def filter_overlay_from_heatmap_data(quant_frame: pd.DataFrame, overlay: Union[str, None]=None,
-                                     categorical_size_limit: Union[int, float]=50):
+                                     categorical_size_limit: Union[int, float]=100):
     """
     Check a categorical UMAP overlay after subsetting to ensure that there are enough unique sub types to create
     a grouped heatmap. If not, remove the column
@@ -307,7 +333,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
                                                    category_subset: Union[list, None]=None,
                                                    cols_include: Union[list, None]=None,
                                                    normalize=True, subset_val=None, umap_overlay: Union[str, None]=None,
-                                                   categorical_size_limit: Union[int, float]=30,
+                                                   categorical_size_limit: Union[int, float]=100,
                                                    transpose: bool=False):
     """
     Generate summarized channel expression of the quantification frame, trimmed to only the channel columns,

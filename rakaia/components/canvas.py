@@ -1,3 +1,5 @@
+"""Module containing the primary canvas component for blended images"""
+
 from typing import Union
 import math
 import numpy as np

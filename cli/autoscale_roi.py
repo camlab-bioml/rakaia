@@ -1,22 +1,26 @@
 """
-Script parses a list input of mcd or tiff files with a common panel and provides a JSON
-output of auto-scaled intensity values on the upper bound
+Define the scaling values required for rakaia
 """
-from rakaia.utils.pixel import (
-    get_default_channel_upper_bound_by_percentile)
-from readimc import MCDFile
-from rakaia.parsers.pixel import FileParser
+
+"""
+Script parses a list input of mcd or tiff files with a common panel and provides a JSON
+output of auto-scaled intensity values on the upper bound.
+Parses the channel arrays for every ROI in the dataset, and appends a random subset of pixels to
+an array to compute the percentile thresholds.
+"""
 import sys
 import argparse
 import json
 import warnings
-from statistics import mean, median
+import glob
+import numpy as np
+from readimc import MCDFile
 
 def cli_parser():
     parser = argparse.ArgumentParser(add_help=False,
             description="Parse a list input of mcd or tiff files with a common panel and provides a JSON "
                         "output of auto-scaled intensity values on the upper bound",
-            usage='Example:\n python autoscale_roi.py -i first-mcd second.mcd -o autoscale.json -m mean -v -ex "laser,test,Start,End"')
+            usage='Example:\n python autoscale_roi.py -i directory_of_mcd_files -o autoscale.json -v -ex "laser,test,Start,End"')
     parser.add_argument('-i', "--input", nargs='+',
                         help="Series of paths to mcd or tiff files",
                         dest="input", type=str, required=True)
@@ -26,10 +30,6 @@ def cli_parser():
     parser.add_argument('-pr', "--percentile", action="store",
                         help="Set the percentile of pixel intensities to use for the upper bound",
                         dest="percentile", default=99, type=float)
-    parser.add_argument('-m', "--method", action="store",
-                        help="Method for selecting the auto scaled upper bound. Options are either `min`, "
-                             "`mean`, or `median`",
-                        dest="method", default="min", type=str, choices=['min', 'mean', 'median'])
     parser.add_argument('-o', "--outfile", action="store",
                         help="Set the output tiff file. Default is geojson.tiff written to the current directory",
                         dest="outfile", default="autoscale.json", type=str)
@@ -43,15 +43,11 @@ def cli_parser():
                         help="Integer dimension threshold. ROIs with an x or y dimension below this value are not "
                              "considered. Default is 100 pixels",
                         dest="size_limit", default=100, type=int)
+    parser.add_argument('-ss', "--subsample-size", action="store",
+                        help="Integer for the number of pixels to subsample per array to compute the percentile.",
+                        dest="subsample_size", default=5000, type=int)
 
     return parser
-
-def autoscale_upper_bound_from_mode(vals: list, mode="min"):
-    if mode == "median":
-        return median(vals)
-    elif mode == "mean":
-        return mean(vals)
-    return min(vals)
 
 def main(sysargs=sys.argv[1:]):
     warnings.filterwarnings("ignore")
@@ -60,34 +56,46 @@ def main(sysargs=sys.argv[1:]):
     keywords_exclude = args.exclude.split(',') if args.exclude else []
     channel_scales = {}
     aliases = {}
+    # toggle proportional subsampling for percentage of ROI pixels, or use flat number for every ROI
+    proportional_subsampling = False
     # if the files pass the initial fileparser, then can proceed
-    preflight = FileParser(args.input)
-    if preflight.panel_length is not None:
-        for file in args.input:
-            if file.endswith('.mcd'):
-                with MCDFile(file) as mcd_file:
-                    for slide in mcd_file.slides:
-                        for acq in slide.acquisitions:
-                            if not any([ignore in acq.description for ignore in keywords_exclude]) and \
-                                    (acq.height_px > args.size_limit and acq.width_px > args.size_limit):
-                                img = mcd_file.read_acquisition(acq, strict=False)
-                                if args.verbose:
-                                    print('\033[32m' + f"Parsing ROI: {acq.description}")
-                                for channel_name, channel_array, channel_label in zip(acq.channel_names, img,
-                                                                                      acq.channel_labels):
-                                    if channel_name not in channel_scales:
-                                        channel_scales[channel_name] = []
-                                    channel_scales[channel_name].append(
-                                        get_default_channel_upper_bound_by_percentile(channel_array, args.percentile))
-                                    aliases[channel_name] = channel_label
+    input_paths = args.input if isinstance(args.input, list) else [args.input]
+    mcds_to_process = []
+    for path in input_paths:
+        mcds_to_process += list(glob.glob(f"{path}/*.mcd"))
+    for file in mcds_to_process:
+        if file.endswith('.mcd'):
+            with (MCDFile(file) as mcd_file):
+                for slide in mcd_file.slides:
+                    for acq in slide.acquisitions:
+                        if not any([ignore in acq.description for ignore in keywords_exclude]) and \
+                                (acq.height_px > args.size_limit and acq.width_px > args.size_limit):
+                            img = mcd_file.read_acquisition(acq, strict=False)
+                            if args.verbose:
+                                print('\033[32m' + f"Parsing ROI: {acq.description}")
+                            for channel_name, channel_array, channel_label in zip(acq.channel_names, img,
+                                                                                  acq.channel_labels):
+                                if channel_name not in channel_scales:
+                                    channel_scales[channel_name] = np.empty((0,), dtype=float)
+                                array_use = channel_array.flatten().astype(np.uint32)
+                                # array_use = array_use[array_use > 0]
+                                subset_num = int(0.01 * int(array_use.shape[0])) if \
+                                    proportional_subsampling else args.subsample_size
+                                flat_indices = np.random.choice(int(array_use.shape[0]),
+                                                                subset_num, replace=False)
+                                subset = array_use[flat_indices]
+                                channel_scales[channel_name] = np.concatenate(
+                                    (channel_scales[channel_name], subset))
+
+                                aliases[channel_name] = channel_label
     json_template = {"channels": {}, "config": {"blend": [], "filter": {"global_apply_filter":[],
                     "global_filter_type": 'median', "global_filter_val": 3, "global_filter_sigma": 1}},
                     "cluster": None, "gating": None}
-    for channel, autoscale in channel_scales.items():
-        # TODO: include different modes for selecting the appropriate upper bound
-        json_template["channels"][channel] = {"color": "#FFFFFF", "x_lower_bound": None,
-                                "x_upper_bound": autoscale_upper_bound_from_mode(autoscale, args.method),
-                                "filter_type": None, "filter_val": None, "filter_sigma": None, "alias": aliases[channel]}
+    for channel, arr in channel_scales.items():
+        json_template["channels"][channel] = {"color": "#FFFFFF", "x_lower_bound": 0.0,
+                                              "x_upper_bound": float(np.percentile(arr, args.percentile)),
+                                              "filter_type": None, "filter_val": None, "filter_sigma": None,
+                                              "alias": aliases[channel]}
     with open(args.outfile, 'w', encoding='utf-8') as f:
         json.dump(json_template, f, ensure_ascii=False)
 

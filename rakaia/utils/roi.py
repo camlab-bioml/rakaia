@@ -1,3 +1,6 @@
+"""Module containing utility functions for linking object lists of interest to ROI thumbnails
+"""
+
 import pandas as pd
 import numpy as np
 from PIL import Image

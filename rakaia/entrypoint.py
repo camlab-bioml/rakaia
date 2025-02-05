@@ -1,3 +1,7 @@
+"""Module defining the main linking functions between the application dashboard and the
+Flask application backend
+"""
+
 import uuid
 import warnings
 import os
@@ -5,9 +9,6 @@ from flask import Flask, render_template
 from flask_caching import Cache
 # from flask_httpauth import HTTPBasicAuth
 # from werkzeug.security import generate_password_hash, check_password_hash
-
-_program = "rakaia"
-__version__ = "0.21.0"
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.
@@ -21,7 +22,7 @@ def init_app(cli_config):
     # Construct core Flask application with embedded Dash
     app = Flask(__name__, instance_relative_config=False,
                 static_url_path="", static_folder="static",
-            template_folder="templates")
+                template_folder="templates")
     # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
 
     cache = Cache(config = {

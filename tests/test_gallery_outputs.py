@@ -1,16 +1,24 @@
 import os
 import tempfile
 import pickle
-
 import numpy as np
+import pytest
+from PIL import Image
+from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap
 from rakaia.io.gallery import (
     roi_query_gallery_children,
     channel_tile_gallery_children,
     set_channel_thumbnail,
     set_gallery_thumbnail_from_signal_retention,
     replace_channel_gallery_aliases,
-    channel_tiles, gallery_export_template, channel_tiles_from_gallery)
-from rakaia.utils.pixel import resize_for_canvas
+    channel_tiles, gallery_export_template,
+    channel_tiles_from_gallery, umap_pipeline_tiles,
+    umap_gallery_children,
+    tile_greyscale_conversion)
+from rakaia.utils.gradient import (
+    ChannelGradient,
+    GradientNotFoundError)
+from rakaia.utils.pixel import resize_for_canvas, filter_by_upper_and_lower_bound
 import dash_bootstrap_components as dbc
 
 def test_channel_thumbnail_signal_retention():
@@ -170,3 +178,49 @@ def test_recursive_gallery_children(recursive_gallery_children, recursive_aliase
     malformed = {"other": {"key_1": {"props": None}, "key_2": {"one": 1}}}
     assert replace_channel_gallery_aliases(malformed, recursive_aliases_2) == malformed == \
            {'other': {'key_1': {'props': None}, 'key_2': {'one': 1}}}
+
+def test_umap_gallery_tiles(get_current_dir):
+    umap_files = parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    umap_tiles = umap_pipeline_tiles(umap_files)
+    assert len(umap_tiles) == len(umap_files) == 3
+    for dist in [0, 0.1, 0.25]:
+        assert any([str(dist) in file_base for file_base in list(umap_tiles.keys())])
+
+    gallery_children_umap = umap_gallery_children(umap_tiles)
+    assert len(gallery_children_umap) == len(umap_tiles)
+    assert not umap_gallery_children({})
+
+def test_channel_gradients(get_current_dir):
+    greyscale_image = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
+    filtered = filter_by_upper_and_lower_bound(greyscale_image, 0,
+                                               np.percentile(greyscale_image, 99))
+
+    rainbow = ChannelGradient(filtered).apply_gradient("rainbow")
+    assert np.array_equal(rainbow[161, 90], np.array([255, 0, 0]))
+    assert np.array_equal(rainbow[110, 59], np.array([0, 0, 0]))
+    assert np.array_equal(rainbow[111, 46], np.array([121, 9, 254]))
+
+    greyscale = ChannelGradient(filtered).apply_gradient()
+    assert np.array_equal(filtered.astype(np.float32), greyscale)
+
+    blue_gold = ChannelGradient(filtered).apply_gradient("blue_gold")
+    assert np.array_equal(blue_gold[98, 174], np.array([255, 215, 0]))
+
+    jet = ChannelGradient(filtered).apply_gradient("jet")
+    assert np.array_equal(jet[98, 174], np.array([0, 0, 255]))
+
+    back_to_greyscale = ChannelGradient(rainbow).apply_gradient()
+    assert back_to_greyscale[93, 50] == 0.0
+
+    with pytest.raises(GradientNotFoundError):
+        ChannelGradient(filtered).apply_gradient("fake")
+
+
+def test_channel_thumbnail_conversion():
+    channel_array = np.full((1000, 1000), 24).astype(np.float32)
+    rainbow = ChannelGradient(channel_array).apply_gradient("rainbow")
+    thumbnail_converted = tile_greyscale_conversion(rainbow, False)
+    assert str(thumbnail_converted.mode) == "RGB"
+    greyscale = np.full((1000, 1000), 1000).astype(np.float32)
+    thumbnail_converted = tile_greyscale_conversion(greyscale, True)
+    assert str(thumbnail_converted.mode) == "RGB"

@@ -1,3 +1,5 @@
+import pandas as pd
+
 from rakaia.callbacks.pixel_wrappers import (
     parse_global_filter_values_from_json,
     parse_local_path_imports,
@@ -6,8 +8,12 @@ from rakaia.callbacks.pixel_wrappers import (
     AnnotationList,
     no_json_db_updates,
     is_steinbock_dir,
-    parse_steinbock_dir)
+    parse_steinbock_dir,
+    parse_steinbock_umap,
+    umap_coordinates_from_gallery_click,
+    parse_steinbock_scaling)
 import dash
+import anndata as ad
 import os
 
 from rakaia.io.session import SessionServerside
@@ -16,13 +22,27 @@ def test_parse_steinbock_dir(get_current_dir):
     assert not is_steinbock_dir(os.path.join(get_current_dir, 'cell_measurements.csv'))
     steinbock_dir = str(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
     assert is_steinbock_dir(steinbock_dir)
-    mcd, error, masks, quant, umap = parse_steinbock_dir(steinbock_dir, None,
+    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(steinbock_dir, None,
                                     key="umap_coordinates", use_unique_key=True)
+    assert 'Successfully parsed' in error['error']
     assert mcd['uploads'] == [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'mcd', 'test.mcd')]
     assert len(masks) == 1
     assert quant['uploads'] == [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'export', 'test_mcd.h5ad')]
     assert isinstance(umap, SessionServerside)
     assert umap.key == "umap_coordinates"
+    scaling_direct = parse_steinbock_scaling(steinbock_dir)
+    assert scaling_direct == scaling
+    assert isinstance(scaling, dict)
+    expr = ad.read_h5ad(quant['uploads'][0])
+    assert len(expr.var_names) == len(scaling)
+
+    assert parse_steinbock_scaling(os.path.join(get_current_dir, 'steinbock', 'deepcell')) is None
+
+def test_invalid_steinbock_dir(get_current_dir):
+    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(get_current_dir, None,
+                                key="umap_coordinates", use_unique_key=True)
+    assert type(mcd) == type(masks) == type(quant) == dash._callback.NoUpdate
+    assert 'Error parsing' in error['error']
 
 def test_generate_annotation_lists():
     layout_1 = {'xaxis.range[0]': 259.7134146341464, 'xaxis.range[1]': 414.2865853658536,
@@ -119,3 +139,24 @@ def test_null_json_update():
     assert len(no_json_db_updates(None)) == 19
     tup_return = no_json_db_updates({"error": "No error here"})
     assert tup_return[2] == {"error": "No error here"}
+
+def test_umap_png_parse(get_current_dir):
+    umap_files = parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    assert len(umap_files) == 3
+    for dist in [0, 0.1, 0.25]:
+        assert any([str(dist) in file_name for file_name in umap_files])
+    assert not parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock'))
+
+def test_umap_gallery_reactive_search(get_current_dir):
+
+    coords_from_click = umap_coordinates_from_gallery_click('umap_min_dist_0.25',
+                        os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    coord_frame = pd.read_csv(os.path.join(get_current_dir, 'steinbock', 'test_mcd',
+                                           'export', 'umap', 'umap_min_dist_0.25_coordinates.csv'))
+    assert coord_frame.equals(pd.DataFrame(coords_from_click.value))
+    none_found = umap_coordinates_from_gallery_click('umap_min_dist_0.25',
+                        os.path.join(get_current_dir, 'steinbock'))
+    assert isinstance(none_found, dash._callback.NoUpdate)
+    none_found_2 = umap_coordinates_from_gallery_click('umap_min_dist_1',
+                        os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    assert isinstance(none_found_2, dash._callback.NoUpdate)

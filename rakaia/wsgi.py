@@ -1,3 +1,7 @@
+"""Module defining the CLI entrypoint for users to execute rakaia using
+CLI arguments
+"""
+
 import tempfile
 import argparse
 import sys
@@ -5,7 +9,8 @@ import webbrowser
 import os
 from threading import Timer
 from waitress import serve
-from rakaia.entrypoint import init_app, __version__, _program
+from rakaia import __version__, _program
+from rakaia.entrypoint import init_app
 
 
 def cli_parser():
@@ -101,6 +106,10 @@ def main(sysargs=sys.argv[1:]):
                   'is_dev_mode': args.is_dev_mode,
                   'cache_dest': args.cache_dest}
 
+    # if using an executable like pyinstaller, always run waitress
+    if getattr(sys, 'frozen', False):
+        CLI_CONFIG['is_dev_mode'] = False
+
     app = init_app(cli_config=CLI_CONFIG)
     #   https://stackoverflow.com/questions/64107108/what-is-the-issue-with-binding-to-all-interfaces-and-what-are-the-alternatives
     HOST = '127.0.0.1' if CLI_CONFIG['is_dev_mode'] else '0.0.0.0'
@@ -108,7 +117,7 @@ def main(sysargs=sys.argv[1:]):
         Timer(1, open_browser).start()
 
     if CLI_CONFIG['is_dev_mode']:
-        app.run(host=HOST, debug=args.is_dev_mode, threaded=args.threading, port=args.port)
+        app.run(host=HOST, debug=CLI_CONFIG['is_dev_mode'], threaded=args.threading, port=args.port)
     else:
         serve(app, host=HOST, port=args.port, threads=args.threads)
 

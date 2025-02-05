@@ -169,7 +169,7 @@ rakaia -pr
 
 ### Binary distribution
 
-rakaia can be compiled and distributed as a binary using `pyapp`. The instructions for building
+rakaia can be compiled and distributed as a standalone executable using `pyinstaller`. The instructions for building
 rakaia standalone binaries can be found under the [building section](BUILDING.md)
 
 ## Troubleshooting

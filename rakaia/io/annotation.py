@@ -1,3 +1,7 @@
+"""Module containing tools for outputting ROI annotations in different formats
+such as PDF, tiff (zipped), or CSV
+"""
+
 import os
 import json
 from typing import Union

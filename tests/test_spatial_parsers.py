@@ -2,8 +2,8 @@ import os
 import numpy as np
 import anndata as ad
 import pytest
-from rakaia.parsers.pixel import (
-    FileParser, parse_files_for_h5ad)
+from rakaia.parsers.pixel import FileParser
+from rakaia.parsers.lazy_load import parse_files_for_lazy_loading
 from rakaia.parsers.spatial import (
     spatial_canvas_dimensions,
     spatial_grid_single_marker,
@@ -17,10 +17,10 @@ from rakaia.parsers.object import visium_mask
 def test_identify_h5ad_in_uploads(get_current_dir):
     uploads = {"uploads": [os.path.join(get_current_dir, "for_recolour.tiff"),
                            os.path.join(get_current_dir, "visium_thalamus.h5ad")]}
-    h5ad_found = parse_files_for_h5ad(uploads, "visium_thalamus+++slide0+++acq")
+    h5ad_found = parse_files_for_lazy_loading(uploads, "visium_thalamus+++slide0+++acq")
     assert h5ad_found == os.path.join(get_current_dir, "visium_thalamus.h5ad")
-    assert parse_files_for_h5ad(uploads, "other_visium+++slide0+++acq") is None
-    assert parse_files_for_h5ad([], "visium_thalamus+++slide0+++acq") is None
+    assert parse_files_for_lazy_loading(uploads, "other_visium+++slide0+++acq") is None
+    assert parse_files_for_lazy_loading([], "visium_thalamus+++slide0+++acq") is None
 
 def test_basic_visium_anndata_parser(get_current_dir):
     visium_parser = FileParser([os.path.join(get_current_dir, "visium_thalamus.h5ad")])

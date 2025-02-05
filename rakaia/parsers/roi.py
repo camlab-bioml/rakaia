@@ -1,3 +1,7 @@
+"""Module containing functions and classes to generate region-level thumbnails
+for gallery rendering
+"""
+
 from typing import Union
 from functools import partial
 import os
@@ -13,17 +17,17 @@ import anndata as ad
 from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
-    apply_filter_to_array)
-from rakaia.parsers.pixel import convert_rgb_to_greyscale
+    apply_filter_to_array, set_array_storage_type_from_config)
 from rakaia.utils.object import validate_mask_shape_matches_image
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
     ROIMaskMatch,
     match_mask_name_to_quantification_sheet_roi)
 from rakaia.parsers.spatial import (
-    SpatialDefaults,
-    spatial_canvas_dimensions, spatial_grid_single_marker, set_spatial_scale, get_spatial_spot_radius,
-    is_spot_based_spatial, is_spatial_dataset)
+    spatial_canvas_dimensions, spatial_grid_single_marker,
+    get_spatial_spot_radius,
+    is_spot_based_spatial,
+    is_spatial_dataset)
 
 
 class RegionThumbnail:
@@ -53,6 +57,7 @@ class RegionThumbnail:
     :param single_channel_view: Whether the thumbnail should be used to preview a single greyscale channel thumbnail.
     :param spatial_radius: Optional value for user-driven spatial marker radius. By default, inferred from the dataset.
     :param enable_masks: Whether to use a matching mask, if found, for each thumbnail. Default: True
+    :param use_scaling: Whether to use the percentile scaling from the blend dictionary or not (Default: True)
     :return: None
     """
     # define string attribute matches for the partial
@@ -66,7 +71,8 @@ class RegionThumbnail:
                  dimension_max: Union[int, float, None]=None,
                  roi_keyword: str=None,
                  single_channel_view: bool=False, spatial_radius: Union[int, None]=None,
-                 enable_masks: bool=True):
+                 enable_masks: bool=True,
+                 use_scaling: bool=True, arr_type: str="float"):
 
         self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
@@ -99,6 +105,8 @@ class RegionThumbnail:
         self.spot_size = spatial_radius
         # if random query, allow mask toggle, otherwise always include the mask
         self.enable_masks = enable_masks if not predefined_indices else True
+        self.use_scaling = use_scaling
+        self.arr_type = arr_type if arr_type else "float"
 
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
@@ -238,6 +246,55 @@ class RegionThumbnail:
                 return None
         return acq
 
+    def apply_preset_based_on_view(self, arr: np.array, channel_name: str):
+        """
+        Apply a single channel preset if scaling is to be used, and single channel view is not enabled
+        (Single channel scaling processed separately).
+
+        :param arr: Numpy channel array
+        :param channel_name: Channel identifier in the session dictionary
+
+        :return: Scaled numpy channel array based on condition
+        """
+        return apply_preset_to_array(arr, self.blend_dict[channel_name]) if \
+            self.use_scaling else arr.astype(set_array_storage_type_from_config(self.arr_type))
+
+    def set_colour(self, channel_name: str):
+        """
+        Set the channel recolour to use
+
+        :param channel_name: Internal channel identifier
+
+        :return: RGB colour value to apply for recolouring
+        """
+        return self.blend_dict[channel_name]['color'] if not \
+            self.use_greyscale else '#FFFFFF'
+
+    def apply_colouring_based_on_view(self, arr: np.array, colour: str):
+        """
+        Apply a single channel recolouring if single channel view is not used
+        (single channel view is greyscale)
+
+        :param arr: Numpy channel array
+        :param colour: RGB colour to use for colouring
+
+        :return: Recoloured channel array
+        """
+        return np.array(recolour_greyscale(arr, colour)).astype(
+            np.float32) if not self.single_channel_view else arr.astype(
+            np.float32)
+
+    def single_channel_process(self, arr: np.array, channel_name: str):
+        """
+        Define the steps for single channel processing. Includes scaling and recolouring
+
+        :param arr: Numpy channel array
+        :param channel_name: Channel identifier in the session dictionary
+        """
+        with_preset = self.apply_preset_based_on_view(arr, channel_name)
+        colour_use = self.set_colour(channel_name)
+        return self.apply_colouring_based_on_view(with_preset, colour_use)
+
     def additive_thumbnail_from_mcd(self, file_path):
         """
         Generate one or more image thumbnails from a mcd file.
@@ -267,12 +324,7 @@ class RegionThumbnail:
                                 # if the channel is in the current blend, use it
                                 if channel_names[channel_index] in self.currently_selected_channels and \
                                         channel_names[channel_index] in self.blend_dict.keys():
-                                    with_preset = apply_preset_to_array(channel,
-                                                                        self.blend_dict[channel_names[channel_index]])
-                                    colour_use = self.blend_dict[channel_names[channel_index]]['color'] if not \
-                                        self.use_greyscale else '#FFFFFF'
-                                    recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(
-                                        np.float32)
+                                    recoloured = self.single_channel_process(channel, channel_names[channel_index])
                                     acq_image.append(recoloured)
                                 channel_index += 1
                             label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
@@ -301,6 +353,7 @@ class RegionThumbnail:
                 else:
                     slide_index += 1
                     continue
+            mcd_file.close()
             # else:
             #     continue
             # break
@@ -331,15 +384,7 @@ class RegionThumbnail:
                         channel_name = str(f"channel_{channel_index}")
                         if channel_name in self.currently_selected_channels and \
                                 channel_name in self.blend_dict.keys():
-                            if not self.single_channel_view:
-                                with_preset = apply_preset_to_array(convert_rgb_to_greyscale(page.asarray()),
-                                                                    self.blend_dict[channel_name])
-                                colour_use = self.blend_dict[channel_name]['color'] if not \
-                                    self.use_greyscale else '#FFFFFF'
-                                recoloured = np.array(recolour_greyscale(with_preset.astype(np.uint8),
-                                                                             colour_use)).astype(np.float32)
-                            else:
-                                recoloured = convert_rgb_to_greyscale(page.asarray())
+                            recoloured = self.single_channel_process(page.asarray(), channel_name)
                             acq_image.append(recoloured)
                         channel_index += 1
                     self.process_additive_image(acq_image, label)
@@ -368,11 +413,7 @@ class RegionThumbnail:
                         channel_name = txt_channel_names[image_index - 1]
                         if channel_name in self.currently_selected_channels and \
                                 channel_name in self.blend_dict.keys():
-                            with_preset = apply_preset_to_array(image,
-                                        self.blend_dict[channel_name])
-                            colour_use = self.blend_dict[channel_name]['color'] if not \
-                                self.use_greyscale else '#FFFFFF'
-                            recoloured = np.array(recolour_greyscale(with_preset, colour_use)).astype(np.float32)
+                            recoloured = self.single_channel_process(image, channel_name)
                             acq_image.append(recoloured)
                         image_index += 1
                     self.process_additive_image(acq_image, label)
@@ -398,12 +439,8 @@ class RegionThumbnail:
                 spot_size = get_spatial_spot_radius(adata, self.spot_size)
                 for marker in self.currently_selected_channels:
                     if marker in self.blend_dict.keys():
-                        with_preset = apply_preset_to_array(spatial_grid_single_marker(
-                            adata, marker, spot_size), self.blend_dict[marker])
-                        colour_use = self.blend_dict[marker]['color'] if not \
-                            self.use_greyscale else '#FFFFFF'
-                        recoloured = np.array(recolour_greyscale(with_preset,
-                                            colour_use)).astype(np.float32)
+                        recoloured = self.single_channel_process(spatial_grid_single_marker(
+                            adata, marker, spot_size), marker)
                         acq_image.append(recoloured)
                 self.process_additive_image(acq_image, label)
 

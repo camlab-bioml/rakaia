@@ -1,3 +1,6 @@
+"""Module containing utility functions for managing shape lists in the main canvas
+"""
+
 from typing import Union
 import plotly.graph_objs as go
 

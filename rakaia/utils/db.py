@@ -1,3 +1,7 @@
+"""Module containing utility functions for writing documents to database instances and
+JSON output files
+"""
+
 from typing import Union
 import pandas as pd
 from rakaia.io.session import JSONSessionDocument

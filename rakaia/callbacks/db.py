@@ -1,3 +1,5 @@
+"""Application callbacks associated with mongoDB"""
+
 import dash
 from dash_extensions.enrich import Output, Input, State
 from dash.exceptions import PreventUpdate

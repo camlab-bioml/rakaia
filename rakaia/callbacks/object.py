@@ -1,8 +1,11 @@
+"""Application callbacks associated with objects
+(masking, clustering, UMAP, annotation, etc.)"""
+
 import os
 import uuid
 import dash
 import pandas as pd
-from dash import dcc
+from dash import dcc, ALL
 import matplotlib
 from werkzeug.exceptions import BadRequest
 import dash_uploader as du
@@ -11,8 +14,10 @@ from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 
+from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap, umap_coordinates_from_gallery_click, is_steinbock_dir
 from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import set_roi_identifier_from_length
+from rakaia.io.gallery import umap_gallery_children, umap_pipeline_tiles
 from rakaia.parsers.object import (
     RestyleDataParser,
     parse_and_validate_measurements_csv,
@@ -22,8 +27,9 @@ from rakaia.parsers.object import (
     umap_dataframe_from_quantification_dict,
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
-    GatingObjectList, visium_mask)
+    GatingObjectList, visium_mask, apply_gating_to_all_rois)
 from rakaia.plugins import run_quantification_model
+from rakaia.utils.alert import add_warning_to_error_config, AlertMessage
 from rakaia.utils.decorator import DownloadDirGenerator
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
@@ -63,7 +69,8 @@ from rakaia.utils.quantification import (
     update_gating_dict_with_slider_values,
     gating_label_children,
     mask_object_counter_preview,
-    DistributionTableColumns)
+    DistributionTableColumns,
+    GatingZoomSubset)
 
 def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -169,8 +176,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('umap-projection', 'data'),
                        Input('execute-umap-button', 'n_clicks'),
                        State('quant-heatmap-channel-list', 'value'),
+                       State('umap-min-dist', 'value'),
                        prevent_initial_call=True)
-    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks, chan_include):
+    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks, chan_include, min_dist):
         """
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
@@ -179,8 +187,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return dash.no_update, list(pd.DataFrame(quantification_dict).columns), \
                 list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
         try:
-            return umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
-            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include), dash.no_update, dash.no_update, dash.no_update
+            return (umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
+            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include, min_dist=min_dist),
+                    dash.no_update, dash.no_update, dash.no_update)
         except ValueError: raise PreventUpdate
 
     @dash_app.callback(Output('umap-plot', 'figure'),
@@ -190,14 +199,17 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        Input('quantify-cur-roi-execute', 'n_clicks'),
+                       State('read-filepath', 'value'),
                        prevent_initial_call=True)
-    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant):
+    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant, local_filepath):
         blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame(quantification_dict)) or
                                              ctx.triggered_id == 'quantify-cur-roi-execute') else dash.no_update
         if ctx.triggered_id != 'quantify-cur-roi-execute':
             if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
             try:
-                if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay):
+                # do not use patch if updating the coordinates
+                use_patch = False if (ctx.triggered_id == "umap-projection") else True
+                if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay, use_patch=use_patch):
                     return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
                 else:
                     umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
@@ -527,6 +539,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "quantify-cur-roi-execute" and execute > 0 and channels_to_quantify: return False, preview
         return not is_open if n else is_open, preview
 
+    @dash_app.callback(
+        Output("quant-channel-modal", "is_open"),
+        Input('quant-channel-show', 'n_clicks'),
+        [State("quant-channel-modal", "is_open")])
+    def toggle_show_quant_channel_selection_modal(n, is_open):
+        return not is_open if n else is_open
+
     @du.callback(Output('imported-annotations-csv', 'data'),
                  id='upload-point-annotations')
     def import_point_annotations_from_drag_and_drop(status: du.UploadStatus):
@@ -687,7 +706,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(Output('gating-cell-list', 'data'),
-                       Output('gating-param-display', 'children'),
                        Output('apply-gating-custom', 'value'),
                        Input('gating-dict', 'data'),
                        Input('data-collection', 'value'),
@@ -696,21 +714,69 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('gating-channel-options', 'value'),
                        Input('gating-blend-type', 'value'),
                        Input('custom-id-gating', 'value'),
-                       Input('apply-gating-custom', 'value'))
+                       Input('apply-gating-custom', 'value'),
+                       State('mask-dict', 'data'))
     def update_gating_object_list(gating_dict, roi_selection, quantification_dict, mask_selection,
-                                cur_gate_selection, gating_type, id_str, apply_custom_gating):
+                cur_gate_selection, gating_type, id_str, apply_custom_gating, mask_dict):
+        """
+        Generate a threshold-based or custom id gating list for the current ROI
+        """
         # do not update if using custom list and the parameters are updated
-        if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
-        elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
-            id_list = custom_gating_id_list(id_str)
-            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
-                gating_label_children(False, None, None, id_list, True), dash.no_update
-        elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
-            id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
-                        mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
-            return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), \
-                gating_label_children(True, gating_dict, cur_gate_selection, id_list), reset_custom_gate_slider(ctx.triggered_id)
-        return [] if gating_dict is not None else dash.no_update, [], dash.no_update if cur_gate_selection else False
+        if None not in (mask_dict, mask_selection) and mask_selection in mask_dict:
+            if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
+            elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
+                return SessionServerside(custom_gating_id_list(id_str), key="gating_cell_id_list", use_unique_key=OVERWRITE), dash.no_update
+            elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
+                id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                                mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
+                return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), reset_custom_gate_slider(ctx.triggered_id)
+            return [] if gating_dict is not None else dash.no_update, dash.no_update if cur_gate_selection else False
+        raise PreventUpdate
+
+    @dash_app.callback(Output('gating-param-display', 'children'),
+                       Input('gating-cell-list', 'data'),
+                       State('mask-options', 'value'),
+                       State('mask-dict', 'data'),
+                       Input('annotation_canvas', 'relayoutData'),
+                       State('apply-gating-custom', 'value'),
+                       State('gating-dict', 'data'),
+                       State('gating-channel-options', 'value'),
+                       Input('apply-gating', 'value'))
+    def update_gating_obj_display(gating_obj_list, mask_selection, mask_dict, canvas_layout, apply_cust_gating,
+                                  gating_dict, cur_gate_selection, show_gating):
+        """
+        Update the gating object number display
+        """
+        if None not in (gating_obj_list, mask_selection, mask_dict):
+            gating_zoom_subset = GatingZoomSubset(mask_dict[mask_selection]['raw'], canvas_layout, show_gating).generate_list(gating_obj_list)
+            return gating_label_children((not apply_cust_gating), gating_dict, cur_gate_selection, gating_obj_list,
+                                          apply_cust_gating, gating_zoom_subset)
+        raise PreventUpdate
+
+    @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
+                       State('gating-dict', 'data'),
+                       State('data-collection', 'value'),
+                       State('quantification-dict', 'data'),
+                       State('mask-options', 'value'),
+                       State('gating-channel-options', 'value'),
+                       State('gating-blend-type', 'value'),
+                       State('quant-annotation-col-gating', 'value'),
+                       State('gating-annotation-assignment', 'value'),
+                       Input('gating-annotation-all', 'n_clicks'),
+                       Input('gating-annotation-all-reset', 'n_clicks'))
+    def apply_gating_all_rois(gating_dict, roi_selection, quantification_dict, mask_selection,
+                    cur_gate_selection, gating_type, gate_col, gate_val, gate_all_rois_trigger, reset_gate_all):
+        """
+        Gate all the quantified ROIs in the session based on the gating parameters and thresholds
+        set for the current ROI.
+        """
+        if None not in (roi_selection, quantification_dict, mask_selection, gate_val) and cur_gate_selection:
+            indices = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                mask_selection, intersection=(gating_type == 'intersection')).get_query_indices_all()
+            return SessionServerside(apply_gating_to_all_rois(quantification_dict, indices, gate_col, gate_val,
+            reset_to_default=(ctx.triggered_id == "gating-annotation-all-reset")), key="quantification_dict", use_unique_key=OVERWRITE)
+        raise PreventUpdate
+
 
     @dash_app.callback(Output('imported-cluster-frame', 'data', allow_duplicate=True),
                        Output('cluster-col', 'options', allow_duplicate=True),
@@ -798,3 +864,35 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "transfer-annotation-execute":
             return not is_open if (transfer_to and annots_selected) else is_open
         return not is_open if n else is_open
+
+    @dash_app.callback(
+        Output("umap-gallery-modal", "is_open"),
+        Output('umap-gallery_row', 'children'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
+        Input('umap-gal-pipeline', 'n_clicks'),
+        State("umap-gallery-modal", "is_open"),
+        State('read-filepath', 'value'),
+        State('session_alert_config', 'data'))
+    def show_umap_options_in_gallery_modal(n, is_open, local_filepath, error_config):
+        """
+        Trigger rendering of the UMAP gallery from the png outputs from the steinbock snakemake pipeline.
+        """
+        if local_filepath and is_steinbock_dir(local_filepath):
+            tiles = umap_gallery_children(umap_pipeline_tiles(parse_steinbock_umap(local_filepath)))
+            err_return = add_warning_to_error_config(error_config, AlertMessage().warnings["no_umap_gallery"]) if \
+                not tiles else dash.no_update
+            return (not is_open if n else is_open) if tiles else False, tiles, err_return
+        return False, None, add_warning_to_error_config(error_config, AlertMessage().warnings["no_umap_gallery"])
+
+    @dash_app.callback(
+        Output('umap-projection', 'data', allow_duplicate=True),
+        Input({'type': 'umap', "index": ALL}, "n_clicks"),
+        State('read-filepath', 'value'),
+        prevent_initial_call=True)
+    def load_umap_coordinates_from_gallery(value, local_filepath):
+        """
+        Load a UMAP coordinate CSV based on the selection of a UMAP png min distance thumbnail from the UMAP gallery.
+        """
+        if any([elem is not None for elem in value]) and local_filepath and is_steinbock_dir(local_filepath):
+            return umap_coordinates_from_gallery_click(ctx.triggered_id['index'], local_filepath, OVERWRITE)
+        raise PreventUpdate

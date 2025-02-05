@@ -1,10 +1,12 @@
+"""Module containing the class associated With connecting to mongoDB/Atlas"""
+
 from typing import Union
 from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.collection import Collection
 from pymongo.errors import ConfigurationError
 from rakaia.utils.db import format_blend_config_document_for_insert
-
+import certifi
 
 class AtlasDatabaseConnection:
     """
@@ -45,7 +47,8 @@ class AtlasDatabaseConnection:
         :return: tuple: Boolean indicating successful connection, and a string user alert representing the boolean
         """
         try:
-            self.client = MongoClient(self.connection_string, server_api=ServerApi('1')) if not self.existing_client \
+            self.client = MongoClient(self.connection_string, server_api=ServerApi('1'),
+                                      tlsCAFile=certifi.where()) if not self.existing_client \
                 else self.existing_client
             # set the name of the database and collection
             self.database = self.client[self.database_name]
