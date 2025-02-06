@@ -7,6 +7,7 @@ import warnings
 import os
 from flask import Flask, render_template
 from flask_caching import Cache
+from flask_cors import CORS
 # from flask_httpauth import HTTPBasicAuth
 # from werkzeug.security import generate_password_hash, check_password_hash
 
@@ -24,7 +25,7 @@ def init_app(cli_config):
                 static_url_path="", static_folder="static",
                 template_folder="templates")
     # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
-
+    CORS(app)
     cache = Cache(config = {
         "DEBUG": cli_config['is_dev_mode'],  # some Flask specific configs
         "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs

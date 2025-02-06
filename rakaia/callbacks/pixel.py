@@ -1284,6 +1284,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def serve_static(path):
         return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id), 'downloads'), path, as_attachment=True)
 
+    @dash_app.callback(Input('update-coregister', 'n_clicks'),
+                       Output('coregister-transfer', 'data'))
+    @dash_app.server.route('/static/<path:filename>')
+    def serve_coregister_files(filename="coregister.png"):
+        try:
+            return flask.send_from_directory('static', filename), True
+        except TypeError: return dash.no_update, dash.no_update
+
+    @dash_app.callback(Input('update-coregister', 'n_clicks'),
+                       Output('coregister-transfer', 'data', allow_duplicate=True))
+    @dash_app.server.route("/static/coregister_files/<path:filepath>")
+    def serve_coregister_tiles(filename):
+        try:
+            return flask.send_from_directory(os.path.join("static", "coregister_files"), filename), True
+        except TypeError:
+            return dash.no_update, dash.no_update
+
     @dash_app.callback(Output('blend-options-ag-grid', 'rowData'),
                        Output('blend-options-ag-grid', 'defaultColDef'),
                        Input('blending_colours', 'data'),

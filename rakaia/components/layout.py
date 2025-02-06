@@ -189,7 +189,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                   ], style={"display": "flex"}),
                     html.Br(),
                     ], style={"margin": "5px"})]),
-                    html.H6(f"Session cache: {cache_dest}"),
+                    html.H6(f"Session cache: {cache_dest}", id='session-cache-dest'),
                 ]),
                         id="session-config-modal", size='l',
                         style={"margin-left": "10px", "margin-top": "15px"}),
@@ -1665,7 +1665,14 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                margin=dict(l=5, r=5, b=15, t=20, pad=0))},
                                         responsive=True, config={'displaylogo': False})]),
                                     )),
-                ])
+                ]),
+                dbc.Tab(label='H & E', id='osd-tab', tab_id='coregister', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                        children = [html.B("H & E co-registered image"),
+                                    dbc.Button("Update coregister source", id='update-coregister'),
+                                    html.Br(),
+                                    dcc.Store(id='coregister-transfer', data=False),
+                                    html.Div(id='openseadragon-container', style={"width": "100%",
+                                            "border": "1px solid black", "height": "600px"})])
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),
         dcc.Store(id="uploaded_dict"),

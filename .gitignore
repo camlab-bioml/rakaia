@@ -171,3 +171,6 @@ dmypy.json
 *build
 *dist
 *.xml
+
+coregister*
+*.dzi

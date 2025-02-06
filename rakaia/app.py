@@ -51,6 +51,8 @@ def init_dashboard(server, authentic_id, config=None):
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
                         external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                         server=server,
+                        assets_folder="assets",
+                        external_scripts=["https://cdn.jsdelivr.net/npm/openseadragon@5.0/build/openseadragon/openseadragon.min.js"],
                         routes_pathname_prefix="/rakaia/",
                         suppress_callback_exceptions=True,
                         prevent_initial_callbacks=True)
