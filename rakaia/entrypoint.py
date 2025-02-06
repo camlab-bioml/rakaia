@@ -5,6 +5,7 @@ Flask application backend
 import uuid
 import warnings
 import os
+import flask
 from flask import Flask, render_template
 from flask_caching import Cache
 from flask_cors import CORS
@@ -22,10 +23,14 @@ def init_app(cli_config):
     warnings.simplefilter('ignore', category=DeprecationWarning)
     # Construct core Flask application with embedded Dash
     app = Flask(__name__, instance_relative_config=False,
-                static_url_path="", static_folder="static",
+                static_url_path="/static", static_folder="static",
                 template_folder="templates")
     # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
     CORS(app)
+    app.config['MIME_TYPES'] = {
+        '.dzi': 'application/xml',
+        '.xml': 'application/xml'
+    }
     cache = Cache(config = {
         "DEBUG": cli_config['is_dev_mode'],  # some Flask specific configs
         "CACHE_TYPE": "SimpleCache",  # Flask-Caching related configs
@@ -70,7 +75,6 @@ def init_app(cli_config):
         """Landing page."""
         return render_template(
             'help.html')
-
 
     with app.app_context():
         # Import parts of our core Flask dash

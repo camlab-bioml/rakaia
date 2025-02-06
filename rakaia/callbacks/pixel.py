@@ -1,6 +1,7 @@
 """Application callbacks associated with pixel-level operations (blended images)"""
 
 import os.path
+import shutil
 import uuid
 from pathlib import Path
 import json
@@ -82,7 +83,7 @@ from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
     subset_mask_for_data_export,
-    SessionServerside, panel_match, all_roi_match, sort_channel_dropdown)
+    SessionServerside, panel_match, all_roi_match, sort_channel_dropdown, create_download_dir)
 from rakaia.io.readers import DashUploaderFileReader
 from rakaia.utils.db import (
     match_db_config_to_request_str,
@@ -1280,26 +1281,29 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 "center", "justifyContent": "center", "display": "flex"}), dash.no_update
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError, IndexError): raise PreventUpdate
 
-    @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
-    def serve_static(path):
-        return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id), 'downloads'), path, as_attachment=True)
+    # @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
+    # def serve_static(path):
+    #     return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id), 'downloads'), path, as_attachment=True)
 
-    @dash_app.callback(Input('update-coregister', 'n_clicks'),
-                       Output('coregister-transfer', 'data'))
     @dash_app.server.route('/static/<path:filename>')
-    def serve_coregister_files(filename="coregister.png"):
+    @dash_app.callback(Input('coregister-transfer', 'data'),
+                       Output('coregister-finished', 'data'))
+    def serve_coregister_files(filename):
         try:
-            return flask.send_from_directory('static', filename), True
-        except TypeError: return dash.no_update, dash.no_update
+            return flask.send_from_directory(str(os.path.join(
+                tmpdirname, authentic_id)), filename, mimetype='application/xml')
+        except TypeError: return dash.no_update
 
-    @dash_app.callback(Input('update-coregister', 'n_clicks'),
-                       Output('coregister-transfer', 'data', allow_duplicate=True))
-    @dash_app.server.route("/static/coregister_files/<path:filepath>")
+    @dash_app.server.route('/static/coregister_files/<path:filename>')
+    @dash_app.callback(Input('coregister-transfer', 'data'),
+                       Output('coregister-finished', 'data', allow_duplicate=True))
     def serve_coregister_tiles(filename):
         try:
-            return flask.send_from_directory(os.path.join("static", "coregister_files"), filename), True
+            return flask.send_from_directory(str(os.path.join(
+                tmpdirname, authentic_id, 'coregister_files')), filename, mimetype='application/xml')
         except TypeError:
-            return dash.no_update, dash.no_update
+            return dash.no_update
+
 
     @dash_app.callback(Output('blend-options-ag-grid', 'rowData'),
                        Output('blend-options-ag-grid', 'defaultColDef'),
@@ -2095,3 +2099,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Change the page position of the advanced tools sidebar (masking, gating, clustering, etc.)
         """
         return "start" if toggle_placement else "end"
+
+    @du.callback(Output('coregister-transfer', 'data'),
+                 id='upload-coregister')
+    def upload_coregister_image(status: du.UploadStatus):
+        """
+        Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
+        datasets to ensure that it matches the number of channels
+        """
+        files = DashUploaderFileReader(status).return_filenames()
+        if files:
+            import pyvips
+            image = pyvips.Image.new_from_file(files[0], access="sequential")
+            try: shutil.rmtree(os.path.join(tmpdirname, authentic_id))
+            except FileNotFoundError: pass
+            create_download_dir(os.path.join(tmpdirname, authentic_id, 'coregister'))
+            image.dzsave(os.path.join(tmpdirname, authentic_id , 'coregister'), suffix=".jpg", tile_size=256, overlap=1)
+            return True
+        raise PreventUpdate

@@ -3,18 +3,14 @@ const observer = new MutationObserver(() => {
     id: "openseadragon-container",
         crossOriginPolicy: "Anonymous",
         prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
+        debug: true,
+        showNavigator:  true,
         ajaxWithCredentials: false,
-    tileSources: {
-        type: 'image',
-        url: '/static/coregister.png'
-    }
+    tileSources: '/static/coregister.dzi'
     });
     observer.disconnect();
     document.getElementById("update-coregister").addEventListener('click', function(e) {
-    viewer.open({
-        type: 'image',
-        url: '/static/coregister.png'
-    });
+    viewer.open('/static/coregister.dzi');
     });
 });
 

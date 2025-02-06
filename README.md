@@ -33,6 +33,13 @@ regions or images in a single session.
 Importantly, rakaia does not require any coding/scripting, or
 any pre-defined project directories with specific file structures.
 
+### rakaia stack
+
+- Flask
+- Dash Bootstrap
+- MongoDB
+- openseadragon
+
 
 ## Installation
 

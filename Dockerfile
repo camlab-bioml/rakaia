@@ -11,7 +11,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 RUN apt-get update && apt-get install -y python3-pip python3-opencv \
 git libmysqlclient-dev pkg-config libperl-dev libgtk-3-dev libnotify-dev \
-libsdl2-mixer-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0
+libsdl2-mixer-2.0-0 libsdl2-image-2.0-0 libsdl2-2.0-0 libvips
 
 RUN apt-get install -y python3.9
 
@@ -34,7 +34,10 @@ RUN apt-get install -y python3.9
 
 COPY . app/
 
+# RUN mkdir -p app/static && chmod -R 755 app/static && touch app/static/coregister.dzi
+
 WORKDIR /app/
+
 
 # RUN pip install -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04 wxPython==4.2.0
 
