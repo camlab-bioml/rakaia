@@ -1,2 +1,2 @@
 _program = "rakaia"
-__version__ = "0.23.d"
+__version__ = "0.23.1"
