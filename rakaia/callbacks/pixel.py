@@ -1,7 +1,6 @@
 """Application callbacks associated with pixel-level operations (blended images)"""
 
 import os.path
-import shutil
 import uuid
 from pathlib import Path
 import json
@@ -2109,11 +2108,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         files = DashUploaderFileReader(status).return_filenames()
         if files:
-            import pyvips
-            image = pyvips.Image.new_from_file(files[0], access="sequential")
-            try: shutil.rmtree(os.path.join(tmpdirname, authentic_id))
-            except FileNotFoundError: pass
-            create_download_dir(os.path.join(tmpdirname, authentic_id, 'coregister'))
-            image.dzsave(os.path.join(tmpdirname, authentic_id , 'coregister'), suffix=".jpg", tile_size=256, overlap=1)
+            from rakaia.register.dzi import dzi_tiles_from_image_path
+            dzi_tiles_from_image_path(str(files[0]), str(os.path.join(tmpdirname, authentic_id)))
             return True
         raise PreventUpdate

@@ -1,6 +1,6 @@
 # rakaia
 
-rakaia: Scalable multiplexed dataset analysis in the browser
+rakaia: Scalable multiplexed spatial proteomics and transcriptomics in the browser
 
 <p align="center">
     <img src="man/app-preview.png">
@@ -11,8 +11,7 @@ rakaia provides streamlined in-browser analysis of multiplexed imaging and spati
 The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI), and
 currently supports the following technologies:
 
-- imaging mass cytometry (IMC)
-- immunofluorescence (IF)
+- Spatial proteomics such as imaging mass cytometry (IMC), immunofluorescence (IF), and immunohistochemistry (IHC)
 - spatial transcriptomics such as 10X Visium Spatial Gene Expression (V1, V2, HD), Xenium, and others
 
 Tools in the rakaia application include:
@@ -33,10 +32,11 @@ regions or images in a single session.
 Importantly, rakaia does not require any coding/scripting, or
 any pre-defined project directories with specific file structures.
 
-### rakaia stack
+rakaia is built on:
 
 - Flask
 - Dash Bootstrap
+- Docker
 - MongoDB
 - openseadragon
 

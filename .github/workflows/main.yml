@@ -36,7 +36,7 @@ jobs:
 #          singularity exec rakaia.sif which rakaia && python3 --version
         # shell: bash -l {0}
       - if: runner.os == 'Linux'
-        run: sudo apt-get -y update && sudo apt-get install -y libgl1-mesa-dev
+        run: sudo apt-get -y update && sudo apt-get install -y libgl1-mesa-dev libvips-dev
       # - name: Install rakaia dependencies from requirements
       #   run: pip install -r requirements.txt
       - name: Install rakaia through pip after dependencies
