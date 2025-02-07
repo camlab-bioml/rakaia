@@ -9,7 +9,7 @@ def dzi_tiles_from_image_path(image_path: Union[Path, str],
                               static_folder_prefix: str="coregister"):
     """
     Use `pyvips` to generate a series of dzi tiles that can be served to the flask static route
-    Use the `static_folder_prefix` to match the dzi and tiles to openseadragon
+    Use the `static_folder_prefix` to match the dzi and tiles to `openseadragon`
     """
     import pyvips
     image = pyvips.Image.new_from_file(image_path, access="sequential")

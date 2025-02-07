@@ -1282,26 +1282,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     # @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
     # def serve_static(path):
-    #     return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id), 'downloads'), path, as_attachment=True)
+    #     return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id), 'downloads'), path,
+    #                                      as_attachment=True)
 
-    @dash_app.server.route('/static/<path:filename>')
-    @dash_app.callback(Input('coregister-transfer', 'data'),
-                       Output('coregister-finished', 'data'))
-    def serve_coregister_files(filename):
-        try:
-            return flask.send_from_directory(str(os.path.join(
-                tmpdirname, authentic_id)), filename, mimetype='application/xml')
-        except TypeError: return dash.no_update
+    @dash_app.server.route('/static/<filename>')
+    def serve_coregister_files(filename="coregister.dzi"):
+        try: return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id)), filename)
+        except TypeError: return dash.no_update, dash.no_update
 
     @dash_app.server.route('/static/coregister_files/<path:filename>')
     @dash_app.callback(Input('coregister-transfer', 'data'),
-                       Output('coregister-finished', 'data', allow_duplicate=True))
+                       Output('coregister-finished', 'data'))
     def serve_coregister_tiles(filename):
-        try:
-            return flask.send_from_directory(str(os.path.join(
+        try: return flask.send_from_directory(str(os.path.join(
                 tmpdirname, authentic_id, 'coregister_files')), filename, mimetype='application/xml')
-        except TypeError:
-            return dash.no_update
+        except TypeError: return dash.no_update
 
 
     @dash_app.callback(Output('blend-options-ag-grid', 'rowData'),
