@@ -31,6 +31,7 @@ from rakaia.parsers.pixel import (
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
+from rakaia.register.process import update_coregister_hash
 
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
@@ -2094,7 +2095,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         return "start" if toggle_placement else "end"
 
-    @du.callback(Output('coregister-transfer', 'data'),
+    @du.callback(Output('coregister-upload-transfer', 'data'),
                  id='upload-coregister')
     def upload_coregister_image(status: du.UploadStatus):
         """
@@ -2102,8 +2103,28 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         datasets to ensure that it matches the number of channels
         """
         files = DashUploaderFileReader(status).return_filenames()
-        if files:
-            from rakaia.register.dzi import dzi_tiles_from_image_path
-            dzi_tiles_from_image_path(str(files[0]), str(os.path.join(tmpdirname, authentic_id)))
+        return str(files[0]) if files else dash.no_update
+
+    @dash_app.callback(Output('coregister_hash', 'data'),
+                       Input('coregister-upload-transfer', 'data'),
+                       State('coregister_hash', 'data'),
+                       prevent_initial_call=False)
+    def update_coregister_hash_from_uploads(transfer, cur_hash):
+        return update_coregister_hash(cur_hash, transfer)
+
+    @dash_app.callback(Output('coregister_options', 'options'),
+                       Input('coregister_hash', 'data'),
+                       prevent_initial_call=False)
+    def update_coregister_image_selection(cur_hash):
+        return list(cur_hash.keys()) if cur_hash is not None and cur_hash else dash.no_update
+
+    @dash_app.callback(Output('coregister-transfer', 'data'),
+                       Input('coregister_options', 'value'),
+                       State('coregister_hash', 'data'),
+                       prevent_initial_call=False)
+    def compute_coregister_tiles(reg_select, cur_hash):
+        if reg_select and cur_hash and reg_select in cur_hash:
+            from rakaia.register.process import dzi_tiles_from_image_path
+            dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)))
             return True
         raise PreventUpdate

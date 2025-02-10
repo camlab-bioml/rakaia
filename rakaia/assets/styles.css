@@ -13,6 +13,13 @@
     top: 5%;
 }
 
+#registration-modal .modebar {
+    left: 40%;
+    position: fixed;
+    top: 5%;
+}
+
+
 .region-stats {
     overflow-x: scroll;
 }

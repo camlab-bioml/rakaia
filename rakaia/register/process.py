@@ -2,7 +2,21 @@ import os
 from typing import Union
 import shutil
 from pathlib import Path
+
+import dash
+
 from rakaia.io.session import create_download_dir
+
+def update_coregister_hash(cur_hash: Union[dict, None],
+                           new_upload: Union[str, Path, None]=None):
+    """
+    Update the co-register hash with new file upload
+    """
+    cur_hash = cur_hash if cur_hash is not None else {}
+    if new_upload and os.path.isfile(new_upload):
+        cur_hash[os.path.basename(new_upload)] = new_upload
+        return cur_hash
+    return dash.no_update
 
 def dzi_tiles_from_image_path(image_path: Union[Path, str],
                               dest_dir: Union[Path, str],

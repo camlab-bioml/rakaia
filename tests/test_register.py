@@ -2,10 +2,24 @@ import tempfile
 import xml.etree.ElementTree as ET
 import os
 import platform
+
+import dash
 import pytest
 import shutil
 import tifffile
-from rakaia.register.dzi import dzi_tiles_from_image_path
+from rakaia.register.process import (
+    dzi_tiles_from_image_path,
+    update_coregister_hash)
+
+def test_update_register_hash(get_current_dir):
+    new_hash = update_coregister_hash({}, os.path.join(get_current_dir, 'for_quant.tiff'))
+    assert 'for_quant.tiff' in new_hash.keys()
+    new_hash_2 = update_coregister_hash({}, os.path.join('not_dir', 'for_recolour.tiff'))
+    assert isinstance(new_hash_2, dash._callback.NoUpdate)
+    new_hash = update_coregister_hash(new_hash, os.path.join(get_current_dir, 'for_recolour.tiff'))
+    assert len(new_hash) == 2
+    assert 'for_recolour.tiff' in new_hash.keys()
+
 
 @pytest.mark.skipif(platform.system() != 'Linux',
                     reason='install pyvips only for Linux during testing')

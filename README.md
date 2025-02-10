@@ -35,7 +35,7 @@ any pre-defined project directories with specific file structures.
 rakaia is built on:
 
 - Flask
-- Dash Bootstrap
+- Dash Bootstrap w/ React
 - Docker
 - MongoDB
 - openseadragon

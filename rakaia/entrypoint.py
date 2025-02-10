@@ -5,7 +5,6 @@ Flask application backend
 import uuid
 import warnings
 import os
-import flask
 from flask import Flask, render_template
 from flask_caching import Cache
 from flask_cors import CORS
@@ -27,6 +26,7 @@ def init_app(cli_config):
                 template_folder="templates")
     # dash.cache = Cache(dash, config={'CACHE_TYPE': 'simple'})
     CORS(app)
+    app.config["SESSION_PERMANENT"] = False
     app.config['MIME_TYPES'] = {
         '.dzi': 'application/xml',
         '.xml': 'application/xml'

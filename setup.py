@@ -16,7 +16,7 @@ setup(
     author_email="mwatson@lunenfeld.ca",
     packages=find_packages(),
     package_dir={"rakaia": "rakaia"},
-    package_data={'': ['*.json', "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml", "*.jpg", "*.dzi"]},
+    package_data={'': ['*.json', "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml", "*.jpg"]},
     include_package_data=True,
     description="Scalable multiplexed dataset analysis in the browser",
     long_description=open("README.md").read(),
