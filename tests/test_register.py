@@ -2,7 +2,6 @@ import tempfile
 import xml.etree.ElementTree as ET
 import os
 import platform
-
 import dash
 import pytest
 import shutil
@@ -19,6 +18,15 @@ def test_update_register_hash(get_current_dir):
     new_hash = update_coregister_hash(new_hash, os.path.join(get_current_dir, 'for_recolour.tiff'))
     assert len(new_hash) == 2
     assert 'for_recolour.tiff' in new_hash.keys()
+
+    new_hash_list = update_coregister_hash({}, [os.path.join(get_current_dir, 'for_quant.tiff'),
+                                      os.path.join(get_current_dir, 'for_recolour.tiff')])
+    assert len(new_hash_list) == 2
+    assert 'for_recolour.tiff' in new_hash_list.keys()
+
+    assert isinstance(update_coregister_hash({}, None), dash._callback.NoUpdate)
+
+
 
 
 @pytest.mark.skipif(platform.system() != 'Linux',

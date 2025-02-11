@@ -83,23 +83,23 @@ def test_basic_cli_outputs():
     parser = cli_parser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
-    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     parser = cli_parser()
     args = parser.parse_args(['-da'])
-    assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
-    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
-    args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-pr'])
-    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
+    args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-dv'])
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': False, 'swatches': None, 'array_type': 'int',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
 

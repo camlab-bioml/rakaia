@@ -4,10 +4,10 @@ rakaia.register package
 Submodules
 ----------
 
-rakaia.register.dzi module
---------------------------
+rakaia.register.process module
+------------------------------
 
-.. automodule:: rakaia.register.dzi
+.. automodule:: rakaia.register.process
    :members:
    :undoc-members:
    :show-inheritance:

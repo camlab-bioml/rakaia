@@ -2103,7 +2103,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         datasets to ensure that it matches the number of channels
         """
         files = DashUploaderFileReader(status).return_filenames()
-        return str(files[0]) if files else dash.no_update
+        return files if files else dash.no_update
 
     @dash_app.callback(Output('coregister_hash', 'data'),
                        Input('coregister-upload-transfer', 'data'),

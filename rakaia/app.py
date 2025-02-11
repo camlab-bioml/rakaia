@@ -97,7 +97,7 @@ def init_dashboard(server, authentic_id, config=None):
     # cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
     # background_callback_manager = DiskcacheManager(cache)
 
-    dash_app.layout = register_app_layout(config, cache_dest)
+    dash_app.layout = register_app_layout(config, str(cache_dest))
 
     dash_app.enable_dev_tools(debug=config['is_dev_mode'])
 
