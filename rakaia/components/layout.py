@@ -1671,7 +1671,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                 dbc.Row([dbc.Col([html.Div(id='openseadragon-container', style={"width": "100%",
                 "border": "1px solid black", "height": "700px"})], width=10),
                 dbc.Col([du.Upload(id='upload-coregister', max_file_size=5000000,
-                text='Upload image for co-registration (i.e. H & E)',
+                text='Upload image for co-registration (i.e. H & E) (requires vips)',
                 chunk_size=100, max_total_size=5000000, max_files=100,
                 filetypes=['tif', 'tiff', 'svs'],
                 default_style={"margin-top": "12.5px", "height": "7.5vh"}),
