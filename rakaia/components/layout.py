@@ -1341,7 +1341,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                          style={"margin-right": "7px", "margin-top": "10px",
                                                                 "textAlign": "center"}),
                                         dcc.Dropdown(id='chan-gallery-spectrum', multi=False, value=None,
-                                                     # TODO: potentially add back in jet, just the reverse of rainbow
                                                      options=["rainbow", "blue gold", "greyscale"],
                                         style={"width": "75%", "margin": "10px"}, placeholder="Choose gallery gradient"),
                                         dbc.Button(
@@ -1715,6 +1714,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id="uploads_cluster"),
         dcc.Store(id="current_canvas_image"),
         dcc.Store(id="umap-projection"),
+        dcc.Store(id="umap_upload_paths"),
         dcc.Store(id="annotations-dict"),
         dcc.Store(id="channel-order"),
         dcc.Store(id="umap-legend-categories"),
@@ -1740,7 +1740,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         # use transfer for upload files to the hash, hash to store the filepaths
         dcc.Store(id='coregister-upload-transfer'),
         dcc.Store(id='coregister_hash'),
-        dcc.Store(id='session_id_internal', data=None),
+        dcc.Store(id='session_id_internal', data=None, storage_type="session"),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-02-11
+## [0.23.0] - 2025-02-14
 
 ### Added
 
@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - make waitress production mode the default
+- handle concurrent user sessions better with clientside session ids used for static routes and serverside stores
 
 ## [0.22.0] - 2025-01-31
 

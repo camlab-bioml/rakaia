@@ -72,7 +72,8 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
                                             drop_col: bool = True,
                                             rerun: bool = True, unique_key_serverside: bool = True,
                                             cols_include: list = None,
-                                            min_dist: Union[float, None]=0.1):
+                                            min_dist: Union[float, None]=0.1,
+                                            session_id: str=""):
     """
     Generate a UMAP coordinate frame from a data frame of channel expression
     `cols_include`: Pass an optional list of channels to generate the coordinates from
@@ -96,7 +97,7 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
             if umap_obj:
                 scaled = umap_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
-                return SessionServerside(embedding, key="umap-embedding",
+                return SessionServerside(embedding, key=f"umap-embedding_{session_id}",
                                          use_unique_key=unique_key_serverside)
             return dash.no_update
         return dash.no_update
@@ -193,7 +194,8 @@ def parse_masks_from_filenames(status: Union[dash_uploader.UploadStatus, None], 
     return dash.no_update
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
-                                     set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):
+                                     set_mask, cur_mask_dict, derive_cell_boundary=False,
+                                     unique_key_serverside=True, session_id: str=""):
     """
     Read a single mask from tiff into a single-page numpy array. The dictionary holding the mask will save the raw
     array, as well as the object boundary array and hover template containing the integer identifiers for each object.
@@ -222,12 +224,13 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
                                                     "hover": page.asarray().reshape((page.asarray().shape[0],
                                                                                      page.asarray().shape[1], 1)),
                                                     "raw": page.asarray()}
-        return SessionServerside(cur_mask_dict, key="mask-dict",
+        return SessionServerside(cur_mask_dict, key=f"mask-dict_{session_id}",
                                  use_unique_key=unique_key_serverside), list(cur_mask_dict.keys())
     raise PreventUpdate
 
 def visium_mask(mask_dict: dict, data_selection: str, upload_list: Union[list, dict],
-                delimiter: str="+++", unique_key_serverside: bool=True):
+                delimiter: str="+++", unique_key_serverside: bool=True,
+                session_id: str=""):
     """
     Generate a mask for a 10X Visium spot-based assay (currently not compatible with HD).
     The mask can be automatically inferred from the spot positions and scale factors in the dataset
@@ -246,7 +249,7 @@ def visium_mask(mask_dict: dict, data_selection: str, upload_list: Union[list, d
                               "boundary": boundary_import,
                             "hover": mask_spots.reshape((mask_spots.shape[0], mask_spots.shape[1], 1)),
                                             "raw": mask_spots}
-            masks_return = SessionServerside(mask_dict, key="mask-dict",
+            masks_return = SessionServerside(mask_dict, key=f"mask-dict_{session_id}",
                                      use_unique_key=unique_key_serverside)
             names_return = list(mask_dict.keys())
     return masks_return, names_return

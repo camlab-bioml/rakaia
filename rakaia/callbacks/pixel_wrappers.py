@@ -200,7 +200,8 @@ def parse_steinbock_scaling(directory: Union[str, Path]):
 
 def umap_coordinates_from_gallery_click(umap_selection: str,
                                         directory: Union[str, Path],
-                                        use_unique_key: bool=True):
+                                        use_unique_key: bool=True,
+                                        session_id: str=""):
     """
     Return a `pd.DataFrame` of UMAP coordinates based on a UMAP gallery selection by partial filename
     """
@@ -211,7 +212,7 @@ def umap_coordinates_from_gallery_click(umap_selection: str,
             if str(Path(umap_dist).stem) == f'{str(umap_selection)}_coordinates':
                 umap_return = SessionServerside(pd.read_csv(str(umap_dist), names=['UMAP1', 'UMAP2'],
                 header=0).to_dict(orient="records"),
-                key="umap_coordinates", use_unique_key=use_unique_key)
+                key=f"umap_coordinates_{session_id}", use_unique_key=use_unique_key)
                 break
         return umap_return if umap_return is not None else dash.no_update
     return dash.no_update

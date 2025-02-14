@@ -58,7 +58,8 @@ class AnnotationQuantificationMerge:
     """
     def __init__(self, annotations, quantification_frame, data_selection,
                 mask_config, mask_toggle, mask_selection, sample_name=None, id_column='sample',
-                config: dict=None, remove: bool=False, indices_remove: list=None) -> None:
+                config: dict=None, remove: bool=False, indices_remove: list=None,
+                session_id: str="") -> None:
         self.annotations = annotations
         self.quantification_frame = quantification_frame
         self.data_selection = data_selection
@@ -70,6 +71,7 @@ class AnnotationQuantificationMerge:
         self.config = config
         self.remove = remove
         self.indices_remove = indices_remove
+        self.session_id = session_id
         self.path = partial(self.populate_quantification_from_svgpath)
         self.rect = partial(self.populate_quantification_from_rectangle)
         self.point = partial(self.populate_quantification_from_clickpoint)
@@ -244,7 +246,7 @@ class AnnotationQuantificationMerge:
         :return: `SessionServerside` transform of the annotation dictionary for all ROIs
         """
         return SessionServerside(self.annotations,
-            key="annotation_dict", use_unique_key=self.config['serverside_overwrite'])
+            key=f"annotation_dict_{self.session_id}", use_unique_key=self.config['serverside_overwrite'])
 
     def get_callback_structures(self) -> tuple:
         """
@@ -280,10 +282,10 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
     raise PreventUpdate
 
 def reset_annotation_import(annotation_dict: dict=None, roi_selection: str=None, app_config: dict=None,
-                            return_as_serverside: bool=True):
+                            return_as_serverside: bool=True, session_id: str=""):
     if annotation_dict and roi_selection and roi_selection in annotation_dict:
         for value in annotation_dict[roi_selection].values():
             value['imported'] = False
-    return SessionServerside(annotation_dict, key="annotation_dict",
+    return SessionServerside(annotation_dict, key=f"annotation_dict_{session_id}",
                              use_unique_key=app_config['serverside_overwrite']) if \
         return_as_serverside else annotation_dict

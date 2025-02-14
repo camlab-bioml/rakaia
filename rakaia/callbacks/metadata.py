@@ -31,9 +31,9 @@ def init_metadata_level_callbacks(dash_app, tmpdirname, authentic_id, app_config
     @du.callback(Output('custom-metadata', 'data'),
                  id='upload-custom-metadata')
     def get_metadata_upload_from_drag_and_drop(status: du.UploadStatus):
-        # TODO: add intermediate here if we want to import per ROI instead of bulk per session
+        # disable unique key value here so that it can stay unique across concurrent sessions
         files = DashUploaderFileReader(status).return_filenames()
-        if files: return SessionServerside(pd.read_csv(files[0]).to_dict(orient="records"), key="custom_metadata", use_unique_key=OVERWRITE)
+        if files: return SessionServerside(pd.read_csv(files[0]).to_dict(orient="records"), key="custom_metadata", use_unique_key=False)
         raise PreventUpdate
 
     @dash_app.callback(Output('meta-x-axis', 'options'),
