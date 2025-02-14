@@ -1670,6 +1670,8 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                 label_style={"color": DEFAULT_WIDGET_COLOUR}, children = [
                 dbc.Row([dbc.Col([html.Div(id='openseadragon-container', style={"width": "100%",
                 "border": "1px solid black", "height": "700px"})], width=10),
+                # use this to get the client session id in the DOM for openseadragon
+                html.Div(id="session_id", children=None, style={"display": "none"}),
                 dbc.Col([du.Upload(id='upload-coregister', max_file_size=5000000,
                 text='Upload image for co-registration (i.e. H & E) (requires vips)',
                 chunk_size=100, max_total_size=5000000, max_files=100,
@@ -1738,6 +1740,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         # use transfer for upload files to the hash, hash to store the filepaths
         dcc.Store(id='coregister-upload-transfer'),
         dcc.Store(id='coregister_hash'),
+        dcc.Store(id='session_id_internal', data=None),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),

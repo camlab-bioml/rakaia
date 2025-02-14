@@ -49,6 +49,19 @@ def test_generate_dzi_tiles(get_current_dir):
         assert width == array.shape[1]
         assert height == array.shape[0]
         assert os.path.isdir(os.path.join(download_dir, 'coregister_files'))
+
+        # run a second time with the same naming, but different image
+        dzi_tiles_from_image_path(os.path.join(get_current_dir, 'for_recolour.tiff'),
+                                  download_dir)
+        tree = ET.parse(os.path.join(download_dir, 'coregister.dzi'))
+        root = tree.getroot()
+        namespace = root.tag.split('}')[0].strip('{')
+        ns_map = {'dz': namespace}
+        size_element = root.find('dz:Size', ns_map)
+        width = int(size_element.get('Width'))
+        height = int(size_element.get('Height'))
+        assert width == height == 600
+        assert os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
         if os.access(download_dir, os.W_OK):
             shutil.rmtree(download_dir)
         assert not os.path.isdir(download_dir)

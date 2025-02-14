@@ -140,6 +140,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         files = DashUploaderFileReader(status).return_filenames()
         return json.load(open(files[0])) if files else dash.no_update
 
+    @dash_app.callback(
+    Output('session_id', 'children'),
+    Output('session_id_internal', 'data'),
+    Input('session_id_internal', 'data'),
+    prevent_initial_call=False)
+    def set_session_id(internal_id):
+        session_id = internal_id if internal_id else str(uuid.uuid4())
+        return session_id, session_id
+
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('mask-uploads', 'data', allow_duplicate=True),
@@ -1281,22 +1290,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 "center", "justifyContent": "center", "display": "flex"}), dash.no_update
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError, IndexError): raise PreventUpdate
 
-    # @dash_app.server.route("/" + str(tmpdirname) + "/" + str(authentic_id) + '/downloads/<path:path>')
-    # def serve_static(path):
-    #     return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id), 'downloads'), path,
-    #                                      as_attachment=True)
-
     @dash_app.server.route('/static/<filename>')
-    def serve_coregister_files(filename="coregister.dzi"):
+    def serve_coregister_files(filename):
         try: return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id)), filename)
         except TypeError: return dash.no_update, dash.no_update
 
-    @dash_app.server.route('/static/coregister_files/<path:filename>')
+    @dash_app.server.route('/static/<session_id>/<path:filename>')
     @dash_app.callback(Input('coregister-transfer', 'data'),
-                       Output('coregister-finished', 'data'))
-    def serve_coregister_tiles(filename):
+                       Output('coregister-finished', 'data'),
+                       State('session_id', 'children'))
+    def serve_coregister_tiles(filename, session_id):
         try: return flask.send_from_directory(str(os.path.join(
-                tmpdirname, authentic_id, 'coregister_files')), filename, mimetype='application/xml')
+                tmpdirname, authentic_id, session_id)), filename, mimetype='application/xml')
         except TypeError: return dash.no_update
 
 
@@ -2118,13 +2123,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def update_coregister_image_selection(cur_hash):
         return list(cur_hash.keys()) if cur_hash is not None and cur_hash else dash.no_update
 
-    @dash_app.callback(Output('coregister-transfer', 'data'),
+    @dash_app.callback(
+                       Output('coregister-transfer', 'data'),
                        Input('coregister_options', 'value'),
                        State('coregister_hash', 'data'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=False)
-    def compute_coregister_tiles(reg_select, cur_hash):
-        if reg_select and cur_hash and reg_select in cur_hash:
+    def compute_coregister_tiles(reg_select, cur_hash, sesh_id):
+        if reg_select and cur_hash and sesh_id and reg_select in cur_hash:
             from rakaia.register.process import dzi_tiles_from_image_path
-            dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)))
+            dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
             return True
         raise PreventUpdate

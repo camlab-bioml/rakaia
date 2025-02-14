@@ -24,8 +24,11 @@ const observer = new MutationObserver(() => {
     viewer = renderOSDCanvas(initialTileSource);
     observer.disconnect();
     document.getElementById("update-coregister").addEventListener('click', function(e) {
+    // get the unique client key from flask used to serve the static folder
+    const session_id = document.getElementById("session_id").innerText;
+    const newPath = `/static/coregister_${session_id}.dzi`
     //viewer = renderOSDCanvas(initialTileSource);
-    const newTileSource = checkStatus('/static/coregister.dzi');
+    const newTileSource = checkStatus(newPath);
     viewer.open(newTileSource);
     });
     if (performance.navigation.type == performance.navigation.TYPE_RELOAD) {
