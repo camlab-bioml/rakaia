@@ -283,6 +283,9 @@ def callback_remove_canvas_annotation_shapes(n_clicks, cur_canvas, canvas_layout
 
 def reset_annotation_import(annotation_dict: dict=None, roi_selection: str=None, app_config: dict=None,
                             return_as_serverside: bool=True, session_id: str=""):
+    """
+    Reset the import of an annotation from the ROI dictionary
+    """
     if annotation_dict and roi_selection and roi_selection in annotation_dict:
         for value in annotation_dict[roi_selection].values():
             value['imported'] = False

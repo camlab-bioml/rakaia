@@ -638,15 +638,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         current_blend_dict[layer]['x_lower_bound'])
                     current_blend_dict[layer]['x_upper_bound'] = set_slider_upper_bound_default(
                         current_blend_dict[layer]['x_upper_bound'], array)
-                    array = filter_by_upper_and_lower_bound(array,
-                                                            float(current_blend_dict[layer]['x_lower_bound']),
+                    array = filter_by_upper_and_lower_bound(array, float(current_blend_dict[layer]['x_lower_bound']),
                                                             float(current_blend_dict[layer]['x_upper_bound']))
                     array = apply_filter_to_channel(array, filter_chosen, filter_name, filter_value, filter_sigma)
                     current_blend_dict[layer]['color'] = colour['hex']
-                    rgb_layers[data_selection][layer] = np.array(recolour_greyscale(array, colour['hex'])).astype(
-                        np.uint8)
-                    return current_blend_dict, SessionServerside(rgb_layers, key=f"layer_dict_{sesh_id}",
-                                                                 use_unique_key=OVERWRITE)
+                    rgb_layers[data_selection][layer] = np.array(recolour_greyscale(array, colour['hex'])).astype(np.uint8)
+                    return current_blend_dict, SessionServerside(rgb_layers, key=f"layer_dict_{sesh_id}", use_unique_key=OVERWRITE)
                 raise PreventUpdate
             raise PreventUpdate
         raise PreventUpdate
@@ -804,8 +801,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Reset the canvas to blank on an ROI change
         Will attempt to set the new mask based on the ROI name and the list of mask options
         """
-        if new_selection:
-            return CanvasLayout(cur_canvas).get_fig(), ROIMaskMatch(new_selection, mask_options,
+        if new_selection: return CanvasLayout(cur_canvas).get_fig(), ROIMaskMatch(new_selection, mask_options,
                                                         dataset_options, delimiter, True).get_match()
         raise PreventUpdate
 
@@ -928,7 +924,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if ctx.triggered_id == "btn-download-canvas-tiff":
                     fig = dash.no_update
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
-                                dest_dir=dest_path, use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
+                                dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
                     download_status = timestamp_download_child()
                 return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status
             except Exception as e:
@@ -1067,8 +1063,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         datasets to ensure that it matches the number of channels
         """
         files = DashUploaderFileReader(status).return_filenames()
-        if files:
-            return {'uploads': list(files)}
+        if files: return {'uploads': list(files)}
         raise PreventUpdate
 
     @dash_app.callback(
@@ -1101,8 +1096,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('uploaded_dict_template', 'data'))
     def populate_metadata_table(upload_template):
         if upload_template is not None and upload_template['metadata'] is not None:
-            try:
-                return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
+            try: return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                 p in upload_template['metadata'].keys()], pd.DataFrame(upload_template['metadata']).to_dict(orient='records')
             except ValueError: raise PreventUpdate
         raise PreventUpdate
@@ -1187,9 +1181,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Only update if the download dialog is open to avoid continuous updating on canvas change
         """
         if None not in (data_selection, blend_dict) and download_h5py:
-            first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
+            first_image, mask = get_region_dim_from_roi_dictionary(image_dict[data_selection]), None
             try:
-                mask = None
                 if 'shapes' in canvas_layout and ' use graph subset on download' in graph_subset:
                     mask = subset_mask_for_data_export(canvas_layout, first_image.shape)
                 return dcc.send_file(write_session_data_to_h5py(download_h5py, metadata_sheet,
@@ -1284,8 +1277,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # decide if channel view or ROI view is selected
                     if view_by_channel and channel_selected:
                         views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 1000000,
-                        delimiter=delimiter, use_greyscale=True, dataset_options=options, single_channel_view=True,
-                        use_scaling=False).get_image_dict()
+                        delimiter=delimiter, use_greyscale=True, dataset_options=options, single_channel_view=True, use_scaling=False).get_image_dict()
                     else:
                         views = {elem: image_dict[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False
@@ -1595,9 +1587,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the hover information on the list of presets so that the user can preview the parameters before selecting
         """
-        if preset_dict:
-            text = preset_options_preview_text(preset_dict)
-            return html.Textarea(text, style={"width": "200px", "height": f"{100 * len(preset_dict)}px"})
+        if preset_dict: return html.Textarea(preset_options_preview_text(preset_dict), style={"width": "200px", "height": f"{100 * len(preset_dict)}px"})
         raise PreventUpdate
 
     @dash_app.callback(Input('session_config', 'data'),

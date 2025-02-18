@@ -243,7 +243,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Add an annotation column to the quantification frame using interactive UMAP subsetting. The annotation will
         be applied to the current cells in the UMAP frame
         """
-        if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation:
+        if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation and sesh_id:
             return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
                 pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col, annot_value).to_dict(
                 orient='records'), key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE)
@@ -592,7 +592,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Parse a frame of cluster mask object projections in CSV format
         """
-        if uploads and data_selection:
+        if uploads and data_selection and sesh_id:
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
             pd.read_csv(uploads[0])), key=f"cluster_assignments_{sesh_id}", use_unique_key=OVERWRITE), \
                 set_cluster_col_dropdown(pd.read_csv(uploads[0]))
@@ -744,7 +744,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
             elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
                 return SessionServerside(custom_gating_id_list(id_str), key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), dash.no_update
-            elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
+            elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection and sesh_id:
                 id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
                                 mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
                 return SessionServerside(id_list, key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), reset_custom_gate_slider(ctx.triggered_id)

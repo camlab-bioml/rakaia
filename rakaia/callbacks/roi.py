@@ -3,13 +3,11 @@
 
 import os
 import uuid
-
 import dash
 import pandas as pd
 from dash import ALL, dcc
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
-from dash.exceptions import PreventUpdate
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import (
             roi_query_gallery_children,
@@ -164,22 +162,23 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('alias-dict', 'data'),
         State('session_alert_config', 'data'),
         State('dataset-delimiter', 'value'),
+        State('session_id_internal', 'data'),
         prevent_initial_call=True)
     def quantify_current_roi(execute, apply_mask, mask_dict, mask_selection, image_dict, data_selection,
-                             dataset_options, cur_quant_dict, channels_to_quantify, aliases, error_config, delimiter):
+        dataset_options, cur_quant_dict, channels_to_quantify, aliases, error_config, delimiter, sesh_id):
         """
         Quantify the current ROI using the currently applied mask
         Important: the UMAP figure and UMAP annotation column are both reset when new quantification results are
         obtained as the UMAP projections will no longer align with the quantification frame and must be re-run
         If the quantification is successful, close the modal
         """
-        if None not in (image_dict, data_selection, mask_selection) and apply_mask and channels_to_quantify:
+        if None not in (image_dict, data_selection, mask_selection) and apply_mask and channels_to_quantify and sesh_id:
             first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 new_quant = quantify_multiple_channels_per_roi(image_dict, mask_dict[mask_selection]['raw'],
                             data_selection, channels_to_quantify, aliases, dataset_options, delimiter, mask_selection)
                 quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant, data_selection, delimiter)
-                return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",
+                return SessionServerside(quant_frame.to_dict(orient="records"), key=f"quantification_dict_{sesh_id}",
                         use_unique_key=app_config['serverside_overwrite']), dash.no_update, {'display': 'None'}, None
             else:
                 error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_dimensions"])
