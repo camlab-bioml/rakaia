@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-02-14
+## [0.23.0] - 2025-02-20
 
 ### Added
 
 - `openseadragon` with custom JS to view co-registered H & E
+- Ability to transfer zoom coordinates for Visium spot based assay to OSD WSI viewer
 
 ### Changed
 

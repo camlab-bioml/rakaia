@@ -11,7 +11,7 @@ from rakaia.parsers.spatial import (
     get_spatial_spot_radius,
     detect_spatial_capture_size,
     visium_has_scaling_factors,
-    is_spatial_dataset)
+    is_spatial_dataset, spatial_selection_can_transfer_coordinates, visium_spot_coords_to_wsi_from_zoom)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -26,7 +26,6 @@ def test_basic_visium_anndata_parser(get_current_dir):
     visium_parser = FileParser([os.path.join(get_current_dir, "visium_thalamus.h5ad")])
     assert len(visium_parser.metadata_labels) == len(visium_parser.metadata_channels) == 250
     assert all(elem is None for elem in visium_parser.image_dict['visium_thalamus+++slide0+++acq'].values())
-
 
 def test_visium_generate_spot_grid(get_current_dir):
     grid_image = spatial_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
@@ -78,3 +77,29 @@ def test_parse_visium_spot_mask(get_current_dir):
     assert mask_dict.value['visium_thalamus']['raw'].shape == (925, 1011)
     assert (np.max(mask_dict.value['visium_thalamus']['raw']) ==
             len(ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))))
+
+def test_detect_spatial_can_perform_coord_transfer(get_current_dir):
+    """
+    Currently, only visium spot-based can perform spatial coordinate transfer
+    """
+    uploads = {"uploads": ['fake_file.txt', 'data.h5', 'mask.tiff',
+                           os.path.join(get_current_dir, 'visium_thalamus.h5ad')]}
+    can_transfer, file = spatial_selection_can_transfer_coordinates('visium_thalamus+++slide0+++acq', uploads)
+    assert can_transfer
+    assert str(file) == str(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))
+    can_transfer, file = spatial_selection_can_transfer_coordinates('fake_file+++slide0+++acq', uploads)
+    assert not can_transfer
+    assert file is None
+
+def test_visium_spot_coords_to_wsi(get_current_dir):
+    bounds = {'xaxis.range[0]': 283.4, 'xaxis.range[1]': 741.5,
+              'yaxis.range[0]':  683.8, 'yaxis.range[1]': 264.6}
+    adata = ad.read_h5ad(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))
+    string_coords = visium_spot_coords_to_wsi_from_zoom(bounds, adata)
+    x, y, width, height = tuple([float(elem) for elem in string_coords.split(",")])
+    assert width > height
+    assert y > x
+    x_min, y_min = np.min((adata.obsm['spatial']), axis=0)
+    x_max, y_max = np.max((adata.obsm['spatial']), axis=0)
+    assert y_min < y < y_max
+    assert x_min < x < x_max

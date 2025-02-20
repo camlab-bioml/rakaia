@@ -31,6 +31,7 @@ from rakaia.parsers.pixel import (
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
+from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_spot_coords_to_wsi_from_zoom
 from rakaia.register.process import update_coregister_hash
 
 from rakaia.utils.decorator import (
@@ -141,10 +142,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return json.load(open(files[0])) if files else dash.no_update
 
     @dash_app.callback(
-    Output('session_id', 'children'),
-    Output('session_id_internal', 'data'),
-    Input('session_id_internal', 'data'),
-    prevent_initial_call=False)
+        Output('session_id', 'children'),
+        Output('session_id_internal', 'data'),
+        Input('session_id_internal', 'data'),
+        prevent_initial_call=False)
     def set_session_id(internal_id):
         session_id = internal_id if internal_id else str(uuid.uuid4())
         return session_id, session_id
@@ -1646,8 +1647,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('window_config', 'data'),
                        prevent_initial_call=True)
     def update_bound_display(cur_graph, cur_graph_layout):
-        bound_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
-        if None not in (cur_graph, cur_graph_layout) and all([elem in cur_graph_layout for elem in bound_keys]):
+        if None not in (cur_graph, cur_graph_layout) and all([elem in cur_graph_layout for elem in ZOOM_KEYS]):
             # only update if these keys are used for drag or pan to set custom coordinates
             return bounds_text(*high_low_values_from_zoom_layout(cur_graph_layout))
         # if the zoom is reset to the default, clear the bound window
@@ -2136,3 +2136,21 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
             return True
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output('transfer_coordinates', 'children'),
+        Input('annotation_canvas', 'relayoutData'),
+        State('session_config', 'data'),
+        State('dataset-delimiter', 'value'),
+        State('data-collection', 'value'),
+        prevent_initial_call=True)
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select):
+        """
+        Transfer a set of coordinates to update the OSD viewport from a zoom change.
+        Currently only works for Visium spot-based assays that have spot expression and
+        H & E already registered
+        """
+        if graph_layout and data_select and session_config and all([elem in graph_layout for elem in ZOOM_KEYS]):
+            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim)
+            if eligible and upload: return visium_spot_coords_to_wsi_from_zoom(graph_layout, upload)
+        return dash.no_update

@@ -1,5 +1,7 @@
 .snakemake_timestamp
 
+node_modules/
+
 .swp
 
 sandbox*

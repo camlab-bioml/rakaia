@@ -6,6 +6,8 @@ from typing import Union
 import anndata as ad
 import numpy as np
 import skimage
+from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
+
 
 class SpatialDefaults:
     """
@@ -184,3 +186,46 @@ def get_spatial_spot_radius(adata: ad.AnnData, alt_spot_size: Union[int, None]=N
     except KeyError:
         return alt_spot_size if (alt_spot_size and not is_spot_based_spatial(adata)) else (
             set_spatial_spot_size(adata))
+
+def spatial_selection_can_transfer_coordinates(data_selection: str,
+                              session_uploads: Union[list, dict],
+                              delimiter: str="+++"):
+    """
+    Detect if the current data selection is a spatial dataset that can perform coordinate
+    transfer to a WSI (i.e. H & E). Iterates over the current
+    list of session uploads, matching the data selection to the upload. Then, it determines
+    if the file associated is a spatial dataset with scaling factors (Visium spot-based)
+    """
+    exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
+    for upload in session_uploads['uploads']:
+        if (exp in upload and upload.endswith('h5ad') and
+                visium_has_scaling_factors(ad.read_h5ad(upload))):
+            return True, upload
+    return False, None
+
+def visium_spot_coords_to_wsi_from_zoom(bounds: dict,
+                                        adata: Union[ad.AnnData, str]):
+    """
+    Convert a series of zoom coordinates from visium spot to a matched WSI (i.e. H & E).
+    Assumes that the pixel coordinates for the original hires image are in the `spatial`
+    `obsm` slot
+    Returns a string of comma separated values: x_min, y_min, height, width
+    """
+    adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
+    capture_size, spot_size, scale_factor = set_spatial_scale(adata)
+    grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(adata)
+
+    # get the coordinates relative to the canvas image
+    spatial_filtered = adata.obsm['spatial'].copy()
+    spatial_filtered[:, 0] = ((spatial_filtered[:, 0]) * scale_factor) - x_min
+    spatial_filtered[:, 1] = ((spatial_filtered[:, 1]) * scale_factor) - y_min
+    # filter to the spots inside the zoom area
+    x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(bounds)
+    mask = (spatial_filtered[:, 0] >= x_low) & (spatial_filtered[:, 0] <= x_high) & \
+           (spatial_filtered[:, 1] >= y_low) & (spatial_filtered[:, 1] <= y_high)
+    adata_filtered = adata[mask]
+    x_min, y_min = np.min(adata_filtered.obsm['spatial'], axis=0)
+    x_max, y_max = np.max(adata_filtered.obsm['spatial'], axis=0)
+    height = int(y_max - y_min)
+    width = int(x_max - x_min)
+    return f"{x_min},{y_min},{width},{height}"
