@@ -70,7 +70,6 @@ const observer = new MutationObserver(() => {
     subtree: true, // Watch for changes inside child elements
     childList: true // Detect additions/removals of child nodes
 });
-
 });
 
 observer.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });
