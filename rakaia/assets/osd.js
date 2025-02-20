@@ -1,4 +1,10 @@
 
+function toggleNavigator(display) {
+    // toggle the display visibility attribute between inline block and none
+    let displayReturn = display == "none" ? "inline-block": "none"
+    return displayReturn;
+}
+
 // do not run as async because it is not in a module to be compatible with dash
 function checkStatus(url) {
     let response = fetch(url, { method: 'HEAD' });
@@ -8,13 +14,14 @@ function checkStatus(url) {
 
 const renderOSDCanvas = (initialTileSource) => {
 const viewer = OpenSeadragon({
-    id: "openseadragon-container",
+        id: "openseadragon-container",
         crossOriginPolicy: "Anonymous",
         prefixUrl: "https://openseadragon.github.io/openseadragon/images/",
-        debug: true,
-        showNavigator:  true,
+        debug: false,
+        showNavigator: true,
+        navigatorAutoFade:  false,
         ajaxWithCredentials: false,
-    tileSources: initialTileSource
+        tileSources: initialTileSource
     });
     return viewer;
 };
@@ -33,6 +40,16 @@ const observer = new MutationObserver(() => {
     });
     if (performance.navigation.type == performance.navigation.TYPE_RELOAD) {
         viewer.open(null);}
+
+    document.getElementById("toggle-osd-navigator").addEventListener('click', function(e) {
+    viewer.navigator.element.style.display = toggleNavigator(viewer.navigator.element.style.display)
+    });
+
+    //coordinate bounds relative in pixels: x, y, height, width
+//    viewer.addHandler('viewport-change', function() {
+//    let imageBounds = viewer.viewport.viewportToImageRectangle(viewer.viewport.getBounds());
+//    });
+
 });
 
 observer.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });

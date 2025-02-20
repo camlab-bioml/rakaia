@@ -571,12 +571,51 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([
                         dbc.Col([
-                            html.Div([render_default_annotation_canvas(input_id="annotation_canvas")],
-                                     style={"width": "100%", "margin-top": "-2px", "padding": "0px",
-                                            "justifyContent": "center",
-                                            "float": "center", "display": "flex"}, id="canvas-div-holder"),
-                        ], style={"display": "inline-block", "padding": "0px"}, width=12)]),
-                    ], style={"margin-top": "5px"}), width=9),
+                            # TODO: have sub tabs for main canvas and H & E?
+                            dbc.Tabs(id='canvas_sub_tab', children = [
+                            dbc.Tab(label='Blend', tab_id='canvas-tab', tab_style={"marginLeft": "auto",
+                            'line-height': '0.2vh', 'padding': '0px', 'margin': '0px'}, tabClassName="ms-auto",
+                            label_style={"color": DEFAULT_WIDGET_COLOUR},
+                            children = [
+                                html.Div([render_default_annotation_canvas(input_id="annotation_canvas")],
+                                         style={"width": "100%", "margin-top": "-2px", "padding": "0px",
+                                                "justifyContent": "center",
+                                                "float": "center", "display": "flex"}, id="canvas-div-holder"),
+                            ]),
+                            dbc.Tab(label='WSI', tab_id='wsi-tab', tab_style = {'line-height': '0.2vh',
+                                    'padding': '0px', 'margin': '0px'}, label_style={"color": DEFAULT_WIDGET_COLOUR},
+                            children = [
+                                dbc.Row([dbc.Col([html.Div(id='openseadragon-container', style={"width": "95%",
+                                "border": "1px solid black", "height": "650px", "margin": "5px", "float": "right",
+                                                "text-align": "right"})],
+                                        width=10),
+                                         # use this to get the client session id in the DOM for openseadragon
+                                         html.Div(id="session_id", children=None, style={"display": "none"}),
+                                         dbc.Col([du.Upload(id='upload-coregister', max_file_size=5000000,
+                                                            text='Upload WSI (i.e. H & E) (requires vips)',
+                                                            chunk_size=100, max_total_size=5000000, max_files=100,
+                                                            filetypes=['tif', 'tiff', 'svs'],
+                                                            default_style={"margin-top": "12.5px", "height": "8vh"}),
+                                                  html.Br(),
+                                                  dcc.Dropdown(id='coregister_options',
+                                                               placeholder='Select WSI'),
+                                                  html.Br(),
+                                                  dbc.Button("Update tiles", id='update-coregister',
+                                                             style={"background-color": DEFAULT_WIDGET_COLOUR,
+                                                                    "align": "center", "float": "center"}),
+                                                  html.Br(),
+                                                  html.Br(),
+                                                  dbc.Button("Toggle navigator", id='toggle-osd-navigator',
+                                                             style={"align": "center",
+                                                                    "float": "center"}, color='dark', n_clicks=0,
+                                                             outline=True),
+                                                  wrap_child_in_loading(dcc.Store(id='coregister-transfer', data=False),
+                                                                        wrap=config['use_loading'], fullscreen=False),
+                                                  dcc.Store(id='coregister-finished', data=False)], width=2)]),
+                            ])
+                            ], style={"margin": "0px", "padding": "0px"}),
+                        ], style={"display": "inline-block", "padding": "0px", "margin": "0px"}, width=12)]),
+                    ], style={"margin-top": "0px"}), width=9),
                         dbc.Col([
                             html.Div([
                                 html.Div([
@@ -1665,28 +1704,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                         responsive=True, config={'displaylogo': False})]),
                                     )),
                 ]),
-                dbc.Tab(label="H & E", tab_id='coregister_tab', id='coregister_tab',
-                label_style={"color": DEFAULT_WIDGET_COLOUR}, children = [
-                dbc.Row([dbc.Col([html.Div(id='openseadragon-container', style={"width": "100%",
-                "border": "1px solid black", "height": "700px"})], width=10),
-                # use this to get the client session id in the DOM for openseadragon
-                html.Div(id="session_id", children=None, style={"display": "none"}),
-                dbc.Col([du.Upload(id='upload-coregister', max_file_size=5000000,
-                text='Upload image for co-registration (i.e. H & E) (requires vips)',
-                chunk_size=100, max_total_size=5000000, max_files=100,
-                filetypes=['tif', 'tiff', 'svs'],
-                default_style={"margin-top": "12.5px", "height": "7.5vh"}),
-                html.Br(),
-                dcc.Dropdown(id='coregister_options', placeholder='Select image for coregister'),
-                html.Br(),
-                dbc.Button("Update tiles", id='update-coregister',
-                style={"background-color": DEFAULT_WIDGET_COLOUR,
-                "align": "center", "float": "center"}),
-                html.Br(),
-                wrap_child_in_loading(dcc.Store(id='coregister-transfer', data=False),
-                            wrap=config['use_loading']),
-                dcc.Store(id='coregister-finished', data=False)], width=2)]),
-                    ]),
                 ], style={"margin-top": "0px"})
                           ])], id='tab-annotation', style={"margin": "0px"}),
         dcc.Store(id="uploaded_dict"),

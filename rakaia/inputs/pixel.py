@@ -41,7 +41,7 @@ def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullsc
         style_canvas = {"margin": "auto", "width": "100vw", "height": "100vh",
                         "max-width": "none", "max-height": "none"}
     else:
-        style_canvas = {"width": "100vh", "height": "100vh"}
+        style_canvas = {"width": "100vh", "height": "100vh", "margin": "0px", "padding": "0px"}
 
     # set a custom output filename based on the current ROI
     if filename != "canvas":
