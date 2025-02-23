@@ -21,6 +21,7 @@ const viewer = OpenSeadragon({
         showNavigator: true,
         navigatorAutoFade:  false,
         ajaxWithCredentials: false,
+        showRotationControl: true,
         tileSources: initialTileSource
     });
     return viewer;
@@ -31,14 +32,13 @@ function observeCoordChange(mutationsList, viewer) {
         for (let mutation of mutationsList) {
         try {
             const coordHolder = document.getElementById("transfer_coordinates").innerText;
-            const [x, y, width, height] = coordHolder.split(",").map(Number);
+            let [x, y, width, height] = coordHolder.split(",").map(Number);
             let imageRect = new OpenSeadragon.Rect(x, y, width, height);
             let viewportBounds = viewer.viewport.imageToViewportRectangle(imageRect);
             viewer.viewport.goHome();
             viewer.viewport.fitBounds(viewportBounds);
         } catch (error) {
         viewer.viewport.goHome();
-        alert(error);
         }
         }
     });
@@ -46,12 +46,12 @@ function observeCoordChange(mutationsList, viewer) {
 
 const observer = new MutationObserver(() => {
     const initialTileSource = checkStatus('/static/coregister.dzi');
-    viewer = renderOSDCanvas(initialTileSource);
+    const viewer = renderOSDCanvas(initialTileSource);
     observer.disconnect();
     document.getElementById("update-coregister").addEventListener('click', function(e) {
     // get the unique client key from flask used to serve the static folder
     const session_id = document.getElementById("session_id").innerText;
-    const newPath = `/static/coregister_${session_id}.dzi`
+    let newPath = `/static/coregister_${session_id}.dzi`
     //viewer = renderOSDCanvas(initialTileSource);
     const newTileSource = checkStatus(newPath);
     viewer.open(newTileSource);

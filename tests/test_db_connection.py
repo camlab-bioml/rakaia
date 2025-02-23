@@ -29,6 +29,7 @@ def test_real_db_connection():
                                    global_filter_type, global_filter_val, global_filter_sigma, "roi_1")
     documents, config_names = atlas_conn.blend_configs_by_user()
     assert len(documents) == len(config_names) == 1
+    assert len(documents[0].keys()) == 8
     assert config_names == ['test_config']
     atlas_conn.remove_blend_document_by_name('test_config')
     documents, config_names = atlas_conn.blend_configs_by_user()

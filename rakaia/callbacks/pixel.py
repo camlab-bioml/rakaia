@@ -31,7 +31,7 @@ from rakaia.parsers.pixel import (
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
-from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_spot_coords_to_wsi_from_zoom
+from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom
 from rakaia.register.process import update_coregister_hash
 
 from rakaia.utils.decorator import (
@@ -2143,14 +2143,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('session_config', 'data'),
         State('dataset-delimiter', 'value'),
         State('data-collection', 'value'),
+        State('coregister_options', 'value'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
         Currently only works for Visium spot-based assays that have spot expression and
         H & E already registered
         """
-        if graph_layout and data_select and session_config and all([elem in graph_layout for elem in ZOOM_KEYS]):
+        if graph_layout and wsi and data_select and session_config and all([elem in graph_layout for elem in ZOOM_KEYS]):
             eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim)
-            if eligible and upload: return visium_spot_coords_to_wsi_from_zoom(graph_layout, upload)
-        return dash.no_update
+            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload)
+        raise PreventUpdate

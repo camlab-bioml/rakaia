@@ -199,14 +199,36 @@ def spatial_selection_can_transfer_coordinates(data_selection: str,
     exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
     for upload in session_uploads['uploads']:
         if (exp in upload and upload.endswith('h5ad') and
-                visium_has_scaling_factors(ad.read_h5ad(upload))):
+                (visium_has_scaling_factors(ad.read_h5ad(upload)) or
+                 visium_has_bin_scaling(ad.read_h5ad(upload)))):
             return True, upload
     return False, None
 
-def visium_spot_coords_to_wsi_from_zoom(bounds: dict,
-                                        adata: Union[ad.AnnData, str]):
+def visium_has_bin_scaling(adata: Union[str, ad.AnnData],
+                           key: str="scaling_visium_hd"):
     """
-    Convert a series of zoom coordinates from visium spot to a matched WSI (i.e. H & E).
+    Defines if the anndata object has the key defined in the `uns` slot, providing
+    the bin sizing factor for Visium HD
+    """
+    adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
+    return key in list(adata.uns_keys())
+
+def get_visium_bin_scaling(adata: Union[str, ad.AnnData],
+                           key: str="scaling_visium_hd"):
+    """
+    Set the Visium bin scaling size for either HD or spot-based arrays. HD files should
+    have the bin factor saved using the specified key in the `uns` slot. For all other
+    Visium assays, no bin scaling is performed (1)
+    """
+    adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
+    if visium_has_bin_scaling(adata, key):
+        return int(adata.uns[key])
+    return 1
+
+def visium_coords_to_wsi_from_zoom(bounds: dict,
+                                   adata: Union[ad.AnnData, str]):
+    """
+    Convert a series of zoom coordinates from 10X Visium (V1,V2) to a matched WSI (i.e. H & E).
     Assumes that the pixel coordinates for the original hires image are in the `spatial`
     `obsm` slot
     Returns a string of comma separated values: x_min, y_min, height, width
@@ -214,7 +236,7 @@ def visium_spot_coords_to_wsi_from_zoom(bounds: dict,
     adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
     capture_size, spot_size, scale_factor = set_spatial_scale(adata)
     grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(adata)
-
+    bin_scale_size = get_visium_bin_scaling(adata)
     # get the coordinates relative to the canvas image
     spatial_filtered = adata.obsm['spatial'].copy()
     spatial_filtered[:, 0] = ((spatial_filtered[:, 0]) * scale_factor) - x_min
@@ -226,6 +248,6 @@ def visium_spot_coords_to_wsi_from_zoom(bounds: dict,
     adata_filtered = adata[mask]
     x_min, y_min = np.min(adata_filtered.obsm['spatial'], axis=0)
     x_max, y_max = np.max(adata_filtered.obsm['spatial'], axis=0)
-    height = int(y_max - y_min)
-    width = int(x_max - x_min)
-    return f"{x_min},{y_min},{width},{height}"
+    height = int(y_max - y_min) * bin_scale_size
+    width = int(x_max - x_min) * bin_scale_size
+    return f"{x_min * bin_scale_size},{y_min * bin_scale_size},{width},{height}"

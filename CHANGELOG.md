@@ -7,17 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-02-20
+## [0.23.0] - 2025-02-23
 
 ### Added
 
-- `openseadragon` with custom JS to view co-registered H & E
-- Ability to transfer zoom coordinates for Visium spot based assay to OSD WSI viewer
+- `openseadragon` with custom JS to view co-registered H & E: supports tiff, btf, and svs images
+- Ability to transfer zoom coordinates for Visium (V1, V2, HD) to OSD WSI viewer
 
 ### Changed
 
 - make waitress production mode the default
-- handle concurrent user sessions better with clientside session ids used for static routes and serverside stores
+- handle concurrent user sessions better with clientside session ids used for static `Flask` routes and serverside stores
 
 ## [0.22.0] - 2025-01-31
 

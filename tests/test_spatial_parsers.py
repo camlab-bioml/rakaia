@@ -11,7 +11,10 @@ from rakaia.parsers.spatial import (
     get_spatial_spot_radius,
     detect_spatial_capture_size,
     visium_has_scaling_factors,
-    is_spatial_dataset, spatial_selection_can_transfer_coordinates, visium_spot_coords_to_wsi_from_zoom)
+    is_spatial_dataset,
+    spatial_selection_can_transfer_coordinates,
+    visium_coords_to_wsi_from_zoom,
+    get_visium_bin_scaling)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -95,11 +98,24 @@ def test_visium_spot_coords_to_wsi(get_current_dir):
     bounds = {'xaxis.range[0]': 283.4, 'xaxis.range[1]': 741.5,
               'yaxis.range[0]':  683.8, 'yaxis.range[1]': 264.6}
     adata = ad.read_h5ad(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))
-    string_coords = visium_spot_coords_to_wsi_from_zoom(bounds, adata)
+    string_coords = visium_coords_to_wsi_from_zoom(bounds, adata)
     x, y, width, height = tuple([float(elem) for elem in string_coords.split(",")])
     assert width > height
     assert y > x
     x_min, y_min = np.min((adata.obsm['spatial']), axis=0)
     x_max, y_max = np.max((adata.obsm['spatial']), axis=0)
+    assert y_min < y < y_max
+    assert x_min < x < x_max
+
+def test_hd_visium_spot_coords_to_wsi(get_current_dir):
+    bounds = {'xaxis.range[0]': 30.6, 'xaxis.range[1]': 59.6,
+              'yaxis.range[0]':  27.8, 'yaxis.range[1]': 57.8}
+    adata = ad.read_h5ad(os.path.join(get_current_dir, 'intestine_hd_subset.h5ad'))
+    string_coords = visium_coords_to_wsi_from_zoom(bounds, adata)
+    x, y, width, height = tuple([float(elem) for elem in string_coords.split(",")])
+    bin_size = get_visium_bin_scaling(adata)
+    assert x > y
+    x_min, y_min = np.min((adata.obsm['spatial']) * bin_size , axis=0)
+    x_max, y_max = np.max((adata.obsm['spatial']) * bin_size, axis=0)
     assert y_min < y < y_max
     assert x_min < x < x_max
