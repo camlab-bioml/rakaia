@@ -11,7 +11,8 @@ from rakaia.inputs.loaders import (
     adjust_option_height_from_list_length,
     set_roi_tooltip_based_on_length,
     valid_key_trigger,
-    mask_toggle_trigger)
+    mask_toggle_trigger,
+    toggle_canvas_to_wsi_tab, set_viewer_tab)
 
 def test_loader_children():
     child = dcc.Store(id="test_store")
@@ -53,6 +54,15 @@ def test_loaders_mask_toggle():
     assert not mask_toggle_trigger("keyboard-listener", {'keyCode': 40}, 1)
     assert not mask_toggle_trigger("next-roi", None, None)
     assert isinstance(mask_toggle_trigger("keyboard-listener", {'bad_key': 40}, 1), dash._callback.NoUpdate)
+
+def test_loader_switch_viewer():
+    assert toggle_canvas_to_wsi_tab("keyboard-listener", {'keyCode': 40})
+    assert not toggle_canvas_to_wsi_tab("keyboard-listener", {'keyCode': 38})
+    assert isinstance(toggle_canvas_to_wsi_tab("keyboard-listener", {'bad_key': 40}), dash._callback.NoUpdate)
+
+def test_switch_viewer_tab():
+    assert set_viewer_tab("wsi-tab") == "canvas-tab"
+    assert set_viewer_tab("canvas-tab") == "wsi-tab"
 
 def test_adjust_option_height_based_on_lengths():
 

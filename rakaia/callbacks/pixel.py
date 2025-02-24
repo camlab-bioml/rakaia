@@ -76,7 +76,8 @@ from rakaia.utils.graph import strip_invalid_shapes_from_graph_layout
 from rakaia.inputs.loaders import (
     previous_roi_trigger,
     next_roi_trigger,
-    adjust_option_height_from_list_length, set_roi_tooltip_based_on_length, valid_key_trigger, mask_toggle_trigger)
+    adjust_option_height_from_list_length, set_roi_tooltip_based_on_length, valid_key_trigger, mask_toggle_trigger,
+    set_viewer_tab, toggle_canvas_to_wsi_tab)
 from rakaia.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
     mask_options_from_json, bounds_text, AnnotationList, no_json_db_updates, is_steinbock_dir, \
     parse_steinbock_dir
@@ -1932,6 +1933,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
                        Output('apply-mask', 'value', allow_duplicate=True),
+                       Output('canvas_sub_tab', 'active_tab'),
                        Input('prev-roi', 'n_clicks'),
                        Input('next-roi', 'n_clicks'),
                        Input('keyboard-listener', 'event'),
@@ -1943,27 +1945,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('main-tabs', 'active_tab'),
                        State('tour_component', 'isOpen'),
                        State('apply-mask', 'value'),
+                       State('canvas_sub_tab', 'active_tab'),
                        prevent_initial_call=True)
     def use_key_listener(prev_roi, next_roi, key_listener, n_events, cur_data_selection, cur_options,
-                         allow_arrow_change, annotating_region, active_tab, open_tour, mask_stat):
+                         allow_arrow_change, annotating_region, active_tab, open_tour, mask_stat, viewer_tab):
         """
         Use the key event listener to trigger the following actions:
             - Use the forward and backwards buttons to click to a new ROI
             - Alternatively, use the directional arrow buttons from an event listener
             - Use the arrow up button to toggle on/off the mask
+            - use the arrow down key to toggle between the blend and WSI viewer tab
         """
         if None not in (cur_data_selection, cur_options) and not (ctx.triggered_id == 'keyboard-listener' and not allow_arrow_change) and \
             not annotating_region and active_tab == 'pixel-analysis' and not open_tour and valid_key_trigger(ctx.triggered_id, key_listener):
             cur_index = cur_options.index(cur_data_selection)
             mask_change = not mask_stat if mask_toggle_trigger(ctx.triggered_id, key_listener, n_events) else dash.no_update
+            viewer_change = set_viewer_tab(viewer_tab) if toggle_canvas_to_wsi_tab(ctx.triggered_id, key_listener) else dash.no_update
             try:
                 prev_trigger = previous_roi_trigger(ctx.triggered_id, prev_roi, key_listener, n_events)
                 next_trigger = next_roi_trigger(ctx.triggered_id, next_roi, key_listener, n_events)
                 if prev_trigger and cur_index != 0:
-                    return cur_options[cur_index - 1] if cur_options[cur_index - 1] != cur_data_selection else dash.no_update, mask_change
+                    return cur_options[cur_index - 1] if cur_options[cur_index - 1] != cur_data_selection else dash.no_update, mask_change, viewer_change
                 elif next_trigger:
-                    return cur_options[cur_index + 1] if cur_options[cur_index + 1] != cur_data_selection else dash.no_update, mask_change
-                else: return dash.no_update, mask_change
+                    return cur_options[cur_index + 1] if cur_options[cur_index + 1] != cur_data_selection else dash.no_update, mask_change, viewer_change
+                else: return dash.no_update, mask_change, viewer_change
             except IndexError: raise PreventUpdate
         raise PreventUpdate
 

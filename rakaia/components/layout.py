@@ -571,7 +571,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([
                         dbc.Col([
-                            # TODO: have sub tabs for main canvas and H & E?
                             dbc.Tabs(id='canvas_sub_tab', children = [
                             dbc.Tab(label='Blend', tab_id='canvas-tab', tab_style={"marginLeft": "auto",
                             'line-height': '0.2vh', 'padding': '0px', 'margin': '0px'}, tabClassName="ms-auto",
@@ -586,7 +585,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                     'padding': '0px', 'margin': '0px'}, label_style={"color": DEFAULT_WIDGET_COLOUR},
                             children = [
                                 dbc.Row([dbc.Col([html.Div(id='openseadragon-container', style={"width": "95%",
-                                "border": "1px solid black", "height": "650px", "margin": "5px", "float": "right",
+                                "border": "1px solid black", "height": "700px", "margin": "5px", "float": "right",
                                                 "text-align": "right"})],
                                         width=10),
                                          # use this to get the client session id in the DOM for openseadragon

@@ -7,12 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-02-23
+## [0.23.0] - 2025-02-24
 
 ### Added
 
 - `openseadragon` with custom JS to view co-registered H & E: supports tiff, btf, and svs images
 - Ability to transfer zoom coordinates for Visium (V1, V2, HD) to OSD WSI viewer
+- Key event listener for down arrow to switch between canvas and WSI viewer
 
 ### Changed
 
