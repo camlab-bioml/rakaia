@@ -2119,8 +2119,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('coregister_hash', 'data'),
                        Input('coregister-upload-transfer', 'data'),
                        State('coregister_hash', 'data'),
+                       Input('import-local-wsi', 'n_clicks'),
+                       State('wsi-local-filepath', 'value'),
                        prevent_initial_call=False)
-    def update_coregister_hash_from_uploads(transfer, cur_hash):
+    def update_coregister_hash_from_uploads(transfer_upload, cur_hash, trigger_local, local_wsi):
+        transfer = local_wsi if (ctx.triggered_id == "import-local-wsi" and local_wsi and trigger_local) else transfer_upload
         return update_coregister_hash(cur_hash, transfer)
 
     @dash_app.callback(Output('coregister_options', 'options'),
@@ -2160,3 +2163,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim)
             if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload)
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("wsi-local-import-modal", "is_open"),
+        Input('read-local-wsi', 'n_clicks'),
+        [State("wsi-local-import-modal", "is_open")])
+    def toggle_wsi_local_modal(n, is_open):
+        """
+        Open the modal for reading WSI files from a local filepath
+        """
+        return not is_open if n else is_open
