@@ -14,7 +14,7 @@ from rakaia.parsers.spatial import (
     is_spatial_dataset,
     spatial_selection_can_transfer_coordinates,
     visium_coords_to_wsi_from_zoom,
-    get_visium_bin_scaling)
+    get_visium_bin_scaling, xenium_coords_to_wsi_from_zoom)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -119,3 +119,13 @@ def test_hd_visium_spot_coords_to_wsi(get_current_dir):
     x_max, y_max = np.max((adata.obsm['spatial']) * bin_size, axis=0)
     assert y_min < y < y_max
     assert x_min < x < x_max
+
+def test_xenium_coords_to_wsi(get_current_dir):
+    bounds = {'xaxis.range[0]': 36.7, 'xaxis.range[1]': 281.0,
+              'yaxis.range[0]': 31.8, 'yaxis.range[1]': 147.1}
+    string_coords = xenium_coords_to_wsi_from_zoom(bounds,
+                os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad'),
+                os.path.join(get_current_dir, 'melanoma_xenium_transformation.csv'))
+    x, y, width, height = tuple([float(elem) for elem in string_coords.split(",")])
+    assert y > x
+    assert height > width

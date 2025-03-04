@@ -31,7 +31,8 @@ from rakaia.parsers.pixel import (
     populate_alias_dict_from_editable_metadata,
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
-from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom
+from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
+    xenium_coords_to_wsi_from_zoom
 from rakaia.register.process import update_coregister_hash
 
 from rakaia.utils.decorator import (
@@ -2152,16 +2153,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('dataset-delimiter', 'value'),
         State('data-collection', 'value'),
         State('coregister_options', 'value'),
+        State('wsi-transformation-matrix', 'data'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
-        Currently only works for Visium spot-based assays that have spot expression and
-        H & E already registered
+        Currently only works for Visium (V1, V2, HD) with tissue positions in the `spatial` `obsm` slot
         """
         if graph_layout and wsi and data_select and session_config and all([elem in graph_layout for elem in ZOOM_KEYS]):
-            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim)
-            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload)
+            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, transform)
+            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if not transform else (
+                xenium_coords_to_wsi_from_zoom(graph_layout, upload, transform))
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2173,3 +2175,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Open the modal for reading WSI files from a local filepath
         """
         return not is_open if n else is_open
+
+    @du.callback(Output('wsi-transformation-matrix', 'data'),
+                 id='upload-transformation-coordinates')
+    def upload_wsi_transformation_matrix(status: du.UploadStatus):
+        """
+        Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
+        datasets to ensure that it matches the number of channels
+        """
+        files = DashUploaderFileReader(status).return_filenames()
+        return str(files[0]) if files else dash.no_update

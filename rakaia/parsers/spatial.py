@@ -5,6 +5,8 @@ file imports and user-defined spatial visualization preference such as marker si
 from typing import Union
 import anndata as ad
 import numpy as np
+from numpy.linalg import inv
+import pandas as pd
 import skimage
 from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
 
@@ -189,7 +191,8 @@ def get_spatial_spot_radius(adata: ad.AnnData, alt_spot_size: Union[int, None]=N
 
 def spatial_selection_can_transfer_coordinates(data_selection: str,
                               session_uploads: Union[list, dict],
-                              delimiter: str="+++"):
+                              delimiter: str="+++",
+                              transformation_matrix: Union[str, np.array, None]=None,):
     """
     Detect if the current data selection is a spatial dataset that can perform coordinate
     transfer to a WSI (i.e. H & E). Iterates over the current
@@ -200,7 +203,8 @@ def spatial_selection_can_transfer_coordinates(data_selection: str,
     for upload in session_uploads['uploads']:
         if (exp in upload and upload.endswith('h5ad') and
                 (visium_has_scaling_factors(ad.read_h5ad(upload)) or
-                 visium_has_bin_scaling(ad.read_h5ad(upload)))):
+                 visium_has_bin_scaling(ad.read_h5ad(upload)) or
+                 transformation_matrix is not None)):
             return True, upload
     return False, None
 
@@ -251,3 +255,43 @@ def visium_coords_to_wsi_from_zoom(bounds: dict,
     height = int(y_max - y_min) * bin_scale_size
     width = int(x_max - x_min) * bin_scale_size
     return f"{x_min * bin_scale_size},{y_min * bin_scale_size},{width},{height}"
+
+def trim_neg_val(val):
+    """
+    Trim a negative value to a very small value during pixel conversion
+    """
+    return 0.1 if val < 0 else val
+
+def xenium_coords_to_wsi_from_zoom(bounds: dict,
+                                   adata: Union[ad.AnnData, str],
+                                   transformation_matrix: Union[np.ndarray, str],
+                                   scaling_factor: float=0.21):
+    """
+    Convert a series of zoom coordinates from 10X Xenium to a matched WSI (i.e. H & E).
+    Assumes that an affine transformation matrix with the last row being `[0 0 1]` is provided,
+    and that the pixel coordinates for the original hires image are in the `spatial`
+    `obsm` slot. Additionally requires a Xenium scaling factor which by default is given at the 0 series level
+    described here: https://kb.10xgenomics.com/hc/en-us/articles/11636252598925-What-are-the-Xenium-image-scale-factors
+    Returns a string of comma separated values: x_min, y_min, height, width
+    """
+    adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
+    transformation_matrix = np.array(pd.read_csv(transformation_matrix, header=None)) if not (
+        isinstance(transformation_matrix, np.ndarray)) else transformation_matrix
+    grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(adata)
+    x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(bounds)
+
+    # get the bounds for two opposite corners to get the full bound
+    both_low = np.matmul(inv(transformation_matrix),
+                np.array([trim_neg_val((x_low + x_min) /scaling_factor),
+                          trim_neg_val((y_low + y_min) /scaling_factor), 1]))
+
+    both_high = np.matmul(inv(transformation_matrix),
+                np.array([trim_neg_val((x_high + x_min) /scaling_factor),
+                          trim_neg_val((y_high + y_min) /scaling_factor), 1]))
+
+    concat = np.delete(np.vstack((both_low, both_high)), -1, axis=1)
+    out_x_min, out_y_min = np.min(concat, axis=0)
+    out_x_max, out_y_max = np.max(concat, axis=0)
+    height = int(out_y_max - out_y_min)
+    width = int(out_x_max - out_x_min)
+    return f"{out_x_min},{out_y_min},{width},{height}"
