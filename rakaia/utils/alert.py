@@ -139,7 +139,10 @@ class ToolTips(BaseModel):
                                       "for more than 1000 markers. Additionally, if quantifying using a spatial dataset,"
                                      " all markers to quantify need to be loaded into the current canvas.",
                       "umap_min_dist": "From 0 to 1. Smaller distances pack the UMAP points more tightly together, "
-                                       "while larger values spread out clusters."}
+                                       "while larger values spread out clusters.",
+                      "xenium-wsi-scaling": "Set the image scale factor (μm/pixel) for 10x Xenium WSIs. "
+                                            "Search `Xenium image scale factors` on the 10X Genomics website "
+                                            "for more information."}
 
 
 class PanelMismatchError(Exception):
