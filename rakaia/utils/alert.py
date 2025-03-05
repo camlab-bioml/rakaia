@@ -93,7 +93,10 @@ class AlertMessage(BaseModel):
                       "no_umap_gallery": "UMAP gallery not rendered. The UMAP gallery requires outputs "
                                          "from the steinbock snakemake pipeline v0.0.4 or greater. Ensure that: "
                                          "\n - pipeline outputs have been imported from a directory using the local filepath"
-                                         "\n - UMAP pngs and CSV coordinates exist in the export -> umap sub-directory" }
+                                         "\n - UMAP pngs and CSV coordinates exist in the export -> umap sub-directory",
+                      "libvips_missing": "Error: libvips was not found on your system, and is required to view WSIs. "
+                                         "Please ensure that libvips is installed for your specific OS from: "
+                                         "https://www.libvips.org/install.html"}
 
 
 class ToolTips(BaseModel):

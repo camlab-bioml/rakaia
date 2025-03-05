@@ -13,16 +13,20 @@ currently supports the following technologies:
 
 - Spatial proteomics such as imaging mass cytometry (IMC), immunofluorescence (IF), and immunohistochemistry (IHC)
 - spatial transcriptomics such as 10X Visium Spatial Gene Expression (V1, V2, HD), Xenium, and others
+- Whole slide images (WSI) such as H & E
 
 Tools in the rakaia application include:
 
 - pixel level analysis for publication-quality blended images
-- object/segmentation detection
+- object/segmentation detection & overlay
 - region/focal annotation
 - object quantification
 - cluster and heatmap visualization
 - dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
+- WSI coordinate alignment (currently for spatial datasets only)
+
+Visit the [official documentation](https://camlab-bioml.github.io/rakaia-doc/) to learn more!
 
 rakaia benefits from on-demand data loading and requires minimal upfront data
 configuration for ease-of-use image analysis. It places no restrictions on
@@ -39,11 +43,11 @@ rakaia is built on:
 - Docker
 - MongoDB
 - openseadragon
-
+- vips
 
 ## Installation
 
-rakaia can be cloned and installed locally using access to the Github repository
+rakaia can be cloned and installed locally using access to the GitHub repository
 
 ```
 git clone https://github.com/camlab-bioml/rakaia.git && cd rakaia
@@ -166,12 +170,11 @@ Conversely, without app installation:
 python rakaia/wsgi.py
 ```
 
-By default, rakaia will run in debug mode from the command line, which
-will apply source code changes on the fly. To disable this feature
-of to use a production-level server from waitress, enable production mode:
+By default, rakaia will run in production mode from the command line using waitress.
+To switch to a development server which will apply source code changes on the fly, use:
 
 ```commandline
-rakaia -pr
+rakaia -dv
 ```
 
 ### Binary distribution

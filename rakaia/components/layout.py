@@ -23,6 +23,7 @@ from rakaia.inputs.loaders import wrap_child_in_loading
 from rakaia.utils.pixel import default_picker_swatches
 from rakaia.utils.region import RegionStatisticGroups
 from rakaia.plugins import PluginDescriptors
+from rakaia.register.process import WSI_FILE_EXTENSIONS
 
 def register_app_layout(config: dict, cache_dest: Union[str, Path]):
     """
@@ -592,9 +593,9 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                          html.Div(id="session_id", children=None, style={"display": "none"}),
                                          html.Div(id="transfer_coordinates", children=None, style={"display": "none"}),
                                          dbc.Col([du.Upload(id='upload-coregister', max_file_size=5000000,
-                                                            text='Upload WSI (i.e. H & E) (requires vips)',
+                                                            text='Upload WSI (i.e. H & E) (requires libvips)',
                                                             chunk_size=100, max_total_size=5000000, max_files=100,
-                                                            filetypes=['tif', 'tiff', 'svs', 'btf'],
+                                                            filetypes=WSI_FILE_EXTENSIONS,
                                                             default_style={"margin-top": "12.5px", "height": "8vh"}),
                                                   html.Br(),
                                                   # TODO: need to make longer names visible here

@@ -33,7 +33,7 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     xenium_coords_to_wsi_from_zoom
-from rakaia.register.process import update_coregister_hash
+from rakaia.register.process import update_coregister_hash, wsi_from_local_path
 
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
@@ -2124,26 +2124,35 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('wsi-local-filepath', 'value'),
                        prevent_initial_call=False)
     def update_coregister_hash_from_uploads(transfer_upload, cur_hash, trigger_local, local_wsi):
-        transfer = local_wsi if (ctx.triggered_id == "import-local-wsi" and local_wsi and trigger_local) else transfer_upload
+        transfer = wsi_from_local_path(local_wsi) if (ctx.triggered_id == "import-local-wsi" and local_wsi and trigger_local) else transfer_upload
         return update_coregister_hash(cur_hash, transfer)
 
     @dash_app.callback(Output('coregister_options', 'options'),
                        Input('coregister_hash', 'data'),
                        prevent_initial_call=False)
     def update_coregister_image_selection(cur_hash):
+        """
+        Update the dropdown selection menu to select uploaded WSIs when uploads are updated
+        """
         return list(cur_hash.keys()) if cur_hash is not None and cur_hash else dash.no_update
 
-    @dash_app.callback(
-                       Output('coregister-transfer', 'data'),
+    @dash_app.callback(Output('coregister-transfer', 'data'),
+                       Output('session_config', 'data', allow_duplicate=True),
                        Input('coregister_options', 'value'),
                        State('coregister_hash', 'data'),
                        State('session_id_internal', 'data'),
+                       State('session_config', 'data'),
                        prevent_initial_call=False)
-    def compute_coregister_tiles(reg_select, cur_hash, sesh_id):
+    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config):
+        """
+        Compute dzi tiles for the osd wsi viewer when a selection is made
+        """
         if reg_select and cur_hash and sesh_id and reg_select in cur_hash:
-            from rakaia.register.process import dzi_tiles_from_image_path
-            dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-            return True
+            try:
+                from rakaia.register.process import dzi_tiles_from_image_path
+                dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
+                return True, dash.no_update
+            except OSError: return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"])
         raise PreventUpdate
 
     @dash_app.callback(

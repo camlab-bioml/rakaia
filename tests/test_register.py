@@ -8,7 +8,16 @@ import shutil
 import tifffile
 from rakaia.register.process import (
     dzi_tiles_from_image_path,
-    update_coregister_hash)
+    update_coregister_hash,
+    wsi_from_local_path)
+
+def test_parse_wsi_path(get_current_dir):
+    files = wsi_from_local_path(os.path.join(get_current_dir, 'wsi'))
+    assert len(files) == 2
+    single = wsi_from_local_path(os.path.join(get_current_dir, 'wsi', 'example_2.svs'))
+    assert len(single) == 1
+    assert not wsi_from_local_path(os.path.join(get_current_dir, 'wsi', 'example_3.txt'))
+    assert not wsi_from_local_path(os.path.join(get_current_dir, 'steinbock'))
 
 def test_update_register_hash(get_current_dir):
     new_hash = update_coregister_hash({}, os.path.join(get_current_dir, 'for_quant.tiff'))

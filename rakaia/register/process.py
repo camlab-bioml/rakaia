@@ -7,6 +7,20 @@ from pathlib import Path
 import dash
 from rakaia.io.session import create_download_dir
 
+WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf']
+
+def wsi_from_local_path(path: str):
+    """
+    Parse a local filepath, either filename or directory, for WSI compatible files
+    """
+    if os.path.isfile(path) and any([path.endswith(ext) for ext in WSI_FILE_EXTENSIONS]):
+        return [path]
+    elif os.path.isdir(path):
+        return [str(os.path.join(path, file)) for
+                file in os.listdir(path) if any([file.endswith(ext)
+                for ext in WSI_FILE_EXTENSIONS])]
+    return None
+
 def update_coregister_hash(cur_hash: Union[dict, None],
                            new_upload: Union[str, Path, list, None]=None):
     """
