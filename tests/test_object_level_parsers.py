@@ -148,8 +148,10 @@ def test_parse_restyledata_from_legend_change():
     restyle_3 = [{'visible': ['legendonly']}, [3]]
     types_return_3 = RestyleDataParser(restyle_3, test_frame, "category", [0, 1, 2, 3]).get_callback_structures()
     assert types_return_3 == (['one', 'two', 'three'], [0, 1, 2])
-    assert RestyleDataParser([{'visible': ['legendonly']}, [0]],
-        test_frame, "category", [0, 1, 2, 3]).get_callback_structures() == (None, None)
+
+    types_return_4 = RestyleDataParser([{'visible': ['legendonly']}, [0]],
+        test_frame, "category", [0, 1, 2, 3]).get_callback_structures()
+    assert types_return_4 == (['two', 'three', 'four'], [1, 2, 3])
 
 def test_valid_parse_for_indices_for_query(get_current_dir):
     """

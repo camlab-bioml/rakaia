@@ -123,8 +123,8 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
         data=grouped,
         column_labels=x_lab,
         row_labels=y_lab,
-        height=500,
-        width=750,
+        height=600,
+        width=800,
         color_map=[
                 [0.0, "rgb(68, 1, 84)"],
                 [0.5, "rgb(33, 145, 140)"],
@@ -138,7 +138,8 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
     # need to add check to ensure that the last data slot is always of a heatmap type?
     fig['data'][-1]['z'] = np.array(reorder)
     fig['layout']['title']['text'] = f"Channel Expression by {umap_overlay} ({len(quantification)} objects)"
-    fig.update_layout(margin={"pad": 0, "l": 2})
+    fig.update_layout(coloraxis_colorbar=dict(yanchor="top", y=1, len=0.8, xpad=0, x=1.00),
+    title=dict(pad=dict(t=0, b=0)), margin={"pad": 0, "l": 5, "r": 5, "b": 0}, autosize=True)
     fig.update_traces(hovertemplate="x: %{x} <br>y: %{y} <br>Expression: %{z} <br> <extra></extra>")
     return fig
 

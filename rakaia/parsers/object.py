@@ -315,8 +315,10 @@ class RestyleDataParser:
 
         if None not in (self.restyledata, self.quantification_frame) and 'visible' in self.restyledata[0] and \
                 self.umap_col_annotation is not None and self.umap_col_annotation in list(
-            pd.DataFrame(self.quantification_frame).columns) and \
-                self.restyledata not in [[{'visible': ['legendonly']}, [0]]]:
+            pd.DataFrame(self.quantification_frame).columns):
+                # this condition is when the first category is removed: why was it blocked for the longest time?
+                # https://github.com/camlab-bioml/rakaia/issues/123
+                # self.restyledata not in [[{'visible': ['legendonly']}, [0]]]:
             quant_frame = pd.DataFrame(self.quantification_frame)
             tot_subtypes = list(quant_frame[self.umap_col_annotation].unique())
             self._subtypes_return = []
