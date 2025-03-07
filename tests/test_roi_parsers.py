@@ -26,8 +26,8 @@ def test_roi_query_parser(get_current_dir):
 
     dataset_exclude = "query+++slide0+++PAP_1"
     random.seed(1)
-    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
-                                                     [dataset_exclude]).get_image_dict()
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 4,
+                                                 [dataset_exclude]).get_image_dict()
     # assert that the number of queries is 1 less than the total because the current one is excluded
     assert len(roi_query) == 3
     assert dataset_exclude not in roi_query.keys()
@@ -115,7 +115,6 @@ def test_roi_query_parser_predefined(get_current_dir):
                   "Ir191": {"color": "#FF0000", "x_lower_bound": 0, "x_upper_bound": 1, "filter_type": None, "filter_val": None},
                   "Ir193": {"color": "#FF0000", "x_lower_bound": 0, "x_upper_bound": 1, "filter_type": None, "filter_val": None},
                   "Pb208": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None}}
-
 
     defined_indices = {'indices': [0, 1]}
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 4, [],

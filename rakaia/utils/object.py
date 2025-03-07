@@ -418,19 +418,28 @@ class ROIQuantificationMatch:
         exp, slide, acq = split_string_at_pattern(self.data_selection, pattern=self.delimiter)
         if 'description' in self.quantification.columns:
             # this part applies to ROIs from mcd
-            self.steinbock_pipeline_description(acq)
+            self.steinbock_pipeline_description(exp, acq)
             # use experiment name if coming from tiff
             self.filename_overlap(exp)
         if 'sample' in self.quantification.columns:
             self.steinbock_pipeline_sample(acq)
             self.match_by_dataset_index(exp)
 
-    def steinbock_pipeline_description(self, roi_identifier: str):
+    def steinbock_pipeline_description(self, experiment_identifier: str, roi_identifier: str):
         """
         Match the quantification column to a mask based on the steinbock pipeline naming w/ description
+        :param experiment_identifier: string experiment/filename identifier for the current ROI
         :param roi_identifier: string ROI identifier for the current ROI
         :return: None
         """
+        if experiment_identifier and roi_identifier and not self._match:
+            # important: if the index is less than 3 digits, i.e. 100 or more, pad with 0
+            roi_index = roi_identifier.split('_')[-1]
+            roi_index = pad_steinbock_roi_index(roi_index)
+            pattern = f"{experiment_identifier}_{roi_index}"
+            if pattern in self.quantification['description'].tolist():
+                self._match = pattern
+                self._quant_col = 'description'
         if not self._match and (self.mask and (match_steinbock_mask_name_to_mcd_roi(self.mask, roi_identifier) or
             roi_identifier in self.mask)) or roi_identifier in self.quantification['description'].tolist():
             self._match = roi_identifier
@@ -484,6 +493,17 @@ class ROIQuantificationMatch:
         :return: Tuple: string match for the roi identifier (or None), and the identifying column in the measurements.
         """
         return self._match, self._quant_col
+
+def pad_steinbock_roi_index(roi_index: Union[int, str, None]=None):
+    """
+    Pad the steinbock ROI index to match the syntax of the mask name. Returns a string
+    Example: 1 becomes 001 to match file_001
+    12 becomes 012 to match file_012
+    """
+    roi_index = str(roi_index) if roi_index is not None else ""
+    while len(roi_index) < 3:
+        roi_index = f"0{roi_index}" if len(roi_index) < 3 else roi_index
+    return str(roi_index)
 
 def mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
                                   cluster_col: str = "cluster", obj_id_col: str = "cell_id", retain_objs=True,

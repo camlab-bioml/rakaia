@@ -623,10 +623,7 @@ def parse_quantification_sheet_from_h5ad(h5ad_file: Union[Path, str, anndata.Ann
                 columns=list(h5ad_file.var_names)).reset_index(drop=True)
     if is_steinbock_intensity_anndata(h5ad_file):
         # create a sample column that uses indices to match the steinbock masks
-        edited = pd.DataFrame({"description": [f"{acq}_{position}" for acq, position in \
-                                               zip(h5ad_file.obs['image_acquisition_description'],
-                                                   [int(re.search(r'\d+$', elem.split('.tiff')[0]).group()) for elem in
-                                                    h5ad_file.obs['Image']])],
+        edited = pd.DataFrame({"description": [elem.split('.tiff')[0] for elem in h5ad_file.obs['Image']],
                                # parse the int cell id from the string index
                                "cell_id": [int(re.search(r'\d+', elem).group()) for elem in
                                            h5ad_file.obs.index],

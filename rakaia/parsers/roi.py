@@ -84,7 +84,7 @@ class RegionThumbnail:
         self.set_imported_files()
         self.blend_dict = blend_dict
         self.currently_selected_channels = currently_selected_channels
-        self.num_queries = num_queries
+        self.num_queries = num_queries if not predefined_indices else 1e6
         self.rois_exclude = rois_exclude if rois_exclude is not None else []
         self.predefined_indices = predefined_indices
         self.mask_dict = mask_dict
@@ -123,7 +123,7 @@ class RegionThumbnail:
                 # call the additive thumbnail partial function with the corresponding extension
                 try:
                     getattr(self, self.MATCHES[file_extension])(file_path)
-                except KeyError: pass
+                except (KeyError, ValueError): pass
 
     def set_imported_files(self):
         """
@@ -192,24 +192,28 @@ class RegionThumbnail:
         if self.predefined_indices is not None:
             self.query_selection = predefined_indices
 
-    def set_mcd_query_selection(self, mcd_slide, queries_by_name: list=None):
+    def set_mcd_query_selection(self, mcd_slide, queries_by_name: list=None,
+                                pad_indices: bool=True):
         """
         Set the mcd query selection for one or multiple mcd files, checking the query number against the dataset size.
 
         :param mcd_slide: Slide object from readimc from the currently parsed mcd file
         :param queries_by_name: An existing list of mcd slide queries. Useful for when multiple mcd files are queried
+        :param pad_indices: Whether to offset the indices by 1 to match the way mcd ROIs are indexed. Default is True
         :return: None
         """
         if self.predefined_indices is None:
+            roi_indices = [int(acq.id) for acq in mcd_slide.acquisitions]
             if self.num_queries > len(mcd_slide.acquisitions):
-                self.query_selection = range(0, len(mcd_slide.acquisitions))
+                # self.query_selection = range(1, (len(mcd_slide.acquisitions) + 1))
+                self.query_selection = roi_indices
             else:
-                self.query_selection = random.sample(range(0,
-                                    len(mcd_slide.acquisitions)), self.num_queries)
+                self.query_selection = random.sample(roi_indices, self.num_queries)
         elif isinstance(self.query_selection, dict):
             if 'indices' in self.query_selection:
+                pad = 1 if pad_indices else 0
                 self.num_queries = len(self.query_selection['indices'])
-                self.query_selection = [int(i) for i in self.query_selection['indices'] if \
+                self.query_selection = [int(i + pad) for i in self.query_selection['indices'] if \
                                         len(mcd_slide.acquisitions) > i >= 0]
             elif 'names' in self.query_selection:
                 self.num_queries = len(self.query_selection['names'])
@@ -228,7 +232,7 @@ class RegionThumbnail:
     @staticmethod
     def set_mcd_acquisition_from_query(slide_inside: Slide, query: Union[int, str]) -> Union[Acquisition, None]:
         """
-        Set the slide acquisition from th query from either an integer based index, or an acquisition name.
+        Set the slide acquisition from the query from either an integer based index, or an acquisition name.
         Using acquisition string descriptions for querying permits retrieval of ROIs across multiple MCd files
         from a common quantification dataset.
 
@@ -236,14 +240,38 @@ class RegionThumbnail:
         :param query: Integer index for the acquisition, or a query string name to match the acquisition description
         :return: Slide acquisition to read for thumbnail generation.
         """
+        # need to get the list of roi ids in the slide, as the integers may be non-consecutive
+        rois_in_slide = [acq.id for acq in slide_inside.acquisitions]
         if isinstance(query, int):
-            acq = slide_inside.acquisitions[query]
+            try:
+                acq = slide_inside.acquisitions[rois_in_slide.index(int(query))]
+            except (IndexError, KeyError): acq = None
         else:
             try:
                 acq_list = [f"{acq.description}_{acq.id}" for acq in slide_inside.acquisitions]
                 acq = slide_inside.acquisitions[acq_list.index(query)]
             except (KeyError, TypeError, IndexError, ValueError):
                 return None
+        return acq
+
+
+    def set_mcd_acquisition_by_index(self, slide_inside: Slide,
+                                     acq: Union[Acquisition, None], query: str,
+                                     mcd_basename: str):
+        """
+        Set the acquisition by index if the acquisition has not been successfully set by the query string
+
+        :param slide_inside: Current MCD slide
+        :param acq: Current acquisition selected, either an `Acquisition` class or `None`
+        :param query: Integer index for the acquisition, or a query string name to match the acquisition description
+        :param mcd_basename: String basename of the current mcd to which `slide_inside` belongs
+        :return: Slide acquisition to read for thumbnail generation.
+        """
+        if not acq:
+            # Only split at the last underscore instance
+            filename, roi_index = query.rsplit('_', 1)
+            if filename == mcd_basename:
+                acq = self.set_mcd_acquisition_from_query(slide_inside, int(roi_index))
         return acq
 
     def apply_preset_based_on_view(self, arr: np.array, channel_name: str):
@@ -311,6 +339,7 @@ class RegionThumbnail:
                 for query in self.query_selection:
                     try:
                         acq = self.set_mcd_acquisition_from_query(slide_inside, query)
+                        acq = self.set_mcd_acquisition_by_index(slide_inside, acq, query, basename)
                         roi_identifier = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
                            f"{str(acq.description)}_{str(acq.id)}"
                         if self.roi_keyword_in_roi_identifier(roi_identifier) and roi_identifier \
@@ -358,6 +387,22 @@ class RegionThumbnail:
             #     continue
             # break
 
+    def label_from_named_query(self, filepath: str):
+        """
+        Set the ROI label based on its inclusion in the named query list. If the filepath is determined
+        to be part of the named query, generate the label. Otherwise, set the label to `None`
+
+        :param filepath: String for the current filepath to evaluate.
+        """
+        basename = str(Path(filepath).stem)
+        label = self.parse_thumbnail_label_from_filepath(basename)
+        matched_mask = ROIMaskMatch(label, self.mask_dict, self.dataset_options, self.delimiter).get_match()
+        # if queried from the UMAP plot, restrict to only those with a match in the query selection
+        if self.query_selection and 'names' in self.query_selection:
+            query_list = self.query_selection['names']
+            label = label if match_mask_name_to_quantification_sheet_roi(matched_mask, query_list) else None
+        return label
+
     def additive_thumbnail_from_tiff(self, tiff_filepath):
         """
         Generate an image thumbnail from a tiff file.
@@ -365,14 +410,7 @@ class RegionThumbnail:
         :param tiff_filepath: Path to a tiff file.
         :return: None
         """
-        # set the channel label by parsing through the dataset options to find a partial match of filename
-        basename = str(Path(tiff_filepath).stem)
-        label = self.parse_thumbnail_label_from_filepath(basename)
-        matched_mask = ROIMaskMatch(label, self.mask_dict, self.dataset_options, self.delimiter).get_match()
-        # if queried from the UMAP plot, restrict to only those with a match in the query selection
-        if self.query_selection and 'names' in self.query_selection:
-            query_list = self.query_selection['names']
-            label = label if match_mask_name_to_quantification_sheet_roi(matched_mask, query_list) else None
+        label = self.label_from_named_query(tiff_filepath)
         if label and label not in self.rois_exclude and (self.roi_keyword_in_roi_identifier(label) or
                 self.roi_keyword_in_roi_identifier(tiff_filepath)):
             with TiffFile(tiff_filepath) as tif:
@@ -396,8 +434,7 @@ class RegionThumbnail:
         :param txt_filepath: Path to a txt file.
         :return: None
         """
-        basename = str(Path(txt_filepath).stem)
-        label = self.parse_thumbnail_label_from_filepath(basename)
+        label = self.label_from_named_query(txt_filepath)
         if label not in self.rois_exclude and (self.roi_keyword_in_roi_identifier(label) or
                 self.roi_keyword_in_roi_identifier(txt_filepath)):
             with TXTFile(txt_filepath) as acq_text_read:
@@ -452,7 +489,7 @@ class RegionThumbnail:
         :param file_basename: The file basename for the current filepath.
         :return: String label linking the file basename to the internal ROI identifier, or `None` if no match is found.
         """
-        label = "None"
+        label = None
         for dataset in self.dataset_options:
             if file_basename in dataset:
                 label = dataset

@@ -19,7 +19,7 @@ from rakaia.utils.object import (
     mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
     quantification_distribution_table,
-    custom_gating_id_list, compute_image_similarity_from_overlay, find_similar_images)
+    custom_gating_id_list, compute_image_similarity_from_overlay, find_similar_images, pad_steinbock_roi_index)
 import pandas as pd
 import os
 import numpy as np
@@ -275,6 +275,13 @@ def test_generate_grid_overlay():
     assert np.min(normal_grid) == 0
     assert np.max(normal_grid) == 0
 
+def test_padding_steinbock_roi_index():
+    assert pad_steinbock_roi_index(1) == "001"
+    assert pad_steinbock_roi_index("1") == "001"
+    assert pad_steinbock_roi_index(12) == "012"
+    assert pad_steinbock_roi_index(123) == "123"
+    assert pad_steinbock_roi_index() == "000"
+
 def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     """
     Test that the parser for identifying which column and value in the quantification sheet should be used
@@ -312,7 +319,7 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     measurements = parse_quantification_sheet_from_h5ad((os.path.join(get_current_dir, "from_steinbock.h5ad")))
     name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options,
                                                           delimiter="---", mask_name=mask_option).get_matches()
-    assert name == "chr10-h54h54-Gd158_2_18"
+    assert name == mask_option
     assert column == "description"
 
     # from tiff, matching the experiment name
