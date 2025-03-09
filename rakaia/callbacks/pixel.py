@@ -2137,11 +2137,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return list(cur_hash.keys()) if cur_hash is not None and cur_hash else dash.no_update
 
     @dash_app.callback(Output('coregister-transfer', 'data'),
-                       Output('session_config', 'data', allow_duplicate=True),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
+                       Output('coregister_options', 'value'),
                        Input('coregister_options', 'value'),
                        State('coregister_hash', 'data'),
                        State('session_id_internal', 'data'),
-                       State('session_config', 'data'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=False)
     def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config):
         """
@@ -2151,8 +2152,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 from rakaia.register.process import dzi_tiles_from_image_path
                 dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                return True, dash.no_update
-            except OSError: return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"])
+                return True, dash.no_update, dash.no_update
+            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None
         raise PreventUpdate
 
     @dash_app.callback(
