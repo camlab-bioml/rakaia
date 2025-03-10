@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-03-04
+## [0.23.0] - 2025-03-10
 
 ### Added
 
@@ -19,6 +19,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - make waitress production mode the default
 - handle concurrent user sessions better with clientside session ids used for static `Flask` routes and serverside stores
+- Loading widget for channel gallery now converted to non-fullscreen
+
+### Fixed
+
+- now supports quant results from `steinbock` with duplicate ROI indices #122
+- Fix UMAP categorical sub-setting to allow de-selecting of first category #123
+
 
 ## [0.22.0] - 2025-01-31
 

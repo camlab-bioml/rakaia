@@ -2,6 +2,13 @@
   --widget: #0f4d92;
 }
 
+.gallery-row {
+    position: absolute !important;
+    top: 0;
+    left: 50%;
+    transform: translate(-50%, 0);
+}
+
 #annotation_canvas .modebar {
     left: 60%;
     transform: translateX(-60%);

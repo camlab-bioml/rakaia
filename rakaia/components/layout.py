@@ -214,9 +214,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                 children=[
                     dbc.Offcanvas(
                         id="inputs-offcanvas",
-                        # title=html.Div(["Configure inputs/export"],
-                        # style={"display": "flex", "justifyContent": "left",
-                        #        "#header": {"visibility": "hidden"}}),
                         title=None,
                         close_button=False,
                         is_open=True,
@@ -470,13 +467,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                    id="btn-download-panel", className="mx-auto", color=None,
                                                    n_clicks=0, style={"margin-top": "10px"}),
                                     dcc.Download(id="download-edited-table"),
-                                    # dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
-                                    # style={"display": "inline-block", "margin-right": "7.5px",
-                                    # "margin-top": "3px"}),
-                                    # html.Div("Channel gallery tiles (HTML)")], style={"display": "flex"}),
-                                    # id="btn-download-roi-tiles", className="mx-auto", color=None,
-                                    # n_clicks=0, style={"margin-top": "10px"}),
-                                    # dcc.Download(id="download-roi-tiles")
                                     ], style={"border":"1px black solid", "display": "inline-block",
                                                         "width": "auto", "padding": "7.5px",
                                               "justifyContent": "center", "float": "center"}),
@@ -1394,7 +1384,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
 
             dbc.Tab(label="Channel gallery", tab_id='gallery-tab', id='gallery-tab',
                     label_style={"color": DEFAULT_WIDGET_COLOUR},
-                        children=[dcc.Loading([
+                        children=[
                             html.Div([daq.ToggleSwitch(label='Change thumbnail on zoom',
                         id='toggle-gallery-zoom', labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR,
                                 style={"margin-right": "15px", "margin-top": "10px", "textAlign": "center"}),
@@ -1435,8 +1425,10 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                     style={"display": "flex", "width": "90%"})],
                                            style={"display": "flex"}),
                         html.Div(id="image-gallery", children=[
-                        dbc.Row(id="image-gallery-row")], style={"margin-top": "15px"}),
-                        ], type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR)]),
+                        dcc.Loading(dbc.Row(id="image-gallery-row"), style={"position": "relative"},
+                        type="default", fullscreen=False, color=DEFAULT_WIDGET_COLOUR,
+                        className="gallery-row")], style={"margin-top": "15px"}),
+                        ]),
             dbc.Tab(label="Panel", tab_id='panel-tab', label_style={"color": DEFAULT_WIDGET_COLOUR},
                     children=
                         [html.Div([dbc.Row([
