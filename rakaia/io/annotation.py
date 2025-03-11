@@ -211,8 +211,7 @@ class AnnotationMaskWriter:
                         else:
                             self.cell_class_arrays[value['annotation_column']][y_coord, x_coord] = self.cell_class_ids[
                                 value['annotation_column']]['counts']
-                    except (KeyError, ValueError):
-                        pass
+                    except (KeyError, ValueError): pass
                 elif value['type'] == 'path':
                     mask = path_to_mask(key, self.mask_shape)
                     self.cell_class_arrays[value['annotation_column']][mask] = \
@@ -242,8 +241,7 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
                 first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             else:
                 first_image = None
-        except (KeyError, TypeError):
-            first_image = None
+        except (KeyError, TypeError): first_image = None
         dest_path = os.path.join(tmpdirname, authentic_id, 'downloads', 'annotation_masks')
         if not os.path.exists(dest_path):
             os.makedirs(dest_path)
@@ -266,8 +264,7 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
                         cell_id = mask_used[ast.literal_eval(key)['points'][0]['y'],
                                 ast.literal_eval(key)['points'][0]['x']].astype(int)
                         points[mask_selection + "_cell_id"].append(cell_id)
-                except KeyError:
-                    pass
+                except KeyError: pass
         if len(points['x']) > 0:
             frame = pd.DataFrame(points)
             out_name = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else ""

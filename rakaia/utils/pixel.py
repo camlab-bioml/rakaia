@@ -580,8 +580,7 @@ def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_
                                                     key in channel_aliases.keys() else key
                     cell_styling_conditions.append({"condition": f"params.value == '{label}'",
                                                     "style": {"color": f"{col_use}"}})
-            except KeyError:
-                pass
+            except KeyError: pass
     return cell_styling_conditions
 
 def high_low_values_from_zoom_layout(zoom_layout, cast_type=float):

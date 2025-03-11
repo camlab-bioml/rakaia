@@ -2164,9 +2164,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('data-collection', 'value'),
         State('coregister_options', 'value'),
         State('wsi-transformation-matrix', 'data'),
-        State('xenium-scaling-factor', 'value'),
+        State('wsi-scaling-factor', 'value'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform, xenium_scale):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform, wsi_scale):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
         Currently only works for Visium (V1, V2, HD) with tissue positions in the `spatial` `obsm` slot
@@ -2174,12 +2174,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if graph_layout and wsi and data_select and session_config and all([elem in graph_layout for elem in ZOOM_KEYS]):
             eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, transform)
             if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if not transform else (
-                xenium_coords_to_wsi_from_zoom(graph_layout, upload, transform, xenium_scale))
+                xenium_coords_to_wsi_from_zoom(graph_layout, upload, transform, wsi_scale))
         raise PreventUpdate
 
     @dash_app.callback(
         Output("wsi-local-import-modal", "is_open"),
-        Input('read-local-wsi', 'n_clicks'),
+        Input('wsi-modal', 'n_clicks'),
         [State("wsi-local-import-modal", "is_open")])
     def toggle_wsi_local_modal(n, is_open):
         """

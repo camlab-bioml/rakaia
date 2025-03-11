@@ -214,8 +214,7 @@ def output_current_canvas_as_html(dest_dir=None, cur_graph=None, canvas_style=No
         try:
             cur_graph['layout']['yaxis']['domain'] = [0, 1]
             cur_graph['layout']['xaxis']['domain'] = [0, 1]
-        except KeyError:
-            pass
+        except KeyError: pass
         cur_graph = CanvasLayout(cur_graph)
         fig = go.Figure(cur_graph.get_fig())
         fig.update_layout(dragmode="zoom")
@@ -318,8 +317,7 @@ def preset_options_preview_text(preset_dict: dict=None):
                     low_bound = None
                 try:
                     up_bound = round(float(val['x_upper_bound']))
-                except TypeError:
-                    up_bound = None
+                except TypeError: up_bound = None
                 text = text + f"{stud}: \r\n l_bound: {low_bound}, " \
                           f"y_bound: {up_bound}, filter type: {val['filter_type']}, " \
                           f"filter val: {val['filter_val']}, filter_sigma: {val['filter_sigma']} \r\n"

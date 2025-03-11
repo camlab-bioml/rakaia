@@ -364,8 +364,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
             fig = channel_expression_summary(frame.reset_index(drop=True), cols_include=None,
                                              subset_val=subset_val, umap_overlay=overlay_use, normalize=normalize,
                                              transpose=transpose)
-        except ValueError:
-            fig = go.Figure()
+        except ValueError: fig = go.Figure()
         fig['layout']['uirevision'] = True
         return fig, frame, out_cols
     raise PreventUpdate
