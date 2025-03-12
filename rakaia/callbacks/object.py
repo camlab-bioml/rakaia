@@ -864,10 +864,14 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('quantification-dict', 'data'),
         State('plugin-in-col', 'value'),
         State('plugin-out-col', 'value'),
-        State('session_id_internal', 'data'))
-    def run_plugin_quantification(run_plugin, mode, quant_dict, in_col, out_col, sesh_id):
+        State('session_id_internal', 'data'),
+        State('quant-heatmap-channel-list', 'value'))
+    def run_plugin_quantification(run_plugin, mode, quant_dict, in_col, out_col, sesh_id, chan_select):
+        """
+        Execute a plugin model related to quantification/object expression results
+        """
         if run_plugin and quant_dict and out_col and mode and sesh_id:
-            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode),
+            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode, chan_select),
                               key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate
 

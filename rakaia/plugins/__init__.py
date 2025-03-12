@@ -1,9 +1,7 @@
 """Module containing functions and classes for the plugin/object model API
 """
-
 from typing import Union
 from functools import partial
-
 import pandas as pd
 import plotly.graph_objs as go
 from rakaia.plugins.models import (
@@ -37,67 +35,75 @@ class PluginModes:
     # Each should return a modified quantification sheet
     @staticmethod
     def leiden(quantification_results: Union[dict, go.Figure], input_category: str,
-                  output_category: str, **kwargs):
+               output_category: str, var_name_subset: Union[str, None]=None, **kwargs):
         """
         Generate leiden clustering
 
         :param quantification_results: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
         :param input_category: Placeholder argument for similar plugins. NOt used for leiden clustering
         :param output_category: Column to store the outputs of the clustering procedure
+        :param var_name_subset: List of channel names to subset, if specified
         :param kwargs: Keyword arguments to pass to `scanpy.tl.leiden`
 
         :return: Quantification results with the cluster labels added under the output column.
         """
-        return leiden_clustering(quantification_results, output_category, **kwargs)
+        return leiden_clustering(quantification_results, var_name_subset,
+                                 output_category, **kwargs)
 
     @staticmethod
     def random_forest(quantification_results: Union[dict, go.Figure], input_category: str,
-                  output_category: str, **kwargs):
+                  output_category: str, var_name_subset: Union[str, None]=None, **kwargs):
         """
         Train and predict using a random forest classifier
 
         :param quantification_results: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
         :param input_category: Existing annotation column in the object that specifies the classes used to fit the model
         :param output_category: Column to store the output labels of the classifier prediction
+        :param var_name_subset: List of channel names to subset, if specified
         :param kwargs: Keyword arguments to pass to `RandomForestClassifier`
 
         :return: Quantification results with the prediction labels added under the output column.
         """
         return QuantificationRandomForest(
-            quantification_results, input_category, output_category, **kwargs).quantification_with_labels(True)
+            quantification_results, input_category, output_category, var_name_subset,
+            **kwargs).quantification_with_labels(True)
 
     @staticmethod
     def object_mixing(quantification_results: Union[dict, go.Figure], input_category: str,
-                      output_category: str, **kwargs):
+                      output_category: str, var_name_subset: Union[str, None]=None, **kwargs):
         """
         Train and predict object segmentation errors using object expression mixing.
 
         :param quantification_results: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
         :param input_category: Existing annotation column in the object that specifies the classes used to fit the model
         :param output_category: Column to store the output labels of the classifier prediction
+        :param var_name_subset: List of channel names to subset, if specified
         :param kwargs: Keyword arguments to pass to `RandomForestClassifier`
 
         :return: Quantification results with the prediction labels added under the output column.
         """
 
         return ObjectMixingRF(
-            quantification_results, input_category, output_category, **kwargs).quantification_with_labels(True)
+            quantification_results, input_category, output_category, var_name_subset,
+            **kwargs).quantification_with_labels(True)
 
     @staticmethod
     def boosted_trees(quantification_results: Union[dict, go.Figure], input_category: str,
-                      output_category: str, **kwargs):
+                      output_category: str, var_name_subset: Union[str, None]=None, **kwargs):
         """
         Train and predict using an Adaboost decision tree classifier
 
         :param quantification_results: `pd.DataFrame` or `anndata.AnnData` object containing tabular object intensity measurements
         :param input_category: Existing annotation column in the object that specifies the classes used to fit the model
         :param output_category: Column to store the output labels of the classifier prediction
+        :param var_name_subset: List of channel names to subset, if specified
         :param kwargs: Keyword arguments to pass to `AdaBoostClassifier`
 
         :return: Quantification results with the prediction labels added under the output column.
         """
         return AdaBoostTreeClassifier(
-            quantification_results, input_category, output_category, **kwargs).quantification_with_labels(True)
+            quantification_results, input_category, output_category, var_name_subset,
+            **kwargs).quantification_with_labels(True)
 
 
 class PluginModelModes:
@@ -113,7 +119,8 @@ class PluginModelModes:
     boosted_trees = partial(PluginModes.boosted_trees)
 
 def run_quantification_model(quantification_results: Union[dict, pd.DataFrame], input_category: Union[str, None]=None,
-                             output_category: str="out", mode: str="leiden", **kwargs):
+                             output_category: str="out", mode: str="leiden",
+                             var_name_subset: Union[list, None]=None, **kwargs):
     """
     Run a quantification model on a set of objects with quantified channel intensities. Requires a specific model
     mode provided by the user
@@ -124,5 +131,6 @@ def run_quantification_model(quantification_results: Union[dict, pd.DataFrame], 
                                   f"Current plugins include: {PluginDescriptors.descriptors}")
     # get the attribute compatible string for each mode from the dropdown menu
     mode = mode.replace(" ", "_") if mode else ""
-    with_model = getattr(PluginModelModes, mode)(quantification_results, input_category, output_category, **kwargs)
+    with_model = getattr(PluginModelModes, mode)(quantification_results, input_category,
+                        output_category, var_name_subset, **kwargs)
     return with_model

@@ -4,6 +4,7 @@ import anndata
 import pandas as pd
 import numpy as np
 import pytest
+import anndata as ad
 from rakaia.plugins import (
     PluginNotFoundError,
     run_quantification_model)
@@ -11,7 +12,18 @@ from rakaia.plugins.models import (
     QuantificationRandomForest,
     leiden_clustering,
     ObjectMixingRF,
-    AdaBoostTreeClassifier)
+    AdaBoostTreeClassifier,
+    subset_anndata_by_var_names)
+
+def test_subset_anndata_channel_names(get_current_dir):
+    expr = ad.read_h5ad(os.path.join(get_current_dir, 'quantification_anndata.h5ad'))
+    keep_full = subset_anndata_by_var_names(expr)
+    assert keep_full.shape == expr.shape
+    subset_some = subset_anndata_by_var_names(expr, ['ERK1/2', 'Lamin B1',
+       'Mitochondria'])
+    assert subset_some.shape == (1445, 3)
+    assert subset_anndata_by_var_names(expr,
+            ['not_real_col', 'Mitochondria']).shape == expr.shape
 
 def test_leiden_clustering(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
