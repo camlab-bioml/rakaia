@@ -24,7 +24,7 @@ Tools in the rakaia application include:
 - cluster and heatmap visualization
 - dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
-- WSI coordinate alignment (currently for spatial datasets only)
+- WSI coordinate alignment (currently for 10X Visium & Xenium)
 
 Visit the [official documentation](https://camlab-bioml.github.io/rakaia-doc/) to learn more!
 
@@ -61,7 +61,7 @@ rakaia can be installed locally without an environment or container,
 but this is not recommended for dependency management:
 
 ```
-pip install -r requirements.txt
+cd rakaia
 pip install .
 ```
 
@@ -76,8 +76,7 @@ Once conda is installed:
 ```
 conda create --name rakaia python=3.9
 conda activate rakaia
-# cd rakaia
-pip install -r requirements.txt
+cd rakaia
 pip install .
 ```
 
@@ -103,7 +102,6 @@ cd rakaia
 # conda activate rakaia
 git switch main
 git pull --all
-pip install -r requirements.txt
 pip install .
 ```
 
@@ -129,7 +127,7 @@ Additional information on the CLI options available for running custom rakaia se
 found in the documentation: https://camlab-bioml.github.io/rakaia-doc/docs/cli
 
 
-The current version of rakaia can also be checked on the command line with the following (v0.4.0 or later):
+The current version of rakaia can also be checked on the command line:
 
 ```
 rakaia -v

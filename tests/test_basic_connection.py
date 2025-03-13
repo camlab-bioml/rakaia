@@ -63,6 +63,8 @@ def test_basic_app_load_from_locale(rakaia_flask_test_app, client):
     assert str(type(rakaia_flask_test_app)) == "<class 'flask.app.Flask'>"
     response = client.get('/')
     assert response.status_code == 200
+    overview_png = client.get('/static/assets/app-preview.png')
+    assert overview_png.status_code == 200
     # test landing page alias
     assert client.get("/").data != b'Unauthorized Access'
     assert b'Scalable multiplexed spatial proteomics and transcriptomics in the browser' in client.get("/").data

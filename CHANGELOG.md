@@ -20,7 +20,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - make waitress production mode the default
 - handle concurrent user sessions better with clientside session ids used for static `Flask` routes and serverside stores
 - Loading widget for channel gallery now converted to non-fullscreen
-- Use UMAP channel subset in plugins/models
+- Use UMAP channel subset in plugins/models #124
 
 ### Fixed
 

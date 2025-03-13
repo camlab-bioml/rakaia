@@ -1294,6 +1294,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 "center", "justifyContent": "center", "display": "flex"}), dash.no_update
         except (dash.exceptions.LongCallbackError, AttributeError, KeyError, IndexError): raise PreventUpdate
 
+    @dash_app.server.route('/static/assets/<filename>')
+    def serve_basic_static(filename):
+        return flask.send_from_directory(os.path.join('static', 'assets'), filename)
+
     @dash_app.server.route('/static/<filename>')
     def serve_coregister_files(filename):
         try: return flask.send_from_directory(os.path.join(tmpdirname, str(authentic_id)), filename)
