@@ -366,8 +366,8 @@ class RegionThumbnail:
                             look_counter = 0
                             while (additional_query is None or additional_query in self.query_selection) and \
                                     look_counter < len(slide_inside.acquisitions):
-                                additional_query = random.sample(range(0,
-                                                    len(slide_inside.acquisitions)), 1)
+                                roi_indices = [acq.id for acq in slide_inside.acquisitions if acq.id not in self.query_selection]
+                                additional_query = random.sample(roi_indices, 1)
                                 additional_query = additional_query[0] if isinstance(additional_query, list) else \
                                     additional_query
                                 look_counter += 1

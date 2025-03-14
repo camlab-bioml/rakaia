@@ -158,7 +158,8 @@ def check_valid_upload(upload: Union[dict, list]):
         return upload if upload['uploads'] else dash.no_update
     return upload if upload else dash.no_update
 
-def parse_steinbock_dir(directory, error_config, **kwargs):
+def parse_steinbock_dir(directory, error_config,
+                        send_message: bool=False, **kwargs):
     """
     Parse a steinbock output directory. Returns a list of mcd/raw image files, list of mask names,
     quantification/.h5ad filepaths, UMAP coordinate dataframe, and scaling JSON dictionary
@@ -175,6 +176,8 @@ def parse_steinbock_dir(directory, error_config, **kwargs):
     scaling = parse_steinbock_scaling(directory) if parse_steinbock_scaling(directory) is not None else dash.no_update
     message = 'Successfully parsed' if mcd_files else 'Error parsing'
     error_config['error'] = f'{message} steinbock output directory {str(directory)}'
+    # decide if we want to notify if successful parsing
+    error_config = error_config if send_message else dash.no_update
     return check_valid_upload({'uploads': mcd_files, 'from_steinbock': True}), \
         error_config, parse_masks_from_filenames(None, mask_files), \
         get_quantification_filepaths_from_drag_and_drop(None, quant), umap_return, scaling
@@ -243,3 +246,9 @@ def no_json_db_updates(error_config: dict=None):
     return dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update, \
         dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update, \
         dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+
+def disable_gallery_by_roi(datasets: Union[list, None]=None):
+    """
+    Toggle if the channel gallery should be searchable by ROI depending on how many datasets are currently imported
+    """
+    return False if (datasets and isinstance(datasets, list) and len(datasets) > 1) else True

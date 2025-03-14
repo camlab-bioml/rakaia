@@ -81,7 +81,7 @@ from rakaia.inputs.loaders import (
     set_viewer_tab, toggle_canvas_to_wsi_tab)
 from rakaia.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
     mask_options_from_json, bounds_text, AnnotationList, no_json_db_updates, is_steinbock_dir, \
-    parse_steinbock_dir
+    parse_steinbock_dir, disable_gallery_by_roi
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -235,14 +235,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             files = natsorted(set(session_dict['uploads']), alg=ns.REAL) if natsort else set(session_dict['uploads'])
             message, unique_suffixes = file_import_message(files)
             suffix_add = ALERT.warnings["multiple_filetypes"] if len(unique_suffixes) > 1 else ""
-            error_config = add_warning_to_error_config(error_config, suffix_add + message) if 'from_steinbock' \
-                                                                not in session_dict.keys() else dash.no_update
+            # for now, disable messages if the parse was successful
+            error_config = add_warning_to_error_config(error_config, suffix_add) if ('from_steinbock'
+                            not in session_dict.keys() and suffix_add) else dash.no_update
             try:
                 fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
                 session_dict['unique_images'] = fileparser.unique_image_names
                 columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
                 data = pd.DataFrame(fileparser.get_parsed_information()).to_dict(orient='records')
-                blend_return = fileparser.blend_config if ((current_blend is None or len(current_blend) == 0) and fileparser.blend_config) else dash.no_update
+                blend_return = fileparser.blend_config if ((current_blend is None or len(current_blend) == 0) and
+                                                           fileparser.blend_config) else dash.no_update
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
                 return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
@@ -256,6 +258,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('data-collection', 'optionHeight'),
                        Output('transfer-collection-options', 'options'),
                        # Output('data-collection', 'className'),
+                       Output('toggle-gallery-view', 'disabled'),
                        Input('uploaded_dict_template', 'data'),
                        State('data-collection', 'value'),
                        State('image_layers', 'value'),
@@ -269,7 +272,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 selection_return = set_data_selection_after_import(datasets, cur_data_selection)
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0: channels_return = cur_layers_selected
             height_update = adjust_option_height_from_list_length(datasets)
-            return datasets, selection_return, channels_return, height_update, datasets
+            return datasets, selection_return, channels_return, height_update, datasets, disable_gallery_by_roi(datasets)
             # can use an animation to draw attention to the data selection input
             # "animate__animated animate__jello animate__slower"
         raise PreventUpdate
@@ -1437,7 +1440,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                                  image_dict[data_selection][selected_channel])
                     blend_return = current_blend_dict
                     # if the upper bound is larger than the custom percentile, set it to the upper bound
-                    if ' Set range max to current upper bound' in custom_max:
+                    if custom_max:
                         hist_max = float(upper_bound)
                         tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     # set tick spacing between marks on the rangeslider to have 4 tick markers
@@ -1468,7 +1471,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, hist_open
             elif ctx.triggered_id == 'custom-slider-max':
                 try:
-                    if ' Set range max to current upper bound' in custom_max:
+                    if custom_max:
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
                             hist_max = float(cur_slider_values[1])
                         else:

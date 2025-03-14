@@ -29,7 +29,7 @@ def test_roi_query_parser(get_current_dir):
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 4,
                                                  [dataset_exclude]).get_image_dict()
     # assert that the number of queries is 1 less than the total because the current one is excluded
-    assert len(roi_query) == 3
+    assert len(roi_query) == 4
     assert dataset_exclude not in roi_query.keys()
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 20, []).get_image_dict()
     assert len(roi_query) == 6

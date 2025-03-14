@@ -145,7 +145,8 @@ class ToolTips(BaseModel):
                                        "while larger values spread out clusters.",
                       "wsi-scaling-factor": "Set the image scale factor (μm/pixel) for WSIs relative to the canvas. For 10X Xenium, "
                                             "Search `Xenium image scale factors` on the 10X Genomics website "
-                                            "to get the scaling factors for a specific image level."}
+                                            "to get the scaling factors for a specific image level.",
+                      "default-scaling": "Reset the lower bound to 0, and the upper bound to the 99th percentile"}
 
 
 class PanelMismatchError(Exception):
@@ -175,7 +176,7 @@ def file_import_message(imported_files: list):
         message = message + f"{upload}\n"
         if suffix not in unique_suffixes:
             unique_suffixes.append(suffix)
-    message = message + "\n Select a region (ROI) from the data collection dropdown to begin analysis."
+    message = message + "\n Make a selection under `View/Select ROIs` to begin analysis."
     return message, unique_suffixes
 
 

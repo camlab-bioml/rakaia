@@ -1,5 +1,7 @@
+import os
 import pandas as pd
-
+import dash
+import anndata as ad
 from rakaia.callbacks.pixel_wrappers import (
     parse_global_filter_values_from_json,
     parse_local_path_imports,
@@ -11,18 +13,15 @@ from rakaia.callbacks.pixel_wrappers import (
     parse_steinbock_dir,
     parse_steinbock_umap,
     umap_coordinates_from_gallery_click,
-    parse_steinbock_scaling)
-import dash
-import anndata as ad
-import os
-
+    parse_steinbock_scaling,
+    disable_gallery_by_roi)
 from rakaia.io.session import SessionServerside
 
 def test_parse_steinbock_dir(get_current_dir):
     assert not is_steinbock_dir(os.path.join(get_current_dir, 'cell_measurements.csv'))
     steinbock_dir = str(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
     assert is_steinbock_dir(steinbock_dir)
-    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(steinbock_dir, None,
+    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(steinbock_dir, None, True,
                                     key="umap_coordinates", use_unique_key=True)
     assert 'Successfully parsed' in error['error']
     assert mcd['uploads'] == [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'mcd', 'test.mcd')]
@@ -39,7 +38,7 @@ def test_parse_steinbock_dir(get_current_dir):
     assert parse_steinbock_scaling(os.path.join(get_current_dir, 'steinbock', 'deepcell')) is None
 
 def test_invalid_steinbock_dir(get_current_dir):
-    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(get_current_dir, None,
+    mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(get_current_dir, None, True,
                                 key="umap_coordinates", use_unique_key=True)
     assert type(mcd) == type(masks) == type(quant) == dash._callback.NoUpdate
     assert 'Error parsing' in error['error']
@@ -160,3 +159,9 @@ def test_umap_gallery_reactive_search(get_current_dir):
     none_found_2 = umap_coordinates_from_gallery_click('umap_min_dist_1',
                         os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
     assert isinstance(none_found_2, dash._callback.NoUpdate)
+
+def test_allow_disable_rois_in_channel_gallery():
+    assert disable_gallery_by_roi()
+    assert disable_gallery_by_roi('roi_1')
+    assert disable_gallery_by_roi(['roi_1'])
+    assert not disable_gallery_by_roi(['roi_1', 'roi_2'])
