@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-03-12
+## [0.23.0] - 2025-03-18
 
 ### Added
 
@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - handle concurrent user sessions better with clientside session ids used for static `Flask` routes and serverside stores
 - Loading widget for channel gallery now converted to non-fullscreen
 - Use UMAP channel subset in plugins/models #124
+- UI enhancements to import bar, channel gallery, toolbar #126 #127 #128
 
 ### Fixed
 

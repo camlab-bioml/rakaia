@@ -146,7 +146,8 @@ class ToolTips(BaseModel):
                       "wsi-scaling-factor": "Set the image scale factor (μm/pixel) for WSIs relative to the canvas. For 10X Xenium, "
                                             "Search `Xenium image scale factors` on the 10X Genomics website "
                                             "to get the scaling factors for a specific image level.",
-                      "default-scaling": "Reset the lower bound to 0, and the upper bound to the 99th percentile"}
+                      "default-scaling": "Reset the lower bound to 0, and the upper bound to the 99th percentile",
+                      "region-annotate-all": "By default, only the most recently drawn shape is annotated."}
 
 
 class PanelMismatchError(Exception):

@@ -1745,15 +1745,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output("region-annotation-modal", "is_open"),
-        Input('region-annotation', 'n_clicks'),
-        Input('create-annotation', 'n_clicks'))
-    def toggle_region_annotation_modal(clicks_add_annotation, clicks_submit_annotation):
-        if clicks_add_annotation and ctx.triggered_id == "region-annotation": return True
-        elif ctx.triggered_id == "create-annotation" and clicks_submit_annotation: return False
-        return False
+        Input('region-annotation', 'n_clicks'))
+    def toggle_region_annotation_modal(clicks_add_annotation):
+        """
+        Toggle open the region annotation modal when region is enabled for annotation
+        """
+        return True if (clicks_add_annotation and ctx.triggered_id == "region-annotation") else False
 
     @dash_app.callback(
         Output("annotations-dict", "data"),
+        Output("region-annotation-modal", "is_open", allow_duplicate=True),
         Input('create-annotation', 'n_clicks'),
         State('region-annotation-name', 'value'),
         State('region-annotation-body', 'value'),
@@ -1786,17 +1787,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 cell_type=gating_annot_type, imported=False, annotation_column=gating_annot_col, type="gate",
                 channels=cur_layers, use_mask=mask_toggle, mask_selection=mask_selection,
                 mask_blending_level=mask_blending_level, add_mask_boundary=add_mask_boundary, id=str(shortuuid.uuid())).dict()
-            return SessionServerside(annotations_dict, key=f"annotation_dict_{sesh_id}", use_unique_key=OVERWRITE)
+            return SessionServerside(annotations_dict, key=f"annotation_dict_{sesh_id}", use_unique_key=OVERWRITE), False
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and sesh_id and None not in \
-                (annotation_title, annotation_body, canvas_layout, data_selection, cur_layers):
+                (canvas_layout, data_selection, cur_layers) and annot_col and annotation_cell_type:
             annotation_list = AnnotationList(canvas_layout, bulk_annot).get_annotations()
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = RegionAnnotation(title=annotation_title, body=annotation_body,
                 cell_type=annotation_cell_type, imported=False, annotation_column=annot_col, type=value,
                 channels=cur_layers, use_mask=mask_toggle, mask_selection=mask_selection,
                 mask_blending_level=mask_blending_level, add_mask_boundary=add_mask_boundary, id=str(shortuuid.uuid())).dict()
-            return SessionServerside(annotations_dict, key=f"annotation_dict_{sesh_id}", use_unique_key=OVERWRITE)
+            return SessionServerside(annotations_dict, key=f"annotation_dict_{sesh_id}", use_unique_key=OVERWRITE), False
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation-table', 'data'),
