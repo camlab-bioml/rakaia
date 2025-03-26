@@ -224,13 +224,16 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                   label_style={"color": DEFAULT_WIDGET_COLOUR},
                                 children=[
                                 html.Br(),
-                                html.Div([html.H5("Step 1: Import images", style={'width': '50%'}),
+                                html.Div([
+                                    html.H5("Step 1: Import images", style={'width': '45%', 'align': 'left',
+                                                                            'float': 'left'}),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-question",
                                 style={"display": "inline-block", "margin-right": "7.5px",
                                 "margin-top": "-5px"})],
                                 style={"display": "flex"}), id="dash-import-tour",
-                                className="mb-3", color=None, n_clicks=0, style={"width": "10%",
-                                    "margin-top": "-3px", "float": "left", "align": "left"})], style={"display": "flex"}),
+                                className="mb-3", color=None, n_clicks=0, style={"width": "5%",
+                                "margin-top": "-3px", "float": "left", "align": "left"})],
+                                    style={"display": "flex", "width": "auto"}),
                                 dbc.Tooltip(TOOLTIPS['import-tour'], target="dash-import-tour"),
                                 du.Upload(id='upload-image', max_file_size=5000000,
                                 text='Choose or drop imaging/spatial data files',
@@ -587,7 +590,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 dbc.Spinner(html.Div([], id='status-div'), color="dark"),
                                 ])],
                                 style={"margin-top": "-15px", "padding": "0px"})],
-                    style={"width": "38%", "padding": "5px", "margin-bottom": "0px",
+                    style={"width": "31%", "padding": "5px", "margin-bottom": "0px",
                            "#header": {"display": "None", "margin-top": "7.5px"}}, scrollable=True),
                     html.Div([dbc.Row([dbc.Col(html.Div([
                         dbc.Row([
@@ -1447,7 +1450,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                          style={'width': '100%', 'display': 'inline-block',
                                                                 'max-width': '100%'}),
                                         ], style={"display": "inline-block", "align": "left", "float": "left",
-                                                  "textAlign": "left", "margin-left": "10px", "width": "80%"}),
+                                                  "textAlign": "left", "margin-left": "10px", "width": "90%"}),
                                         daq.ToggleSwitch(label='View channel by ROI',
                                                          id='toggle-gallery-view', labelPosition='bottom',
                                                          color=DEFAULT_WIDGET_COLOUR,
@@ -1460,7 +1463,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                          style={"width": "100%"},
                                                          placeholder="Gradient"),
                                         ], style={"display": "inline-block", "align": "left", "float": "left",
-                                                  "textAlign": "left", "margin-left": "10px", "width": "45%"}),
+                                                  "textAlign": "left", "margin-left": "10px", "width": "65%"}),
                                         html.Div([
                                             dbc.Button(
                                                 children=html.Span([html.I(className="fa-solid fa-circle-question",
