@@ -7,7 +7,7 @@ from rakaia.parsers.lazy_load import parse_files_for_lazy_loading
 from rakaia.parsers.spatial import (
     spatial_canvas_dimensions,
     spatial_grid_single_marker,
-    check_spot_grid_multi_channel,
+    check_spatial_array_multi_channel,
     get_spatial_spot_radius,
     detect_spatial_capture_size,
     visium_has_scaling_factors,
@@ -61,7 +61,7 @@ def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
     assert is_spatial_dataset(adata)
     image_dict = {'visium_thalamus+++slide0+++acq': {marker: None for marker in list(adata.var_names)}}
-    image_dict_back = check_spot_grid_multi_channel(image_dict,
+    image_dict_back = check_spatial_array_multi_channel(image_dict,
             'visium_thalamus+++slide0+++acq', adata, list(adata.var_names)[0:2])
     for marker in image_dict_back['visium_thalamus+++slide0+++acq'].keys():
         if marker in list(adata.var_names)[0:2]:

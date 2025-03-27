@@ -67,7 +67,7 @@ def test_basic_app_load_from_locale(rakaia_flask_test_app, client):
     assert overview_png.status_code == 200
     # test landing page alias
     assert client.get("/").data != b'Unauthorized Access'
-    assert b'Scalable multiplexed spatial proteomics and transcriptomics in the browser' in client.get("/").data
+    assert b'Scalable spatial biology analysis in the browser' in client.get("/").data
     # assert client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
     # dash_duo.start_server(rakaia_flask_test_app.server)
     # for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:

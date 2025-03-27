@@ -161,12 +161,12 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
     return gene_grid.astype(np.float32)
 
 
-def check_spot_grid_multi_channel(image_dict: dict, data_selection: str,
-                                  adata: ad.AnnData, channel_list: list,
-                                  spot_size: Union[int,float]=55):
+def check_spatial_array_multi_channel(image_dict: dict, data_selection: str,
+                                      adata: ad.AnnData, channel_list: list,
+                                      spot_size: Union[int,float]=55):
     """
-    Check the current raw image dictionary for missing visium spot arrays using the currently selected
-    marker list. If markers are missing, add the spot grids to the dictionary
+    Check the current raw image dictionary for missing spatial arrays using the currently selected
+    marker list (current blend). If markers are missing, add the expression arrays (non-sparse) to the dictionary
     """
     for selection in channel_list:
         if not image_dict[data_selection] or image_dict[data_selection][selection] is None:

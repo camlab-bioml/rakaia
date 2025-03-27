@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "rakaia"
 version = "0.22.0"
-description = "Scalable multiplexed dataset analysis in the browser"
+description = "Scalable spatial biology analysis in the browser"
 authors = ["matt-sd-watson <mwatson@lunenfeld.ca>"]
 readme = "README.md"
 

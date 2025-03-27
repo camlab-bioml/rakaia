@@ -64,7 +64,7 @@ def init_app(cli_config):
         return render_template(
             'home.html',
             title='rakaia',
-            description='Analyze multiplexed imaging datasets interactively and quickly.',
+            description='Scalable spatial biology analysis in the browser',
             template='home-template',
             body="This is a homepage served with Flask."
         )

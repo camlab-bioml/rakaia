@@ -19,7 +19,7 @@ def cli_parser():
     :return: argparse Argument parser with provided CLI options
     """
     parser = argparse.ArgumentParser(add_help=False,
-            description="rakaia: Scalable multiplexed spatial proteomics and transcriptomics in the browser.",
+            description="rakaia: Scalable spatial biology analysis in the browser.",
                                      usage='''
             rakaia can be initialized from the command line using: \n
             rakaia \n

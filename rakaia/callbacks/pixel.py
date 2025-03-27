@@ -666,6 +666,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=True)
     def set_blend_params_on_pixel_range_adjustment(layer, image_dict, current_blend_dict, data_selection,
                                                    rgb_layers, slider_values, sesh_id):
+        """
+        Update the channel blend parameters when the pixel intensity slider is changed
+        """
         if None not in (slider_values, layer, data_selection, current_blend_dict) and \
                 all([elem is not None for elem in slider_values]) and sesh_id:
             # do not update if the range values in the slider match the current blend params:

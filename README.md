@@ -1,13 +1,13 @@
 # rakaia
 
-rakaia: Scalable multiplexed spatial proteomics and transcriptomics in the browser
+rakaia: Scalable spatial biology analysis in the browser
 
 <p align="center">
     <img src="man/app-preview.png">
 </p>
 
 
-rakaia provides streamlined in-browser analysis of multiplexed imaging and spatial transcriptomics datasets.
+rakaia provides streamlined in-browser analysis of multiplexed spatial proteomics and transcriptomics.
 The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI), and
 currently supports the following technologies:
 

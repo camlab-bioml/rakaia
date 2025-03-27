@@ -225,7 +225,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 children=[
                                 html.Br(),
                                 html.Div([
-                                    html.H5("Step 1: Import images", style={'width': '45%', 'align': 'left',
+                                    html.H5("Step 1: Import images", style={'width': 'auto', 'align': 'left',
                                                                             'float': 'left'}),
                                 dbc.Button(children=html.Span([html.I(className="fa-solid fa-circle-question",
                                 style={"display": "inline-block", "margin-right": "7.5px",
@@ -413,7 +413,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 html.Br(),
                                 html.Br(),
                                 dbc.Button("View saved configurations", id="view-db-config-list",
-                                style={"width": "50%", "background-color": DEFAULT_WIDGET_COLOUR}),
+                                style={"width": "auto", "background-color": DEFAULT_WIDGET_COLOUR}),
                                 dbc.Modal(children=dbc.ModalBody(
                                 [dash_table.DataTable(id='db-config-preview-table', columns=[], data=None,
                                                               editable=False, filter_action='native',
@@ -548,7 +548,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                                  "margin-right": "7.5px",
                                                                                  "margin-top": "3px"}),
                                                                    html.Div(
-                                                                       "Annotation object lists (region/gating) (CSV)")],
+                                                                       "Annotation objects (region/gating) (CSV)")],
                                                                   style={"display": "flex"}),
                                                id="btn-download-region-csv", className="mx-auto", color=None,
                                                n_clicks=0,
@@ -1122,14 +1122,15 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 ]),
                                 dbc.Tab(label='Marker/blend', label_style={"color": DEFAULT_WIDGET_COLOUR},
                                             children=[
-                                html.Div([html.B("Set blends", style={"margin-top": "15px"}),
+                                html.Div([html.B("Set blends", style={"margin-top": "15px",
+                                                                      "width": "auto"}),
                                 dbc.Button(
                                 children=html.Span([html.I(className="fa-solid fa-circle-question",
                                 style={"display": "inline-block", "margin-right": "7.5px",
-                                "margin-top": "-5px"})], style={"display": "flex"}),
+                                "margin-top": "-5px", "float": "left"})], style={"display": "flex"}),
                                 id="set-blend-hover",
-                                className="mb-3", color=None, n_clicks=0, style={"width": "20%", "margin-top": "10px",
-                                    "margin-left": "12.5px"}),
+                                className="mb-3", color=None, n_clicks=0, style={"width": "5%", "margin-top": "10px",
+                                    "margin-left": "12.5px", "float": "left", "align": "left"}),
                                 dbc.Tooltip(TOOLTIPS['set-blends'], target="set-blend-hover")],
                                          style={"display": "flex", "float": "center"}),
                                 html.Div([
@@ -1448,7 +1449,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                          placeholder='Select channel',
                                                          className="custom-dropdown",
                                                          style={'width': '100%', 'display': 'inline-block',
-                                                                'max-width': '100%'}),
+                                                                'max-width': '100%', "margin-top": "5px"}),
                                         ], style={"display": "inline-block", "align": "left", "float": "left",
                                                   "textAlign": "left", "margin-left": "10px", "width": "90%"}),
                                         daq.ToggleSwitch(label='View channel by ROI',
@@ -1460,7 +1461,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                         html.B("Expression gradient", style={"width": "100%"}),
                                         dcc.Dropdown(id='chan-gallery-spectrum', multi=False, value=None,
                                                          options=["rainbow", "blue gold", "greyscale"],
-                                                         style={"width": "100%"},
+                                                         style={"width": "100%", "margin-top": "5px"},
                                                          placeholder="Gradient"),
                                         ], style={"display": "inline-block", "align": "left", "float": "left",
                                                   "textAlign": "left", "margin-left": "10px", "width": "65%"}),
