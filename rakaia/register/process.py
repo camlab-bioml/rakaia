@@ -47,8 +47,7 @@ def dzi_tiles_from_image_path(image_path: Union[Path, str],
     try:
         if os.path.exists(os.path.join(dest_dir, f"{static_folder_prefix}_files")):
             shutil.rmtree(os.path.join(dest_dir, f"{static_folder_prefix}_files"))
-    except FileNotFoundError:
-        pass
+    except FileNotFoundError: pass
     create_download_dir(os.path.join(dest_dir, static_folder_prefix))
     image.dzsave(os.path.join(os.path.join(dest_dir, static_folder_prefix)),
                  suffix=".jpg", tile_size=256, overlap=1)

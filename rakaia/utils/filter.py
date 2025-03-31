@@ -20,8 +20,7 @@ def apply_filter_to_channel(channel_array: Union[np.array, np.ndarray]=None, fil
         if filter_name == "median" and int(filter_value) >= 1:
             try:
                 channel_array = median_filter(channel_array, int(filter_value))
-            except (ValueError, MemoryError, TypeError):
-                pass
+            except (ValueError, MemoryError, TypeError): pass
         else:
             # array = gaussian_filter(array, int(filter_value))
             if int(filter_value) % 2 != 0 and int(filter_value) >= 1:

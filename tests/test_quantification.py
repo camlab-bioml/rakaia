@@ -39,12 +39,13 @@ def test_quantification_valid_vals(get_current_dir):
 
 def test_quantification_multiple_channels(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
-    channel_dict = {"set1+++slide0+++acq_1": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
+    channel_dict = {"set1+++slide0+++acq": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
                  "channel_2": np.full((mask.shape[0], mask.shape[1]), 2),
                  "channel_3": np.full((mask.shape[0], mask.shape[1]), 3),
                  "channel_4": np.full((mask.shape[0], mask.shape[1]), 4)}}
     channel_list = ["channel_2", "channel_3", "channel_4"]
-    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq_1", channel_list)
+    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq", channel_list,
+                                                     mask_name="set1")
     assert multi_frame['cell_id'].to_list()[0] == 1
     assert len(multi_frame.index) == int(np.max(mask))
     column_list = list(multi_frame.columns)
@@ -52,50 +53,57 @@ def test_quantification_multiple_channels(get_current_dir):
     assert column_list.index('sample') == 5
     assert all([elem in column_list[0:3] for elem in channel_list])
 
-    dataset_options = ["set1+++slide0+++acq_1", "set1+++slide0+++acq_2"]
+    assert 'set1' in multi_frame['sample'].tolist()
+    assert 'set1' in multi_frame['description'].tolist()
+
+    dataset_options = ["set1+++slide0+++acq", "set2+++slide0+++acq"]
 
     aliases = {elem: elem for elem in channel_list}
-    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq_1", channel_list,
-                                                     aliases, dataset_options)
+    multi_frame = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq", channel_list,
+                                                     aliases, dataset_options, mask_name="set1_mask")
 
-    assert 'set1_1' in multi_frame['sample'].tolist()
-    assert 'set1_1' not in multi_frame['description'].tolist()
+    assert 'set1_mask' in multi_frame['sample'].tolist()
+    assert 'set1_mask' in multi_frame['description'].tolist()
+    assert 'set2_mask' not in multi_frame['sample'].tolist()
 
-    assert quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq_1", [],
-                                                     aliases, dataset_options) is None
+    assert quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq", [],
+                                                     aliases, dataset_options, mask_name="set1_mask") is None
 
 
 def test_quantification_multiple_rois(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
-    channel_dict = {"set1+++slide0+++roi_1": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
+    channel_dict = {"set1+++slide0+++acq": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),
                  "channel_2": np.full((mask.shape[0], mask.shape[1]), 2),
                  "channel_3": np.full((mask.shape[0], mask.shape[1]), 3),
                  "channel_4": np.full((mask.shape[0], mask.shape[1]), 4)},
-                    "set1+++slide0+++roi_2": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 5),
+                    "set2+++slide0+++acq": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 5),
                      "channel_2": np.full((mask.shape[0], mask.shape[1]), 6),
                      "channel_3": np.full((mask.shape[0], mask.shape[1]), 7),
                      "channel_4": np.full((mask.shape[0], mask.shape[1]), 8)}}
     channel_list_1 = ["channel_2", "channel_3", "channel_4"]
     channel_list_2 = ["channel_1", "channel_2", "channel_3"]
-    roi_1_quant = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_1", channel_list_1)
-    roi_2_quant = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_2", channel_list_2)
-    merged = concat_quantification_frames_multi_roi(roi_1_quant, roi_2_quant, "set1+++slide0+++roi_2")
+    roi_1_quant = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq",
+                                                     channel_list_1, mask_name="set1")
+    roi_2_quant = quantify_multiple_channels_per_roi(channel_dict, mask, "set2+++slide0+++acq",
+                                                     channel_list_2, mask_name="set2")
+    merged = concat_quantification_frames_multi_roi(roi_1_quant, roi_2_quant, "set2+++slide0+++acq")
     assert len(merged) == len(roi_1_quant)
-    roi_2_quant = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_2", channel_list_1)
-    merged = concat_quantification_frames_multi_roi(roi_1_quant, roi_2_quant, "set1+++slide0+++roi_2")
+    roi_2_quant = quantify_multiple_channels_per_roi(channel_dict, mask, "set2+++slide0+++acq",
+                                                     channel_list_1, mask_name="set2")
+    merged = concat_quantification_frames_multi_roi(roi_1_quant, roi_2_quant, "set1+++slide0+++acq")
     assert len(merged) == 2 * len(roi_1_quant)
 
-    merged = concat_quantification_frames_multi_roi(None, roi_2_quant, "set1+++slide0+++roi_2")
+    merged = concat_quantification_frames_multi_roi(None, roi_2_quant, "set1+++slide0+++acq")
+    assert len(merged) == len(roi_2_quant)
+    assert 'set2' in merged['description'].tolist()
+    merged = concat_quantification_frames_multi_roi(roi_1_quant, None, "set2+++slide0+++acq")
     assert len(merged) == len(roi_1_quant)
-    assert 'roi_2' in merged['description'].tolist()
-    merged = concat_quantification_frames_multi_roi(roi_1_quant, None, "set1+++slide0+++roi_2")
-    assert len(merged) == len(roi_1_quant)
-    assert 'roi_1' in merged['description'].tolist()
+    assert 'set1' in merged['description'].tolist()
 
     # if no channels quantified, all are None
-    roi_1_empty = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_1", [])
-    roi_2_empty = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++roi_2", [])
-    merged_empty = concat_quantification_frames_multi_roi(roi_1_empty, roi_2_empty, "set1+++slide0+++roi_2")
+    roi_1_empty = quantify_multiple_channels_per_roi(channel_dict, mask, "set1+++slide0+++acq", [])
+    roi_2_empty = quantify_multiple_channels_per_roi(channel_dict, mask, "set2+++slide0+++acq", [])
+    merged_empty = concat_quantification_frames_multi_roi(roi_1_empty, roi_2_empty, "set2+++slide0+++acq")
     assert merged_empty is None
 
 

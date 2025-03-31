@@ -80,17 +80,16 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
             else:
                 chan_names.append(chan)
         channel_frame = measure_intensites(array, mask, chan_names, IntensityAggregation.MEAN).dropna()
-        description_name = roi_name
+        description_name = mask_name
         sample_name = mask_name
         if dataset_options is not None:
             for dataset in dataset_options:
                 exp, slide, roi = split_string_at_pattern(dataset, pattern=delimiter)
-                if roi == roi_name:
-                    index = dataset_options.index(dataset) + 1
-                    # this might not be the optimal way tot figure out the description name from different file types
-                    if len(description_name) <= 5 and description_name.startswith("acq"):
-                        description_name = mask_name
-                        sample_name = f"{exp}_{index}"
+                if roi == "acq" and roi == roi_name:
+                    # this condition is used if non-mcd files are being quantified
+                    description_name = mask_name
+                    sample_name = mask_name
+
         channel_frame['description'] = description_name
         # channel_frame['cell_id'] = pd.Series(range(0, (int(np.max(mask)))), dtype='int64')
         channel_frame['cell_id'] = [int(i) for i in channel_frame.index]
@@ -99,8 +98,7 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
         try:
             region_props = measure_regionprops(array, mask, props)
             to_return = channel_frame.join(region_props).reset_index(drop=True)
-        except TypeError:
-            to_return = channel_frame
+        except TypeError: to_return = channel_frame
         return to_return
     except ValueError:
         return None
