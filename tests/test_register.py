@@ -74,3 +74,8 @@ def test_generate_dzi_tiles(get_current_dir):
         if os.access(download_dir, os.W_OK):
             shutil.rmtree(download_dir)
         assert not os.path.isdir(download_dir)
+
+        dzi_tiles_from_image_path(os.path.join(get_current_dir, 'fake.tiff'),
+                                  download_dir)
+
+        assert not os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))

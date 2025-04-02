@@ -8,7 +8,7 @@ function toggleNavigator(display) {
 // do not run as async because it is not in a module to be compatible with dash
 function checkStatus(url) {
     let response = fetch(url, { method: 'HEAD' });
-    let tileReturn = [400, 404, 500].includes(response.status) ? null: url
+    let tileReturn = [400, 404, 500, null].includes(response.status) ? null: url
     return tileReturn;
     }
 
@@ -48,6 +48,7 @@ const observer = new MutationObserver(() => {
     const initialTileSource = checkStatus('/static/coregister.dzi');
     const viewer = renderOSDCanvas(initialTileSource);
     observer.disconnect();
+
     document.getElementById("update-coregister").addEventListener('click', function(e) {
     // get the unique client key from flask used to serve the static folder
     const session_id = document.getElementById("session_id").innerText;
@@ -58,6 +59,11 @@ const observer = new MutationObserver(() => {
     });
     if (performance.navigation.type == performance.navigation.TYPE_RELOAD) {
         viewer.open(null);}
+
+    viewer.addHandler('open-failed', () => {
+      let el = document.querySelector('.openseadragon-message');
+      el.style = 'display:none;';
+    });
 
     document.getElementById("toggle-osd-navigator").addEventListener('click', function(e) {
     viewer.navigator.element.style.display = toggleNavigator(viewer.navigator.element.style.display)

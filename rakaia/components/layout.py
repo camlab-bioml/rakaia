@@ -610,7 +610,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                             children = [
                                 dbc.Row([dbc.Col([html.Div(id='openseadragon-container', style={"width": "95%",
                                 "border": "1px solid black", "height": "700px", "margin": "5px", "float": "right",
-                                                "text-align": "right"})],
+                                                "text-align": "right"}, hidden=True)],
                                         width=10),
                                          # use this to get the client session id in the DOM for openseadragon
                                          html.Div(id="session_id", children=None, style={"display": "none"}),

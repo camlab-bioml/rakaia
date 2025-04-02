@@ -2150,6 +2150,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('coregister-transfer', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('coregister_options', 'value'),
+                       Output('openseadragon-container', 'hidden'),
                        Input('coregister_options', 'value'),
                        State('coregister_hash', 'data'),
                        State('session_id_internal', 'data'),
@@ -2163,8 +2164,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 from rakaia.register.process import dzi_tiles_from_image_path
                 dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                return True, dash.no_update, dash.no_update
-            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None
+                return True, dash.no_update, dash.no_update, False
+            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True
         raise PreventUpdate
 
     @dash_app.callback(
