@@ -375,7 +375,9 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     # assert where no cells are
     assert list(with_annotations[623, 420]) == list(with_annotations[787, 709]) == [0, 0, 0]
     # assert where there are cells that are not annotated (remain as white)
-    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]
+    # with update, non annotated cells no longer show up
+    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
+    # assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]
 
     # run without keeping the cells that are not annotated
     with_annotations = mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
@@ -395,8 +397,7 @@ def test_apply_cluster_annotations_with_gating(get_current_dir):
     fake_frame = pd.DataFrame({"missing_key": [1, 2, 3, 4, 5],
                                "cluster": ["immune"] * 5})
     assert mask_with_cluster_annotations(mask, cluster_assignments, fake_frame,
-                                         use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id") is None
-
+        use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id") is None
 
 def test_remove_latest_annotation():
     annotations_dict_original = {"roi_1": {"annot_1": "This is an annotation", "annot_2": "This is also an annotation"}}

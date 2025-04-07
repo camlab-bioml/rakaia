@@ -505,46 +505,60 @@ def pad_steinbock_roi_index(roi_index: Union[int, str, None]=None):
         roi_index = f"0{roi_index}" if len(roi_index) < 3 else roi_index
     return str(roi_index)
 
+def hex_series_to_rgb_array(hex_series: Union[list, pd.Series]):
+    """Convert a `Pandas` series of hex strings to an (N, 3) uint8 RGB array for mapping."""
+    return np.stack(hex_series.str.lstrip('#').apply(
+        lambda x: tuple(int(x[i:i+2], 16) for i in (0, 2, 4))
+    )).astype(np.uint8)
+
 def mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
                                   cluster_col: str = "cluster", obj_id_col: str = "cell_id", retain_objs=True,
-                                  use_gating_subset: bool = False, gating_subset_list: list=None,
-                                  cluster_option_subset=None):
+                                  use_gating_subset: bool = False, gating_subset_list: Union[list, None]=None,
+                                  cluster_option_subset: Union[list, None]=None,
+                                  default_color: str="#000000"):
     """
-    Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated objects
-    remain as greyscale values
+    Generate a mask where cluster annotations are filled in with a specified colour. Incorporates
+    both object ID and category sub-setting
     Returns a mask in RGB format
     """
     cluster_frame = pd.DataFrame(cluster_frame)
-    cluster_frame = cluster_frame.astype(str)
-    empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
+    cluster_frame = cluster_frame.astype({obj_id_col: np.int32, cluster_col: str})
     mask_array = mask_array.astype(np.uint32)
-    if use_gating_subset:
-        mask_bool = np.isin(mask_array, gating_subset_list)
-        mask_array[~mask_bool] = 0
     try:
-        # set the cluster assignments to use either from the subset, or the default of all
-        clusters_to_use = [str(select) for select in cluster_option_subset] if cluster_option_subset is not None else \
-            cluster_frame[cluster_col].unique().tolist()
-        # basic time complexity is O(num_clusters) but also slower for larger images
-        for obj_type in clusters_to_use:
-            obj_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(obj_type))][obj_id_col].tolist()
-            # make sure that the objects are integers so that they match the array values of the mask
-            obj_list = [int(i) for i in obj_list]
-            annot_mask = np.where(np.isin(mask_array, obj_list), mask_array, 0)
-            annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
-            annot_mask = recolour_greyscale(annot_mask, cluster_annotations[obj_type])
-            # empty = empty + annot_mask
-            empty = ne.evaluate("empty + annot_mask")
-        # Find where the objects are annotated, and add back in the ones that are not
-        if retain_objs:
-            already_objs = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
-            mask_array[already_objs] = 0
-            mask_to_add = np.array(Image.fromarray(mask_array).convert('RGB'))
-            mask_to_add = np.where(mask_to_add > 0, 255, 0).astype(empty.dtype)
-            return (empty + mask_to_add).clip(0, 255).astype(np.uint8)
-        return empty.astype(np.uint8)
-    except KeyError:
+        if use_gating_subset:
+            mask_bool = np.isin(mask_array, gating_subset_list)
+            mask_array[~mask_bool] = 0
+            mask_array = mask_array.astype(np.uint32)
+
+        # Safely map group names to hex codes, using default color if group not in dict
+        assign_frame = cluster_frame.copy()
+        assign_frame = assign_frame[assign_frame[obj_id_col].isin(mask_array.flatten())]
+        if cluster_option_subset is not None:
+            assign_frame = assign_frame[assign_frame[cluster_col].isin(cluster_option_subset)]
+        map_max = set_color_map_max(mask_array, pd.Series(assign_frame[obj_id_col])) + 1
+        color_map = np.zeros((map_max, 3), dtype=np.uint8)
+        assign_frame['color'] = assign_frame[cluster_col].map(cluster_annotations).fillna(default_color)
+
+        # Convert hex codes to RGB
+        rgb_colors = hex_series_to_rgb_array(assign_frame['color'])
+
+        # Create a color lookup table: object_id → RGB
+        object_ids = assign_frame[obj_id_col].to_numpy().astype(np.uint32)
+        color_map[object_ids] = rgb_colors
+
+        # Map full mask to RGB using the color map
+        rgb_image = color_map[mask_array]
+        return rgb_image
+    except (KeyError, ValueError, IndexError):
         return None
+
+def set_color_map_max(mask: np.array, id_vector: Union[list, pd.Series]):
+    """
+    Define the maximum value for the RGB mask color map. The color map should have enough values
+    for all object ids in the mask to fill
+    """
+    return max(int(np.max(mask)), int(max(id_vector.to_list())))
+
 
 def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selection: str=None,
                                        index_list: list=None):

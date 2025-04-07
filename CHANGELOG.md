@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-03-31
+## [0.23.0] - 2025-04-07
 
 ### Added
 
@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Loading widget for channel gallery now converted to non-fullscreen
 - Use UMAP channel subset in plugins/models #124
 - UI enhancements to import bar, channel gallery, toolbar #126 #127 #128
+- Vectorized mask filling from cluster annotations to improve performance
 
 ### Fixed
 
