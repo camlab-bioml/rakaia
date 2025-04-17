@@ -78,8 +78,7 @@ class RegionSummary:
                 try:
                     if 'type' in shape and shape['type'] not in ['line'] and 'editable' in shape and shape['editable']:
                         shapes_keep.append(shape)
-                except KeyError:
-                    pass
+                except KeyError: pass
         return shapes_keep
 
     def compute_statistics_shapes(self):

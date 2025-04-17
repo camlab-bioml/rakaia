@@ -106,7 +106,7 @@ class CanvasImage:
         self.invert_annot = invert_annot
         try:
             self.cur_graph = CanvasLayout(cur_graph).get_fig()
-        except (KeyError, TypeError):
+        except (KeyError, TypeError, AttributeError):
             self.cur_graph = cur_graph
         self.pixel_ratio = set_pixel_ratio(pixel_ratio)
         self.legend_text = legend_text
@@ -534,8 +534,7 @@ class CanvasLayout:
         pixel_ratio = set_pixel_ratio(pixel_ratio)
         try:
             proportion = float(proportion / pixel_ratio)
-        except ZeroDivisionError:
-            pass
+        except ZeroDivisionError: pass
         fig = go.Figure(self.figure)
         fig.update_layout(newshape=dict(line=dict(color="white")))
         # default length is 0.1 (10% of the canvas), but want to make adjustable
@@ -707,8 +706,7 @@ class CanvasLayout:
         pixel_ratio = set_pixel_ratio(pixel_ratio)
         try:
             proportion = float(proportion / pixel_ratio)
-        except ZeroDivisionError:
-            pass
+        except ZeroDivisionError: pass
         # find the text annotation that has um in the text and the correct location
         for annotations in self.figure['layout']['annotations']:
             # if 'μm' in annotations['text'] and annotations['y'] == 0.06:
@@ -800,8 +798,7 @@ class CanvasLayout:
             try:
                 if not is_bad_shape(shape):
                     new_shapes.append(shape)
-            except KeyError:
-                pass
+            except KeyError: pass
         self.figure['layout']['shapes'] = new_shapes
         return self.figure
 

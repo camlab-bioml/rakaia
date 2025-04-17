@@ -21,7 +21,7 @@ def test_basic_canvas_image():
     add_mask_boundary = True
     invert_annot = True
     cur_graph = go.Figure()
-    pixel_ratio = None
+    pixel_ratio = 0
     legend_text = ''
     toggle_scalebar = True
     legend_size = 12
@@ -49,6 +49,7 @@ def test_basic_canvas_image():
                 show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict, "cluster",
                          cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
+
     assert list(canvas.get_image()[44, 44]) == [6, 6, 6]
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.render_canvas()
@@ -170,6 +171,8 @@ def test_basic_canvas_image():
     mask_blending_level = 35
     cluster_type = "mask"
 
+    # pass a malformed object to the existing canvas layout that will be filtered out
+    cur_graph = []
     canvas_8 = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
@@ -209,7 +212,8 @@ def test_canvas_layout_editor(get_current_dir):
     fig = go.Figure(px.imshow(image))
     assert len(fig['layout']['annotations']) == 0
 
-    fig = go.Figure(CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12, 0))
+    fig = go.Figure(CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 0, image.shape, 12, 0))
+    assert 'μm' in fig['layout']['annotations'][0]['text']
     assert len(fig['layout']['annotations']) > 0
 
     # update the layout to mimic a zoom to change the scalebar value
@@ -264,6 +268,9 @@ def test_canvas_layout_editor(get_current_dir):
     canvas_layout = {'xaxis.range[1]': 50, 'xaxis.range[0]': 60}
     fig = CanvasLayout(fig).toggle_scalebar(True, 0.05, True, 1, image.shape, 12)
     fig = CanvasLayout(fig).update_scalebar_zoom_value(canvas_layout, 1)
+    assert 'color: white">2μm</span><br>' in fig['layout']['annotations'][0]['text']
+
+    fig = CanvasLayout(fig).update_scalebar_zoom_value(canvas_layout, 0)
     assert 'color: white">2μm</span><br>' in fig['layout']['annotations'][0]['text']
 
     # bad proportion

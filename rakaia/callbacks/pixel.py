@@ -246,7 +246,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 blend_return = fileparser.blend_config if ((current_blend is None or len(current_blend) == 0) and
                                                            fileparser.blend_config) else dash.no_update
             except Exception as e:
-                error_config = add_warning_to_error_config(error_config, str(e))
+                error_config = add_warning_to_error_config(None, str(e))
                 return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
             return SessionServerside(fileparser.image_dict, key=f"upload_dict_{sesh_id}",
                                      use_unique_key=OVERWRITE), session_dict, blend_return, columns, data, error_config

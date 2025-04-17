@@ -495,7 +495,7 @@ class FileParser:
                 isinstance(self.dataset_information_frame, pd.DataFrame) and len(self.dataset_information_frame) > 0:
             return self.dataset_information_frame
         raise NoAcquisitionsParsedError(f"No acquisitions were successfully parsed from the following files: \n"
-                                        f"{self.filepaths}. Please review the input files.")
+                                        f"{self.filepaths}. Please review the input files and refresh the session.")
 
 def create_new_blending_dict(uploaded):
     """

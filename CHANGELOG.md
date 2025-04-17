@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-04-07
+## [0.23.0] - 2025-04-17
 
 ### Added
 
@@ -29,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - now supports quant results from `steinbock` with duplicate ROI indices #122
 - Fix UMAP categorical sub-setting to allow de-selecting of first category #123
 - Quantification naming conventions from in-app quantification w/ multiple files
+- Channel gallery tiles: use original image if dimensions are sufficiently small
 
 ## [0.22.0] - 2025-01-31
 

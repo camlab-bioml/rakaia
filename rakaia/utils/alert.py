@@ -185,6 +185,7 @@ def add_warning_to_error_config(error_config: Union[dict, None], alert: Union[st
     """
     Parse an existing error/message/warning dictionary and add the current session warning
     """
-    error_config = {"error": None} if (error_config is None or "error" not in error_config) else error_config
+    error_config = {"error": None} if (error_config is None or (isinstance(error_config, dict) and
+                                        "error" not in error_config)) else error_config
     error_config["error"] = alert if alert else ""
     return error_config

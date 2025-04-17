@@ -28,7 +28,7 @@ def visium_has_scaling_factors(adata: ad.AnnData):
     try:
         spatial_meta = adata.uns['spatial'][list(adata.uns['spatial'].keys())[0]]
         return 'scalefactors' in spatial_meta.keys()
-    except KeyError:
+    except (KeyError, TypeError, IndexError):
         return False
 
 def is_spot_based_spatial(adata: Union[ad.AnnData, str]):
