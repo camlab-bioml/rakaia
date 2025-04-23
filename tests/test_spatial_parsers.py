@@ -73,8 +73,8 @@ def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
 
 def test_parse_visium_spot_mask(get_current_dir):
     uploads = {"uploads": [os.path.join(get_current_dir, "visium_thalamus.h5ad")]}
-    mask_dict, names = visium_mask({}, 'visium_thalamus+++slide0+++acq',
-                                   uploads)
+    mask_dict, names = visium_mask({}, 'visium_thalamus---slide0---acq',
+                                   uploads, delimiter="---")
     assert 'visium_thalamus' in names
     assert 'visium_thalamus' in mask_dict.value.keys()
     assert mask_dict.value['visium_thalamus']['raw'].shape == (925, 1011)

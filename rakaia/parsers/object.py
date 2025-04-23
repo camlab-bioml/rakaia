@@ -237,7 +237,7 @@ def visium_mask(mask_dict: dict, data_selection: str, upload_list: Union[list, d
     """
     masks_return, names_return = dash.no_update, dash.no_update
     if data_selection and upload_list:
-        exp, slide, acq = split_string_at_pattern(data_selection)
+        exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
         found_h5ad_match = parse_files_for_lazy_loading(upload_list, data_selection, delimiter)
         if found_h5ad_match and is_spot_based_spatial(found_h5ad_match):
             mask_dict = {} if mask_dict is None else mask_dict

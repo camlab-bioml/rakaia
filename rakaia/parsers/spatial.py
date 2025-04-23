@@ -146,19 +146,39 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
     spot_size = spot_size if not downscale else int(spot_size * scale_factor)
 
     grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(adata, downscale=downscale)
-    gene_grid = np.zeros((grid_height, grid_width))
 
     spatial_coords = np.array(adata.obsm['spatial'] * scale_factor).astype(np.float32)
-    # Map the gene expression values to the grid
-    for i, (x, y) in enumerate(spatial_coords):
-        if float(spot_values[i]) > 0:
-            grid_x = int(x - x_min)  # Shift the x-coordinate to start from 0
-            grid_y = int(y - y_min)  # Shift the y-coordinate to start from 0
-            try:
-                gene_grid[skimage.draw.disk((grid_y, grid_x), radius=int(spot_size))] = float(spot_values[i])
-            except IndexError: pass
+    # switch y and x coordinates to match row-col orientation
+    spatial_coords = spatial_coords[:, [1, 0]]
 
-    return gene_grid.astype(np.float32)
+    # Shift coordinates so min becomes (0, 0)
+    spatial_coords -= np.array([y_min, x_min])
+
+    # max_yx = spatial_coords.max(axis=0)
+    image_shape = (int(grid_height), int(grid_width))
+    image = np.zeros(image_shape, dtype=np.float32)
+
+    # precompute disk offsets
+    rr_offset, cc_offset = skimage.draw.disk((0, 0), int(spot_size))
+    disk_coords = np.stack([rr_offset, cc_offset], axis=1)
+
+    # vectorized disk placement
+    K = disk_coords.shape[0]
+    expanded_coords = spatial_coords[:, None, :] + disk_coords[None, :, :]
+    flat_coords = expanded_coords.reshape(-1, 2).astype(np.uint32)
+    yy, xx = flat_coords[:, 0], flat_coords[:, 1]
+
+    # Place expression values (overlap-safe)
+    repeated_values = np.repeat(spot_values, K)
+
+    # Filter out-of-bounds
+    valid = ((yy >= 0) & (yy < image_shape[0]) &
+            (xx >= 0) & (xx < image_shape[1]))
+
+    yy, xx = yy[valid], xx[valid]
+    image[yy, xx] = repeated_values[valid]
+
+    return image.astype(np.float32)
 
 
 def check_spatial_array_multi_channel(image_dict: dict, data_selection: str,
