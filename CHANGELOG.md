@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-04-22
+## [0.23.0] - 2025-04-25
 
 ### Added
 
@@ -31,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Fix UMAP categorical sub-setting to allow de-selecting of first category #123
 - Quantification naming conventions from in-app quantification w/ multiple files
 - Channel gallery tiles: use original image if dimensions are sufficiently small
+- pixel histogram will collapse if marker array is not available (i.e. due to lazy loading)
+- improved logic for single marker lazy loading based on total ROI pixels
 
 ## [0.22.0] - 2025-01-31
 

@@ -111,8 +111,10 @@ from rakaia.callbacks.triggers import (
     global_filter_disabled,
     channel_order_as_default,
     new_roi_same_dims,
-    channel_already_added, reset_on_visium_spot_size_change, no_channel_for_view)
-
+    channel_already_added,
+    reset_on_visium_spot_size_change,
+    no_channel_for_view,
+    empty_slider_values)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -1357,12 +1359,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output("pixel-hist-collapse", "is_open", allow_duplicate=True),
                        Input('data-collection', 'value'),
                        State('images_in_blend', 'value'),
+                       State("pixel-hist-collapse", "is_open"),
                        prevent_initial_call=True)
-    def reset_pixel_adjustments_on_new_dataset(new_selection, currently_in_blend):
+    def reset_pixel_adjustments_on_new_dataset(new_selection, currently_in_blend, is_open):
         """
         Reset the pixel histogram and range slider on a new dataset selection
         """
-        if currently_in_blend is not None: return reset_pixel_histogram(), [None, None], False
+        if currently_in_blend is not None: return reset_pixel_histogram(), [None, None], False if is_open else dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output("pixel-hist", 'figure', allow_duplicate=True),
@@ -1394,46 +1397,54 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return [] if new_image_mod else dash.no_update
 
     @dash_app.callback(Output("pixel-hist", 'figure'),
-                       Output('pixel-intensity-slider', 'max'),
-                       Output('pixel-intensity-slider', 'value'),
-                       Output('pixel-intensity-slider', 'marks'),
-                       Output('blending_colours', 'data', allow_duplicate=True),
-                       Output('pixel-intensity-slider', 'step'),
                        Output("pixel-hist-collapse", "is_open", allow_duplicate=True),
                        Input('images_in_blend', 'value'),
                        State('uploaded_dict', 'data'),
                        State('data-collection', 'value'),
-                       Input('blending_colours', 'data'),
+                       State('blending_colours', 'data'),
                        Input("pixel-hist-collapse", "is_open"),
+                       prevent_initial_call=True)
+    def update_pixel_histogram(selected_channel, image_dict, data_selection,
+                            current_blend_dict, show_pixel_hist):
+        """
+        Create or update the pixel histogram for the selected channel for modification. Close
+        if the channel array is not yet available to render due to lazy loading
+        """
+        if (None not in (selected_channel, image_dict, data_selection, current_blend_dict) and
+            data_selection in image_dict and image_dict[data_selection] and selected_channel in image_dict[data_selection]
+            and image_dict[data_selection][selected_channel] is not None) and show_pixel_hist:
+            try:
+                fig, hist_max = pixel_hist_from_array(image_dict[data_selection][selected_channel])
+                return fig, dash.no_update
+            except (ValueError, TypeError, KeyError, IndexError): return dash.no_update, False
+        return dash.no_update, False
+
+    @dash_app.callback(Output('pixel-intensity-slider', 'max'),
+                       Output('pixel-intensity-slider', 'value'),
+                       Output('pixel-intensity-slider', 'marks'),
+                       Output('blending_colours', 'data', allow_duplicate=True),
+                       Output('pixel-intensity-slider', 'step'),
+                       Input('images_in_blend', 'value'),
+                       State('uploaded_dict', 'data'),
+                       State('data-collection', 'value'),
+                       Input('blending_colours', 'data'),
                        State('pixel-intensity-slider', 'value'),
                        Input('custom-slider-max', 'value'),
                        Input('allow_update_hist', 'data'),
                        prevent_initial_call=True)
-    def update_pixel_histogram_and_intensity_sliders(selected_channel, image_dict, data_selection,
-                                                     current_blend_dict, show_pixel_hist, cur_slider_values,
-                                                     custom_max, allow_update):
+    def update_intensity_sliders(selected_channel, image_dict, data_selection, current_blend_dict, cur_slider_values, custom_max, allow_update):
         """
-        Create pixel histogram and output the default percentiles
+        Update the pixel range intensity slider with the scaling bounds for the current channel for modification
         """
-        # currently, the pixel histogram will collapse on a slider change because of the blend dictionary.
-        # collapse is triggered by this object to prevent the pixel histogram from being empty on an ROI change
         if (None not in (selected_channel, image_dict, data_selection, current_blend_dict) and
             data_selection in image_dict and image_dict[data_selection] and selected_channel in image_dict[data_selection]
                 and image_dict[data_selection][selected_channel] is not None) and allow_update:
-            blend_return, hist_open = dash.no_update, dash.no_update
+            blend_return, hist_max = dash.no_update, 100
             try:
-                if show_pixel_hist and ctx.triggered_id in ["pixel-hist-collapse", "images_in_blend", "blending_colours"]:
-                    fig, hist_max = pixel_hist_from_array(image_dict[data_selection][selected_channel])
-                else:
-                    fig, hist_open = dash.no_update, dash.no_update
-                    hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel])
-            except (ValueError, TypeError, KeyError):
-                fig, hist_max, hist_open = dash.no_update, 100.0, False
-            try:
-                tick_markers, step_size = set_range_slider_tick_markers(hist_max)
-            except ValueError:
-                hist_max = 100.0
-                tick_markers, step_size = set_range_slider_tick_markers(hist_max)
+                hist_max = float(np.max((image_dict[data_selection][selected_channel])))
+            except (ValueError, TypeError, KeyError): pass
+            try: tick_markers, step_size = set_range_slider_tick_markers(hist_max)
+            except ValueError: tick_markers, step_size = set_range_slider_tick_markers(hist_max)
             # if the hist is triggered by the changing of a channel to modify or a new blend dict
             # set the min of the hist max to be 1 for very low images to also match the min for the pixel hist max
             if ctx.triggered_id in ["images_in_blend"]:
@@ -1447,9 +1458,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         hist_max = float(upper_bound)
                         tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     # set tick spacing between marks on the rangeslider to have 4 tick markers
-                    return fig, hist_max, [lower_bound, upper_bound], tick_markers, blend_return, step_size, hist_open
-                except (KeyError, ValueError):
-                    return {}, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, False
+                    return hist_max, [lower_bound, upper_bound], tick_markers, blend_return, step_size
+                except (KeyError, ValueError): return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             elif ctx.triggered_id == 'blending_colours':
                 # vals_return = dash.no_update
                 lower_bound = set_slider_lower_bound_default(current_blend_dict[selected_channel]['x_lower_bound'])
@@ -1469,9 +1479,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 hist_max = float(hist_max) if not custom_max else dash.no_update
                 tick_markers = tick_markers if not custom_max else dash.no_update
                 step_size = step_size if not custom_max else dash.no_update
-                return fig, hist_max, vals_return, tick_markers, blend_return, step_size, hist_open
-            elif ctx.triggered_id == "pixel-hist-collapse":
-                return fig, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, hist_open
+                return hist_max, vals_return, tick_markers, blend_return, step_size
             elif ctx.triggered_id == 'custom-slider-max':
                 try:
                     if custom_max:
@@ -1483,7 +1491,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         # if the toggle is reset, make sure it works properly for values below 1
                         hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel])
                     tick_markers, step_size = set_range_slider_tick_markers(hist_max)
-                    return dash.no_update, hist_max, cur_slider_values, tick_markers, dash.no_update, step_size, hist_open
+                    return hist_max, cur_slider_values, tick_markers, dash.no_update, step_size
                 except IndexError: raise PreventUpdate
         raise PreventUpdate
 
@@ -1498,10 +1506,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('blending_colours', 'data'),
                        State('pixel-intensity-slider', 'value'),
                        Input('set-default-rangeslider', 'n_clicks'),
-                       State('custom-slider-max', 'value'),
                        prevent_initial_call=True)
     def reset_intensity_slider_to_default(selected_channel, image_dict, data_selection, current_blend_dict,
-                                          cur_slider_values, reset, cur_max):
+                                          cur_slider, reset):
         """
         Reset the range slider for the current channel to the default values (min of 0 and max of 99th pixel
         percentile)
@@ -1509,7 +1516,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (selected_channel, data_selection, current_blend_dict):
             hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel])
             upper_bound = float(get_default_channel_upper_bound_by_percentile(image_dict[data_selection][selected_channel]))
-            if float(cur_slider_values[0]) != 0.0 or (float(cur_slider_values[1]) != upper_bound):
+            if empty_slider_values(cur_slider) or float(cur_slider[0]) != 0.0 or (float(cur_slider[1]) != upper_bound):
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                 return hist_max, [0, upper_bound], tick_markers, step_size, []
             raise PreventUpdate

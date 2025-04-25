@@ -119,7 +119,7 @@ dependencies:
       - geopandas==1.0.1
       - geoparse==2.0.4
       - glasbey==0.2.0
-      - h11==0.14.0
+      - h11==0.16.0
       - h5py==3.8.0
       - httpcore==1.0.6
       - httpx==0.27.2

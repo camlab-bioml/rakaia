@@ -76,3 +76,9 @@ def no_channel_for_view(trigger: str, channel_selected: str, view_by_channel: Un
     """
     return ((trigger == "unique-channel-list" and not view_by_channel) or
             (trigger == "toggle-gallery-view" and not channel_selected))
+
+def empty_slider_values(vals: Union[list, tuple, None]=None):
+    """
+    Check if the slider data object has empty values
+    """
+    return vals is not None and any(elem is None for elem in vals)

@@ -41,7 +41,7 @@ Flask-HTTPAuth==4.8.0
 fonttools==4.43.0
 freeport==0.1.15
 glasbey==0.2.0
-h11==0.14.0
+h11==0.16.0
 h5py==3.8.0
 idna==3.7
 igraph==0.10.4
