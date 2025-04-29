@@ -137,6 +137,9 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
     # Convert to dense array if the data is sparse
     spot_values = spatial_marker_to_dense_flat(spot_values)
 
+    suf_expr = spot_values > 0
+    spot_values = spot_values[suf_expr]
+
     # Extract spatial coordinates from the 'spatial' key in .obsm
     if 'spatial' not in adata.obsm.keys():
         raise ValueError("Spatial coordinates not found in 'obsm' attribute.")
@@ -150,13 +153,13 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
     spatial_coords = np.array(adata.obsm['spatial'] * scale_factor).astype(np.float32)
     # switch y and x coordinates to match row-col orientation
     spatial_coords = spatial_coords[:, [1, 0]]
+    spatial_coords = spatial_coords[suf_expr]
 
     # Shift coordinates so min becomes (0, 0)
     spatial_coords -= np.array([y_min, x_min])
 
     # max_yx = spatial_coords.max(axis=0)
     image_shape = (int(grid_height), int(grid_width))
-    image = np.zeros(image_shape, dtype=np.float32)
 
     # precompute disk offsets
     rr_offset, cc_offset = skimage.draw.disk((0, 0), int(spot_size))
@@ -176,9 +179,17 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
             (xx >= 0) & (xx < image_shape[1]))
 
     yy, xx = yy[valid], xx[valid]
-    image[yy, xx] = repeated_values[valid]
 
-    return image.astype(np.float32)
+    values = repeated_values[valid]
+
+    flat_indices = yy * image_shape[1] + xx
+    flat_image = np.zeros(image_shape[0] * image_shape[1], dtype=np.float32)
+
+    # Use np.maximum.at to preserve the max-overwrite behavior
+    np.maximum.at(flat_image, flat_indices, values)
+
+    # Reshape back to 2D
+    return flat_image.reshape(image_shape).astype(np.float32)
 
 
 def check_spatial_array_multi_channel(image_dict: dict, data_selection: str,
