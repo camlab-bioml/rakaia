@@ -108,6 +108,9 @@ class RegionThumbnail:
         self.use_scaling = use_scaling
         self.arr_type = arr_type if arr_type else "float"
 
+        # if querying using objects, track the order (descending) across multi-ROI files
+        self.order = {}
+
         self.set_keyword_with_defined_indices()
         self.set_selection_using_defined_indices(predefined_indices)
 
@@ -543,6 +546,8 @@ class RegionThumbnail:
                             mask_to_use = subset_mask_outline_using_cell_id_list(
                                 self.mask_dict[matched_mask]["raw"], self.mask_dict[matched_mask]["raw"],
                                 self.query_cell_id_lists[sam_name])
+                            # keep track of how many objects in the ROI
+                            self.order[label] = len(self.query_cell_id_lists[sam_name])
                         else:
                             mask_to_use = self.mask_dict[matched_mask]["boundary"]
                     else:
@@ -559,6 +564,11 @@ class RegionThumbnail:
 
         :return: Dictionary where keys are ROI identifiers, and values are the blended images for each thumbnail.
         """
+        if self.order:
+            # if querying using objects, reorder them based on descending number across files
+            order_rois = sorted(self.order, key=self.order.get, reverse=True)
+            image_order = {key: self.roi_images[key] for key in order_rois}
+            return image_order if len(image_order) > 0 else None
         return self.roi_images if len(self.roi_images) > 0 else None
 
     def roi_keyword_in_roi_identifier(self, roi_identifier: str=None):

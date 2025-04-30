@@ -33,6 +33,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Channel gallery tiles: use original image if dimensions are sufficiently small
 - pixel histogram will collapse if marker array is not available (i.e. due to lazy loading)
 - improved logic for single marker lazy loading based on total ROI pixels
+- proper ROI query order from quantification across multi-ROI files
 
 ## [0.22.0] - 2025-01-31
 
