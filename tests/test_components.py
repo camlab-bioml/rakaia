@@ -12,8 +12,7 @@ def test_basic_canvas_image():
                                "channel_2": np.full((100, 100, 3), 2), "channel_3": np.full((100, 100, 3), 3)}}
     currently_selected = ["channel_1", "channel_2", "channel_3"]
     data_selection = "roi_1"
-    mask_config = {"roi_1": {"array": np.full((100, 100, 3), 1), "boundary": np.zeros((100, 100, 3)),
-                             "raw": np.full((100, 100), 255)}}
+    mask_config = {"roi_1": {"raw": np.full((100, 100), 255).astype(np.uint32)}}
     mask_selection = "roi_1"
     mask_blending_level = 100
     overlay_grid = []
@@ -70,7 +69,7 @@ def test_basic_canvas_image():
                          global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                          cluster_assignments_dict, "cluster",
                          cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
-    assert list(canvas.get_image()[44, 44]) == [255, 255, 255]
+    assert list(canvas.get_image()[44, 44]) == [6, 6, 6]
     assert isinstance(canvas, CanvasImage)
     canvas_fig = canvas.render_canvas()
     assert isinstance(canvas_fig, dict)
@@ -92,11 +91,11 @@ def test_basic_canvas_image():
     canvas_fig = canvas_2.render_canvas()
     assert isinstance(canvas_fig, dict)
 
-
     cur_graph = px.imshow(canvas.get_image())
     # overlay_grid = [' overlay grid']
     add_cell_id_hover = [' Show mask ID on hover']
     show_each_channel_intensity = [" Show channel intensities on hover"]
+
     canvas_3 = CanvasImage(canvas_layers, data_selection, currently_selected,
                          mask_config, mask_selection, mask_blending_level,
                          overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
@@ -165,8 +164,7 @@ def test_basic_canvas_image():
                                  'cluster': ['Cluster_1'] * 9})}
     cluster_assignments_dict = {"roi_1": {"cluster": {"Cluster_1": '#FFFFFF'}}}
     apply_cluster_on_mask = True
-    mask_config = {"roi_1": {"array": np.full((100, 100, 3), 1), "boundary": np.zeros((100, 100, 3)),
-                             "raw": np.full((100, 100), 1).astype(np.float32)}}
+    mask_config = {"roi_1": {"raw": np.full((100, 100), 1).astype(np.uint32)}}
     overlay_grid = True
     mask_blending_level = 35
     cluster_type = "mask"

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-04-29
+## [0.23.0] - 2025-05-02
 
 ### Added
 
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - UI enhancements to import bar, channel gallery, toolbar #126 #127 #128
 - Vectorized mask filling from cluster annotations to improve performance
 - Vectorized spatial marker/spot rendering for marker arrays for faster rendering w/ max position overlap
+- Compute mask derivatives (hover, boundaries) on fly instead of storing
 
 ### Fixed
 

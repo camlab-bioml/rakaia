@@ -80,6 +80,16 @@ cd rakaia
 pip install .
 ```
 
+### Installation failure for ParmED
+
+If installation of the [ParmEd](https://github.com/ParmEd/ParmEd) library fails (appears to be
+more prevalent on older versions of macOS), then users should try installing it from conda source:
+
+```commandline
+pip uninstall parmed
+conda install -c conda-forge parmed=4.3.0
+```
+
 ### with Make
 
 rakaia contains a Makefile that wraps the pip installation

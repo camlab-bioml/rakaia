@@ -36,7 +36,8 @@ from rakaia.utils.object import (
     send_alert_on_incompatible_mask,
     ROIQuantificationMatch,
     validate_mask_shape_matches_image,
-    quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
+    quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay,
+    umap_fig_using_zoom)
 from rakaia.inputs.object import (
     channel_expression_from_interactive_subsetting,
     object_umap_plot,
@@ -149,9 +150,10 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # figure out how to decouple the quantification update from the heatmap rendering:
         #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered
         if quantification_dict is not None and sesh_id:
+            quantification_dict = pd.DataFrame.from_records(quantification_dict)
             umap_layout = {'xaxis.autorange': True, 'yaxis.autorange': True} if umap_layout is None else umap_layout
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
-            if ctx.triggered_id not in ["umap-projection-options"]:
+            if ctx.triggered_id in ['umap-plot']:
                 try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
                                     umap_col_selection, prev_categories).get_callback_structures()
                 except (TypeError, KeyError): subtypes, keep = None, None
@@ -166,9 +168,8 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
                 # also return the current count of the umap category selected to update the distribution table
-                if umap_layout is not None:
-                    merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
-                    cell_id_dict = dict_of_roi_cell_ids(merged)
+                if umap_fig_using_zoom(umap_layout) or subtypes is not None:
+                    cell_id_dict = dict_of_roi_cell_ids(quantification_dict.iloc[list(frame.index.values)])
             # if the heatmap channel options are already set, do not update
             cols_selected = dash.no_update
             if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
@@ -193,9 +194,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
         """
-        if ctx.triggered_id == "quantification-dict":
-            return dash.no_update, list(pd.DataFrame(quantification_dict).columns), \
-                list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
+        if ctx.triggered_id == "quantification-dict" and quantification_dict is not None:
+            quantification_dict = pd.DataFrame.from_records(quantification_dict)
+            return dash.no_update, list(quantification_dict.columns), list(quantification_dict.columns), list(quantification_dict.columns)
         try:
             return (umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
             current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include, min_dist=min_dist, session_id=sesh_id),
@@ -212,11 +213,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('read-filepath', 'value'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant, local_filepath):
-        blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame(quantification_dict)) or
+        try:
+            blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame.from_records(quantification_dict)) or
                                              ctx.triggered_id == 'quantify-cur-roi-execute') else dash.no_update
-        if ctx.triggered_id != 'quantify-cur-roi-execute':
-            if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
-            try:
+            if ctx.triggered_id != 'quantify-cur-roi-execute':
+                if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
+                quantification_dict = pd.DataFrame.from_records(quantification_dict)
                 # do not use patch if updating the coordinates
                 use_patch = False if (ctx.triggered_id == "umap-projection") else True
                 if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay, use_patch=use_patch):
@@ -225,7 +227,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
                     display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
-            except BadRequest: return dash.no_update, blank_umap
+        except (BadRequest, TypeError): return dash.no_update, {'display': 'None'}
         return dash.no_update, blank_umap
 
     @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
@@ -245,7 +247,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation and sesh_id:
             return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
-                pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col, annot_value).to_dict(
+                pd.DataFrame.from_records(measurements), pd.DataFrame.from_records(embeddings), umap_layout, annot_col, annot_value).to_dict(
                 orient='records'), key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
@@ -687,10 +689,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Update the dropdown options for the current gating selection. The multi-selection will define
         the current set of parameters on which the mask is gated
         """
-        if gating_selection:
-            gates_to_keep = [gate for gate in gating_selection if gate in pd.DataFrame(quant_dict).columns]
-            return gates_to_keep, populate_gating_dict_with_default_values(current_gate_dict, gating_selection), \
-                gates_to_keep[-1] if len(gates_to_keep) > 0 else None
+        if gating_selection and quant_dict is not None:
+            # TODO: check if we need to check the gating parameters here since they match to quant
+            # gates_to_keep = [gate for gate in gating_selection if gate in pd.DataFrame(quant_dict.columns]
+            return gating_selection, populate_gating_dict_with_default_values(current_gate_dict, gating_selection), \
+                gating_selection[-1] if len(gating_selection) > 0 else None
         return dash.no_update, dash.no_update, None
 
     @dash_app.callback(Output('gating-slider', 'value'),
@@ -745,7 +748,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
                 return SessionServerside(custom_gating_id_list(id_str), key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), dash.no_update
             elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection and sesh_id:
-                id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame.from_records(quantification_dict),
                                 mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
                 return SessionServerside(id_list, key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), reset_custom_gate_slider(ctx.triggered_id)
             return [] if gating_dict is not None else dash.no_update, dash.no_update if cur_gate_selection else False

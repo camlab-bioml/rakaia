@@ -55,7 +55,7 @@ def test_query_parser_tiff(get_current_dir):
     session_config = {"uploads": [str(mcd)]}
     parse = FileParser(session_config['uploads']).image_dict
     blend_dict = create_new_blending_dict(parse)
-    mask_dict = {'for_recolour_mask': {'raw': np.zeros((600, 600)), 'boundary': np.zeros((600, 600, 3))}}
+    mask_dict = {'for_recolour_mask': {'raw': np.zeros((600, 600))}}
     query_selection = {'names': ['for_recolour']}
     roi_query = RegionThumbnail(session_config, blend_dict, ['channel_1'], 1,
                                 dataset_options=list(parse.keys()),
@@ -133,9 +133,11 @@ def test_roi_query_parser_predefined(get_current_dir):
                                 predefined_indices={'names': ['no_exist']}).get_image_dict()
     assert roi_query_null is None
 
-    mask_roi_dict = {"PAP_1_mask": {"boundary": np.full((100, 100, 3), 7), "raw": np.full((100, 100), 7)},
-                     "HIER_2_mask": {"boundary": np.full((100, 100, 3), 0)},
-                     "roi_3_mask": {"boundary": np.zeros((100, 100, 3))}}
+    mask_roi_dict = {"PAP_1_mask": {"raw": np.full((100, 100), 7)},
+                     "HIER_2_mask": {"raw": np.full((100, 100, 3), 0)},
+                     "roi_3_mask": {"raw": np.zeros((100, 100, 3))}}
+
+    mask_roi_dict["PAP_1_mask"]["raw"][88,88] = 8.0
 
     defined_names = {'names': ['PAP_1']}
     query_cell_id_lists = {'PAP_1': [7]}

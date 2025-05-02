@@ -19,7 +19,11 @@ from rakaia.utils.object import (
     mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
     quantification_distribution_table,
-    custom_gating_id_list, compute_image_similarity_from_overlay, find_similar_images, pad_steinbock_roi_index)
+    custom_gating_id_list,
+    compute_image_similarity_from_overlay,
+    find_similar_images,
+    pad_steinbock_roi_index,
+    umap_fig_using_zoom, convert_mask_to_object_boundary)
 import pandas as pd
 import os
 import numpy as np
@@ -27,7 +31,6 @@ from PIL import Image
 from rakaia.parsers.object import (
     drop_columns_from_measurements_csv,
     set_columns_to_drop,
-    convert_mask_to_object_boundary,
     parse_quantification_sheet_from_h5ad,
     parse_and_validate_measurements_csv,
     umap_dataframe_from_quantification_dict)
@@ -63,6 +66,12 @@ def test_basic_mask_boundary_converter(get_current_dir):
     assert mask_from_reconverted[628, 491] <= 3
 
 def test_umap_from_quantification_dict(get_current_dir):
+
+    assert umap_fig_using_zoom({'xaxis.range[0]': -4.126503480470802, 'xaxis.range[1]': -0.7474261136585749,
+                                'yaxis.range[0]': 1.1055589278979592, 'yaxis.range[1]': 7.525034155766811})
+    assert not umap_fig_using_zoom(None)
+    assert not umap_fig_using_zoom({})
+
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
     returned_umap = umap_dataframe_from_quantification_dict(validated_measurements,

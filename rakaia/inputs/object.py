@@ -1,7 +1,6 @@
 """Module containing tools for rendering object-related visual components such as
 summarized object expression plots, UMAP plots, etc.
 """
-
 from typing import Union
 from functools import partial
 import dash
@@ -109,7 +108,7 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
     summary of overlay subtypes x channels
     Normalization done by each channel, with the option to transpose for visualization purposes
     """
-    quantification = pd.DataFrame(quantification)
+    quantification = pd.DataFrame.from_records(quantification)
     if not umap_overlay or umap_overlay not in quantification.columns: return None
     quantification[umap_overlay] = quantification[umap_overlay].apply(str)
     grouped = pd.DataFrame(quantification.groupby([umap_overlay]).mean())
@@ -341,7 +340,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
     based on an interactive subset from the UMAP graph
     """
     if quantification_dict is not None and len(quantification_dict) > 0:
-        frame = pd.DataFrame(quantification_dict)
+        frame = pd.DataFrame.from_records(quantification_dict)
         # use a umap overlay to group the heatmap only if it's categorical
         overlay_use = {umap_overlay: frame[umap_overlay]} if umap_overlay and \
                 (1 < len(frame[umap_overlay].value_counts()) <= categorical_size_limit) else None
@@ -356,7 +355,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
         frame = column_min_max_measurements(frame, normalize)
         frame, overlay_use = subset_measurements_frame_from_umap_coordinates(frame, pd.DataFrame(embeddings,
                             columns=['UMAP1', 'UMAP2']), umap_layout, umap_overlay=overlay_use)
-        # need to check the value counts again after subsetting based on the restyler
+        # need to check the value counts again after sub-setting based on the restyle
         frame, overlay_use = filter_overlay_from_heatmap_data(frame, overlay_use, categorical_size_limit)
         # IMP: do not reset the subset index here as the indices are needed for the query subset!!!!
         # subset_frame = subset_frame.reset_index(drop=True)

@@ -32,9 +32,7 @@ def test_output_annotations_pdf(svgpath):
 
         assert not os.path.exists(output_pdf)
 
-        mask_config = {"mask": {"array": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB')),
-                                "raw": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB')),
-                                "boundary": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}
+        mask_config = {"mask": {"raw": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}
         rect_tuple = tuple(sorted({'x0': 50, 'x1': 100,
                                     'y0': 50, 'y1': 100}.items()))
         annotations_dict = {data_selection: {rect_tuple: {'title': 'Title', 'body': 'body',
@@ -57,9 +55,7 @@ def test_output_annotations_pdf(svgpath):
         # test on an svgpath, make the image and masks bigger than 500x500
         layers_dict = {"exp1+++slide0+++roi_1":
                            {"channel_1": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB'))}}
-        mask_config = {"mask": {"array": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB')),
-                                "raw": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB')),
-                                "boundary": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB'))}}
+        mask_config = {"mask": {"raw": np.array(Image.fromarray(np.zeros((1000, 1000))).convert('RGB'))}}
         annotations_dict = {data_selection: {svgpath: {'title': 'Title', 'body': 'body',
                                                           'cell_type': 'cell_type', 'imported': False,
                                                           'type': 'path', 'channels': ['channel_1'],

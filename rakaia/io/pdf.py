@@ -15,7 +15,7 @@ from rakaia.utils.pixel import (
     get_bounding_box_for_svg_path)
 from rakaia.utils.object import (
     get_min_max_values_from_zoom_box,
-    get_min_max_values_from_rect_box)
+    get_min_max_values_from_rect_box, convert_mask_to_object_boundary)
 
 class AnnotationPDFWriter:
     """
@@ -130,19 +130,24 @@ class AnnotationPDFWriter:
         """
         if value['use_mask'] and None not in (self.mask_config, value['mask_selection']) and \
                 len(self.mask_config) > 0:
-            if image.shape[0] == self.mask_config[value['mask_selection']]["array"].shape[0] and \
-                    image.shape[1] == self.mask_config[value['mask_selection']]["array"].shape[1]:
+            if image.shape[0] == self.mask_config[value['mask_selection']]["raw"].shape[0] and \
+                    image.shape[1] == self.mask_config[value['mask_selection']]["raw"].shape[1]:
+                mask_array = np.array(Image.fromarray(self.mask_config[
+                            value['mask_selection']]["raw"]).convert('RGB')).astype(np.uint8)
                 # set the mask blending level based on the slider, by default use an equal blend
                 mask_level = float(value['mask_blending_level'] / 100) if \
                     value['mask_blending_level'] is not None else 1
                 image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                        self.mask_config[value['mask_selection']]["array"].astype(np.uint8),
+                                        mask_array,
                                         mask_level, 0)
             if value['add_mask_boundary'] and \
-                    self.mask_config[value['mask_selection']]["boundary"] is not None:
+                    self.mask_config[value['mask_selection']]["raw"] is not None:
                 # add the border of the mask after converting back to greyscale to derive the conversion
-                reconverted = np.array(Image.fromarray(self.mask_config[value['mask_selection']][
-                                                           "boundary"]).convert('RGB'))
+                boundary = np.array(Image.fromarray(
+                    convert_mask_to_object_boundary(self.mask_config[value[
+                        'mask_selection']]["raw"])).convert('RGB'))
+                reconverted = np.array(Image.fromarray(boundary).convert('RGB'))
+
                 image = cv2.addWeighted(image.astype(np.uint8), 1, reconverted.astype(np.uint8), 1, 0)
         return image
 

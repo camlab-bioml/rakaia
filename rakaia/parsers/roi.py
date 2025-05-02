@@ -9,6 +9,7 @@ from pathlib import Path
 import random
 import numpy as np
 import cv2
+from PIL import Image
 from readimc.data import Slide, Acquisition
 from tifffile import TiffFile
 from readimc import MCDFile, TXTFile
@@ -18,7 +19,7 @@ from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
     apply_filter_to_array, set_array_storage_type_from_config)
-from rakaia.utils.object import validate_mask_shape_matches_image
+from rakaia.utils.object import validate_mask_shape_matches_image, convert_mask_to_object_boundary
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
     ROIMaskMatch,
@@ -385,7 +386,6 @@ class RegionThumbnail:
                 else:
                     slide_index += 1
                     continue
-            mcd_file.close()
             # else:
             #     continue
             # break
@@ -533,7 +533,7 @@ class RegionThumbnail:
                 summed_image = np.clip(summed_image, 0, 255).astype(np.uint8)
                 # find a matched mask and check if the dimensions are compatible. If so, add to the gallery
                 if matched_mask is not None and matched_mask in self.mask_dict.keys() and \
-                        validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["boundary"]) and \
+                        validate_mask_shape_matches_image(summed_image, self.mask_dict[matched_mask]["raw"]) and \
                     self.enable_masks:
                     # requires reverse matching the sample or description to the ROI name in the app
                     # if the query cell is list exists, subset the mask
@@ -549,9 +549,13 @@ class RegionThumbnail:
                             # keep track of how many objects in the ROI
                             self.order[label] = len(self.query_cell_id_lists[sam_name])
                         else:
-                            mask_to_use = self.mask_dict[matched_mask]["boundary"]
+                            mask_to_use = np.array(Image.fromarray(
+                                convert_mask_to_object_boundary(
+                                    self.mask_dict[matched_mask]["raw"])).convert('RGB'))
                     else:
-                        mask_to_use = self.mask_dict[matched_mask]["boundary"]
+                        mask_to_use = np.array(Image.fromarray(
+                                convert_mask_to_object_boundary(
+                                    self.mask_dict[matched_mask]["raw"])).convert('RGB'))
                     mask_to_use = np.where(mask_to_use > 0, 255, 0)
                     summed_image = cv2.addWeighted(summed_image.astype(np.uint8), 1,
                                                    mask_to_use.astype(np.uint8), 1, 0).astype(np.uint8)

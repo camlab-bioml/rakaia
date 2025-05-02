@@ -91,8 +91,8 @@ def convert_mask_to_object_boundary(mask):
     Returns an RGB mask where outlines are represented by 255, and all else are 0
     Note that this mask does not retain the spatial location of individual objects
     """
-    boundaries = find_boundaries(mask, mode='inner', connectivity=1)
-    return np.where(boundaries == True, 255, 0).astype(np.uint8)
+    boundaries = find_boundaries(mask, mode='inner', connectivity=1).astype(np.uint8)
+    return ne.evaluate("255 * boundaries").astype(np.uint8)
 
 
 def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict,
@@ -579,6 +579,14 @@ def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selectio
     return annotations_dict
 
 
+def umap_fig_using_zoom(umap_layout: Union[dict, None]=None):
+    """
+    Define if the umap figure is currently using a zoom feature for object id sub-setting
+    """
+    return umap_layout is not None and all(elem in umap_layout for elem in
+    ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]'])
+
+
 def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFrame],
                                       umap_variable: str, subset_cur_cat: Union[dict, None]=None,
                                       counts_col: str="Counts", proportion_col: str="Proportion",
@@ -626,7 +634,7 @@ def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFra
     greater similarity between two images based on their cluster proportions
     """
     quantification = pd.DataFrame(quantification)
-    image_id_col = "description" if "description" in list(quantification.columns) else "sample"
+    image_id_col = "sample" if "sample" in list(quantification.columns) else "description"
     quantification[overlay] = quantification[overlay].apply(str)
 
     # number of overlay types to compare

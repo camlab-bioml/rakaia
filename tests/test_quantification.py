@@ -151,7 +151,7 @@ def test_generate_mask_counter_preview():
     preview = mask_object_counter_preview(mask_dict, "mask_1")
     assert preview == '2 mask objects'
     assert not mask_object_counter_preview(None, "mask_1")
-    mask_dict = {"mask_1": {"boundary": np.zeros((1000, 1000))}}
+    mask_dict = {"mask_1": {"empty": np.zeros((1000, 1000))}}
     assert not mask_object_counter_preview(mask_dict, "mask_1")
 
 def test_check_marker_lists_lengths():

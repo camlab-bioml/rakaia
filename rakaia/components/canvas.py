@@ -1,5 +1,4 @@
 """Module containing the primary canvas component for blended images"""
-
 from typing import Union
 import math
 import numpy as np
@@ -12,7 +11,7 @@ import pandas as pd
 from skimage import measure
 from rakaia.parsers.object import validate_coordinate_set_for_image
 from rakaia.utils.cluster import get_cluster_proj_id_column
-from rakaia.utils.object import greyscale_grid_array
+from rakaia.utils.object import greyscale_grid_array, convert_mask_to_object_boundary
 from rakaia.inputs.pixel import (
     add_scale_value_to_figure,
     set_x_axis_placement_of_scalebar,
@@ -143,9 +142,11 @@ class CanvasImage:
         self.proportion = 0.1 if self.custom_scale_val is None else \
             float(custom_scale_val / (image.shape[1] * self.pixel_ratio))
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
-            if image.shape[0] == self.mask_config[self.mask_selection]["array"].shape[0] and \
-                    image.shape[1] == self.mask_config[self.mask_selection]["array"].shape[1]:
+            if image.shape[0] == self.mask_config[self.mask_selection]["raw"].shape[0] and \
+                    image.shape[1] == self.mask_config[self.mask_selection]["raw"].shape[1]:
                 mask_level = float(self.mask_blending_level / 100) if self.mask_blending_level is not None else 1
+                mask_array = np.array(Image.fromarray(self.mask_config[
+                                    self.mask_selection]["raw"]).convert('RGB')).astype(np.uint8)
                 if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict,
                         self.cluster_frame, self.cluster_cat) and \
                         self.data_selection in self.cluster_assignments_dict.keys() and \
@@ -159,11 +160,11 @@ class CanvasImage:
                                                                cluster_option_subset=cluster_assignment_selection,
                                                                cluster_col=self.cluster_cat)
                     annot_mask = annot_mask if annot_mask is not None else \
-                        np.where(self.mask_config[self.mask_selection]["array"].astype(np.uint8) > 0, 255, 0)
+                        np.where(mask_array > 0, 255, 0)
                     image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask.astype(np.uint8), mask_level, 0)
                 else:
                     # set the mask blending level based on the slider, by default use an equal blend
-                    mask = self.mask_config[self.mask_selection]["array"].astype(np.uint8)
+                    mask = mask_array
                     mask = self.apply_gating_to_canvas_mask_image(mask)
                     mask = np.where(mask > 0, 255, 0)
                     image = cv2.addWeighted(image.astype(np.uint8), 1, mask.astype(np.uint8), mask_level, 0)
@@ -220,10 +221,13 @@ class CanvasImage:
         :return: Numpy array of the current canvas with the subset mask project over using the class initialized
             mask attributes (blending level, etc.)
         """
-        if self.add_mask_boundary and self.mask_config[self.mask_selection]["boundary"] is not None:
-            # add the border of the mask after converting back to greyscale to derive the conversion
+        if self.add_mask_boundary and self.mask_config[self.mask_selection]["raw"] is not None:
+            # add the border of the mask after converting back to greyscale
+            boundary = np.array(Image.fromarray(
+                        convert_mask_to_object_boundary(
+                        self.mask_config[self.mask_selection]["raw"])).convert('RGB'))
             image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                    self.mask_config[self.mask_selection]["boundary"].astype(np.uint8), 1, 0)
+                                    boundary.astype(np.uint8), 1, 0)
         return image
 
     def render_canvas(self) -> Union[go.Figure, dict]:
@@ -373,10 +377,11 @@ class CanvasImage:
                 self.add_cell_id_hover:
             try:
                 # fig.update(data=[{'customdata': None}])
-                fig.update(data=[{'customdata': self.mask_config[self.mask_selection]["hover"]}])
+                raw_mask = self.mask_config[self.mask_selection]["raw"]
+                fig.update(data=[{'customdata':
+                        raw_mask.reshape((raw_mask.shape[0], raw_mask.shape[1], 1))}])
                 new_hover = per_channel_intensity_hovertext(["mask ID"])
-            except KeyError:
-                new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
+            except KeyError: new_hover = "x: %{x}<br>y: %{y}<br><extra></extra>"
 
         elif self.show_each_channel_intensity:
             # fig.update(data=[{'customdata': None}])
@@ -845,7 +850,6 @@ class CanvasLayout:
                     region_props = measure.regionprops(subset)
                     for region in region_props:
                         center = region.centroid
-                        # boundary[int(center[0]), int(center[1])] = mask_id
                         shapes.append(
                             {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',
                              'x0': (int(center[1]) - circle_size), 'x1': (int(center[1]) + circle_size),
