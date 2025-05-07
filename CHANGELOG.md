@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-05-02
+## [0.23.0] - 2025-05-07
 
 ### Added
 
@@ -35,6 +35,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - pixel histogram will collapse if marker array is not available (i.e. due to lazy loading)
 - improved logic for single marker lazy loading based on total ROI pixels
 - proper ROI query order from quantification across multi-ROI files
+- Allow channel label to remain white if already user set with autofill colours turned on
 
 ## [0.22.0] - 2025-01-31
 

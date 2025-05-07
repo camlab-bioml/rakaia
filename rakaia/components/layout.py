@@ -1854,6 +1854,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         # used as a boolean placeholder to prevent appended ROI gallery children from triggering key events
         dcc.Store(id='roi_gallery_allow_click'),
         dcc.Store(id='allow_update_hist', data=False),
+        dcc.Store(id='allow_autofill_col', data=False),
         # use transfer for upload files to the hash, hash to store the filepaths
         dcc.Store(id='coregister-upload-transfer'),
         dcc.Store(id='wsi-transformation-matrix'),

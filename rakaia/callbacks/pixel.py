@@ -114,7 +114,7 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     reset_on_visium_spot_size_change,
     no_channel_for_view,
-    empty_slider_values)
+    empty_slider_values, use_channel_autofill)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -547,12 +547,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('param_config', 'data', allow_duplicate=True),
                        Output('images_in_blend', 'value', allow_duplicate=True),
                        Output('uploaded_dict', 'data', allow_duplicate=True),
+                       Output('allow_autofill_col', 'data', allow_duplicate=True),
                        State('session_id_internal', 'data'),
+                       State('allow_autofill_col', 'data'),
                        prevent_initial_call=True)
     def update_blend_dict_on_channel_selection(add_to_layer, image_dict, current_blend_dict, data_selection,
                                                param_dict, rgb_layers, preset_selection, preset_dict,
                                                cur_image_in_mod_menu, autofill_channel_colours, session_dict,
-                                               spatial_spot_size, delimiter, sesh_id):
+                                               spatial_spot_size, delimiter, sesh_id, allow_autofill):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
@@ -572,8 +574,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         param_dict["current_roi"] = data_selection
                         if cur_image_in_mod_menu is not None and cur_image_in_mod_menu in current_blend_dict.keys():
                             channel_modify = cur_image_in_mod_menu
-                    else:
-                        param_dict["current_roi"] = data_selection
+                    else: param_dict["current_roi"] = data_selection
                 rgb_layers = check_empty_missing_layer_dict(rgb_layers, data_selection)
                 for elem in add_to_layer:
                     # if the selected channel doesn't have a config yet, create one either from scratch or a preset
@@ -581,7 +582,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         current_blend_dict[elem] = {'color': '#FFFFFF', 'x_lower_bound': 0, 'x_upper_bound':
                             get_default_channel_upper_bound_by_percentile(image_dict[data_selection][elem]),
                                                     'filter_type': None, 'filter_val': None, 'filter_sigma': None}
-                        if autofill_channel_colours:
+                        if use_channel_autofill(rgb_layers, data_selection, elem, autofill_channel_colours, allow_autofill):
                             current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                         if None not in (preset_selection, preset_dict):
                             current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem], preset_dict[preset_selection])
@@ -590,19 +591,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         # do not override the colour of the current channel
                         current_blend_dict[elem] = apply_preset_to_blend_dict(current_blend_dict[elem], preset_dict[preset_selection])
                     else:
-                        if autofill_channel_colours:
+                        if use_channel_autofill(rgb_layers, data_selection, elem, autofill_channel_colours, allow_autofill):
                             current_blend_dict = select_random_colour_for_channel(current_blend_dict, elem, DEFAULT_COLOURS)
                         current_blend_dict = check_blend_dictionary_for_blank_bounds_by_channel(
                             current_blend_dict, elem, image_dict, data_selection)
-                    if data_selection in rgb_layers.keys() and (
-                            elem not in rgb_layers[data_selection].keys() or preset_selection):
+                    if data_selection in rgb_layers.keys() and (elem not in rgb_layers[data_selection].keys() or preset_selection):
                         array_preset = apply_preset_to_array(image_dict[data_selection][elem], current_blend_dict[elem])
                         rgb_layers[data_selection][elem] = np.array(recolour_greyscale(array_preset,
                                                         current_blend_dict[elem]['color'])).astype(np.uint8)
                 return current_blend_dict, SessionServerside(rgb_layers, key=f"layer_dict_{sesh_id}",
-                        use_unique_key=OVERWRITE), param_dict, channel_modify, uploaded_return
+                        use_unique_key=OVERWRITE), param_dict, channel_modify, uploaded_return, True
             except (TypeError, KeyError, IndexError): raise PreventUpdate
-        raise PreventUpdate
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
 
     @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
                        Output('swatch-color-picker', 'value'),
@@ -776,7 +776,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Input('data-collection', 'value'),
-        Output('canvas-layers', 'data', allow_duplicate=True))
+        Output('canvas-layers', 'data', allow_duplicate=True),
+        Output('allow_autofill_col', 'data'))
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
@@ -784,7 +785,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         If caching is enabled, then the blended arrays that form the image will be retained for quicker
         toggling
         """
-        return {data_selection: {}} if data_selection else None
+        return {data_selection: {}} if data_selection else None, False
 
     @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
                        Input('preset-options', 'value'),

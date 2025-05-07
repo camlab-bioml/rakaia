@@ -82,3 +82,17 @@ def empty_slider_values(vals: Union[list, tuple, None]=None):
     Check if the slider data object has empty values
     """
     return vals is not None and any(elem is None for elem in vals)
+
+def use_channel_autofill(rgb_layers: dict, roi_selection: str,
+                         channel: str, autofill_toggle: bool=True,
+                         autofill_enabled: bool=True):
+    """
+    Check if the app should auto-assign a blend colour to a channel. Only can be used if:
+    - The user has toggled on the autofill slider
+    - The channel has not yet been added to the RGB layer cache
+    - The internal app state allows for autofill. If the most previous action was changing the
+    ROI, then it is disabled. Otherwise, if a user has selected a channel, it is enabled
+    """
+    return autofill_toggle and autofill_enabled and (
+            channel not in rgb_layers[roi_selection].keys() or
+            rgb_layers[roi_selection][channel] is None)
