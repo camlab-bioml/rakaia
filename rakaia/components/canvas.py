@@ -170,7 +170,6 @@ class CanvasImage:
                     image = cv2.addWeighted(image.astype(np.uint8), 1, mask.astype(np.uint8), mask_level, 0)
                 image = self.overlay_mask_outline_on_mask_image(image)
 
-
         image = self.overlay_grid_on_additive_image(image)
         self.image = image
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
@@ -835,27 +834,26 @@ class CanvasLayout:
                     not shape['editable'] and 'type' in shape and shape['type'] == 'circle')]
         cluster_frame = pd.DataFrame(cluster_frame)
         cluster_frame = cluster_frame.astype(str)
-        ids_use = gating_cell_id_list if (gating_cell_id_list is not None and use_gating) else np.unique(mask)
+        ids_use = gating_cell_id_list if (gating_cell_id_list is not None and use_gating) else (
+            np.unique(mask.astype(np.uint32)))
         clusters_to_use = cluster_selection_subset if cluster_selection_subset is not None else \
             cluster_frame[cluster_id_col].unique().tolist()
         clusters_to_use = [str(clust) for clust in clusters_to_use]
-        for mask_id in ids_use:
+        objects_use = np.where(np.isin(mask, ids_use), mask, 0)
+        props = measure.regionprops(objects_use)
+        for prop in props:
             try:
                 annotation = pd.Series(cluster_frame[cluster_frame[object_identify_col] ==
-                                                     str(mask_id)][cluster_id_col]).to_list()
+                                                 str(prop.label)][cluster_id_col]).to_list()
                 if annotation and str(annotation[0]) in clusters_to_use:
                     annotation = str(annotation[0])
-                    # IMP: each region needs to be subset before region props are computed, or the centroids are wrong
-                    subset = np.where(mask == int(mask_id), int(mask_id), 0)
-                    region_props = measure.regionprops(subset)
-                    for region in region_props:
-                        center = region.centroid
-                        shapes.append(
-                            {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',
-                             'x0': (int(center[1]) - circle_size), 'x1': (int(center[1]) + circle_size),
-                             'xref': 'x', 'y0': (int(center[0]) - circle_size), 'y1': (int(center[0]) + circle_size),
-                             'yref': 'y',
-                             'fillcolor': cluster_assignments[data_selection][cluster_id_col][annotation]})
+                    center = prop.centroid
+                    shapes.append(
+                        {'editable': False, 'line': {'color': 'white'}, 'type': 'circle',
+                         'x0': (int(center[1]) - circle_size), 'x1': (int(center[1]) + circle_size),
+                         'xref': 'x', 'y0': (int(center[0]) - circle_size), 'y1': (int(center[0]) + circle_size),
+                         'yref': 'y',
+                         'fillcolor': cluster_assignments[data_selection][cluster_id_col][annotation]})
             except ValueError: pass
         self.figure['layout']['shapes'] = shapes
         return self.figure

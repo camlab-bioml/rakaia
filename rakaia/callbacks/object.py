@@ -626,7 +626,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Generate the cluster color label selection on a category selection
         """
-        if clust_select and data_selection and clust_select in cur_cluster_dict[data_selection]:
+        if clust_select and data_selection and cur_cluster_dict and clust_select in cur_cluster_dict[data_selection]:
             options = list(cur_cluster_dict[data_selection][clust_select].keys())
             return options, options, options, cluster_label_children(data_selection, cur_cluster_dict, clust_select)
         return [], [], [], []

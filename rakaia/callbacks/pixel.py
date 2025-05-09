@@ -34,6 +34,7 @@ from rakaia.parsers.pixel import (
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     xenium_coords_to_wsi_from_zoom
 from rakaia.register.process import update_coregister_hash, wsi_from_local_path
+from rakaia.utils.cluster import cluster_assignments_from_config
 
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
@@ -481,9 +482,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('add-cell-id-mask-hover', 'value', allow_duplicate=True),
                        Output('main-tabs', 'active_tab', allow_duplicate=True),
                        State('session_id_internal', 'data'),
+                       State('cluster-colour-assignments-dict', 'data'),
                        prevent_initial_call=True)
     def update_parameters_from_config_json_or_db(image_dict, new_blend_dict, db_config_selection, data_selection,
-                            current_blend_dict, error_config, db_config_list, cur_metadata, delimiter, sesh_id):
+                            current_blend_dict, error_config, db_config_list, cur_metadata, delimiter, sesh_id, clust_assignments):
         """
         Update the blend layer dictionary and currently selected channels from a JSON-formatted upload
         Only applies to the channels that have already been selected: if channels are not in the current blend,
@@ -515,8 +517,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                         current_blend_dict[elem]['color'])).astype(np.uint8)
                 global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
                     parse_global_filter_values_from_json(new_blend_dict['config'])
-                clust_return = {data_selection: new_blend_dict['cluster']} if \
-                    'cluster' in new_blend_dict.keys() and new_blend_dict['cluster'] else dash.no_update
+                # IMP: need to handle for each ROI separately, different from all other updates
+                clust_return = cluster_assignments_from_config(clust_assignments, data_selection, new_blend_dict)
                 gate_return = new_blend_dict['gating'] if 'gating' in new_blend_dict.keys() else dash.no_update
                 apply, level, boundary, hover = mask_options_from_json(new_blend_dict)
                 return SessionServerside(rgb_layers, key=f"layer_dict_{sesh_id}", use_unique_key=OVERWRITE), \

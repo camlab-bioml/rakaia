@@ -1,5 +1,7 @@
 import os
 import random
+
+import dash
 import pandas as pd
 from pandas.testing import assert_frame_equal
 from dash import html
@@ -13,7 +15,9 @@ from rakaia.utils.cluster import (
     match_cluster_hash_to_cluster_frame,
     set_default_cluster_col,
     QuantificationClusterMerge,
-    subset_cluster_frame, check_diff_cluster_subtypes)
+    subset_cluster_frame,
+    check_diff_cluster_subtypes,
+    cluster_assignments_from_config)
 
 def test_basic_colparse_cluster(get_current_dir):
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
@@ -70,6 +74,16 @@ def test_basic_cluster_colour_assignments():
     assert check_diff_cluster_subtypes(colours, "roi_1", "cluster",
             (cluster_frame_2['cluster'].unique().tolist() + ["other_type"]))
 
+def test_cluster_import_from_config():
+    config = {'cluster': {'cell_type': {'T': '#a52a2a', 'B': 'ffc0cb'}}}
+    existing_assignments = {"roi_2": {'cluster': {'Macro': '#0000ff', 'Stromal': '#a9bdc6'}}}
+    add_assignments = cluster_assignments_from_config(existing_assignments, 'roi_1', config)
+    assert len(add_assignments) == 2
+    assert 'roi_1' in add_assignments.keys()
+    new = cluster_assignments_from_config(None, 'roi_1', config)
+    assert len(new) == 1
+    assert isinstance(cluster_assignments_from_config(None, 'roi_1', None),
+                      dash._callback.NoUpdate)
 
 def test_matching_frame_to_hash(get_current_dir):
     cluster_assignments = {"roi_1": pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))}

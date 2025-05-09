@@ -2,6 +2,7 @@
 """
 
 from typing import Union
+import dash
 import pandas as pd
 from dash import html
 from rakaia.utils.pixel import glasbey_palette
@@ -126,8 +127,8 @@ def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_clu
             unique_clusters = [str(i) for i in
             pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_cat].unique().tolist()]
             if cluster_cat not in ClusterIdentifiers.id_cols and \
-                    check_diff_cluster_subtypes(cluster_assignments, roi_selection, cluster_cat,
-                                                unique_clusters):
+                    (check_diff_cluster_subtypes(cluster_assignments, roi_selection, cluster_cat,
+                    unique_clusters) or cluster_cat not in cluster_assignments[roi_selection].keys()):
                 cluster_assignments[roi_selection][cluster_cat] = {}
                 unique_colours = glasbey_palette(len(unique_clusters))
                 for clust, colour in zip(unique_clusters, unique_colours):
@@ -135,6 +136,20 @@ def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_clu
         return cluster_assignments
     except (KeyError, TypeError):
         return None
+
+def cluster_assignments_from_config(assignments_dict: Union[dict, None]=None,
+                                    roi_selection: Union[str, None]=None,
+                                    config: Union[dict, None]=None):
+    """
+    Add the ROI clusters from the db or JSON config to the existing assignments. Prevents
+    existing assignments from other ROIs from being overwritten (each ROI has unique cluster assignments)
+    """
+    if config and roi_selection and 'cluster' in config and config['cluster']:
+        assignments_dict = {roi_selection: {}} if not assignments_dict else assignments_dict
+        assignments_dict[roi_selection] = config['cluster']
+        return assignments_dict
+    return dash.no_update
+
 
 def check_diff_cluster_subtypes(cluster_assignments: dict, roi_selection: str,
                                 cluster_cat: str, incoming_subtypes: list):
