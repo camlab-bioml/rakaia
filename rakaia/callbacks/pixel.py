@@ -312,6 +312,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('data-collection-tooltip', 'children'),
                        Output('cur_roi_dimensions', 'data'),
                        Output('roi-loaded', 'data'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'),
@@ -323,9 +324,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-delimiter', 'value'),
                        Input('data-selection-refresh', 'n_clicks'),
                        State('session_id_internal', 'data'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
     def create_dropdown_options(upload_template, data_selection, names, cur_chan_selection, session_config,
-                                sort_channels, enable_zoom, cur_dimensions, delimiter, refresh, sesh_id):
+                                sort_channels, enable_zoom, cur_dimensions, delimiter, refresh, sesh_id, error_config):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
@@ -333,11 +335,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # set the default canvas to return without a load screen
         if upload_template and data_selection and names and sesh_id:
-            # set a small default grid width and height for no loading. if adding something like visium, add a loading
-            channels_return, grid_width, grid_height, dim_return = sort_channel_dropdown(names, sort_channels), 1, 1, dash.no_update
-            image_dict = None
-            if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
-                try:
+            try:
+                # set a small default grid width and height for no loading. Add loading if incoming ROI is large
+                channels_return, grid_width, grid_height, dim_return = sort_channel_dropdown(names, sort_channels), 1, 1, dash.no_update
+                if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
                     image_dict = image_dict_from_lazy_load(data_selection, session_config, app_config['array_store_type'], delimiter)
                     image_dict = image_dict if image_dict is not None else upload_template
                     if not image_dict[data_selection] or (image_dict[data_selection] and
@@ -345,41 +346,36 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         # datasets or for very large ROIs that meet the single lazy loading criteria
                         if not parse_files_for_lazy_loading(session_config, data_selection, delimiter):
                             raise LazyLoadError(AlertMessage().warnings["lazy-load-error"])
-                        grid_width, grid_height, x_min, y_min = SingleMarkerLazyLoader(image_dict, data_selection, session_config,
-                        [], delimiter=delimiter).get_region_dim()
+                        grid_width, grid_height, x_min, y_min = SingleMarkerLazyLoader(image_dict, data_selection,
+                        session_config, [], delimiter=delimiter).get_region_dim()
                         dim_return = (grid_height, grid_width)
                     # check if the first image has dimensions greater than 3000. if yes, wrap the canvas in a loader
                     if (data_selection in image_dict.keys() and image_dict[data_selection] and
-                            all([image_dict[data_selection][elem] is not None for elem in image_dict[data_selection].keys()])):
+                        all([image_dict[data_selection][elem] is not None for elem in image_dict[data_selection].keys()])):
                         # get the first image in the ROI and check the dimensions
                         first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
                         dim_return = (first_image.shape[0], first_image.shape[1])
                         # add a pause if the roi is small to allow a full canvas dimension update
                         sleep_on_small_roi(dim_return)
                         # if the new dimensions match, do not update the canvas child to preserve the ui revision state
-                        if new_roi_same_dims(ctx.triggered_id, cur_dimensions, first_image):
-                            canvas_return = dash.no_update
+                        if new_roi_same_dims(ctx.triggered_id, cur_dimensions, first_image): canvas_return = dash.no_update
                         else:
                             canvas_return = [wrap_canvas_in_loading_screen_for_large_images(first_image, enable_zoom=
                             enable_zoom, wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                     else:
-                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(np.zeros((grid_width, grid_height)), enable_zoom=enable_zoom,
-                                        wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
-
+                        canvas_return = [wrap_canvas_in_loading_screen_for_large_images(np.zeros((grid_width, grid_height)),
+                        enable_zoom=enable_zoom, wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
                     # if all the currently selected channels are in the new ROI, keep them. otherwise, reset
                     channels_selected = set_current_channels(image_dict, data_selection, cur_chan_selection)
-                    return channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
-                        image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE), \
-                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update
-                except (TypeError, KeyError, IndexError):
-                    canvas_return = [wrap_canvas_in_loading_screen_for_large_images(None, enable_zoom=enable_zoom,
-                                    wrap=app_config['use_loading'], filename=data_selection, delimiter=delimiter)]
-                    return [], [], SessionServerside(image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE), \
-                        canvas_return, set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update
-            elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
-                return channel_dropdown_selection(channels_return, names), dash.no_update, dash.no_update, \
-                    dash.no_update, dash.no_update, dash.no_update, dash.no_update
-            raise PreventUpdate
+                    return (channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
+                        image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE), canvas_return,
+                        set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update, dash.no_update)
+                elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
+                    return channel_dropdown_selection(channels_return, names), dash.no_update, dash.no_update, \
+                        dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                raise PreventUpdate
+            except Exception as e: return ([], [], dash.no_update, dash.no_update, dash.no_update, dash.no_update,
+                        dash.no_update, add_warning_to_error_config(error_config, str(e)))
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'config'),
@@ -917,7 +913,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 data_selection in rgb_layers and rgb_layers[data_selection] and not dont_update and not empty_mask:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
-                                             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
+            cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
             try:
                 canvas = CanvasImage(rgb_layers, data_selection, currently_selected, mask_config, mask_selection,
                 mask_blending_level, overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
@@ -982,8 +978,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     return cur_graph, cur_graph_layout
                 except (ValueError, KeyError, AssertionError): raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
-                if None not in (x_request, y_request, current_window) and \
-                        nclicks_coord is not None and nclicks_coord > 0:
+                if None not in (x_request, y_request, current_window) and nclicks_coord is not None and nclicks_coord > 0:
                     try:
                         fig, new_layout = CanvasLayout(cur_graph).update_coordinate_window(current_window, x_request, y_request)
                         return fig, new_layout
@@ -1272,8 +1267,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         try:
             # do not update if the canvas triggers, but gallery zoom is not enabled
             zoom_not_needed = ctx.triggered_id == 'chan-gallery-zoom-update' and not toggle_gallery_zoom
-            data_there = data_selection in image_dict.keys() and \
-                         all([elem is not None for elem in image_dict[data_selection].values()])
+            data_there = data_selection in image_dict.keys() and all([elem is not None for elem in image_dict[data_selection].values()])
             # 1. if a channel is selected, but view by channel is not enabled
             # 2. if view by channel is enabled but no channel is selected
             no_channel = no_channel_for_view(ctx.triggered_id, channel_selected, view_by_channel)
