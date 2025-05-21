@@ -24,8 +24,9 @@ def test_output_annotations_pdf(svgpath):
         layers_dict = {"exp1+++slide0+++roi_1":
                            {"channel_1": np.array(Image.fromarray(np.zeros((500, 500))).convert('RGB'))}}
         aliases = {"channel_1": "channel_1"}
+        blend_dict = {"channel_2": {"color": "black"}}
         output_pdf = AnnotationPDFWriter(tmpdirname, annotations_dict, layers_dict, data_selection,
-                    mask_config=None, aliases=aliases).write_annotation_pdf()
+                    mask_config=None, aliases=aliases, blend_dict=blend_dict).write_annotation_pdf()
         assert os.path.exists(output_pdf)
         if os.access(output_pdf, os.W_OK):
             os.remove(output_pdf)

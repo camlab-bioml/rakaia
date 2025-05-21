@@ -1652,7 +1652,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                     dcc.Dropdown(id='plugin-in-col', options=[],
                                                  placeholder='Required for random forest and boost models'),
                                     html.Br(),
-                                    html.B("Set output column", style={"float": "left"}),
+                                    html.B("Set output column (required)", style={"float": "left"}),
                                     html.Br(),
                                     dcc.Input(type="text", value=None, placeholder="Set model output column name",
                                               debounce=True, id="plugin-out-col", style={"width": "100%"}),
