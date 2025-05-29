@@ -495,9 +495,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (image_dict, new_blend_dict, data_selection) and sesh_id:
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
             current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}
-            if panel_match(current_blend_dict, new_blend_dict) or all_roi_match(
-                    current_blend_dict, new_blend_dict, image_dict, delimiter):
-                current_blend_dict = new_blend_dict['channels'].copy()
+            if panel_match(current_blend_dict, new_blend_dict) or all_roi_match(current_blend_dict, new_blend_dict, image_dict, delimiter):
+                current_blend_dict = new_blend_dict['channels'].copy() if new_blend_dict['channels'] else current_blend_dict
                 rgb_layers = {data_selection: {}}
                 error_config = add_warning_to_error_config(error_config, ALERT.warnings["json_update_success"])
                 channel_list_return = dash.no_update

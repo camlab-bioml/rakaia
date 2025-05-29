@@ -1,5 +1,5 @@
 """Advanced functions that support the callbacks associated with
-pixel-level operations (blended images))"""
+pixel-level operations (blended images)"""
 import json
 from typing import Union
 from pathlib import Path
@@ -114,7 +114,7 @@ class SteinbockParserKeys:
     Define the subdirectories and permissible file extensions for parsing a steinbock output directory
     """
     sub_directories = ['quantification', 'mcd', 'deepcell']
-    extensions = ['.tiff', '.tif', '.h5ad', '.mcd']
+    extensions = ['.tiff', '.tif', '.h5ad', '.mcd', '.txt']
     base_names = ['umap_coordinates']
 
 def is_steinbock_dir(directory):
@@ -199,7 +199,8 @@ def parse_steinbock_scaling(directory: Union[str, Path]):
     """
     files = [str(i) for i in Path(directory).rglob("*scaling.json")]
     json_parsed = json.load(open(files[0])) if files else None
-    return json_parsed['channels'] if json_parsed and 'channels' in json_parsed else None
+    return json_parsed['channels'] if (json_parsed and 'channels' in json_parsed and
+                                       json_parsed['channels']) else None
 
 def umap_coordinates_from_gallery_click(umap_selection: str,
                                         directory: Union[str, Path],

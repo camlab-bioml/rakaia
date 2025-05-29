@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-05-21
+## [0.23.0] - 2025-05-29
 
 ### Added
 
@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Vectorized spatial marker/spot rendering for marker arrays for faster rendering w/ max position overlap
 - Compute mask derivatives (hover, boundaries) on fly instead of storing
 - smaller pixel slider steps for lower intensity channels
+- Extra checks + change parsing rules for `steinbock` output directories with .txt files
 
 ### Fixed
 

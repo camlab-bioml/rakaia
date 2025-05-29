@@ -388,7 +388,8 @@ def is_steinbock_intensity_anndata(adata):
     - each Index in `adata.obs` begins with 'Object' followed by the object id
     - An 'Image' parameter in obs that contains the tiff information
     """
-    return 'Image' in adata.obs and 'image_acquisition_description' in adata.obs and \
+    # for now, these parameter check work for both .txt and .mcd pipeline runs
+    return 'Image' in adata.obs and \
         all('.tiff' in elem for elem in adata.obs['Image'].to_list()) and \
       all('Object' in elem for elem in adata.obs.index)
 
