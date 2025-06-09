@@ -561,7 +561,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 if not image_dict[data_selection] or any(image_dict[data_selection][elem] is None for elem in add_to_layer):
                     image_dict = SingleMarkerLazyLoader(image_dict, data_selection, session_dict,
-                                add_to_layer, spatial_spot_size, delimiter).get_image_dict()
+                                add_to_layer, spatial_spot_size, delimiter, app_config['array_store_type']).get_image_dict()
                     uploaded_return = SessionServerside(image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE)
                 channel_modify = dash.no_update
                 if param_dict is None or len(param_dict) < 1: param_dict = {"current_roi": data_selection}

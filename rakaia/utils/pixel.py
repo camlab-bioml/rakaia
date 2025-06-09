@@ -86,18 +86,20 @@ def recolour_greyscale(array, colour):
     """
     if colour not in ['#ffffff', '#FFFFFF']:
         image = Image.fromarray(array)
-        image = image.convert('RGB')
+        # image = image.convert('RGB')
         red, green, blue = ImageColor.getcolor(colour, "RGB")
 
-        array = np.array(image)
+        array = np.array(image).astype(np.float32)
+        array = ne.evaluate("array / 255.0")
+        # Multiply greyscale intensity by color components (broadcasted)
+        r = ne.evaluate("array * red").astype(np.uint8)
+        g = ne.evaluate("array * green").astype(np.uint8)
+        b = ne.evaluate("array * blue").astype(np.uint8)
 
-        new_array = np.empty((array.shape[0], array.shape[1], 3))
-        new_array[:, :, 0] = red
-        new_array[:, :, 1] = green
-        new_array[:, :, 2] = blue
+        # Stack channels into a 3D array
+        rgb = np.stack([r, g, b], axis=-1)
 
-        converted = ne.evaluate("new_array * image / 255")
-        return converted.astype(np.uint8)
+        return rgb
 
     image = Image.fromarray(array)
     image = image.convert('RGB')

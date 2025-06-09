@@ -27,7 +27,7 @@ def test_lazy_loading_single_marker_mcd(get_current_dir):
     assert parse_files_for_lazy_loading(session_config, 'query+++slide0+++Xylene_5')
     selection = ['Ir191']
     single_load = SingleMarkerLazyLoader(uploaded_dict, 'query+++slide0+++Xylene_5',
-                                         session_config, selection).get_image_dict()
+                                         session_config, selection, 55, '+++', 'int').get_image_dict()
     assert all(single_load['query+++slide0+++Xylene_5'][elem] is None for elem in
                single_load['query+++slide0+++Xylene_5'].keys() if elem not in selection)
     assert all(isinstance(single_load['query+++slide0+++Xylene_5'][elem], np.ndarray) for elem in
