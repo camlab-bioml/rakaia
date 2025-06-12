@@ -71,7 +71,7 @@ def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullsc
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
 
-def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=8000000, hovertext=False,
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=10000000, hovertext=False,
                                                    enable_zoom=False,
                                                    wrap=True, filename: str = "canvas", delimiter: str = "+++"):
     """
