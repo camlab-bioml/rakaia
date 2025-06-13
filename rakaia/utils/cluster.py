@@ -13,6 +13,8 @@ class ClusterIdentifiers:
     Set the set of mask object id column identifiers permitted for cluster projection
     """
     id_cols = ['cell_id', 'object_id']
+    # currently, to analyze a multi ROI cluster CSV, only description can be used
+    multi_roi_cols = [ 'description']
 
 class QuantificationClusterMerge:
     """
@@ -80,15 +82,36 @@ class QuantificationClusterMerge:
         """
         return self._cluster_frame
 
-def cluster_annotation_frame_import(cur_cluster_dict: dict=None, roi_selection: str=None, cluster_frame:
-                                    Union[pd.DataFrame, dict]=None) -> dict:
+def split_cluster_frame_upload_multi_roi(cur_cluster_dict: Union[dict,None]=None,
+                                    cluster_frame: Union[pd.DataFrame, dict]=None,
+                                    dataset_options: Union[list, None]=None,
+                                    delimiter: str="+++"):
+    # iterate the ROIs in the session to try to find a match
+    dataset_options = dataset_options if dataset_options and isinstance(dataset_options, list) else []
+    for roi in dataset_options:
+        match, identifier = ROIQuantificationMatch(roi, cluster_frame,
+                            dataset_options, delimiter).get_matches()
+        if match and identifier:
+            cur_cluster_dict[roi] = cluster_frame[cluster_frame[identifier] == match]
+    return cur_cluster_dict
+
+
+def cluster_annotation_frame_import(cur_cluster_dict: Union[dict,None]=None, roi_selection: str=None,
+                                    cluster_frame: Union[pd.DataFrame, dict]=None,
+                                    dataset_options: Union[list, None]=None,
+                                    delimiter: str="+++") -> dict:
     """
     Parse the column headers for an imported cluster annotation data frame and verify the presence of at least
     one column identifier
     """
     cur_cluster_dict = {} if not cur_cluster_dict else cur_cluster_dict
     cluster_frame = pd.DataFrame(cluster_frame)
-    # for now, use set column names, but expand in the future
+
+    # Case 1: if description column there, means multi ROI. try to match up for every ROI
+    if any(elem in list(cluster_frame.columns) for elem in ClusterIdentifiers.multi_roi_cols):
+        return split_cluster_frame_upload_multi_roi(cur_cluster_dict, cluster_frame, dataset_options, delimiter)
+
+    # Case 2: single ROI, map to current ROI only
     if any(elem in list(cluster_frame.columns) for elem in ClusterIdentifiers.id_cols) and roi_selection:
         cur_cluster_dict[roi_selection] = cluster_frame
     return cur_cluster_dict if len(cur_cluster_dict) > 0 else None
@@ -214,11 +237,14 @@ def set_cluster_col_dropdown(cluster_frame: Union[pd.DataFrame, dict]=None) -> U
                 col not in ClusterIdentifiers.id_cols]
     return None
 
-def set_default_cluster_col(cluster_frame: dict, roi_selection: str):
+def set_default_cluster_col(cluster_frame: dict, roi_selection: str,
+                            cur_col: Union[str, None]=None):
     """
-    Set the default cluster column when an ROI is selected. BY default, return the first column
+    Set the default cluster column when an ROI is selected. By default, return the first column
     in the list, or None if one doesn't exist
     """
     if cluster_frame and roi_selection and roi_selection in cluster_frame and cluster_frame[roi_selection]:
+        if cur_col is not None and str(cur_col) in cluster_frame[roi_selection].keys():
+            return dash.no_update
         return str(list(cluster_frame[roi_selection].keys())[0])
     return None

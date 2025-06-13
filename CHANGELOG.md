@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-06-12
+## [0.23.0] - 2025-06-13
 
 ### Added
 
@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ability to transfer zoom coordinates for Visium (V1, V2, HD) & Xenium to OSD WSI viewer
 - Key event listener for down arrow to switch between canvas and WSI viewer
 - Error warning in modal on ROI change for dropdown and dimensions
+- Ability to upload cluster annotations for multiple ROIs by CSV
 
 ### Changed
 

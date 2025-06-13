@@ -1,6 +1,5 @@
 import os
 import random
-
 import dash
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -37,6 +36,22 @@ def test_populating_cluster_annotation_dict():
     session_cluster_dict = cluster_annotation_frame_import(session_cluster_dict, "roi_2", malformed)
     assert "roi_2" not in session_cluster_dict.keys()
     assert "roi_1" in session_cluster_dict.keys()
+
+def test_populating_cluster_annotation_dict_multi_roi(get_current_dir):
+
+    multi_roi = pd.read_csv(os.path.join(get_current_dir, "multi_roi_clusters.csv"))
+    session_cluster_dict = cluster_annotation_frame_import(None, None,
+                                                           multi_roi,
+    ['MB0000_1_527_fullstack---slide0---acq',
+                'MB0002_1_345_fullstack---slide0---acq',
+                'MB0005_1_211_fullstack---slide0---acq',
+                'MB0010_1_420_fullstack---slide0---acq',
+                'MB0013_1_371_fullstack---slide0---acq',
+                'MB0653_1_63_fullstack---slide0---acq',
+                'fakeacq---slide0---acq'], '---')
+    assert len(session_cluster_dict) == 6
+    assert not 'fakeacq---slide0---acq' in session_cluster_dict.keys()
+
 
 def test_basic_cluster_colour_assignments():
     cluster_frame = pd.DataFrame(
@@ -111,6 +126,10 @@ def test_default_cluster_col():
     assert set_default_cluster_col({"roi_1": {}}, "roi_1") is None
     assert set_default_cluster_col({}, "roi_1") is None
     assert set_default_cluster_col({"other": {"cat_1": {"one": "red"}}}, "roi_1") is None
+
+    # if already set
+    assert isinstance(set_default_cluster_col(type_cols, "roi_1", "cluster"), dash._callback.NoUpdate)
+    assert set_default_cluster_col(type_cols, "roi_1", "not_there") == "cat_1"
 
 def test_quant_to_cluster_transfer(get_current_dir):
     data_selection = "test---slide0---chr10-h54h54-Gd158_2_18"
