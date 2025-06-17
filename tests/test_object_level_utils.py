@@ -268,10 +268,6 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
 
     assert 'new' in annotations['object_annotation_1'].tolist()
 
-
-
-
-
 def test_generate_grid_overlay():
     """
     test that the greyscale grid overlay is generated for the correct dimensions
@@ -289,6 +285,7 @@ def test_padding_steinbock_roi_index():
     assert pad_steinbock_roi_index("1") == "001"
     assert pad_steinbock_roi_index(12) == "012"
     assert pad_steinbock_roi_index(123) == "123"
+    assert pad_steinbock_roi_index(1234) == "1234"
     assert pad_steinbock_roi_index() == "000"
 
 def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
@@ -443,10 +440,11 @@ def test_compute_image_similarity(get_current_dir):
     measurements['cluster'] = [str(i) for i in random.choices(range(8), k=len(measurements))]
     cor_mat = compute_image_similarity_from_overlay(measurements, 'cluster')
     # matrix is symmetric
-    assert (np.array(cor_mat) == np.array(cor_mat).T).all()
+    assert np.array_equal(np.array(cor_mat), np.array(cor_mat).T)
 
     assert find_similar_images(cor_mat, "test_1", 3, "sample") == {'indices': [1]}
     assert find_similar_images(cor_mat, "test_2", 3, "sample") == {'indices': [0]}
     assert find_similar_images(cor_mat, "test_1", 3, "description") == {'names': ['test_2']}
     assert find_similar_images(cor_mat, "test_2", 3, "description") == {'names': ['test_1']}
     assert find_similar_images(None, "test_2", 3, "description") is None
+    assert find_similar_images(cor_mat, "not_there", 3, "description") is None

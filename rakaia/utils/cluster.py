@@ -13,8 +13,8 @@ class ClusterIdentifiers:
     Set the set of mask object id column identifiers permitted for cluster projection
     """
     id_cols = ['cell_id', 'object_id']
-    # currently, to analyze a multi ROI cluster CSV, only description can be used
-    multi_roi_cols = [ 'description']
+    # define the column identifiers that can be used for multi ROI uploads
+    multi_roi_cols = ['roi', 'description']
 
 class QuantificationClusterMerge:
     """
@@ -90,7 +90,8 @@ def split_cluster_frame_upload_multi_roi(cur_cluster_dict: Union[dict,None]=None
     dataset_options = dataset_options if dataset_options and isinstance(dataset_options, list) else []
     for roi in dataset_options:
         match, identifier = ROIQuantificationMatch(roi, cluster_frame,
-                            dataset_options, delimiter).get_matches()
+                            dataset_options, delimiter, None,
+                            ClusterIdentifiers.multi_roi_cols).get_matches()
         if match and identifier:
             cur_cluster_dict[roi] = cluster_frame[cluster_frame[identifier] == match]
     return cur_cluster_dict

@@ -14,8 +14,7 @@ import numexpr as ne
 import scipy
 from rakaia.utils.pixel import (
     path_to_mask,
-    split_string_at_pattern,
-    recolour_greyscale)
+    split_string_at_pattern)
 
 class QuantificationColumns(BaseModel):
     """
@@ -397,17 +396,21 @@ class ROIQuantificationMatch:
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
-    prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1
+    prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1.
+    Additionally used for parsing multi ROI cluster uploads wither either `roi` or `description` columns as identifiers
 
     :param data_selection: String representation of the current ROI selection
     :param quantification_frame: tabular dataset of summarized intensity measurements per object
     :param dataset_options: List of string representations of imported session ROIs
     :param delimiter: string to split the data selection string into experiment/filename, slide, and ROI identifier
     :param mask_name: string name of the currently applied mask (if it exists)
+    :param cols_check: List of column identifiers to check as descriptors (efault is just `description`)
     :return: None
     """
     def __init__(self, data_selection, quantification_frame, dataset_options,
-                                           delimiter: str="+++", mask_name: str=None):
+                                           delimiter: str="+++", mask_name: str=None,
+                                           cols_check: Union[list, None]=None):
+
         self.data_selection = data_selection
         self.quantification = pd.DataFrame(quantification_frame)
         self.dataset_options = dataset_options
@@ -417,20 +420,38 @@ class ROIQuantificationMatch:
         self._quant_col = None
 
         exp, slide, acq = split_string_at_pattern(self.data_selection, pattern=self.delimiter)
-        if 'description' in self.quantification.columns:
-            # this part applies to ROIs from mcd
-            self.steinbock_pipeline_description(exp, acq)
-            # use experiment name if coming from tiff
-            self.filename_overlap(exp)
-        if 'sample' in self.quantification.columns:
+        self._cols_descriptor = self._set_descriptor_columns(cols_check)
+        for col in self._cols_descriptor:
+            if col in self.quantification.columns:
+                # this part applies to ROIs from mcd
+                self.steinbock_pipeline_description(exp, acq, col)
+                # use experiment name if coming from tiff
+                self.filename_overlap(exp, col)
+
+        # if the descriptor column doesn't produce a match, try `sample` as a backup
+        if 'sample' in self.quantification.columns and not self._match:
             self.steinbock_pipeline_sample(acq)
             self.match_by_dataset_index(exp)
 
-    def steinbock_pipeline_description(self, experiment_identifier: str, roi_identifier: str):
+    @staticmethod
+    def _set_descriptor_columns(cols_check: Union[list, None]=None):
+        """
+        Set the descriptor columns to parse for matching. These columns are used for both
+        ROI querying and matching for multi ROI cluster uploads.
+
+        :param cols_check: The list of columns to check (default is just `description`)
+        :return: tuple of descriptor columns to check against the quantification frame
+        """
+        return set(cols_check + ['description']) if cols_check else ['description']
+
+
+    def steinbock_pipeline_description(self, experiment_identifier: str, roi_identifier: str,
+                                       col_use: str='description'):
         """
         Match the quantification column to a mask based on the steinbock pipeline naming w/ description
         :param experiment_identifier: string experiment/filename identifier for the current ROI
         :param roi_identifier: string ROI identifier for the current ROI
+        :param col_use: Name of the column to use as the ROI identifier (default is `description`)
         :return: None
         """
         if experiment_identifier and roi_identifier and not self._match:
@@ -438,13 +459,13 @@ class ROIQuantificationMatch:
             roi_index = roi_identifier.split('_')[-1]
             roi_index = pad_steinbock_roi_index(roi_index)
             pattern = f"{experiment_identifier}_{roi_index}"
-            if pattern in self.quantification['description'].tolist():
+            if pattern in self.quantification[col_use].tolist():
                 self._match = pattern
-                self._quant_col = 'description'
+                self._quant_col = col_use
         if not self._match and (self.mask and (match_steinbock_mask_name_to_mcd_roi(self.mask, roi_identifier) or
-            roi_identifier in self.mask)) or roi_identifier in self.quantification['description'].tolist():
+            roi_identifier in self.mask)) or roi_identifier in self.quantification[col_use].tolist():
             self._match = roi_identifier
-            self._quant_col = 'description'
+            self._quant_col = col_use
 
     def steinbock_pipeline_sample(self, roi_identifier: str):
         """
@@ -457,18 +478,20 @@ class ROIQuantificationMatch:
             self._match = self.mask
             self._quant_col = 'sample'
 
-    def filename_overlap(self, experiment_name: str):
+    def filename_overlap(self, experiment_name: str,
+                         col_use: str='description'):
         """
         Match the quantification using either the experiment of ROI identifier w/ description
 
         :param experiment_name: string of the experiment/filename of the current ROI
+        :param col_use: Name of the column to use as the ROI identifier (default is `description`)
         :return: None
         """
         if not self._match and (experiment_name and (experiment_name in
-                                                     self.quantification['description'].tolist()) or
+                                                     self.quantification[col_use].tolist()) or
                                 (self.mask and experiment_name in self.mask)):
             self._match = self.mask if (self.mask and experiment_name in self.mask) else experiment_name
-            self._quant_col = 'description'
+            self._quant_col = col_use
 
     def match_by_dataset_index(self, experiment_name: str):
         """
@@ -660,7 +683,7 @@ def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFra
     # get the pairwise dot products for every observation
     return pd.DataFrame(np.dot(matrix_cor.T, matrix_cor), columns=samples, index=samples)
 
-def find_similar_images(image_cor: Union[dict, pd.DataFrame], current_image_id: str,
+def find_similar_images(image_cor: Union[dict, pd.DataFrame, None], current_image_id: str,
                         num_query: int=3, identifier: str="sample"):
     """
     Parse a data frame of image similarity scores and pull out the top n similar images by score

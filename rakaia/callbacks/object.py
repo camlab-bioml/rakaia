@@ -596,7 +596,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Parse a frame of cluster mask object projections in CSV format
         """
-        if uploads and data_selection and sesh_id and options:
+        if uploads and sesh_id and options:
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
             pd.read_csv(uploads[0]), options, delim), key=f"cluster_assignments_{sesh_id}", use_unique_key=OVERWRITE), \
                 set_cluster_col_dropdown(pd.read_csv(uploads[0]))
@@ -647,18 +647,6 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         return clust_options if toggle_clust_selection else []
 
-    # @dash_app.callback(Input('data-collection', 'value'),
-    #                    State('cluster-colour-assignments-dict', 'data'),
-    #                    State('imported-cluster-frame', 'data'),
-    #                    Output('cluster-col', 'options', allow_duplicate=True),
-    #                    Output('cluster-col', 'value', allow_duplicate=True))
-    # def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame, master_clust):
-    #     """
-    #     Update the cluster categories selectable on an ROI change
-    #     """
-    #     if cluster_frame and data_selection and data_selection in cluster_frame and master_clust and data_selection in master_clust:
-    #         return list(cluster_frame[data_selection].keys()), set_default_cluster_col(cluster_frame, data_selection)
-    #     return [], None
 
     @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
                        Input('cluster-color-picker', 'value'),
