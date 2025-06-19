@@ -2,6 +2,7 @@ import os
 import pandas as pd
 import dash
 import anndata as ad
+import numpy as np
 from rakaia.callbacks.pixel_wrappers import (
     parse_global_filter_values_from_json,
     parse_local_path_imports,
@@ -14,7 +15,8 @@ from rakaia.callbacks.pixel_wrappers import (
     parse_steinbock_umap,
     umap_coordinates_from_gallery_click,
     parse_steinbock_scaling,
-    disable_gallery_by_roi)
+    disable_gallery_by_roi,
+    pixel_values_text)
 from rakaia.io.session import SessionServerside
 
 def test_parse_steinbock_dir(get_current_dir):
@@ -132,6 +134,16 @@ def test_bounds_text():
     assert children[1].children == 'Current bounds: \n X: (0.1, 10.0), Y: (0.0, 10.5)'
     children, bounds = bounds_text(None, 100, None, 100)
     assert not children and not bounds
+
+def test_pixel_values_from_click():
+    arrays = {"roi_1": {"channel_1": np.ones((1000, 1000)),
+              "channel_2": np.zeros((1000, 1000))}}
+    mask_dict = {"mask_1": {'raw': np.ones((1000, 1000))}}
+    assert (str(pixel_values_text(493, 881, arrays, "roi_1",
+                            ["channel_1", "channel_2"], mask_dict,
+                            "mask_1", {"channel_1": "immune", "channel_2": "stroma"})) ==
+            ("[Span('x: 493, y: 881\\n'), Br(None), Span(' immune: 1.0\\n'), Br(None), "
+            "Span(' stroma: 0.0\\n'), Br(None), Span(' Mask ID: 1.0\\n'), Br(None)]"))
 
 def test_null_json_update():
     assert isinstance(no_json_db_updates(None), tuple)

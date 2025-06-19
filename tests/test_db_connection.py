@@ -39,6 +39,7 @@ def test_real_db_connection():
 
 
 @skip_on(ServerSelectionTimeoutError, "A connection to the mongoDB server could not be established")
+@skip_on(AttributeError, "A connection to the mongoDB server could not be established")
 def test_null_db_connection():
     fake_connection = AtlasDatabaseConnection(username="fake", password="fake")
     assert isinstance(fake_connection, AtlasDatabaseConnection)

@@ -9,6 +9,7 @@ from dash import html
 import plotly.graph_objs as go
 import pandas as pd
 from natsort import natsorted, ns
+from setuptools.command.alias import alias
 
 from rakaia.io.session import SessionServerside
 from rakaia.parsers.object import get_quantification_filepaths_from_drag_and_drop, parse_masks_from_filenames
@@ -238,6 +239,25 @@ def bounds_text(x_low: Union[int, float], x_high: Union[int, float], y_low: Unio
                             style={"color": "black", "white-space": "pre", "width": "95%", "max-width": "95%"}),
      html.Br()], {"x_low": x_low, "x_high": x_high, "y_low": y_low, "y_high": y_high}
     return [], {}
+
+def pixel_values_text(x_coord: Union[float, int], y_coord: Union[float, int],
+                      image_dict: dict, data_selection: str, channels_selected: list,
+                      mask_dict: dict, mask_selection: str, channel_aliases: Union[dict, None]=None):
+    """
+    Generate the test for pixel values (raw channel + mask ID) from a click event
+    """
+    children = [html.Span(f"x: {x_coord}, y: {y_coord}\n"), html.Br()]
+    for channel in channels_selected:
+        chan_represent = str(channel_aliases[channel]) if (channel_aliases
+                        and channel in channel_aliases.keys()) else channel
+        children.append(html.Span(f" {chan_represent}: "
+                        f"{str(image_dict[data_selection][channel][y_coord, x_coord])}\n"))
+        children.append(html.Br())
+    if mask_dict and mask_selection in mask_dict.keys():
+        children.append(html.Span(f" Mask ID: "
+        f"{str(mask_dict[mask_selection]['raw'][y_coord, x_coord])}\n"))
+        children.append(html.Br())
+    return children
 
 def no_json_db_updates(error_config: dict=None):
     """

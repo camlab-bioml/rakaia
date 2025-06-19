@@ -82,7 +82,7 @@ from rakaia.inputs.loaders import (
     set_viewer_tab, toggle_canvas_to_wsi_tab)
 from rakaia.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
     mask_options_from_json, bounds_text, AnnotationList, no_json_db_updates, is_steinbock_dir, \
-    parse_steinbock_dir, disable_gallery_by_roi
+    parse_steinbock_dir, disable_gallery_by_roi, pixel_values_text
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -1925,6 +1925,27 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             except KeyError:
                 return dash.no_update, html.H6("Error in annotating point"), True, dash.no_update
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output('click-hover-shower', 'children'),
+        Output('click-hover-shower', 'hidden'),
+        Input('annotation_canvas', 'clickData'),
+        State('uploaded_dict', 'data'),
+        State('data-collection', 'value'),
+        State('image_layers', 'value'),
+        State('mask-dict', 'data'),
+        State('mask-options', 'value'),
+        Input('enable_click_pix_val', 'value'),
+        State('alias-dict', 'data'),
+        prevent_initial_call=True)
+    def show_pixel_value_click(clickdata, image_dict, data_select, channels_selected,
+                                          mask_dict, mask_select, enable_pix_val, aliases):
+        if clickdata and data_select and channels_selected and 'points' in clickdata and enable_pix_val:
+            try:
+                x, y = int(clickdata['points'][0]['x']), int(clickdata['points'][0]['y'])
+                return pixel_values_text(x, y, image_dict, data_select, channels_selected, mask_dict, mask_select, aliases), False
+            except KeyError: return [], True
+        return dash.no_update, True
 
     @dash_app.callback(
         Output('annotation_canvas', 'figure', allow_duplicate=True),

@@ -14,10 +14,10 @@ class DataImportTour(BaseModel):
     """
     steps: list = [{'selector': '[id="upload-image"]',
                     'content': "Option 1: Upload images or spatial datasets (.mcd, .tiff, .h5ad, etc.) using drag and drop. "
-                               "Should be used only for datasets < 2GB, or if the app deployment is public/shared, "
+                               "Should be used only for datasets < 4-5GB, or if the app deployment is public/shared, "
                                "as the component creates a temporary copy of the file contents."},
                 {'selector': '[id="read-filepath"]',
-                'content': "Option 2: For large datasets (> 2GB) on local deployments, "
+                'content': "Option 2: For large datasets (> 4-5GB) on local deployments, "
                            "copy and paste either a filepath or directory and "
                                "read files directly by selecting Import local. Does not duplicate any data."},
                 {'selector': '[id="show-dataset-info"]',
@@ -29,7 +29,7 @@ class DataImportTour(BaseModel):
                                ' and begin image analysis'},
                 {'selector': '[id="annotation-canvas"]',
                     'content': 'Create a multiplexed image in the canvas by selecting channels/biomarkers\n'
-                               ' from the Channel selection dropdown.\n'},
+                               ' from the Select channels dropdown.\n'},
                    {'selector': '[id="rakaia-documentation"]',
                     'content': 'Visit the documentation for a full comprehensive user guide.'}]
 
