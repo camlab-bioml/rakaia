@@ -41,7 +41,7 @@ Flask-HTTPAuth==4.8.0
 fonttools==4.43.0
 freeport==0.1.15
 glasbey==0.2.0
-h11==0.16.0
+h11==0.14.0
 h5py==3.8.0
 idna==3.7
 igraph==0.10.4
@@ -105,7 +105,7 @@ scikit-image==0.21.0
 scikit-learn==1.5.0
 scipy==1.10.1
 seaborn==0.12.2
-selenium==4.2.0
+selenium==4.15.2
 session-info==1.0.0
 setuptools==70.0.0
 shortuuid==1.0.12
@@ -127,7 +127,7 @@ trio-websocket==0.10.2
 typing_extensions==4.9.0
 tzdata==2023.3
 umap-learn==0.5.2
-urllib3==1.26.19
+urllib3==2.5.0
 urllib3-secure-extra==0.1.0
 URLObject==2.4.3
 waitress==3.0.1
