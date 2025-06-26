@@ -1482,10 +1482,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                         if current_blend_dict[selected_channel]['x_upper_bound'] >= cur_slider_values[1]:
                             hist_max = float(cur_slider_values[1])
                         else:
-                            hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel])
+                            hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel], None)
                     else:
                         # if the toggle is reset, make sure it works properly for values below 1
-                        hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel])
+                        hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel], None)
                     tick_markers, step_size = set_range_slider_tick_markers(hist_max)
                     return hist_max, cur_slider_values, tick_markers, dash.no_update, step_size
                 except IndexError: raise PreventUpdate
@@ -1510,7 +1510,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         percentile)
         """
         if None not in (selected_channel, data_selection, current_blend_dict):
-            hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel])
+            hist_max = upper_bound_for_range_slider(image_dict[data_selection][selected_channel], None)
             upper_bound = float(get_default_channel_upper_bound_by_percentile(image_dict[data_selection][selected_channel]))
             if empty_slider_values(cur_slider) or float(cur_slider[0]) != 0.0 or (float(cur_slider[1]) != upper_bound):
                 tick_markers, step_size = set_range_slider_tick_markers(hist_max)

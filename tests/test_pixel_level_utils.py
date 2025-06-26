@@ -44,7 +44,8 @@ from rakaia.utils.pixel import (
     add_saved_blend,
     hpf_max_diff,
     hpf_max_diff_from_path,
-    hpf_max_diff_from_rect)
+    hpf_max_diff_from_rect,
+    upper_bound_for_range_slider)
 
 def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
@@ -204,6 +205,13 @@ def test_resize_canvas_image(get_current_dir):
     assert isinstance(resized_different_size, np.ndarray)
 
     assert resized_different_size.shape[0] == 666 == resized_different_size.shape[1]
+
+def test_set_upper_range_bound():
+    array = np.full((100, 100), 10)
+    assert upper_bound_for_range_slider(array) == 10
+    array = np.full((100, 100), 0.1)
+    assert upper_bound_for_range_slider(array, None) == 0.1
+    assert upper_bound_for_range_slider(array, 1) == 1
 
 
 def test_filtering_intensity_changes(get_current_dir):

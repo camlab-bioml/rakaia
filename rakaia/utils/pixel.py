@@ -278,7 +278,7 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     # set the array cast type based on the max
     cast_type = np.uint16 if np.max(array) > 1 else np.float32
     hist_data = np.hstack(array).astype(cast_type)
-    max_hist = upper_bound_for_range_slider(array)
+    max_hist = upper_bound_for_range_slider(array, None)
     hist = np.random.choice(hist_data, subset_number).astype(cast_type) if \
         hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
@@ -296,11 +296,15 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
 
     return fig, float(np.max(array))
 
-def upper_bound_for_range_slider(array):
+def upper_bound_for_range_slider(array: Union[np.ndarray, np.array],
+                                 enforce_min: Union[float, None]=1.0):
     """
-    Return the pixel max of a channel array for the range slider, or return 1 if the max value is less than 1
+    Return the pixel max of a channel array for the range slider,
+    or return the value of enforce_min if it is specified and the value is less than that.
     """
-    return float(np.max(array)) if float(np.max(array)) > 1.0 else 1.0
+    if not enforce_min:
+        return float(np.max(array))
+    return float(np.max(array)) if float(np.max(array)) > enforce_min else enforce_min
 
 
 def apply_preset_to_array(array, preset):
