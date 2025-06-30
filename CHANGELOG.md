@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-06-17
+## [0.23.0] - 2025-06-27
 
 ### Added
 
@@ -29,7 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Compute mask derivatives (hover, boundaries) on fly instead of storing
 - smaller pixel slider steps for lower intensity channels
 - Extra checks + change parsing rules for `steinbock` output directories with .txt files
-- single marker lazy loader now uses array store type from CLI
+- single marker lazy loader and region thumbnail now uses array store type from CLI
 - Update autoscale CLI to process TXT files
 
 ### Fixed

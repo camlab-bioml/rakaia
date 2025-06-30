@@ -1284,7 +1284,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     # decide if channel view or ROI view is selected
                     if view_by_channel and channel_selected:
                         views = RegionThumbnail(session_config, blend_colour_dict, [channel_selected], 1000000,
-                        delimiter=delimiter, use_greyscale=True, dataset_options=options, single_channel_view=True, use_scaling=False).get_image_dict()
+                        delimiter=delimiter, use_greyscale=True, dataset_options=options, single_channel_view=True, use_scaling=False,
+                        arr_type=app_config['array_store_type']).get_image_dict()
                     else:
                         views = {elem: image_dict[data_selection][elem] for elem in list(aliases.keys())}
                     toggle_gallery_zoom = toggle_gallery_zoom if not view_by_channel else False

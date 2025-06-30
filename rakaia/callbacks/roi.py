@@ -116,9 +116,10 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
             currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
-            images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries), rois_exclude,
-            rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val,
-            global_filter_sigma, delimiter, False, dim_min, dim_max, keyw, False, spatial_rad, enable_masks).get_image_dict()
+            images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries), rois_exclude, rois_decided,
+            mask_dict, dataset_options, query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
+            delimiter, False, dim_min, dim_max, keyw, False, spatial_rad, enable_masks, True,
+                    app_config['array_store_type']).get_image_dict()
             new_row_children, roi_list = roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load": roi_list = list(set(rois_exclude + roi_list))

@@ -1,7 +1,6 @@
 """Module containing functions and classes to generate region-level thumbnails
 for gallery rendering
 """
-
 from typing import Union
 from functools import partial
 import os
@@ -29,7 +28,6 @@ from rakaia.parsers.spatial import (
     get_spatial_spot_radius,
     is_spot_based_spatial,
     is_spatial_dataset)
-
 
 class RegionThumbnail:
     """
@@ -288,7 +286,8 @@ class RegionThumbnail:
 
         :return: Scaled numpy channel array based on condition
         """
-        return apply_preset_to_array(arr, self.blend_dict[channel_name]) if \
+        return apply_preset_to_array(arr.astype(set_array_storage_type_from_config(self.arr_type)),
+                                     self.blend_dict[channel_name]) if \
             self.use_scaling else arr.astype(set_array_storage_type_from_config(self.arr_type))
 
     def set_colour(self, channel_name: str):
