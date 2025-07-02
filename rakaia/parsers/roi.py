@@ -57,6 +57,7 @@ class RegionThumbnail:
     :param spatial_radius: Optional value for user-driven spatial marker radius. By default, inferred from the dataset.
     :param enable_masks: Whether to use a matching mask, if found, for each thumbnail. Default: True
     :param use_scaling: Whether to use the percentile scaling from the blend dictionary or not (Default: True)
+    :param query_obj_min: Integer minimum for the number of objects in an ROI to retain in the output query. Default is `None`
     :return: None
     """
     # define string attribute matches for the partial
@@ -71,7 +72,8 @@ class RegionThumbnail:
                  roi_keyword: str=None,
                  single_channel_view: bool=False, spatial_radius: Union[int, None]=None,
                  enable_masks: bool=True,
-                 use_scaling: bool=True, arr_type: str="float"):
+                 use_scaling: bool=True, arr_type: str="float",
+                 query_obj_min: Union[int, None]=None):
 
         self.file_list = None
         self.mcd = partial(self.additive_thumbnail_from_mcd)
@@ -85,10 +87,12 @@ class RegionThumbnail:
         self.currently_selected_channels = currently_selected_channels
         self.num_queries = num_queries if not predefined_indices else 1e6
         self.rois_exclude = rois_exclude if rois_exclude is not None else []
-        self.predefined_indices = predefined_indices
         self.mask_dict = mask_dict
         self.dataset_options = dataset_options if dataset_options else []
-        self.query_cell_id_lists = query_cell_id_lists if predefined_indices is not None else None
+        self.query_cell_id_lists = self.filter_query_lists_by_obj_min(query_cell_id_lists,
+                                query_obj_min) if predefined_indices is not None else None
+        self.predefined_indices = self.match_indices_to_query_lists(
+                                    predefined_indices, self.query_cell_id_lists)
         self.global_filter_apply = global_apply_filter
         self.global_filter_type = global_filter_type
         self.global_filter_val = global_filter_val
@@ -138,6 +142,38 @@ class RegionThumbnail:
         except KeyError:
             self.file_list = []
 
+    @staticmethod
+    def filter_query_lists_by_obj_min(query_lists: Union[dict, list, None]=None,
+                                      query_min: Union[int, None]=None):
+        """
+        Filter the object/cell query lists by a minimum number of
+
+        :param query_lists: Dictionary of query lists, where keys are ROIs and values are lists of query objects integers
+        :param query_min: Integer minimum for the number of objects in an ROI to retain in the output query. Default is `None`
+
+        :return: Filtered dictionary of query lists with ROIs below the threshold removed
+        """
+        if None not in (query_lists, query_min):
+            return {key: value for key, value in query_lists.items() if
+                    len(value) > query_min}
+        return query_lists
+
+    @staticmethod
+    def match_indices_to_query_lists(predefined_indices: Union[list, dict, None]=None,
+                                     query_lists: Union[list, dict, None]=None):
+        """
+        Filter the predefined indices to match the filtered object query lists
+
+        :param predefined_indices: List of indices for ROIS to include, if querying from quantification results
+        :param query_lists: Dictionary of lists of mask object IDs to subset ROI masks
+
+        :return: Filtered dictionary of predefined indices that match the object lists
+        """
+        if None not in (predefined_indices, query_lists) and 'names' in predefined_indices:
+            predefined_indices['names'] = [roi for roi in predefined_indices['names'] if \
+                                           roi in query_lists.keys()]
+            return predefined_indices
+        return predefined_indices
     @staticmethod
     def set_query_keywords(roi_keyword: str=None):
         """
@@ -536,7 +572,7 @@ class RegionThumbnail:
                     self.enable_masks:
                     # requires reverse matching the sample or description to the ROI name in the app
                     # if the query cell is list exists, subset the mask
-                    if self.query_cell_id_lists is not None:
+                    if self.query_cell_id_lists is not None and len(self.query_cell_id_lists) > 0:
                         sam_names = list(self.query_cell_id_lists.keys())
                         # match the sample name in te quant sheet to the matched mask name
                         # logic here should be flexible with different mask and sample names in the quantification sheet

@@ -1635,6 +1635,16 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                         dbc.Button("Image Similarity w/ overlay", id="compute-image-similarity",
                                         className="me-1", style={"margin-top": "10px",
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
+                                        html.Br(),
+                                        html.Br(),
+                                        html.B("Query settings", style={"float": "left"}),
+                                        html.Br(),
+                                        html.Div([
+                                        html.H6("Min objects for query"),
+                                        html.Br(),
+                                        dcc.Input(type="number", value=None, id='query-min-obj',
+                                        style={"width": "25%", "margin-left": "5px"}, min=0, max=100000, step=1)
+                                        ], style = {"display": "flex", "width": "90%"}),
                                         ]),
                                         id="umap-config-modal", size='l'),
                                     dbc.Modal(children=dbc.ModalBody([html.Div([
