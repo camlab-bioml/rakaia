@@ -147,7 +147,9 @@ class ToolTips(BaseModel):
                                             "Search `Xenium image scale factors` on the 10X Genomics website "
                                             "to get the scaling factors for a specific image level.",
                       "default-scaling": "Reset the lower bound to 0, and the upper bound to the 99th percentile",
-                      "region-annotate-all": "By default, only the most recently drawn shape is annotated."}
+                      "region-annotate-all": "By default, only the most recently drawn shape is annotated.",
+                      "query-obj-min": "Define a minimum number of objects required per ROI when querying from the UMAP. "
+                                       "ROIs without the minimum object number will not be displayed in the gallery."}
 
 
 class PanelMismatchError(Exception):

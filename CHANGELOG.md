@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - proper ROI query order from quantification across multi-ROI files
 - Allow channel label to remain white if already user set with autofill colours turned on
 - Import cluster assignments from db/config if other ROIs have existing clusters
+- Bad UMAP menu proportions on Firefox #130
 
 ## [0.22.0] - 2025-01-31
 

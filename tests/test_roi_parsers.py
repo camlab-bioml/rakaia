@@ -49,6 +49,26 @@ def test_roi_query_parser(get_current_dir):
     bad_session_config = {"fake_key": [str(mcd)]}
     assert RegionThumbnail(bad_session_config, blend_dict, channels, 20, []).get_image_dict() is None
 
+    # with more ROIs than queries requested
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+                                [dataset_exclude], roi_keyword=None).get_image_dict()
+    assert len(roi_query) == 3
+
+    bad_filetype = RegionThumbnail({'uploads': 'bad_extension.fake'}, blend_dict, channels, 3,
+                                [dataset_exclude], roi_keyword=None).get_image_dict()
+    assert not bad_filetype
+
+    # with query object lists
+    indices = {"names": ['HIER_2', 'Xylene_5']}
+    objs = {'HIER_2': [1, 2, 3, 4, 5, 6, 7], 'Xylene_5': [1, 2, 3, 4, 5]}
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+                                predefined_indices=indices, query_cell_id_lists=objs).get_image_dict()
+    assert len(roi_query) == 2
+
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+            predefined_indices=indices, query_cell_id_lists=objs, query_obj_min=6).get_image_dict()
+    assert len(roi_query) == 1
+    assert 'query+++slide0+++HIER_2' in roi_query.keys()
 
 def test_query_parser_tiff(get_current_dir):
     mcd = os.path.join(get_current_dir, "for_recolour.tiff")
