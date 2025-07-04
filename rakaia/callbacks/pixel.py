@@ -1115,14 +1115,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def create_channel_label_dict(metadata):
         if metadata is not None: return populate_alias_dict_from_editable_metadata(metadata)
 
-    @dash_app.callback(
-        Output("download-edited-table", "data"),
-        Input("btn-download-panel", "n_clicks"),
-        Input("imc-panel-editable", "data"))
-    def download_edited_metadata(n_clicks, datatable_contents):
-        if n_clicks and datatable_contents is not None and ctx.triggered_id == "btn-download-panel":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "panel.csv", index=False)
-        raise PreventUpdate
 
     @dash_app.callback(Output('download-canvas-image-html', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -1142,8 +1134,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                             use_roi_name=True, roi_name=dataset_selection, delimiter=delimiter))
                 error_config = dash.no_update
             except Exception as e:
-                error_config = add_warning_to_error_config(error_config, str(e))
-                html_path = dash.no_update
+                error_config, html_path = add_warning_to_error_config(error_config, str(e)), dash.no_update
             return html_path, error_config
         raise PreventUpdate
 

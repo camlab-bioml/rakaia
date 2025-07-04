@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-07-02
+## [0.23.0] - 2025-07-03
 
 ### Added
 
@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Error warning in modal on ROI change for dropdown and dimensions
 - Ability to upload mask cluster annotations for multiple ROIs by CSV
 - Input to specify minimum number of query objects per ROI to be included in dataset gallery #129
+- Download region statistics table
 
 ### Changed
 

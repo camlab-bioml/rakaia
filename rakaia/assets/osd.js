@@ -45,6 +45,7 @@ function observeCoordChange(mutationsList, viewer) {
 }
 
 const observer = new MutationObserver(() => {
+
     const initialTileSource = checkStatus('/static/coregister.dzi');
     const viewer = renderOSDCanvas(initialTileSource);
     observer.disconnect();
