@@ -237,34 +237,22 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Uses linear scaling instead of 0 to max upper bound scaling: pixels close to the boundary of the lower bound
     are scaled relative to their intensity to the lower bound instead of the full scale factor
     """
-    # if issparse(array):
-    #     array = array.toarray(order='F')
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
-    # array = np.array(Image.fromarray(array).convert('L'))
-    # original_max = np.max(array) if np.max(array) > 255 else 255
-    lower_bound = float(lower_bound) if lower_bound is not None else None
-    upper_bound = float(upper_bound) if upper_bound is not None else None
-    if lower_bound is None:
-        lower_bound = 0
-    # array = np.where(array < lower_bound, 0, array)
-    # try linear scaling from the lower bound to upper bound instead of 0 to upper
-    # subtract the lower bound from all elements and retain those above 0
-    # allows better gradual scaling around the lower bound threshold
-    try:
-        if upper_bound >= 0:
-            array = np.where(array > upper_bound, upper_bound, array)
-    except (TypeError, ValueError):
-        pass
-    array = np.where((array - lower_bound) > 0, (array - lower_bound), 0)
+    lower_bound = float(lower_bound) if lower_bound is not None else 0.0
     if upper_bound is not None:
-        try:
-            scale_factor = 255 / (upper_bound - lower_bound)
-        except ZeroDivisionError:
-            scale_factor = 255
-    else:
-        scale_factor = 1
-    if scale_factor > 0 and scale_factor != 1:
-        array = ne.evaluate("array * scale_factor")
+        upper_bound = float(upper_bound)
+        array = np.minimum(array, upper_bound)
+
+    # shift array by subtracting lower_bound, but floor at 0
+    array = np.maximum(array - lower_bound, 0)
+
+    # scale if upper_bound is provided
+    if upper_bound is not None:
+        denom = upper_bound - lower_bound
+        scale_factor = 255.0 / (denom if denom != 0 else 255.0)
+        if scale_factor != 1.0 and scale_factor > 0:
+            array = ne.evaluate("array * scale_factor")
+
     return array
 
 

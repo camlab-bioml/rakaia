@@ -11,9 +11,9 @@ rakaia provides streamlined in-browser analysis of multiplexed spatial proteomic
 The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI), and
 currently supports the following technologies:
 
-- Spatial proteomics such as imaging mass cytometry (IMC), immunofluorescence (IF), and immunohistochemistry (IHC)
-- spatial transcriptomics such as 10X Visium Spatial Gene Expression (V1, V2, HD), Xenium, and others
-- Whole slide images (WSI) such as H & E
+- Multiplexed imaging such as imaging mass cytometry (IMC), immunofluorescence (IF), and immunohistochemistry (IHC)
+- Spatial transcriptomics (ST) such as 10X Visium (V1, V2, HD), Xenium, and others
+- Whole slide images (WSI) such as H&E
 
 Tools in the rakaia application include:
 
