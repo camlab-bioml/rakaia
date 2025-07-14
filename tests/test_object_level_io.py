@@ -19,6 +19,22 @@ def test_output_annotations_masks(annotation_hash_filtered):
                                                  'Patient1+++slide0+++pos1_1', (600, 600),
                                                  canvas_mask=canvas_mask).write_annotation_masks()
         assert os.path.exists(os.path.join(output_dir))
+        assert os.path.exists(os.path.join(tmpdirname, "annotation_masks.zip"))
+
+        if os.access(os.path.join(tmpdirname, "annotation_masks.zip"), os.W_OK):
+            os.remove(os.path.join(tmpdirname, "annotation_masks.zip"))
+
+        # repeat point without mask
+
+        annotation_only_point = {'Patient1+++slide0+++pos1_1': {key: value for key, value
+        in annotation_hash_filtered['Patient1+++slide0+++pos1_1'].items() if 'points' in key}}
+
+        output_dir = AnnotationMaskWriter(tmpdirname, annotation_only_point,
+                                          'Patient1+++slide0+++pos1_1', (600, 600),
+                                          canvas_mask=None).write_annotation_masks()
+        assert os.path.exists(os.path.join(output_dir))
+        assert os.path.exists(os.path.join(tmpdirname, "annotation_masks.zip"))
+
 
 @pytest.mark.skipif(platform.system() == 'Windows',
                     reason="Skip the test output of point annotations CSV in Windows (different base64 format)")

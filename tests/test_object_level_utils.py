@@ -19,7 +19,11 @@ from rakaia.utils.object import (
     mask_with_cluster_annotations,
     remove_annotation_entry_by_indices,
     quantification_distribution_table,
-    custom_gating_id_list, compute_image_similarity_from_overlay, find_similar_images)
+    custom_gating_id_list,
+    compute_image_similarity_from_overlay,
+    find_similar_images,
+    pad_steinbock_roi_index,
+    umap_fig_using_zoom, convert_mask_to_object_boundary)
 import pandas as pd
 import os
 import numpy as np
@@ -27,7 +31,6 @@ from PIL import Image
 from rakaia.parsers.object import (
     drop_columns_from_measurements_csv,
     set_columns_to_drop,
-    convert_mask_to_object_boundary,
     parse_quantification_sheet_from_h5ad,
     parse_and_validate_measurements_csv,
     umap_dataframe_from_quantification_dict)
@@ -63,6 +66,12 @@ def test_basic_mask_boundary_converter(get_current_dir):
     assert mask_from_reconverted[628, 491] <= 3
 
 def test_umap_from_quantification_dict(get_current_dir):
+
+    assert umap_fig_using_zoom({'xaxis.range[0]': -4.126503480470802, 'xaxis.range[1]': -0.7474261136585749,
+                                'yaxis.range[0]': 1.1055589278979592, 'yaxis.range[1]': 7.525034155766811})
+    assert not umap_fig_using_zoom(None)
+    assert not umap_fig_using_zoom({})
+
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
     validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
     returned_umap = umap_dataframe_from_quantification_dict(validated_measurements,
@@ -259,10 +268,6 @@ def test_basic_clickdata_cell_annotation(get_current_dir):
 
     assert 'new' in annotations['object_annotation_1'].tolist()
 
-
-
-
-
 def test_generate_grid_overlay():
     """
     test that the greyscale grid overlay is generated for the correct dimensions
@@ -274,6 +279,14 @@ def test_generate_grid_overlay():
     normal_grid = greyscale_grid_array((75, 75))
     assert np.min(normal_grid) == 0
     assert np.max(normal_grid) == 0
+
+def test_padding_steinbock_roi_index():
+    assert pad_steinbock_roi_index(1) == "001"
+    assert pad_steinbock_roi_index("1") == "001"
+    assert pad_steinbock_roi_index(12) == "012"
+    assert pad_steinbock_roi_index(123) == "123"
+    assert pad_steinbock_roi_index(1234) == "1234"
+    assert pad_steinbock_roi_index() == "000"
 
 def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     """
@@ -312,7 +325,7 @@ def test_parse_quantification_sheet_for_roi_identifier(get_current_dir):
     measurements = parse_quantification_sheet_from_h5ad((os.path.join(get_current_dir, "from_steinbock.h5ad")))
     name, column = ROIQuantificationMatch(data_selection, measurements, dataset_options,
                                                           delimiter="---", mask_name=mask_option).get_matches()
-    assert name == "chr10-h54h54-Gd158_2_18"
+    assert name == mask_option
     assert column == "description"
 
     # from tiff, matching the experiment name
@@ -368,7 +381,9 @@ def test_apply_cluster_annotations_to_mask(get_current_dir):
     # assert where no cells are
     assert list(with_annotations[623, 420]) == list(with_annotations[787, 709]) == [0, 0, 0]
     # assert where there are cells that are not annotated (remain as white)
-    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]
+    # with update, non annotated cells no longer show up
+    assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [0, 0, 0]
+    # assert list(with_annotations[864, 429]) == list(with_annotations[784, 799]) == [255, 255, 255]
 
     # run without keeping the cells that are not annotated
     with_annotations = mask_with_cluster_annotations(mask, cluster_assignments, cluster_dict,
@@ -388,8 +403,7 @@ def test_apply_cluster_annotations_with_gating(get_current_dir):
     fake_frame = pd.DataFrame({"missing_key": [1, 2, 3, 4, 5],
                                "cluster": ["immune"] * 5})
     assert mask_with_cluster_annotations(mask, cluster_assignments, fake_frame,
-                                         use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id") is None
-
+        use_gating_subset=True, gating_subset_list=gating_list, obj_id_col="object_id") is None
 
 def test_remove_latest_annotation():
     annotations_dict_original = {"roi_1": {"annot_1": "This is an annotation", "annot_2": "This is also an annotation"}}
@@ -426,10 +440,11 @@ def test_compute_image_similarity(get_current_dir):
     measurements['cluster'] = [str(i) for i in random.choices(range(8), k=len(measurements))]
     cor_mat = compute_image_similarity_from_overlay(measurements, 'cluster')
     # matrix is symmetric
-    assert (np.array(cor_mat) == np.array(cor_mat).T).all()
+    assert np.array_equal(np.array(cor_mat), np.array(cor_mat).T)
 
     assert find_similar_images(cor_mat, "test_1", 3, "sample") == {'indices': [1]}
     assert find_similar_images(cor_mat, "test_2", 3, "sample") == {'indices': [0]}
     assert find_similar_images(cor_mat, "test_1", 3, "description") == {'names': ['test_2']}
     assert find_similar_images(cor_mat, "test_2", 3, "description") == {'names': ['test_1']}
     assert find_similar_images(None, "test_2", 3, "description") is None
+    assert find_similar_images(cor_mat, "not_there", 3, "description") is None

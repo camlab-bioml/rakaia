@@ -93,7 +93,10 @@ class AlertMessage(BaseModel):
                       "no_umap_gallery": "UMAP gallery not rendered. The UMAP gallery requires outputs "
                                          "from the steinbock snakemake pipeline v0.0.4 or greater. Ensure that: "
                                          "\n - pipeline outputs have been imported from a directory using the local filepath"
-                                         "\n - UMAP pngs and CSV coordinates exist in the export -> umap sub-directory" }
+                                         "\n - UMAP pngs and CSV coordinates exist in the export -> umap sub-directory",
+                      "libvips_missing": "Error: libvips was not found on your system, and is required to view WSIs. "
+                                         "Please ensure that libvips is installed for your specific OS from: "
+                                         "https://www.libvips.org/install.html"}
 
 
 class ToolTips(BaseModel):
@@ -139,7 +142,15 @@ class ToolTips(BaseModel):
                                       "for more than 1000 markers. Additionally, if quantifying using a spatial dataset,"
                                      " all markers to quantify need to be loaded into the current canvas.",
                       "umap_min_dist": "From 0 to 1. Smaller distances pack the UMAP points more tightly together, "
-                                       "while larger values spread out clusters."}
+                                       "while larger values spread out clusters.",
+                      "wsi-scaling-factor": "Set the image scale factor (μm/pixel) for WSIs relative to the canvas. For 10X Xenium, "
+                                            "Search `Xenium image scale factors` on the 10X Genomics website "
+                                            "to get the scaling factors for a specific image level.",
+                      "default-scaling": "Reset the lower bound to 0, and the upper bound to the 99th percentile",
+                      "region-annotate-all": "By default, only the most recently drawn shape is annotated.",
+                      "query-obj-min": "Define a minimum number of objects required per ROI when querying from the UMAP. "
+                                       "ROIs without the minimum object number will not be displayed in the gallery.",
+                      "download-region-statistics": "Download the region statistic table (CSV)"}
 
 
 class PanelMismatchError(Exception):
@@ -169,7 +180,7 @@ def file_import_message(imported_files: list):
         message = message + f"{upload}\n"
         if suffix not in unique_suffixes:
             unique_suffixes.append(suffix)
-    message = message + "\n Select a region (ROI) from the data collection dropdown to begin analysis."
+    message = message + "\n Make a selection under `View/Select ROIs` to begin analysis."
     return message, unique_suffixes
 
 
@@ -177,6 +188,7 @@ def add_warning_to_error_config(error_config: Union[dict, None], alert: Union[st
     """
     Parse an existing error/message/warning dictionary and add the current session warning
     """
-    error_config = {"error": None} if (error_config is None or "error" not in error_config) else error_config
+    error_config = {"error": None} if (error_config is None or (isinstance(error_config, dict) and
+                                        "error" not in error_config)) else error_config
     error_config["error"] = alert if alert else ""
     return error_config

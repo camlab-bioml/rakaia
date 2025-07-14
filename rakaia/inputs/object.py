@@ -1,7 +1,6 @@
 """Module containing tools for rendering object-related visual components such as
 summarized object expression plots, UMAP plots, etc.
 """
-
 from typing import Union
 from functools import partial
 import dash
@@ -109,7 +108,7 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
     summary of overlay subtypes x channels
     Normalization done by each channel, with the option to transpose for visualization purposes
     """
-    quantification = pd.DataFrame(quantification)
+    quantification = pd.DataFrame.from_records(quantification)
     if not umap_overlay or umap_overlay not in quantification.columns: return None
     quantification[umap_overlay] = quantification[umap_overlay].apply(str)
     grouped = pd.DataFrame(quantification.groupby([umap_overlay]).mean())
@@ -123,8 +122,8 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
         data=grouped,
         column_labels=x_lab,
         row_labels=y_lab,
-        height=500,
-        width=750,
+        height=600,
+        width=800,
         color_map=[
                 [0.0, "rgb(68, 1, 84)"],
                 [0.5, "rgb(33, 145, 140)"],
@@ -138,7 +137,8 @@ def grouped_heatmap(quantification: Union[dict, pd.DataFrame], umap_overlay: str
     # need to add check to ensure that the last data slot is always of a heatmap type?
     fig['data'][-1]['z'] = np.array(reorder)
     fig['layout']['title']['text'] = f"Channel Expression by {umap_overlay} ({len(quantification)} objects)"
-    fig.update_layout(margin={"pad": 0, "l": 2})
+    fig.update_layout(coloraxis_colorbar=dict(yanchor="top", y=1, len=0.8, xpad=0, x=1.00),
+    title=dict(pad=dict(t=0, b=0)), margin={"pad": 0, "l": 5, "r": 5, "b": 0}, autosize=True)
     fig.update_traces(hovertemplate="x: %{x} <br>y: %{y} <br>Expression: %{z} <br> <extra></extra>")
     return fig
 
@@ -340,7 +340,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
     based on an interactive subset from the UMAP graph
     """
     if quantification_dict is not None and len(quantification_dict) > 0:
-        frame = pd.DataFrame(quantification_dict)
+        frame = pd.DataFrame.from_records(quantification_dict)
         # use a umap overlay to group the heatmap only if it's categorical
         overlay_use = {umap_overlay: frame[umap_overlay]} if umap_overlay and \
                 (1 < len(frame[umap_overlay].value_counts()) <= categorical_size_limit) else None
@@ -355,7 +355,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
         frame = column_min_max_measurements(frame, normalize)
         frame, overlay_use = subset_measurements_frame_from_umap_coordinates(frame, pd.DataFrame(embeddings,
                             columns=['UMAP1', 'UMAP2']), umap_layout, umap_overlay=overlay_use)
-        # need to check the value counts again after subsetting based on the restyler
+        # need to check the value counts again after sub-setting based on the restyle
         frame, overlay_use = filter_overlay_from_heatmap_data(frame, overlay_use, categorical_size_limit)
         # IMP: do not reset the subset index here as the indices are needed for the query subset!!!!
         # subset_frame = subset_frame.reset_index(drop=True)
@@ -363,8 +363,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
             fig = channel_expression_summary(frame.reset_index(drop=True), cols_include=None,
                                              subset_val=subset_val, umap_overlay=overlay_use, normalize=normalize,
                                              transpose=transpose)
-        except ValueError:
-            fig = go.Figure()
+        except ValueError: fig = go.Figure()
         fig['layout']['uirevision'] = True
         return fig, frame, out_cols
     raise PreventUpdate

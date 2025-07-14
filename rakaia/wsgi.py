@@ -19,7 +19,7 @@ def cli_parser():
     :return: argparse Argument parser with provided CLI options
     """
     parser = argparse.ArgumentParser(add_help=False,
-                                     description="rakaia: Scalable multiplexed dataset analysis in the browser.",
+            description="rakaia: Scalable spatial biology analysis in the browser.",
                                      usage='''
             rakaia can be initialized from the command line using: \n
             rakaia \n
@@ -43,9 +43,9 @@ def cli_parser():
                         help="Set the port for rakaia on local runs. Default: 5000. Other options to consider are "
                              "8050, 8080",
                         dest="port", default=5000, type=int)
-    parser.add_argument('-pr', "--production-mode", action="store_false",
-                        help="Enable production mode. This will generate a production-level WSGI server,"
-                             "and will switch the application out of debug mode. Default: not enabled",
+    parser.add_argument('-dv', "--dev-mode", action="store_true",
+                        help="Run the application in dev mode. This will give in-app feedback on errors, "
+                             "but will be slower. Default: not enabled",
                         dest="is_dev_mode")
     parser.add_argument('-dt', "--disable-threading", action="store_false",
                         help="Disable threading. By default, threading is enabled.",

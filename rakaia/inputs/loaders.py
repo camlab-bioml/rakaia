@@ -29,14 +29,32 @@ def valid_key_trigger(trigger_id: str, key_listener: dict):
     and right arrows are permitted (for ROI switching), and the up arrow for mask toggling
     """
     if trigger_id == "keyboard-listener":
-        return 'keyCode' in key_listener and key_listener['keyCode'] in [37, 38, 39]
+        return 'keyCode' in key_listener and key_listener['keyCode'] in [37, 38, 39, 40]
     return True
 
 def mask_toggle_trigger(triggered_id, key_listener, key_events):
+    """
+    Detect if the up arrow key was used to trigger a toggle of the current mask
+    """
     try:
         return triggered_id == "keyboard-listener" and key_listener['keyCode'] == 38 and key_events > 0
     except KeyError:
         return dash.no_update
+
+def toggle_canvas_to_wsi_tab(triggered_id, key_listener):
+    """
+    Detect if the down arrow key was used to trigger a toggle of the blend canvas to WSI osd viewer
+    """
+    try:
+        return triggered_id == "keyboard-listener" and key_listener['keyCode'] == 40
+    except KeyError:
+        return dash.no_update
+
+def set_viewer_tab(cur_tab: str):
+    """
+    Switch between the canvas blend tab and the WSI viewer tab
+    """
+    return "wsi-tab" if cur_tab == "canvas-tab" else "canvas-tab"
 
 def previous_roi_trigger(triggered_id, button_click, key_listener, key_events):
     """

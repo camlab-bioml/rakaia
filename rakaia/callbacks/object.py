@@ -36,7 +36,8 @@ from rakaia.utils.object import (
     send_alert_on_incompatible_mask,
     ROIQuantificationMatch,
     validate_mask_shape_matches_image,
-    quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay)
+    quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay,
+    umap_fig_using_zoom)
 from rakaia.inputs.object import (
     channel_expression_from_interactive_subsetting,
     object_umap_plot,
@@ -98,20 +99,28 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('session_config_quantification', 'data'),
                        State('session_alert_config', 'data'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
-    def populate_quantification_table_from_upload(session_dict, error_config):
-        if session_dict is not None:
+    def populate_quantification_table_from_upload(session_dict, error_config, sesh_id):
+        if session_dict is not None and sesh_id:
             quant_dict, cols, alert = parse_and_validate_measurements_csv(session_dict, error_config=error_config)
-            return SessionServerside(quant_dict, key="quantification_dict", use_unique_key=OVERWRITE), cols, alert
+            return SessionServerside(quant_dict, key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE), cols, alert
         raise PreventUpdate
 
-    @du.callback(Output('umap-projection', 'data'),
+    @du.callback(Output('umap_upload_paths', 'data'),
                  id='upload-umap-coordinates')
     def get_umap_upload_from_drag_and_drop(status: du.UploadStatus):
         files = DashUploaderFileReader(status).return_filenames()
-        if files:
+        return files if files else dash.no_update
+
+    @dash_app.callback(Output('umap-projection', 'data'),
+                       Input('umap_upload_paths', 'data'),
+                       State('session_id_internal', 'data'),
+                        prevent_initial_call=True)
+    def import_umap_coordinates_from_upload(files, sesh_id):
+        if files and sesh_id:
             return SessionServerside(pd.read_csv(files[0], names=['UMAP1', 'UMAP2'], header=0).to_dict(orient="records"),
-                key="umap_coordinates", use_unique_key=OVERWRITE)
+                             key=f"umap_coordinates_{sesh_id}", use_unique_key=False)
         raise PreventUpdate
 
     @dash_app.callback(Output('quantification-heatmap-full', 'figure'),
@@ -133,16 +142,18 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('normalize-heatmap', 'value'),
                        Input('subset-heatmap', 'value'),
                        Input('transpose-heatmap', 'value'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
     def get_cell_channel_expression_heatmap(quantification_dict, umap_layout, embeddings, annot_cols, restyle_data,
                                             umap_col_selection, prev_categories, channels_to_display,
-                                            heatmap_channel_options, normalize_heatmap, subset_heatmap, transpose):
+                                            heatmap_channel_options, normalize_heatmap, subset_heatmap, transpose, sesh_id):
         # figure out how to decouple the quantification update from the heatmap rendering:
         #  each time an annotation is added to the quant dictionary, the heatmap is re-rendered
-        if quantification_dict is not None:
+        if quantification_dict is not None and sesh_id:
+            quantification_dict = pd.DataFrame.from_records(quantification_dict)
             umap_layout = {'xaxis.autorange': True, 'yaxis.autorange': True} if umap_layout is None else umap_layout
             zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
-            if ctx.triggered_id not in ["umap-projection-options"]:
+            if ctx.triggered_id in ['umap-plot']:
                 try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
                                     umap_col_selection, prev_categories).get_callback_structures()
                 except (TypeError, KeyError): subtypes, keep = None, None
@@ -157,15 +168,14 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 indices_query, freq_counts_cat = parse_roi_query_indices_from_quantification_subset(
                     quantification_dict, frame, umap_col_selection)
                 # also return the current count of the umap category selected to update the distribution table
-                if umap_layout is not None:
-                    merged = pd.DataFrame(quantification_dict).iloc[list(frame.index.values)]
-                    cell_id_dict = dict_of_roi_cell_ids(merged)
+                if umap_fig_using_zoom(umap_layout) or subtypes is not None:
+                    cell_id_dict = dict_of_roi_cell_ids(quantification_dict.iloc[list(frame.index.values)])
             # if the heatmap channel options are already set, do not update
             cols_selected = dash.no_update
             if ctx.triggered_id == "quantification-dict" and not heatmap_channel_options:
                 cols_selected = [i for i in list(frame.columns) if i in out_cols]
             return fig, keep, indices_query, freq_counts_cat, SessionServerside(cell_id_dict,
-                    key="cell_id_list", use_unique_key=OVERWRITE), out_cols, cols_selected
+                    key=f"cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), out_cols, cols_selected
         raise PreventUpdate
 
     @dash_app.callback(Output('umap-projection', 'data', allow_duplicate=True),
@@ -177,18 +187,19 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('execute-umap-button', 'n_clicks'),
                        State('quant-heatmap-channel-list', 'value'),
                        State('umap-min-dist', 'value'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
-    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks, chan_include, min_dist):
+    def generate_umap_from_measurements_csv(quantification_dict, current_umap, n_clicks, chan_include, min_dist, sesh_id):
         """
         Generate a umap data frame projection of the measurements csv quantification. Returns a data frame
         of the embeddings and a list of the channels for interactive projection
         """
-        if ctx.triggered_id == "quantification-dict":
-            return dash.no_update, list(pd.DataFrame(quantification_dict).columns), \
-                list(pd.DataFrame(quantification_dict).columns), list(pd.DataFrame(quantification_dict).columns)
+        if ctx.triggered_id == "quantification-dict" and quantification_dict is not None:
+            quantification_dict = pd.DataFrame.from_records(quantification_dict)
+            return dash.no_update, list(quantification_dict.columns), list(quantification_dict.columns), list(quantification_dict.columns)
         try:
             return (umap_dataframe_from_quantification_dict(quantification_dict=quantification_dict, current_umap=
-            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include, min_dist=min_dist),
+            current_umap, unique_key_serverside=OVERWRITE, cols_include=chan_include, min_dist=min_dist, session_id=sesh_id),
                     dash.no_update, dash.no_update, dash.no_update)
         except ValueError: raise PreventUpdate
 
@@ -202,11 +213,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('read-filepath', 'value'),
                        prevent_initial_call=True)
     def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant, local_filepath):
-        blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame(quantification_dict)) or
+        try:
+            blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame.from_records(quantification_dict)) or
                                              ctx.triggered_id == 'quantify-cur-roi-execute') else dash.no_update
-        if ctx.triggered_id != 'quantify-cur-roi-execute':
-            if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
-            try:
+            if ctx.triggered_id != 'quantify-cur-roi-execute':
+                if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
+                quantification_dict = pd.DataFrame.from_records(quantification_dict)
                 # do not use patch if updating the coordinates
                 use_patch = False if (ctx.triggered_id == "umap-projection") else True
                 if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay, use_patch=use_patch):
@@ -215,7 +227,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
                     display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
-            except BadRequest: return dash.no_update, blank_umap
+        except (BadRequest, TypeError): return dash.no_update, {'display': 'None'}
         return dash.no_update, blank_umap
 
     @dash_app.callback(Output('quantification-dict', 'data', allow_duplicate=True),
@@ -225,17 +237,18 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('umap-plot', 'relayoutData'),
                        State('quant-annotation-col-in-tab', 'value'),
                        State('annotation-cell-types-quantification', 'value'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
     def add_annotation_column_using_umap_subsetting(add_annotation, measurements, embeddings,
-                                                    umap_layout, annot_col, annot_value):
+                                                    umap_layout, annot_col, annot_value, sesh_id):
         """
         Add an annotation column to the quantification frame using interactive UMAP subsetting. The annotation will
         be applied to the current cells in the UMAP frame
         """
-        if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation:
+        if None not in (measurements, annot_col, annot_value, umap_layout) and add_annotation and sesh_id:
             return SessionServerside(populate_quantification_frame_column_from_umap_subsetting(
-                pd.DataFrame(measurements), pd.DataFrame(embeddings), umap_layout, annot_col, annot_value).to_dict(
-                orient='records'), key="quantification_dict", use_unique_key=OVERWRITE)
+                pd.DataFrame.from_records(measurements), pd.DataFrame.from_records(embeddings), umap_layout, annot_col, annot_value).to_dict(
+                orient='records'), key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @du.callback(Output('mask-uploads', 'data', allow_duplicate=True),
@@ -295,15 +308,16 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('input-mask-name', 'value'),
                        Input('set-mask-name', 'n_clicks'),
                        State('mask-dict', 'data'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
-    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict):
+    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, sesh_id):
         # cases where the callback should occur: if the mask dict is longer than 1 and triggered by the dictionary
         # or, if there is a single mask and the trigger is setting the mask name
         multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
         single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
-        if multi_upload or single_upload:
+        if multi_upload or single_upload and sesh_id:
             mask_dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
-                                                                  cur_mask_dict, unique_key_serverside=OVERWRITE)
+            cur_mask_dict, unique_key_serverside=OVERWRITE, session_id=sesh_id)
             # if any of the names are longer than 40 characters, increase the height to make them visible
             height_update = adjust_option_height_from_list_length(options, dropdown_type="mask")
             return mask_dict, options, height_update
@@ -315,10 +329,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('data-collection', 'value'),
                        State('dataset-delimiter', 'value'),
                        State('session_config', 'data'),
-                       State('mask-dict', 'data'))
-    def create_visium_mask(create_mask, data_selection, delimiter, session_dict, mask_dict):
-        if create_mask and data_selection and delimiter:
-            return visium_mask(mask_dict, data_selection, session_dict, delimiter, OVERWRITE)
+                       State('mask-dict', 'data'),
+                       State('session_id_internal', 'data'))
+    def create_visium_mask(create_mask, data_selection, delimiter, session_dict, mask_dict, sesh_id):
+        if create_mask and data_selection and delimiter and sesh_id:
+            return visium_mask(mask_dict, data_selection, session_dict, delimiter, OVERWRITE, sesh_id)
         raise PreventUpdate
 
 
@@ -339,17 +354,18 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("annotations-dict", "data", allow_duplicate=True),
         Output('annotation-table', 'selected_rows', allow_duplicate=True),
         Input('transfer-annotation-execute', 'n_clicks'),
-        State('transfer-collection-options', 'value'))
+        State('transfer-collection-options', 'value'),
+        State('session_id_internal', 'data'))
     def update_region_annotation_in_quantification_frame(annotations, quantification_frame,
                         data_selection, data_dropdown_options, mask_config, mask_toggle, mask_selection, delimiter,
                         delete_from_table, annot_table_selection, reimport_annots, clear_all_annots,
-                        execute_transfer, target_roi):
+                        execute_transfer, target_roi, sesh_id):
         """
         Add or remove region annotation to the segmented objects of a quantification data frame
         Undoing an annotation both removes it from the annotation hash, and the quantification frame if it exists
         Any selected rows in the annotation preview table are reset to avoid erroneous indices
         """
-        if data_selection:
+        if data_selection and sesh_id:
             if ctx.triggered_id == "transfer-annotation-execute" and target_roi and annot_table_selection:
                 annotations = transfer_annotations_by_index(annotations, data_selection, target_roi, annot_table_selection)
                 data_selection = target_roi
@@ -358,11 +374,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             sample_name, id_column = ROIQuantificationMatch(data_selection, quantification_frame,
                         data_dropdown_options, delimiter, mask_selection).get_matches()
             if ctx.triggered_id == "quant-annot-reimport" and reimport_annots:
-                annotations = reset_annotation_import(annotations, data_selection, app_config, False)
+                annotations = reset_annotation_import(annotations, data_selection, app_config, False, sesh_id)
             quant_frame, annotations = AnnotationQuantificationMerge(annotations, quantification_frame, data_selection,
             mask_config, mask_toggle, mask_selection, sample_name=sample_name, id_column=id_column,
-            config=app_config, remove=remove, indices_remove=indices_remove).get_callback_structures()
-            return SessionServerside(quant_frame, key="quantification_dict", use_unique_key=OVERWRITE), annotations, []
+            config=app_config, remove=remove, indices_remove=indices_remove, session_id=sesh_id).get_callback_structures()
+            return SessionServerside(quant_frame, key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE), annotations, []
         raise PreventUpdate
 
     @dash_app.callback(
@@ -552,11 +568,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Import a CSV of point annotations to re-render on the canvas
         """
+        # disable unique key value here so that it can stay unique across concurrent sessions
         files = DashUploaderFileReader(status).return_filenames()
         if files:
             frame = pd.read_csv(files[0])
             if validate_imported_csv_annotations(frame):
-                return SessionServerside(frame.to_dict(orient="records"), key="point_annotations", use_unique_key=OVERWRITE)
+                return SessionServerside(frame.to_dict(orient="records"), key="point_annotations", use_unique_key=False)
             raise PreventUpdate
         raise PreventUpdate
 
@@ -571,30 +588,37 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  Output('cluster-col', 'options'),
                  Input('uploads_cluster', 'data'),
                  State('imported-cluster-frame', 'data'),
-                 State('data-collection', 'value'))
-    def get_cluster_assignment_upload_from_drag_and_drop(uploads, cur_clusters, data_selection):
+                 State('data-collection', 'value'),
+                 State('session_id_internal', 'data'),
+                 State('data-collection', 'options'),
+                 State('dataset-delimiter', 'value'))
+    def get_cluster_assignment_upload_from_drag_and_drop(uploads, cur_clusters, data_selection, sesh_id, options, delim):
         """
         Parse a frame of cluster mask object projections in CSV format
         """
-        if uploads and data_selection:
+        if uploads and sesh_id and options:
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
-            pd.read_csv(uploads[0])), key="cluster_assignments", use_unique_key=OVERWRITE), \
+            pd.read_csv(uploads[0]), options, delim), key=f"cluster_assignments_{sesh_id}", use_unique_key=OVERWRITE), \
                 set_cluster_col_dropdown(pd.read_csv(uploads[0]))
         raise PreventUpdate
 
     @dash_app.callback(
                 Output('cluster-colour-assignments-dict', 'data'),
                 Input('imported-cluster-frame', 'data'),
-                State('data-collection', 'value'),
-                State('cluster-colour-assignments-dict', 'data'))
-    def assign_cluster_colors(cluster_frame, data_selection, cur_cluster_dict):
+                Input('data-collection', 'value'),
+                State('cluster-colour-assignments-dict', 'data'),
+                State('cluster-col', 'value'),
+                Output('cluster-col', 'options', allow_duplicate=True),
+                Output('cluster-col', 'value', allow_duplicate=True))
+    def assign_cluster_colors_and_options(cluster_frame, data_selection, cur_cluster_dict, cur_col):
         """
         Assign colors to cluster values from a selected cluster category. Will auto-assign all the categories
         provided in the frame
         """
         if cluster_frame and data_selection and data_selection in cluster_frame:
-            return assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
-        raise PreventUpdate
+            updated_cols = assign_colours_to_cluster_annotations(cluster_frame, cur_cluster_dict, data_selection)
+            return updated_cols, list(updated_cols[data_selection].keys()), set_default_cluster_col(updated_cols, data_selection, cur_col)
+        return dash.no_update, [], None
 
     @dash_app.callback(
         Output('cluster-label-list', 'options'),
@@ -608,7 +632,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Generate the cluster color label selection on a category selection
         """
-        if clust_select and data_selection and clust_select in cur_cluster_dict[data_selection]:
+        if clust_select and data_selection and cur_cluster_dict and clust_select in cur_cluster_dict[data_selection]:
             options = list(cur_cluster_dict[data_selection][clust_select].keys())
             return options, options, options, cluster_label_children(data_selection, cur_cluster_dict, clust_select)
         return [], [], [], []
@@ -619,22 +643,10 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('cluster-label-selection', 'options'))
     def generate_cluster_colour_assignment(toggle_clust_selection, clust_options):
         """
-            Toggle the options selectable for a specific cluster category
-            """
+        Toggle the options selectable for a specific cluster category
+        """
         return clust_options if toggle_clust_selection else []
 
-    @dash_app.callback(Input('data-collection', 'value'),
-                       State('cluster-colour-assignments-dict', 'data'),
-                       State('imported-cluster-frame', 'data'),
-                       Output('cluster-col', 'options', allow_duplicate=True),
-                       Output('cluster-col', 'value', allow_duplicate=True))
-    def update_cluster_assignment_options_on_data_selection_change(data_selection, cluster_frame, master_clust):
-        """
-        Update the cluster categories selectable on an ROI change
-        """
-        if cluster_frame and data_selection and data_selection in cluster_frame and master_clust and data_selection in master_clust:
-            return list(cluster_frame[data_selection].keys()), set_default_cluster_col(cluster_frame, data_selection)
-        return [], None
 
     @dash_app.callback(Output('cluster-colour-assignments-dict', 'data', allow_duplicate=True),
                        Input('cluster-color-picker', 'value'),
@@ -671,10 +683,11 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Update the dropdown options for the current gating selection. The multi-selection will define
         the current set of parameters on which the mask is gated
         """
-        if gating_selection:
-            gates_to_keep = [gate for gate in gating_selection if gate in pd.DataFrame(quant_dict).columns]
-            return gates_to_keep, populate_gating_dict_with_default_values(current_gate_dict, gating_selection), \
-                gates_to_keep[-1] if len(gates_to_keep) > 0 else None
+        if gating_selection and quant_dict is not None:
+            # TODO: check if we need to check the gating parameters here since they match to quant
+            # gates_to_keep = [gate for gate in gating_selection if gate in pd.DataFrame(quant_dict.columns]
+            return gating_selection, populate_gating_dict_with_default_values(current_gate_dict, gating_selection), \
+                gating_selection[-1] if len(gating_selection) > 0 else None
         return dash.no_update, dash.no_update, None
 
     @dash_app.callback(Output('gating-slider', 'value'),
@@ -695,14 +708,15 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('gating-dict', 'data', allow_duplicate=True),
                        Input('gating-slider', 'value'),
                        State('gating-dict', 'data'),
-                       State('gating-cur-mod', 'value'))
-    def update_gating_dict(gating_val, gating_dict, gate_selected):
+                       State('gating-cur-mod', 'value'),
+                       State('session_id_internal', 'data'))
+    def update_gating_dict(gating_val, gating_dict, gate_selected, sesh_id):
         """
         update the gating dictionary when a parameter has its values changed
         """
-        if None not in (gating_val, gate_selected):
+        if None not in (gating_val, gate_selected) and sesh_id:
             gating_dict = update_gating_dict_with_slider_values(gating_dict, gate_selected, gating_val)
-            return SessionServerside(gating_dict, key="gating_dict", use_unique_key=OVERWRITE)
+            return SessionServerside(gating_dict, key=f"gating_dict_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(Output('gating-cell-list', 'data'),
@@ -715,21 +729,22 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('gating-blend-type', 'value'),
                        Input('custom-id-gating', 'value'),
                        Input('apply-gating-custom', 'value'),
-                       State('mask-dict', 'data'))
+                       State('mask-dict', 'data'),
+                       State('session_id_internal', 'data'))
     def update_gating_object_list(gating_dict, roi_selection, quantification_dict, mask_selection,
-                cur_gate_selection, gating_type, id_str, apply_custom_gating, mask_dict):
+                cur_gate_selection, gating_type, id_str, apply_custom_gating, mask_dict, sesh_id):
         """
         Generate a threshold-based or custom id gating list for the current ROI
         """
         # do not update if using custom list and the parameters are updated
-        if None not in (mask_dict, mask_selection) and mask_selection in mask_dict:
+        if None not in (mask_dict, mask_selection) and sesh_id and mask_selection in mask_dict:
             if ctx.triggered_id in ["gating-dict"] and apply_custom_gating: raise PreventUpdate
             elif ctx.triggered_id in ['custom-id-gating', 'apply-gating-custom'] and id_str and apply_custom_gating:
-                return SessionServerside(custom_gating_id_list(id_str), key="gating_cell_id_list", use_unique_key=OVERWRITE), dash.no_update
-            elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection:
-                id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
+                return SessionServerside(custom_gating_id_list(id_str), key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), dash.no_update
+            elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection and sesh_id:
+                id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame.from_records(quantification_dict),
                                 mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
-                return SessionServerside(id_list, key="gating_cell_id_list", use_unique_key=OVERWRITE), reset_custom_gate_slider(ctx.triggered_id)
+                return SessionServerside(id_list, key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), reset_custom_gate_slider(ctx.triggered_id)
             return [] if gating_dict is not None else dash.no_update, dash.no_update if cur_gate_selection else False
         raise PreventUpdate
 
@@ -763,18 +778,19 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('quant-annotation-col-gating', 'value'),
                        State('gating-annotation-assignment', 'value'),
                        Input('gating-annotation-all', 'n_clicks'),
-                       Input('gating-annotation-all-reset', 'n_clicks'))
+                       Input('gating-annotation-all-reset', 'n_clicks'),
+                       State('session_id_internal', 'data'))
     def apply_gating_all_rois(gating_dict, roi_selection, quantification_dict, mask_selection,
-                    cur_gate_selection, gating_type, gate_col, gate_val, gate_all_rois_trigger, reset_gate_all):
+                    cur_gate_selection, gating_type, gate_col, gate_val, gate_all_rois_trigger, reset_gate_all, sesh_id):
         """
         Gate all the quantified ROIs in the session based on the gating parameters and thresholds
         set for the current ROI.
         """
-        if None not in (roi_selection, quantification_dict, mask_selection, gate_val) and cur_gate_selection:
+        if None not in (roi_selection, quantification_dict, mask_selection, gate_val) and cur_gate_selection and sesh_id:
             indices = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
                 mask_selection, intersection=(gating_type == 'intersection')).get_query_indices_all()
             return SessionServerside(apply_gating_to_all_rois(quantification_dict, indices, gate_col, gate_val,
-            reset_to_default=(ctx.triggered_id == "gating-annotation-all-reset")), key="quantification_dict", use_unique_key=OVERWRITE)
+            reset_to_default=(ctx.triggered_id == "gating-annotation-all-reset")), key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
 
@@ -787,11 +803,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('umap-projection-options', 'value'),
                        State('imported-cluster-frame', 'data'),
                        State('mask-options', 'value'),
-                       State('data-collection', 'options'))
-    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask, d_opt):
-        if transfer and roi_selection and quant_dict and delimiter and overlay:
+                       State('data-collection', 'options'),
+                       State('session_id_internal', 'data'))
+    def transfer_quant_to_clust(transfer, roi_selection, quant_dict, delimiter, overlay, cur_frame, cur_mask, d_opt, sesh_id):
+        if transfer and roi_selection and quant_dict and delimiter and overlay and sesh_id:
             clust = QuantificationClusterMerge(quant_dict, roi_selection, overlay, cur_frame, delimiter, cur_mask, d_opt).get_cluster_frame()
-            return SessionServerside(clust, key="cluster_assignments", use_unique_key=OVERWRITE), set_cluster_col_dropdown(clust[roi_selection])
+            return SessionServerside(clust, key=f"cluster_assignments_{sesh_id}", use_unique_key=OVERWRITE), set_cluster_col_dropdown(clust[roi_selection])
         raise PreventUpdate
 
     @dash_app.callback(
@@ -822,11 +839,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('compute-image-similarity', 'n_clicks'),
                        State('quantification-dict', 'data'),
                        State('umap-projection-options', 'value'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
-    def compute_image_similarity_table(compute_similar, quant, overlay):
-        if compute_similar and quant and overlay:
+    def compute_image_similarity_table(compute_similar, quant, overlay, sesh_id):
+        if compute_similar and quant and overlay and sesh_id:
             similarity = compute_image_similarity_from_overlay(quant, overlay)
-            return SessionServerside(similarity, key="image-prioritization-cor", use_unique_key=OVERWRITE)
+            return SessionServerside(similarity, key=f"image-prioritization-cor_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -842,11 +860,16 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('plugin-mode', 'value'),
         State('quantification-dict', 'data'),
         State('plugin-in-col', 'value'),
-        State('plugin-out-col', 'value'))
-    def run_plugin_quantification(run_plugin, mode, quant_dict, in_col, out_col):
-        if run_plugin and quant_dict and out_col and mode:
-            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode),
-                              key="quantification_dict", use_unique_key=OVERWRITE)
+        State('plugin-out-col', 'value'),
+        State('session_id_internal', 'data'),
+        State('quant-heatmap-channel-list', 'value'))
+    def run_plugin_quantification(run_plugin, mode, quant_dict, in_col, out_col, sesh_id, chan_select):
+        """
+        Execute a plugin model related to quantification/object expression results
+        """
+        if run_plugin and quant_dict and out_col and mode and sesh_id:
+            return SessionServerside(run_quantification_model(quant_dict, in_col, out_col, mode, chan_select),
+                              key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate
 
     @dash_app.callback(
@@ -888,11 +911,12 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('umap-projection', 'data', allow_duplicate=True),
         Input({'type': 'umap', "index": ALL}, "n_clicks"),
         State('read-filepath', 'value'),
+        State('session_id_internal', 'data'),
         prevent_initial_call=True)
-    def load_umap_coordinates_from_gallery(value, local_filepath):
+    def load_umap_coordinates_from_gallery(value, local_filepath, sesh_id):
         """
         Load a UMAP coordinate CSV based on the selection of a UMAP png min distance thumbnail from the UMAP gallery.
         """
-        if any([elem is not None for elem in value]) and local_filepath and is_steinbock_dir(local_filepath):
-            return umap_coordinates_from_gallery_click(ctx.triggered_id['index'], local_filepath, OVERWRITE)
+        if any([elem is not None for elem in value]) and local_filepath and is_steinbock_dir(local_filepath) and sesh_id:
+            return umap_coordinates_from_gallery_click(ctx.triggered_id['index'], local_filepath, OVERWRITE, sesh_id)
         raise PreventUpdate

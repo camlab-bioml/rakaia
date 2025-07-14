@@ -26,10 +26,10 @@ def test_roi_query_parser(get_current_dir):
 
     dataset_exclude = "query+++slide0+++PAP_1"
     random.seed(1)
-    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
-                                                     [dataset_exclude]).get_image_dict()
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 4,
+                                                 [dataset_exclude]).get_image_dict()
     # assert that the number of queries is 1 less than the total because the current one is excluded
-    assert len(roi_query) == 3
+    assert len(roi_query) == 4
     assert dataset_exclude not in roi_query.keys()
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 20, []).get_image_dict()
     assert len(roi_query) == 6
@@ -49,13 +49,33 @@ def test_roi_query_parser(get_current_dir):
     bad_session_config = {"fake_key": [str(mcd)]}
     assert RegionThumbnail(bad_session_config, blend_dict, channels, 20, []).get_image_dict() is None
 
+    # with more ROIs than queries requested
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+                                [dataset_exclude], roi_keyword=None).get_image_dict()
+    assert len(roi_query) == 3
+
+    bad_filetype = RegionThumbnail({'uploads': 'bad_extension.fake'}, blend_dict, channels, 3,
+                                [dataset_exclude], roi_keyword=None).get_image_dict()
+    assert not bad_filetype
+
+    # with query object lists
+    indices = {"names": ['HIER_2', 'Xylene_5']}
+    objs = {'HIER_2': [1, 2, 3, 4, 5, 6, 7], 'Xylene_5': [1, 2, 3, 4, 5]}
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+                                predefined_indices=indices, query_cell_id_lists=objs).get_image_dict()
+    assert len(roi_query) == 2
+
+    roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
+            predefined_indices=indices, query_cell_id_lists=objs, query_obj_min=6).get_image_dict()
+    assert len(roi_query) == 1
+    assert 'query+++slide0+++HIER_2' in roi_query.keys()
 
 def test_query_parser_tiff(get_current_dir):
     mcd = os.path.join(get_current_dir, "for_recolour.tiff")
     session_config = {"uploads": [str(mcd)]}
     parse = FileParser(session_config['uploads']).image_dict
     blend_dict = create_new_blending_dict(parse)
-    mask_dict = {'for_recolour_mask': {'raw': np.zeros((600, 600)), 'boundary': np.zeros((600, 600, 3))}}
+    mask_dict = {'for_recolour_mask': {'raw': np.zeros((600, 600))}}
     query_selection = {'names': ['for_recolour']}
     roi_query = RegionThumbnail(session_config, blend_dict, ['channel_1'], 1,
                                 dataset_options=list(parse.keys()),
@@ -116,7 +136,6 @@ def test_roi_query_parser_predefined(get_current_dir):
                   "Ir193": {"color": "#FF0000", "x_lower_bound": 0, "x_upper_bound": 1, "filter_type": None, "filter_val": None},
                   "Pb208": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None}}
 
-
     defined_indices = {'indices': [0, 1]}
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 4, [],
                 predefined_indices=defined_indices, dimension_min=200).get_image_dict()
@@ -134,9 +153,11 @@ def test_roi_query_parser_predefined(get_current_dir):
                                 predefined_indices={'names': ['no_exist']}).get_image_dict()
     assert roi_query_null is None
 
-    mask_roi_dict = {"PAP_1_mask": {"boundary": np.full((100, 100, 3), 7), "raw": np.full((100, 100), 7)},
-                     "HIER_2_mask": {"boundary": np.full((100, 100, 3), 0)},
-                     "roi_3_mask": {"boundary": np.zeros((100, 100, 3))}}
+    mask_roi_dict = {"PAP_1_mask": {"raw": np.full((100, 100), 7)},
+                     "HIER_2_mask": {"raw": np.full((100, 100, 3), 0)},
+                     "roi_3_mask": {"raw": np.zeros((100, 100, 3))}}
+
+    mask_roi_dict["PAP_1_mask"]["raw"][88,88] = 8.0
 
     defined_names = {'names': ['PAP_1']}
     query_cell_id_lists = {'PAP_1': [7]}

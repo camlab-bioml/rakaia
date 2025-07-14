@@ -3,13 +3,11 @@
 
 import os
 import uuid
-
 import dash
 import pandas as pd
 from dash import ALL, dcc
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
-from dash.exceptions import PreventUpdate
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import (
             roi_query_gallery_children,
@@ -78,6 +76,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('quantification-dict', 'data'),
                        State('spatial-spot-rad', 'value'),
                        State('mask-in-gallery', 'value'),
+                       State('query-min-obj', 'value'),
                        prevent_initial_call=True)
     @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
     def generate_roi_images_from_query(export_roi, currently_selected, data_selection, blend_colour_dict,
@@ -86,7 +85,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                     dataset_options, query_cell_id_lists, global_apply_filter,
                                     global_filter_type, global_filter_val, global_filter_sigma, delimiter, error_config,
                                     dim_min, dim_max, keyw, saved_blend, saved_blend_dict, find_similar, image_cor, quant,
-                                    spatial_rad, enable_masks):
+                                    spatial_rad, enable_masks, query_min):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -118,9 +117,10 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
             currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
-            images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries), rois_exclude,
-            rois_decided, mask_dict, dataset_options, query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val,
-            global_filter_sigma, delimiter, False, dim_min, dim_max, keyw, False, spatial_rad, enable_masks).get_image_dict()
+            images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries), rois_exclude, rois_decided,
+            mask_dict, dataset_options, query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
+            delimiter, False, dim_min, dim_max, keyw, False, spatial_rad, enable_masks, True,
+                    app_config['array_store_type'], query_min).get_image_dict()
             new_row_children, roi_list = roi_query_gallery_children(images)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load": roi_list = list(set(rois_exclude + roi_list))
@@ -164,22 +164,23 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('alias-dict', 'data'),
         State('session_alert_config', 'data'),
         State('dataset-delimiter', 'value'),
+        State('session_id_internal', 'data'),
         prevent_initial_call=True)
     def quantify_current_roi(execute, apply_mask, mask_dict, mask_selection, image_dict, data_selection,
-                             dataset_options, cur_quant_dict, channels_to_quantify, aliases, error_config, delimiter):
+        dataset_options, cur_quant_dict, channels_to_quantify, aliases, error_config, delimiter, sesh_id):
         """
         Quantify the current ROI using the currently applied mask
         Important: the UMAP figure and UMAP annotation column are both reset when new quantification results are
         obtained as the UMAP projections will no longer align with the quantification frame and must be re-run
         If the quantification is successful, close the modal
         """
-        if None not in (image_dict, data_selection, mask_selection) and apply_mask and channels_to_quantify:
+        if None not in (image_dict, data_selection, mask_selection) and apply_mask and channels_to_quantify and sesh_id:
             first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             if validate_mask_shape_matches_image(first_image, mask_dict[mask_selection]['raw']):
                 new_quant = quantify_multiple_channels_per_roi(image_dict, mask_dict[mask_selection]['raw'],
                             data_selection, channels_to_quantify, aliases, dataset_options, delimiter, mask_selection)
                 quant_frame = concat_quantification_frames_multi_roi(pd.DataFrame(cur_quant_dict), new_quant, data_selection, delimiter)
-                return SessionServerside(quant_frame.to_dict(orient="records"), key="quantification_dict",
+                return SessionServerside(quant_frame.to_dict(orient="records"), key=f"quantification_dict_{sesh_id}",
                         use_unique_key=app_config['serverside_overwrite']), dash.no_update, {'display': 'None'}, None
             else:
                 error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_dimensions"])

@@ -23,7 +23,7 @@ def test_file_import_warning(get_current_dir):
                         f'{os.path.join(get_current_dir, "data.h5")}\n'\
                         f'{os.path.join(get_current_dir, "query.mcd")}\n'\
                         '\n'\
-                        ' Select a region (ROI) from the data collection dropdown to begin analysis.'
+                        ' Make a selection under `View/Select ROIs` to begin analysis.'
     assert len(unique) == 2
 
 

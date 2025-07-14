@@ -6,7 +6,9 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     set_annotation_indices_to_remove,
     reset_on_visium_spot_size_change,
-    no_channel_for_view)
+    no_channel_for_view,
+    empty_slider_values,
+    use_channel_autofill)
 import numpy as np
 
 def test_triggers():
@@ -38,6 +40,17 @@ def test_triggers():
     assert not no_channel_for_view("unique-channel-list", "chan-1", True)
     assert no_channel_for_view("toggle-gallery-view", None, True)
     assert not no_channel_for_view("toggle-gallery-view", "chan-1", True)
+
+    assert empty_slider_values((None, 0))
+    assert empty_slider_values((None, None))
+    assert not empty_slider_values(None)
+    assert not empty_slider_values((1, 1))
+
+    rgb_layers = {"roi_1": {"channel_1": np.full((10, 10), 10)}}
+    assert use_channel_autofill(rgb_layers, "roi_1", "channel_2", True, True)
+    assert not use_channel_autofill(rgb_layers, "roi_1", "channel_1", True, True)
+    assert not use_channel_autofill(rgb_layers, "roi_1", "channel_2", False, True)
+    assert not use_channel_autofill(rgb_layers, "roi_1", "channel_2", True, False)
 
 
 def test_annotation_index_triggers():

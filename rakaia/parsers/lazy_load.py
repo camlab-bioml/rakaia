@@ -8,8 +8,12 @@ from typing import Union
 from readimc import MCDFile
 from readimc.data.acquisition import Acquisition
 from tifffile import TiffFile
-from rakaia.utils.pixel import split_string_at_pattern
-from rakaia.parsers.spatial import check_spot_grid_multi_channel, spatial_canvas_dimensions
+from rakaia.utils.pixel import (
+    split_string_at_pattern,
+    set_array_storage_type_from_config)
+from rakaia.parsers.spatial import (
+    check_spatial_array_multi_channel,
+    spatial_canvas_dimensions)
 
 
 class SingleMarkerLazyLoaderExtensions:
@@ -50,10 +54,12 @@ class SingleMarkerLazyLoader:
                 session_uploads: dict,
                 channels_selected: Union[str, list],
                 spot_size: Union[int,float]=55,
-                delimiter: str="+++"):
+                delimiter: str="+++",
+                array_store_type: str="float"):
         self.uploads = session_uploads
         self.image_dict = image_dict
         self.delimiter = delimiter
+        self.array_store_type = array_store_type
         self.exp, self.slide, self.acq = None, None, None
         self.width, self.height, self.x_min, self.y_min = None, None, 0, 0
         self.h5ad = partial(self.parse_h5ad)
@@ -80,8 +86,8 @@ class SingleMarkerLazyLoader:
         """
         self.width, self.height, self.x_min, self.y_min = spatial_canvas_dimensions(h5ad_filepath)
         if self.channel_selection:
-            self.image_dict = check_spot_grid_multi_channel(self.image_dict, self.data_selection,
-                                            h5ad_filepath, self.channel_selection, self.spot_size)
+            self.image_dict = check_spatial_array_multi_channel(self.image_dict, self.data_selection,
+                                                                h5ad_filepath, self.channel_selection, self.spot_size)
 
     def set_mcd_acq_region_dims(self, acq: Acquisition):
         """
@@ -114,8 +120,8 @@ class SingleMarkerLazyLoader:
                                 if not self.image_dict[self.data_selection] or \
                                         self.image_dict[self.data_selection][selection] is None:
                                     self.image_dict[self.data_selection][selection] = \
-                                    img[acq.channel_names.index(selection)]
-            mcd_file.close()
+                                    img[acq.channel_names.index(selection)].astype(
+                                        set_array_storage_type_from_config(self.array_store_type))
 
     def set_tiff_region_dims(self, tiff: TiffFile):
         """
@@ -144,8 +150,8 @@ class SingleMarkerLazyLoader:
                 if self.channel_selection and chan_identifier in self.channel_selection and \
                         (not self.image_dict[self.data_selection] or
                         self.image_dict[self.data_selection][chan_identifier] is None):
-                    self.image_dict[self.data_selection][chan_identifier] = page.asarray()
-
+                    self.image_dict[self.data_selection][chan_identifier] = page.asarray().astype(
+                    set_array_storage_type_from_config(self.array_store_type))
 
     def get_image_dict(self):
         """

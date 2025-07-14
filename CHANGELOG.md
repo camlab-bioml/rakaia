@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.0] - 2025-07-03
+
+### Added
+
+- `openseadragon` with custom JS to view co-registered H & E: supports tiff, btf, and svs images with JS or local filepath import
+- Ability to transfer zoom coordinates for Visium (V1, V2, HD) & Xenium to OSD WSI viewer
+- Key event listener for down arrow to switch between canvas and WSI viewer
+- Error warning in modal on ROI change for dropdown and dimensions
+- Ability to upload mask cluster annotations for multiple ROIs by CSV
+- Input to specify minimum number of query objects per ROI to be included in dataset gallery #129
+- Download region statistics table
+
+### Changed
+
+- make waitress production mode the default
+- handle concurrent user sessions better with clientside session ids used for static `Flask` routes and serverside stores
+- Loading widget for channel gallery now converted to non-fullscreen
+- Use UMAP channel subset in plugins/models #124
+- UI enhancements to import bar, channel gallery, toolbar #126 #127 #128
+- Vectorized mask filling from cluster annotations to improve performance
+- Vectorized spatial marker/spot rendering for marker arrays for faster rendering w/ max position overlap
+- Compute mask derivatives (hover, boundaries) on fly instead of storing
+- smaller pixel slider steps for lower intensity channels
+- Extra checks + change parsing rules for `steinbock` output directories with .txt files
+- single marker lazy loader and region thumbnail now uses array store type from CLI
+- Update autoscale CLI to process TXT files
+
+### Fixed
+
+- now supports quant results from `steinbock` with duplicate ROI indices #122
+- Fix UMAP categorical sub-setting to allow de-selecting of first category #123
+- Quantification naming conventions from in-app quantification w/ multiple files
+- Channel gallery tiles: use original image if dimensions are sufficiently small
+- pixel histogram will collapse if marker array is not available (i.e. due to lazy loading)
+- improved logic for single marker lazy loading based on total ROI pixels
+- proper ROI query order from quantification across multi-ROI files
+- Allow channel label to remain white if already user set with autofill colours turned on
+- Import cluster assignments from db/config if other ROIs have existing clusters
+- Bad UMAP menu proportions on Firefox #130
+
 ## [0.22.0] - 2025-01-31
 
 ### Changed

@@ -47,18 +47,19 @@ def init_db_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('db-config-preview-table', 'columns'),
                        Input('database-connection', 'data'),
                        State('db-connection-string', 'value'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
-    def populate_blend_config_list_from_database(cred, conn_string):
+    def populate_blend_config_list_from_database(cred, conn_string, sesh_id):
         """
         Import a list of blend config hash tables by user
         """
-        if cred:
+        if cred and sesh_id:
             connection = AtlasDatabaseConnection(conn_string, cred['username'], cred['password'])
             connected, ping = connection.create_connection()
             if connected:
                 configs, list_configs = connection.blend_configs_by_user()
                 config_preview = preview_dataframe_from_db_config_list(configs)
-                return SessionServerside(configs, key="dg-config-list"), \
+                return SessionServerside(configs, key=f"dg-config-list_{sesh_id}"), \
                     list_configs, pd.DataFrame(config_preview).to_dict(orient='records'), \
                     [{'id': p, 'name': p, 'editable': False, "presentation": "markdown"} for p in config_preview.keys()]
             # raise PreventUpdate

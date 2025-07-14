@@ -44,7 +44,8 @@ from rakaia.utils.pixel import (
     add_saved_blend,
     hpf_max_diff,
     hpf_max_diff_from_path,
-    hpf_max_diff_from_rect)
+    hpf_max_diff_from_rect,
+    upper_bound_for_range_slider)
 
 def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
@@ -205,6 +206,13 @@ def test_resize_canvas_image(get_current_dir):
 
     assert resized_different_size.shape[0] == 666 == resized_different_size.shape[1]
 
+def test_set_upper_range_bound():
+    array = np.full((100, 100), 10)
+    assert upper_bound_for_range_slider(array) == 10
+    array = np.full((100, 100), 0.1)
+    assert upper_bound_for_range_slider(array, None) == 0.1
+    assert upper_bound_for_range_slider(array, 1) == 1
+
 
 def test_filtering_intensity_changes(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
@@ -218,7 +226,7 @@ def test_filtering_intensity_changes(get_current_dir):
             if original_pixels[i, j] < 51:
                 assert new_pixels[i, j] == 0
             else:
-                # if the priginal pixel is 52 or more intense, the final value will be at least the scale value
+                # if the original pixel is 52 or more intense, the final value will be at least the scale value
                 if original_pixels[i, j] >= 52:
                     assert new_pixels[i, j] >= (255 / (450 - 51))
                 else:
@@ -245,6 +253,9 @@ def test_filtering_intensity_changes_low(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
     greyscale = np.array(greyscale_image)
     filtered_1 = filter_by_upper_and_lower_bound(greyscale, lower_bound=1, upper_bound=15)
+    recoloured = recolour_greyscale(np.array(filtered_1), colour='#D14A1A')
+    assert np.array_equal(recoloured[264, 440], np.array([209, 74, 26]))
+    assert np.array_equal(recoloured[242, 485], np.array([125, 44, 15]))
     original_pixels = Image.fromarray(greyscale).load()
     new_pixels = Image.fromarray(filtered_1).load()
     # assert that when a low upper bound is used, it scales up to the max of 255

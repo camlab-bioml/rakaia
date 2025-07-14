@@ -1,5 +1,11 @@
 .snakemake_timestamp
 
+.DS_Store
+
+*swp
+
+node_modules/
+
 .swp
 
 sandbox*

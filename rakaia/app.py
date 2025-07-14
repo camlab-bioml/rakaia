@@ -51,6 +51,8 @@ def init_dashboard(server, authentic_id, config=None):
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],
                         external_stylesheets=[dbc.themes.BOOTSTRAP, dbc.icons.FONT_AWESOME],
                         server=server,
+                        assets_folder="assets",
+                        external_scripts=["https://cdn.jsdelivr.net/npm/openseadragon@5.0/build/openseadragon/openseadragon.min.js"],
                         routes_pathname_prefix="/rakaia/",
                         suppress_callback_exceptions=True,
                         prevent_initial_callbacks=True)
@@ -95,7 +97,7 @@ def init_dashboard(server, authentic_id, config=None):
     # cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
     # background_callback_manager = DiskcacheManager(cache)
 
-    dash_app.layout = register_app_layout(config, cache_dest)
+    dash_app.layout = register_app_layout(config, str(cache_dest))
 
     dash_app.enable_dev_tools(debug=config['is_dev_mode'])
 

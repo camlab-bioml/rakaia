@@ -15,6 +15,7 @@ Subpackages
    rakaia.io
    rakaia.parsers
    rakaia.plugins
+   rakaia.register
    rakaia.static
    rakaia.templates
    rakaia.utils

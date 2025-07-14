@@ -24,7 +24,6 @@ from rakaia.parsers.spatial import spatial_grid_single_marker, is_spot_based_spa
 from rakaia.utils.alert import add_warning_to_error_config
 from rakaia.utils.object import (
     set_mandatory_columns,
-    convert_mask_to_object_boundary,
     set_columns_to_drop,
     QuantificationColumns,
     QuantificationFormatError,
@@ -67,12 +66,13 @@ def umap_transform(frame_to_cluster: pd.DataFrame, use_pca: bool=False):
     return transform.fit_transform(frame_to_cluster)
 
 
-def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame],
+def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.DataFrame, None],
                                             current_umap: Union[dict, pd.DataFrame] = None,
                                             drop_col: bool = True,
                                             rerun: bool = True, unique_key_serverside: bool = True,
                                             cols_include: list = None,
-                                            min_dist: Union[float, None]=0.1):
+                                            min_dist: Union[float, None]=0.1,
+                                            session_id: str=""):
     """
     Generate a UMAP coordinate frame from a data frame of channel expression
     `cols_include`: Pass an optional list of channels to generate the coordinates from
@@ -96,7 +96,7 @@ def umap_dataframe_from_quantification_dict(quantification_dict: Union[dict, pd.
             if umap_obj:
                 scaled = umap_transform(data_frame)
                 embedding = umap_obj.fit_transform(scaled)
-                return SessionServerside(embedding, key="umap-embedding",
+                return SessionServerside(embedding, key=f"umap-embedding_{session_id}",
                                          use_unique_key=unique_key_serverside)
             return dash.no_update
         return dash.no_update
@@ -193,10 +193,11 @@ def parse_masks_from_filenames(status: Union[dash_uploader.UploadStatus, None], 
     return dash.no_update
 
 def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
-                                     set_mask, cur_mask_dict, derive_cell_boundary=False, unique_key_serverside=True):
+                                     set_mask, cur_mask_dict,
+                                     unique_key_serverside=True, session_id: str=""):
     """
     Read a single mask from tiff into a single-page numpy array. The dictionary holding the mask will save the raw
-    array, as well as the object boundary array and hover template containing the integer identifiers for each object.
+    array, which can be used to derive the RGB mask fill, hover template, and boundaries.
     """
     single_upload = len(mask_uploads) == 1 and set_mask > 0
     multi_upload = len(mask_uploads) > 1
@@ -209,44 +210,32 @@ def read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name,
         for mask_name, mask_upload in mask_uploads.items():
             with TiffFile(str(mask_upload)) as tif:
                 for page in tif.pages:
-                    if derive_cell_boundary:
-                        mask_import = np.array(Image.fromarray(
-                            convert_mask_to_object_boundary(page.asarray())).convert('RGB'))
-                        boundary_import = None
-                    else:
-                        mask_import = np.array(Image.fromarray(page.asarray()).convert('RGB'))
-                        boundary_import = np.array(Image.fromarray(
-                            convert_mask_to_object_boundary(page.asarray().astype(np.uint32))).convert('RGB'))
                     mask_name_use = single_mask_name if single_mask_name is not None else mask_name
-                    cur_mask_dict[mask_name_use] = {"array": mask_import, "boundary": boundary_import,
-                                                    "hover": page.asarray().reshape((page.asarray().shape[0],
-                                                                                     page.asarray().shape[1], 1)),
-                                                    "raw": page.asarray()}
-        return SessionServerside(cur_mask_dict, key="mask-dict",
+                    cur_mask_dict[mask_name_use] = {
+                    # instead of storing all derivatives, compute them on the fly to space memory
+                    "raw": page.asarray().astype(np.uint32)}
+        return SessionServerside(cur_mask_dict, key=f"mask-dict_{session_id}",
                                  use_unique_key=unique_key_serverside), list(cur_mask_dict.keys())
     raise PreventUpdate
 
 def visium_mask(mask_dict: dict, data_selection: str, upload_list: Union[list, dict],
-                delimiter: str="+++", unique_key_serverside: bool=True):
+                delimiter: str="+++", unique_key_serverside: bool=True,
+                session_id: str=""):
     """
     Generate a mask for a 10X Visium spot-based assay (currently not compatible with HD).
     The mask can be automatically inferred from the spot positions and scale factors in the dataset
     """
     masks_return, names_return = dash.no_update, dash.no_update
     if data_selection and upload_list:
-        exp, slide, acq = split_string_at_pattern(data_selection)
+        exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
         found_h5ad_match = parse_files_for_lazy_loading(upload_list, data_selection, delimiter)
         if found_h5ad_match and is_spot_based_spatial(found_h5ad_match):
             mask_dict = {} if mask_dict is None else mask_dict
             mask_spots = spatial_grid_single_marker(found_h5ad_match, None, None,
                                                     True, True)
-            boundary_import = np.array(Image.fromarray(
-                convert_mask_to_object_boundary(mask_spots.astype(np.uint32))).convert('RGB'))
-            mask_dict[exp] = {"array": np.array(Image.fromarray(mask_spots).convert('RGB')),
-                              "boundary": boundary_import,
-                            "hover": mask_spots.reshape((mask_spots.shape[0], mask_spots.shape[1], 1)),
-                                            "raw": mask_spots}
-            masks_return = SessionServerside(mask_dict, key="mask-dict",
+            mask_dict[exp] = {
+            "raw": mask_spots.astype(np.uint32)}
+            masks_return = SessionServerside(mask_dict, key=f"mask-dict_{session_id}",
                                      use_unique_key=unique_key_serverside)
             names_return = list(mask_dict.keys())
     return masks_return, names_return
@@ -304,18 +293,19 @@ class RestyleDataParser:
                  umap_col_annotation: str, existing_categories: Union[dict, list] = None):
 
         self.restyledata = restyledata
-        self.quantification_frame = quantification_frame
+        self.quantification_frame = pd.DataFrame(quantification_frame)
         self.umap_col_annotation = umap_col_annotation
         self.existing_categories = existing_categories
         self._subtypes_return = None
         self._indices_keep = None
 
-        if None not in (self.restyledata, self.quantification_frame) and 'visible' in self.restyledata[0] and \
+        if None not in self.restyledata and 'visible' in self.restyledata[0] and \
                 self.umap_col_annotation is not None and self.umap_col_annotation in list(
-            pd.DataFrame(self.quantification_frame).columns) and \
-                self.restyledata not in [[{'visible': ['legendonly']}, [0]]]:
-            quant_frame = pd.DataFrame(self.quantification_frame)
-            tot_subtypes = list(quant_frame[self.umap_col_annotation].unique())
+            self.quantification_frame.columns):
+                # this condition is when the first category is removed: why was it blocked for the longest time?
+                # https://github.com/camlab-bioml/rakaia/issues/123
+                # self.restyledata not in [[{'visible': ['legendonly']}, [0]]]:
+            tot_subtypes = list(self.quantification_frame[self.umap_col_annotation].unique())
             self._subtypes_return = []
             if self.multiple_category_selected(tot_subtypes):
                 self.append_sub_selection(tot_subtypes)
@@ -407,7 +397,7 @@ def parse_roi_query_indices_from_quantification_subset(quantification_dict, subs
     """
     merged = pd.DataFrame(quantification_dict).iloc[list(subset_frame.index.values)]
     if 'description' in list(merged.columns):
-        indices_query = {'names': list(merged['description'].value_counts().to_dict().keys())}
+        indices_query = {'names': list(merged['description'].unique())}
     else:
         try:
             roi_counts = merged['sample'].value_counts().to_dict()
@@ -620,10 +610,7 @@ def parse_quantification_sheet_from_h5ad(h5ad_file: Union[Path, str, anndata.Ann
                 columns=list(h5ad_file.var_names)).reset_index(drop=True)
     if is_steinbock_intensity_anndata(h5ad_file):
         # create a sample column that uses indices to match the steinbock masks
-        edited = pd.DataFrame({"description": [f"{acq}_{position}" for acq, position in \
-                                               zip(h5ad_file.obs['image_acquisition_description'],
-                                                   [int(re.search(r'\d+$', elem.split('.tiff')[0]).group()) for elem in
-                                                    h5ad_file.obs['Image']])],
+        edited = pd.DataFrame({"description": [elem.split('.tiff')[0] for elem in h5ad_file.obs['Image']],
                                # parse the int cell id from the string index
                                "cell_id": [int(re.search(r'\d+', elem).group()) for elem in
                                            h5ad_file.obs.index],

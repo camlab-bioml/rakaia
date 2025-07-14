@@ -13,9 +13,12 @@ def test_requirements_single_marker_lazy_load():
     assert roi_requires_single_marker_load(35000000, 55)
     assert not roi_requires_single_marker_load(array, 1)
     assert not roi_requires_single_marker_load(np.zeros((1000, 1000)), 1000)
+    assert roi_requires_single_marker_load(np.zeros((1000, 1000)), 2000)
     assert not roi_requires_single_marker_load(10000, 100)
 
     assert roi_requires_single_marker_load(2e10, 1)
+    assert not roi_requires_single_marker_load((5200*3000), 54)
+    assert roi_requires_single_marker_load((8800*9500), 47)
 
 def test_lazy_loading_single_marker_mcd(get_current_dir):
     parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
@@ -24,7 +27,7 @@ def test_lazy_loading_single_marker_mcd(get_current_dir):
     assert parse_files_for_lazy_loading(session_config, 'query+++slide0+++Xylene_5')
     selection = ['Ir191']
     single_load = SingleMarkerLazyLoader(uploaded_dict, 'query+++slide0+++Xylene_5',
-                                         session_config, selection).get_image_dict()
+                                         session_config, selection, 55, '+++', 'int').get_image_dict()
     assert all(single_load['query+++slide0+++Xylene_5'][elem] is None for elem in
                single_load['query+++slide0+++Xylene_5'].keys() if elem not in selection)
     assert all(isinstance(single_load['query+++slide0+++Xylene_5'][elem], np.ndarray) for elem in

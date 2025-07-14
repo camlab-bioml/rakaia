@@ -63,9 +63,11 @@ def test_basic_app_load_from_locale(rakaia_flask_test_app, client):
     assert str(type(rakaia_flask_test_app)) == "<class 'flask.app.Flask'>"
     response = client.get('/')
     assert response.status_code == 200
+    overview_png = client.get('/static/assets/app-preview.png')
+    assert overview_png.status_code == 200
     # test landing page alias
     assert client.get("/").data != b'Unauthorized Access'
-    assert b'Scalable multiplex imaging dataset analysis in the browser' in client.get("/").data
+    assert b'Scalable spatial biology analysis in the browser' in client.get("/").data
     # assert client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
     # dash_duo.start_server(rakaia_flask_test_app.server)
     # for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:
@@ -83,23 +85,23 @@ def test_basic_cli_outputs():
     parser = cli_parser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
-    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     parser = cli_parser()
     args = parser.parse_args(['-da'])
-    assert vars(args) == {'auto_open': False, 'is_dev_mode': True, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 5000, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     args = parser.parse_args(['-p', '8050'])
-    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
-    args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-pr'])
-    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 8050, 'threading': True,
+    args = parser.parse_args(['-p', '8050', '-dp', '-at', 'int', '-dv'])
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': True, 'loading': True, 'port': 8050, 'threading': True,
                           'use_local_dialog': False, 'persistence': False, 'swatches': None, 'array_type': 'int',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
 

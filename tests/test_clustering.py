@@ -1,5 +1,6 @@
 import os
 import random
+import dash
 import pandas as pd
 from pandas.testing import assert_frame_equal
 from dash import html
@@ -13,7 +14,9 @@ from rakaia.utils.cluster import (
     match_cluster_hash_to_cluster_frame,
     set_default_cluster_col,
     QuantificationClusterMerge,
-    subset_cluster_frame, check_diff_cluster_subtypes)
+    subset_cluster_frame,
+    check_diff_cluster_subtypes,
+    cluster_assignments_from_config)
 
 def test_basic_colparse_cluster(get_current_dir):
     cluster_assignments = pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))
@@ -33,6 +36,22 @@ def test_populating_cluster_annotation_dict():
     session_cluster_dict = cluster_annotation_frame_import(session_cluster_dict, "roi_2", malformed)
     assert "roi_2" not in session_cluster_dict.keys()
     assert "roi_1" in session_cluster_dict.keys()
+
+def test_populating_cluster_annotation_dict_multi_roi(get_current_dir):
+
+    multi_roi = pd.read_csv(os.path.join(get_current_dir, "multi_roi_clusters.csv"))
+    session_cluster_dict = cluster_annotation_frame_import(None, None,
+                                                           multi_roi,
+    ['MB0000_1_527_fullstack---slide0---acq',
+                'MB0002_1_345_fullstack---slide0---acq',
+                'MB0005_1_211_fullstack---slide0---acq',
+                'MB0010_1_420_fullstack---slide0---acq',
+                'MB0013_1_371_fullstack---slide0---acq',
+                'MB0653_1_63_fullstack---slide0---acq',
+                'fakeacq---slide0---acq'], '---')
+    assert len(session_cluster_dict) == 6
+    assert not 'fakeacq---slide0---acq' in session_cluster_dict.keys()
+
 
 def test_basic_cluster_colour_assignments():
     cluster_frame = pd.DataFrame(
@@ -70,6 +89,16 @@ def test_basic_cluster_colour_assignments():
     assert check_diff_cluster_subtypes(colours, "roi_1", "cluster",
             (cluster_frame_2['cluster'].unique().tolist() + ["other_type"]))
 
+def test_cluster_import_from_config():
+    config = {'cluster': {'cell_type': {'T': '#a52a2a', 'B': 'ffc0cb'}}}
+    existing_assignments = {"roi_2": {'cluster': {'Macro': '#0000ff', 'Stromal': '#a9bdc6'}}}
+    add_assignments = cluster_assignments_from_config(existing_assignments, 'roi_1', config)
+    assert len(add_assignments) == 2
+    assert 'roi_1' in add_assignments.keys()
+    new = cluster_assignments_from_config(None, 'roi_1', config)
+    assert len(new) == 1
+    assert isinstance(cluster_assignments_from_config(None, 'roi_1', None),
+                      dash._callback.NoUpdate)
 
 def test_matching_frame_to_hash(get_current_dir):
     cluster_assignments = {"roi_1": pd.read_csv(os.path.join(get_current_dir, "cluster_assignments.csv"))}
@@ -97,6 +126,10 @@ def test_default_cluster_col():
     assert set_default_cluster_col({"roi_1": {}}, "roi_1") is None
     assert set_default_cluster_col({}, "roi_1") is None
     assert set_default_cluster_col({"other": {"cat_1": {"one": "red"}}}, "roi_1") is None
+
+    # if already set
+    assert isinstance(set_default_cluster_col(type_cols, "roi_1", "cluster"), dash._callback.NoUpdate)
+    assert set_default_cluster_col(type_cols, "roi_1", "not_there") == "cat_1"
 
 def test_quant_to_cluster_transfer(get_current_dir):
     data_selection = "test---slide0---chr10-h54h54-Gd158_2_18"

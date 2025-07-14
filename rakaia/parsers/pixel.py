@@ -34,7 +34,8 @@ class NoAcquisitionsParsedError(Exception):
 def roi_requires_single_marker_load(pixel_counter: Union[np.array, np.ndarray, int],
                                     panel_length: int,
                                     lower_pixel_threshold: int=20000000, panel_size_threshold: int=50,
-                                    upper_pixel_threshold: int=100000000):
+                                    upper_pixel_threshold: int=100000000,
+                                    full_roi_threshold: int=2000000000):
     """
     Determines if an ROI is sufficiently large to require single marker loading. For example, if the channel array
     provided has more total pixels than `pixel_threshold` and is part of a panel size that is
@@ -44,7 +45,7 @@ def roi_requires_single_marker_load(pixel_counter: Union[np.array, np.ndarray, i
     pixel_counter = int(pixel_counter.shape[0] * pixel_counter.shape[1]) if (
     isinstance(pixel_counter, np.ndarray)) else int(pixel_counter)
     return (pixel_counter >= lower_pixel_threshold and panel_length >= panel_size_threshold) or (
-        pixel_counter >= upper_pixel_threshold)
+        pixel_counter >= upper_pixel_threshold) or ((pixel_counter * panel_length) >= full_roi_threshold)
 
 class FileParser:
     """
@@ -216,8 +217,7 @@ class FileParser:
                 if blend_val[()] != b'None':
                     try:
                         data_add = blend_val[()].decode("utf-8")
-                    except AttributeError:
-                        data_add = str(blend_val[()])
+                    except AttributeError: data_add = str(blend_val[()])
                 else:
                     data_add = None
                 self.blend_config[channel][blend_key] = data_add
@@ -343,7 +343,6 @@ class FileParser:
                     self.panel_length = len(acq.channel_labels) if self.panel_length is None else self.panel_length
                     acq_index += 1
                 slide_index += 1
-            mcd_file.close()
         self.experiment_index += 1
 
     def read_single_roi_from_mcd(self, mcd_filepath, internal_name, roi_name):
@@ -372,7 +371,6 @@ class FileParser:
                                 self.image_dict[internal_name][channel_names[channel_index]] = channel.astype(
                                 set_array_storage_type_from_config(self.array_store_type))
                                 channel_index += 1
-                        mcd_file.close()
 
     @staticmethod
     def initialize_empty_mcd_single_read(image_dict: dict, internal_name: str, channel_list: list):
@@ -495,7 +493,7 @@ class FileParser:
                 isinstance(self.dataset_information_frame, pd.DataFrame) and len(self.dataset_information_frame) > 0:
             return self.dataset_information_frame
         raise NoAcquisitionsParsedError(f"No acquisitions were successfully parsed from the following files: \n"
-                                        f"{self.filepaths}. Please review the input files.")
+                                        f"{self.filepaths}. Please review the input files and refresh the session.")
 
 def create_new_blending_dict(uploaded):
     """

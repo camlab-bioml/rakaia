@@ -94,17 +94,19 @@ def set_gallery_thumbnail_from_signal_retention(original_image: np.array, down_s
                                                 alternate_image: np.array,
                                                 signal_ratio: Union[int, float],
                                                 resize_signal_retention_threshold: Union[int, float] = 0.75,
-                                                resize_dimension_threshold: int = 3000):
+                                                resize_dimension_threshold: int = 3000,
+                                                retain_pixel_min: int=562500):
     """
     Set a thumbnail for a channel image based on the dimensions and signal retained from the down-sampled resize
     If the signal lost if sufficiently high and the image is below a certain size, return the original image. Otherwise,
     use the down-sampled image
     Dimension threshold is to prevent very large images from being used as thumbnails
     """
+    if int(original_image.shape[0] * original_image.shape[1]) <= retain_pixel_min:
+        return alternate_image
     return down_sampled_image if (signal_ratio > resize_signal_retention_threshold or
                                  any(size > resize_dimension_threshold for size in
                                      original_image.shape)) else alternate_image
-
 
 def set_channel_thumbnail(canvas_layout: Union[dict, go.Figure], channel_image: Union[np.array, np.ndarray],
                           zoom_keys: list=None, toggle_gallery_zoom: bool=False):
@@ -138,7 +140,8 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
                         toggle_scaling_gallery=True,
                         resize_signal_retention_threshold: float = 0.75,
                         resize_dimension_threshold: int = 3000,
-                        single_channel_identifier: str=None):
+                        single_channel_identifier: str=None,
+                        retain_pixel_min: int=562500):
     """
     Verify a channel tile. Checks the appropriate default scaling bounds and evaluates
     if a preset should be used or if the entire array should be used for signal retention
@@ -164,11 +167,13 @@ def verify_channel_tile(image_render: Union[np.array, np.ndarray], key: str,
     ratio = float(np.mean(image_render) / np.mean(raw_channel_array))
     # use the down-sampled image if the single retention is high enough, or
     # if the image is large (large images take longer to render in the DOM)
+    # if the image is small, use the original
     try:
         image_render = set_gallery_thumbnail_from_signal_retention(raw_channel_array, image_render,
                         apply_preset_to_array(raw_channel_array,
                         blend_colour_dict[channel_key]).astype(np.uint8), ratio,
-                        resize_signal_retention_threshold, resize_dimension_threshold)
+                        resize_signal_retention_threshold, resize_dimension_threshold,
+                                                                   retain_pixel_min)
     except KeyError: pass
     return image_render
 

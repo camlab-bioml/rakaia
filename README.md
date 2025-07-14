@@ -1,29 +1,32 @@
 # rakaia
 
-rakaia: Scalable multiplexed dataset analysis in the browser
+rakaia: Scalable spatial biology analysis in the browser
 
 <p align="center">
     <img src="man/app-preview.png">
 </p>
 
 
-rakaia provides streamlined in-browser analysis of multiplexed imaging and spatial transcriptomics datasets.
+rakaia provides streamlined in-browser analysis of multiplexed spatial proteomics and transcriptomics.
 The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI), and
 currently supports the following technologies:
 
-- imaging mass cytometry (IMC)
-- immunofluorescence (IF)
-- spatial transcriptomics such as 10X Visium Spatial Gene Expression (V1, V2, HD), Xenium, and others
+- Multiplexed imaging such as imaging mass cytometry (IMC), immunofluorescence (IF), and immunohistochemistry (IHC)
+- Spatial transcriptomics (ST) such as 10X Visium (V1, V2, HD), Xenium, and others
+- Whole slide images (WSI) such as H&E
 
 Tools in the rakaia application include:
 
 - pixel level analysis for publication-quality blended images
-- object/segmentation detection
+- object/segmentation detection & overlay
 - region/focal annotation
 - object quantification
 - cluster and heatmap visualization
 - dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
+- WSI coordinate alignment (currently for 10X Visium & Xenium)
+
+Visit the [official documentation](https://camlab-bioml.github.io/rakaia-doc/) to learn more!
 
 rakaia benefits from on-demand data loading and requires minimal upfront data
 configuration for ease-of-use image analysis. It places no restrictions on
@@ -33,10 +36,18 @@ regions or images in a single session.
 Importantly, rakaia does not require any coding/scripting, or
 any pre-defined project directories with specific file structures.
 
+rakaia is built on:
+
+- Flask
+- Dash Bootstrap w/ React
+- Docker
+- MongoDB
+- openseadragon
+- vips
 
 ## Installation
 
-rakaia can be cloned and installed locally using access to the Github repository
+rakaia can be cloned and installed locally using access to the GitHub repository
 
 ```
 git clone https://github.com/camlab-bioml/rakaia.git && cd rakaia
@@ -50,7 +61,7 @@ rakaia can be installed locally without an environment or container,
 but this is not recommended for dependency management:
 
 ```
-pip install -r requirements.txt
+cd rakaia
 pip install .
 ```
 
@@ -65,9 +76,18 @@ Once conda is installed:
 ```
 conda create --name rakaia python=3.9
 conda activate rakaia
-# cd rakaia
-pip install -r requirements.txt
+cd rakaia
 pip install .
+```
+
+### Installation failure for ParmED
+
+If installation of the [ParmEd](https://github.com/ParmEd/ParmEd) library fails (appears to be
+more prevalent on older versions of macOS), then users should try installing it from conda source:
+
+```commandline
+pip uninstall parmed
+conda install -c conda-forge parmed=4.3.0
 ```
 
 ### with Make
@@ -92,7 +112,6 @@ cd rakaia
 # conda activate rakaia
 git switch main
 git pull --all
-pip install -r requirements.txt
 pip install .
 ```
 
@@ -118,7 +137,7 @@ Additional information on the CLI options available for running custom rakaia se
 found in the documentation: https://camlab-bioml.github.io/rakaia-doc/docs/cli
 
 
-The current version of rakaia can also be checked on the command line with the following (v0.4.0 or later):
+The current version of rakaia can also be checked on the command line:
 
 ```
 rakaia -v
@@ -159,12 +178,11 @@ Conversely, without app installation:
 python rakaia/wsgi.py
 ```
 
-By default, rakaia will run in debug mode from the command line, which
-will apply source code changes on the fly. To disable this feature
-of to use a production-level server from waitress, enable production mode:
+By default, rakaia will run in production mode from the command line using waitress.
+To switch to a development server which will apply source code changes on the fly, use:
 
 ```commandline
-rakaia -pr
+rakaia -dv
 ```
 
 ### Binary distribution

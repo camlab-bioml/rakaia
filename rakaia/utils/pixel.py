@@ -86,18 +86,20 @@ def recolour_greyscale(array, colour):
     """
     if colour not in ['#ffffff', '#FFFFFF']:
         image = Image.fromarray(array)
-        image = image.convert('RGB')
+        # image = image.convert('RGB')
         red, green, blue = ImageColor.getcolor(colour, "RGB")
 
-        array = np.array(image)
+        array = np.array(image).astype(np.float32)
+        array = ne.evaluate("array / 255.0")
+        # Multiply greyscale intensity by color components (broadcasted)
+        r = ne.evaluate("array * red").astype(np.uint8)
+        g = ne.evaluate("array * green").astype(np.uint8)
+        b = ne.evaluate("array * blue").astype(np.uint8)
 
-        new_array = np.empty((array.shape[0], array.shape[1], 3))
-        new_array[:, :, 0] = red
-        new_array[:, :, 1] = green
-        new_array[:, :, 2] = blue
+        # Stack channels into a 3D array
+        rgb = np.stack([r, g, b], axis=-1)
 
-        converted = ne.evaluate("new_array * image / 255")
-        return converted.astype(np.uint8)
+        return rgb
 
     image = Image.fromarray(array)
     image = image.convert('RGB')
@@ -235,34 +237,22 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Uses linear scaling instead of 0 to max upper bound scaling: pixels close to the boundary of the lower bound
     are scaled relative to their intensity to the lower bound instead of the full scale factor
     """
-    # if issparse(array):
-    #     array = array.toarray(order='F')
     # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
-    # array = np.array(Image.fromarray(array).convert('L'))
-    # original_max = np.max(array) if np.max(array) > 255 else 255
-    lower_bound = float(lower_bound) if lower_bound is not None else None
-    upper_bound = float(upper_bound) if upper_bound is not None else None
-    if lower_bound is None:
-        lower_bound = 0
-    # array = np.where(array < lower_bound, 0, array)
-    # try linear scaling from the lower bound to upper bound instead of 0 to upper
-    # subtract the lower bound from all elements and retain those above 0
-    # allows better gradual scaling around the lower bound threshold
-    try:
-        if upper_bound >= 0:
-            array = np.where(array > upper_bound, upper_bound, array)
-    except (TypeError, ValueError):
-        pass
-    array = np.where((array - lower_bound) > 0, (array - lower_bound), 0)
+    lower_bound = float(lower_bound) if lower_bound is not None else 0.0
     if upper_bound is not None:
-        try:
-            scale_factor = 255 / (upper_bound - lower_bound)
-        except ZeroDivisionError:
-            scale_factor = 255
-    else:
-        scale_factor = 1
-    if scale_factor > 0 and scale_factor != 1:
-        array = ne.evaluate("array * scale_factor")
+        upper_bound = float(upper_bound)
+        array = np.minimum(array, upper_bound)
+
+    # shift array by subtracting lower_bound, but floor at 0
+    array = np.maximum(array - lower_bound, 0)
+
+    # scale if upper_bound is provided
+    if upper_bound is not None:
+        denom = upper_bound - lower_bound
+        scale_factor = 255.0 / (denom if denom != 0 else 255.0)
+        if scale_factor != 1.0 and scale_factor > 0:
+            array = ne.evaluate("array * scale_factor")
+
     return array
 
 
@@ -276,7 +266,7 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     # set the array cast type based on the max
     cast_type = np.uint16 if np.max(array) > 1 else np.float32
     hist_data = np.hstack(array).astype(cast_type)
-    max_hist = upper_bound_for_range_slider(array)
+    max_hist = upper_bound_for_range_slider(array, None)
     hist = np.random.choice(hist_data, subset_number).astype(cast_type) if \
         hist_data.shape[0] > subset_number else hist_data
     # add the largest pixel to ensure that hottest pixel is included in the distribution
@@ -294,11 +284,15 @@ def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
 
     return fig, float(np.max(array))
 
-def upper_bound_for_range_slider(array):
+def upper_bound_for_range_slider(array: Union[np.ndarray, np.array],
+                                 enforce_min: Union[float, None]=1.0):
     """
-    Return the pixel max of a channel array for the range slider, or return 1 if the max value is less than 1
+    Return the pixel max of a channel array for the range slider,
+    or return the value of enforce_min if it is specified and the value is less than that.
     """
-    return float(np.max(array)) if float(np.max(array)) > 1.0 else 1.0
+    if not enforce_min:
+        return float(np.max(array))
+    return float(np.max(array)) if float(np.max(array)) > enforce_min else enforce_min
 
 
 def apply_preset_to_array(array, preset):
@@ -580,8 +574,7 @@ def ag_grid_cell_styling_conditions(blend_dict: dict, current_blend: list, data_
                                                     key in channel_aliases.keys() else key
                     cell_styling_conditions.append({"condition": f"params.value == '{label}'",
                                                     "style": {"color": f"{col_use}"}})
-            except KeyError:
-                pass
+            except KeyError: pass
     return cell_styling_conditions
 
 def high_low_values_from_zoom_layout(zoom_layout, cast_type=float):

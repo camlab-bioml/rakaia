@@ -38,7 +38,7 @@ def test_wrapping_canvas_based_on_image_dimensions():
     small_image = np.zeros((512,512,3), 'uint8')
     small_canvas = wrap_canvas_in_loading_screen_for_large_images(small_image, filename="exp0+++slide0+++roi_1")
     assert isinstance(small_canvas, dcc.Graph)
-    large_image = np.zeros((3001,3001,3), 'uint8')
+    large_image = np.zeros((3501,3501,3), 'uint8')
     large_canvas = wrap_canvas_in_loading_screen_for_large_images(large_image, filename="canvas_split")
     assert not isinstance(large_canvas, dcc.Graph)
     assert isinstance(large_canvas, dcc.Loading)
@@ -119,11 +119,10 @@ def test_invert_annotations_figure(channel_hash):
     # if the figure does not have the required coordinate keys, leave as is
     assert image == fake_fig
 
-
 def test_tick_marker_spacing_range_slider():
     med_range, step = set_range_slider_tick_markers(3)
     assert len(med_range) == 4
-    assert step == 0.12
+    assert step == 0.01
     normal_range, normal_step = set_range_slider_tick_markers(100)
     assert normal_range == {0: '0', 33: '33', 66: '66', 100: '100'}
     assert normal_step == 1
@@ -215,6 +214,10 @@ def test_window_viewport_settings():
 
     assert set_canvas_viewport(175, blank_image_dict, "roi_1", {}, {}, (1000, 2000)) == \
            {'width': '150.0vh', 'height': '75.0vh'}
+
+    # if the range is malformed, use the default
+    assert canvas_aspect_ratio_from_layout({'layout': {'xaxis': {'range': [0, 0]},
+            'yaxis': {'range': [0, 0]}}}) == 1
 
 def test_generate_marker_correlation_information():
     children = marker_correlation_children(None, None, None, None)

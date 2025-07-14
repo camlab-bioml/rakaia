@@ -14,8 +14,7 @@ import numexpr as ne
 import scipy
 from rakaia.utils.pixel import (
     path_to_mask,
-    split_string_at_pattern,
-    recolour_greyscale)
+    split_string_at_pattern)
 
 class QuantificationColumns(BaseModel):
     """
@@ -91,8 +90,8 @@ def convert_mask_to_object_boundary(mask):
     Returns an RGB mask where outlines are represented by 255, and all else are 0
     Note that this mask does not retain the spatial location of individual objects
     """
-    boundaries = find_boundaries(mask, mode='inner', connectivity=1)
-    return np.where(boundaries == True, 255, 0).astype(np.uint8)
+    boundaries = find_boundaries(mask, mode='inner', connectivity=1).astype(np.uint8)
+    return ne.evaluate("255 * boundaries").astype(np.uint8)
 
 
 def subset_measurements_frame_from_umap_coordinates(measurements, umap_frame, coordinates_dict,
@@ -388,7 +387,8 @@ def is_steinbock_intensity_anndata(adata):
     - each Index in `adata.obs` begins with 'Object' followed by the object id
     - An 'Image' parameter in obs that contains the tiff information
     """
-    return 'Image' in adata.obs and 'image_acquisition_description' in adata.obs and \
+    # for now, these parameter check work for both .txt and .mcd pipeline runs
+    return 'Image' in adata.obs and \
         all('.tiff' in elem for elem in adata.obs['Image'].to_list()) and \
       all('Object' in elem for elem in adata.obs.index)
 
@@ -396,17 +396,21 @@ class ROIQuantificationMatch:
     """
     Parse the quantification sheet and current ROI name to identify the column name to use to match
     the current ROI to the quantification sheet. Options are either `description` or `sample`. Description is
-    prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1
+    prioritized as the name of the ROI, and sample is the file name with a 1-indexed counter such as {file_name}_1.
+    Additionally used for parsing multi ROI cluster uploads wither either `roi` or `description` columns as identifiers
 
     :param data_selection: String representation of the current ROI selection
     :param quantification_frame: tabular dataset of summarized intensity measurements per object
     :param dataset_options: List of string representations of imported session ROIs
     :param delimiter: string to split the data selection string into experiment/filename, slide, and ROI identifier
     :param mask_name: string name of the currently applied mask (if it exists)
+    :param cols_check: List of column identifiers to check as descriptors (efault is just `description`)
     :return: None
     """
     def __init__(self, data_selection, quantification_frame, dataset_options,
-                                           delimiter: str="+++", mask_name: str=None):
+                                           delimiter: str="+++", mask_name: str=None,
+                                           cols_check: Union[list, None]=None):
+
         self.data_selection = data_selection
         self.quantification = pd.DataFrame(quantification_frame)
         self.dataset_options = dataset_options
@@ -416,25 +420,52 @@ class ROIQuantificationMatch:
         self._quant_col = None
 
         exp, slide, acq = split_string_at_pattern(self.data_selection, pattern=self.delimiter)
-        if 'description' in self.quantification.columns:
-            # this part applies to ROIs from mcd
-            self.steinbock_pipeline_description(acq)
-            # use experiment name if coming from tiff
-            self.filename_overlap(exp)
-        if 'sample' in self.quantification.columns:
+        self._cols_descriptor = self._set_descriptor_columns(cols_check)
+        for col in self._cols_descriptor:
+            if col in self.quantification.columns:
+                # this part applies to ROIs from mcd
+                self.steinbock_pipeline_description(exp, acq, col)
+                # use experiment name if coming from tiff
+                self.filename_overlap(exp, col)
+
+        # if the descriptor column doesn't produce a match, try `sample` as a backup
+        if 'sample' in self.quantification.columns and not self._match:
             self.steinbock_pipeline_sample(acq)
             self.match_by_dataset_index(exp)
 
-    def steinbock_pipeline_description(self, roi_identifier: str):
+    @staticmethod
+    def _set_descriptor_columns(cols_check: Union[list, None]=None):
+        """
+        Set the descriptor columns to parse for matching. These columns are used for both
+        ROI querying and matching for multi ROI cluster uploads.
+
+        :param cols_check: The list of columns to check (default is just `description`)
+        :return: tuple of descriptor columns to check against the quantification frame
+        """
+        return set(cols_check + ['description']) if cols_check else ['description']
+
+
+    def steinbock_pipeline_description(self, experiment_identifier: str, roi_identifier: str,
+                                       col_use: str='description'):
         """
         Match the quantification column to a mask based on the steinbock pipeline naming w/ description
+        :param experiment_identifier: string experiment/filename identifier for the current ROI
         :param roi_identifier: string ROI identifier for the current ROI
+        :param col_use: Name of the column to use as the ROI identifier (default is `description`)
         :return: None
         """
+        if experiment_identifier and roi_identifier and not self._match:
+            # important: if the index is less than 3 digits, i.e. 100 or more, pad with 0
+            roi_index = roi_identifier.split('_')[-1]
+            roi_index = pad_steinbock_roi_index(roi_index)
+            pattern = f"{experiment_identifier}_{roi_index}"
+            if pattern in self.quantification[col_use].tolist():
+                self._match = pattern
+                self._quant_col = col_use
         if not self._match and (self.mask and (match_steinbock_mask_name_to_mcd_roi(self.mask, roi_identifier) or
-            roi_identifier in self.mask)) or roi_identifier in self.quantification['description'].tolist():
+            roi_identifier in self.mask)) or roi_identifier in self.quantification[col_use].tolist():
             self._match = roi_identifier
-            self._quant_col = 'description'
+            self._quant_col = col_use
 
     def steinbock_pipeline_sample(self, roi_identifier: str):
         """
@@ -447,18 +478,20 @@ class ROIQuantificationMatch:
             self._match = self.mask
             self._quant_col = 'sample'
 
-    def filename_overlap(self, experiment_name: str):
+    def filename_overlap(self, experiment_name: str,
+                         col_use: str='description'):
         """
         Match the quantification using either the experiment of ROI identifier w/ description
 
         :param experiment_name: string of the experiment/filename of the current ROI
+        :param col_use: Name of the column to use as the ROI identifier (default is `description`)
         :return: None
         """
         if not self._match and (experiment_name and (experiment_name in
-                                                     self.quantification['description'].tolist()) or
+                                                     self.quantification[col_use].tolist()) or
                                 (self.mask and experiment_name in self.mask)):
             self._match = self.mask if (self.mask and experiment_name in self.mask) else experiment_name
-            self._quant_col = 'description'
+            self._quant_col = col_use
 
     def match_by_dataset_index(self, experiment_name: str):
         """
@@ -485,46 +518,71 @@ class ROIQuantificationMatch:
         """
         return self._match, self._quant_col
 
+def pad_steinbock_roi_index(roi_index: Union[int, str, None]=None):
+    """
+    Pad the steinbock ROI index to match the syntax of the mask name. Returns a string
+    Example: 1 becomes 001 to match file_001
+    12 becomes 012 to match file_012
+    """
+    roi_index = str(roi_index) if roi_index is not None else ""
+    while len(roi_index) < 3:
+        roi_index = f"0{roi_index}" if len(roi_index) < 3 else roi_index
+    return str(roi_index)
+
+def hex_series_to_rgb_array(hex_series: Union[list, pd.Series]):
+    """Convert a `Pandas` series of hex strings to an (N, 3) uint8 RGB array for mapping."""
+    return np.stack(hex_series.str.lstrip('#').apply(
+        lambda x: tuple(int(x[i:i+2], 16) for i in (0, 2, 4))
+    )).astype(np.uint8)
+
 def mask_with_cluster_annotations(mask_array: np.array, cluster_frame: pd.DataFrame, cluster_annotations: dict,
                                   cluster_col: str = "cluster", obj_id_col: str = "cell_id", retain_objs=True,
-                                  use_gating_subset: bool = False, gating_subset_list: list=None,
-                                  cluster_option_subset=None):
+                                  use_gating_subset: bool = False, gating_subset_list: Union[list, None]=None,
+                                  cluster_option_subset: Union[list, None]=None,
+                                  default_color: str="#000000"):
     """
-    Generate a mask where cluster annotations are filled in with a specified colour, and non-annotated objects
-    remain as greyscale values
+    Generate a mask where cluster annotations are filled in with a specified colour. Incorporates
+    both object ID and category sub-setting
     Returns a mask in RGB format
     """
     cluster_frame = pd.DataFrame(cluster_frame)
-    cluster_frame = cluster_frame.astype(str)
-    empty = np.zeros((mask_array.shape[0], mask_array.shape[1], 3))
+    cluster_frame = cluster_frame.astype({obj_id_col: np.int32, cluster_col: str})
     mask_array = mask_array.astype(np.uint32)
-    if use_gating_subset:
-        mask_bool = np.isin(mask_array, gating_subset_list)
-        mask_array[~mask_bool] = 0
     try:
-        # set the cluster assignments to use either from the subset, or the default of all
-        clusters_to_use = [str(select) for select in cluster_option_subset] if cluster_option_subset is not None else \
-            cluster_frame[cluster_col].unique().tolist()
-        # basic time complexity is O(num_clusters) but also slower for larger images
-        for obj_type in clusters_to_use:
-            obj_list = cluster_frame[(cluster_frame[str(cluster_col)] == str(obj_type))][obj_id_col].tolist()
-            # make sure that the objects are integers so that they match the array values of the mask
-            obj_list = [int(i) for i in obj_list]
-            annot_mask = np.where(np.isin(mask_array, obj_list), mask_array, 0)
-            annot_mask = np.where(annot_mask > 0, 255, 0).astype(np.float32)
-            annot_mask = recolour_greyscale(annot_mask, cluster_annotations[obj_type])
-            # empty = empty + annot_mask
-            empty = ne.evaluate("empty + annot_mask")
-        # Find where the objects are annotated, and add back in the ones that are not
-        if retain_objs:
-            already_objs = np.array(Image.fromarray(empty.astype(np.uint8)).convert('L')) != 0
-            mask_array[already_objs] = 0
-            mask_to_add = np.array(Image.fromarray(mask_array).convert('RGB'))
-            mask_to_add = np.where(mask_to_add > 0, 255, 0).astype(empty.dtype)
-            return (empty + mask_to_add).clip(0, 255).astype(np.uint8)
-        return empty.astype(np.uint8)
-    except KeyError:
+        if use_gating_subset:
+            mask_bool = np.isin(mask_array, gating_subset_list)
+            mask_array[~mask_bool] = 0
+            mask_array = mask_array.astype(np.uint32)
+
+        # Safely map group names to hex codes, using default color if group not in dict
+        assign_frame = cluster_frame.copy()
+        assign_frame = assign_frame[assign_frame[obj_id_col].isin(mask_array.flatten())]
+        if cluster_option_subset is not None:
+            assign_frame = assign_frame[assign_frame[cluster_col].isin(cluster_option_subset)]
+        map_max = set_color_map_max(mask_array, pd.Series(assign_frame[obj_id_col])) + 1
+        color_map = np.zeros((map_max, 3), dtype=np.uint8)
+        assign_frame['color'] = assign_frame[cluster_col].map(cluster_annotations).fillna(default_color)
+
+        # Convert hex codes to RGB
+        rgb_colors = hex_series_to_rgb_array(assign_frame['color'])
+
+        # Create a color lookup table: object_id → RGB
+        object_ids = assign_frame[obj_id_col].to_numpy().astype(np.uint32)
+        color_map[object_ids] = rgb_colors
+
+        # Map full mask to RGB using the color map
+        rgb_image = color_map[mask_array]
+        return rgb_image
+    except (KeyError, ValueError, IndexError):
         return None
+
+def set_color_map_max(mask: np.array, id_vector: Union[list, pd.Series]):
+    """
+    Define the maximum value for the RGB mask color map. The color map should have enough values
+    for all object ids in the mask to fill
+    """
+    return max(int(np.max(mask)), int(max(id_vector.to_list())))
+
 
 def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selection: str=None,
                                        index_list: list=None):
@@ -543,6 +601,14 @@ def remove_annotation_entry_by_indices(annotations_dict: dict=None, roi_selectio
             pass
         return annot_dict
     return annotations_dict
+
+
+def umap_fig_using_zoom(umap_layout: Union[dict, None]=None):
+    """
+    Define if the umap figure is currently using a zoom feature for object id sub-setting
+    """
+    return umap_layout is not None and all(elem in umap_layout for elem in
+    ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]'])
 
 
 def quantification_distribution_table(quantification_dict: Union[dict, pd.DataFrame],
@@ -592,7 +658,7 @@ def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFra
     greater similarity between two images based on their cluster proportions
     """
     quantification = pd.DataFrame(quantification)
-    image_id_col = "description" if "description" in list(quantification.columns) else "sample"
+    image_id_col = "sample" if "sample" in list(quantification.columns) else "description"
     quantification[overlay] = quantification[overlay].apply(str)
 
     # number of overlay types to compare
@@ -617,7 +683,7 @@ def compute_image_similarity_from_overlay(quantification: Union[dict, pd.DataFra
     # get the pairwise dot products for every observation
     return pd.DataFrame(np.dot(matrix_cor.T, matrix_cor), columns=samples, index=samples)
 
-def find_similar_images(image_cor: Union[dict, pd.DataFrame], current_image_id: str,
+def find_similar_images(image_cor: Union[dict, pd.DataFrame, None], current_image_id: str,
                         num_query: int=3, identifier: str="sample"):
     """
     Parse a data frame of image similarity scores and pull out the top n similar images by score

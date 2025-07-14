@@ -41,7 +41,7 @@ def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullsc
         style_canvas = {"margin": "auto", "width": "100vw", "height": "100vh",
                         "max-width": "none", "max-height": "none"}
     else:
-        style_canvas = {"width": "100vh", "height": "100vh"}
+        style_canvas = {"width": "100vh", "height": "100vh", "margin": "0px", "padding": "0px"}
 
     # set a custom output filename based on the current ROI
     if filename != "canvas":
@@ -71,7 +71,7 @@ def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullsc
     return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
 
 
-def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=8000000, hovertext=False,
+def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=10000000, hovertext=False,
                                                    enable_zoom=False,
                                                    wrap=True, filename: str = "canvas", delimiter: str = "+++"):
     """
@@ -233,16 +233,14 @@ def invert_annotations_figure(cur_canvas: Union[go.Figure, dict]) -> Union[go.Fi
     cur_canvas['layout']['shapes'] = cur_shapes
     return cur_canvas
 
-
-def set_range_slider_tick_markers(max_value, num_ticks=4, range_max: Union[int, float]=5.0):
+def set_range_slider_tick_markers(max_value, num_ticks=4, range_max: Union[int, float]=15.0):
     """
     Set the number and spacing of the tick markers used for the pixel range slider using the histogram maximum
     Note: the slider minimum is always set to 0
     """
     if float(max_value) <= range_max:
         return (dict([(float(i), str(float(round(i, 2)))) for i in
-                list(np.linspace(0, min(float(range_max), float(max_value)), num_ticks))]),
-                float(round((float(max_value) / 25), 2)))
+                list(np.linspace(0, min(float(range_max), float(max_value)), num_ticks))]), 0.01)
     # set the default number of tick marks to 4
     # if the maximum value is less than 3, reduce the number of ticks accordingly
     # if int(max_value) < range_max:
@@ -349,7 +347,6 @@ def canvas_aspect_ratio_from_layout(canvas: Union[go.Figure, dict]=None):
         except (KeyError, ZeroDivisionError):
             aspect_ratio = 1
     return aspect_ratio
-
 
 
 def set_canvas_viewport(size_slider_val: Union[float, int] = None,
