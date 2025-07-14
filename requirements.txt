@@ -35,13 +35,13 @@ EditorConfig==0.12.3
 exceptiongroup==1.1.1
 Flask==2.2.5
 Flask-Caching==2.0.2
-Flask-Cors==5.0.0
+Flask-Cors==6.0.0
 Flask-Dance==7.0.0
 Flask-HTTPAuth==4.8.0
 fonttools==4.43.0
 freeport==0.1.15
 glasbey==0.2.0
-h11==0.14.0
+h11==0.16.0
 h5py==3.8.0
 idna==3.7
 igraph==0.10.4

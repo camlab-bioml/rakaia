@@ -108,7 +108,7 @@ dependencies:
       - filelock==3.16.1
       - flask==2.2.5
       - flask-caching==2.0.2
-      - flask-cors==5.0.0
+      - flask-cors==6.0.0
       - flask-dance==7.0.0
       - flask-httpauth==4.8.0
       - flask-session==0.8.0
@@ -121,9 +121,8 @@ dependencies:
       - geopandas==1.0.1
       - geoparse==2.0.4
       - glasbey==0.2.0
-      - h11==0.14.0
+      - h11==0.16.0
       - h5py==3.8.0
-      - httpcore==1.0.7
       - httpx==0.28.1
       - identify==2.6.3
       - idna==3.7
