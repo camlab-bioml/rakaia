@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-07-03
+## [0.24.0] - 2025-07-16
+
+### Added
+
+- Expand WSI file types to include .ndpi
+
+## [0.23.0] - 2025-07-15
 
 ### Added
 
