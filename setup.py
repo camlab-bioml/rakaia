@@ -24,7 +24,7 @@ setup(
     keywords=["imaging cytometry classifier single-cell"],
     classifiers=[
         "Intended Audience :: Science/Research",
-        "Programming Language :: Python :: 3.9"
+        "Programming Language :: Python :: 3.10"
     ],
     entry_points="""
     [console_scripts]
@@ -32,5 +32,5 @@ setup(
     """.format(program="rakaia"),
     license="Unlicensed",
     install_requires=required,
-    python_requires=">=3.9.0",
+    python_requires=">=3.10.0",
 )
