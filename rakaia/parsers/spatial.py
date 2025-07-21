@@ -5,16 +5,22 @@ import os
 from typing import Union
 import anndata as ad
 import numpy as np
+import rasterio
 from numpy.linalg import inv
 import pandas as pd
 import skimage
 from pathlib import Path
 import spatialdata as sd
+from rasterio.features import rasterize
 from tifffile import imwrite
-
+import dash
 from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
 
 class ZarrSDKeys:
+    """
+    Define the identifying subdirectories for spatialdata stores as well as technology-specific
+    terms to recognize 10X Genomics assays
+    """
     dirs_include = ['images', 'points', 'shapes', 'tables']
     visium_hd_tables = ['square_002um', 'square_008um', 'square_016um']
     xenium_shapes = ['cell_boundaries', 'cell_circles', 'nucleus_boundaries']
@@ -35,13 +41,6 @@ def is_zarr_store(local_dir: Union[Path, str]):
         return True
     return False
 
-# TODO: tasks for parsing out 10x Genomics for spatialdata:
-# need to decide if needs scalefactors for spots (i.e. visium) or not
-# need to decide if visium hd has bins: each bin needs its own h5ad
-# If Xenium, need to write both h5ad and mask file
-# For Visium HD or Xenium, need to determine the sample ID (sample IDs captured for spots in the shape keys)
-# For visium HD, can write the sample IDs from the keys in shapes
-
 class ZarrSDParser:
     """
     Parse a spatialdata zarr-backed store for 10X Genomics ST outputs. Currently supports parsing
@@ -49,13 +48,15 @@ class ZarrSDParser:
 
     :param zarr_path: local directory path to the zarr store
     :param tmp_session_path: In-application path to where temporary spatial files should be written
+
+    :return: None
     """
     def __init__(self, zarr_path: Union[Path, str, None]=None,
                  tmp_session_path: Union[Path, str, None]=None):
+
         self._zarr_path = zarr_path
         self._tmp_session_path = tmp_session_path
-
-        # make the outputs match the `parse_steinbock_dir` format
+        # make the outputs match the `parse_steinbock_dir` output format/order
         self._image_paths = {'uploads': []}
         self._mask_paths = {}
         self._quant = None
@@ -63,12 +64,36 @@ class ZarrSDParser:
         self._umap = None
         self._scaling = None
 
-    def write_adata(self, adata: ad.AnnData, sample_id: str):
+    @staticmethod
+    def truthy_no_update(val: Union[dict, None]=None):
         """
-        Write an anndata to the in-session temporary storage
+        Return a truthy value, otherwise return a `no_update` object
+
+        :param val: Dictionary value to return
+
+        :return: The dictionary value or a `dash.no_update` if not truthy
+        """
+        return val if val is not None else dash.no_update
+
+    def check_session_cache(self):
+        """
+        Check if the provided session path exists. If not, create it
+
+        :return: None
         """
         if not os.path.exists(self._tmp_session_path):
             os.makedirs(self._tmp_session_path)
+
+    def write_adata(self, adata: ad.AnnData, sample_id: str):
+        """
+        Write an anndata to the in-session temporary storage
+
+        :param adata: `Anndata` containing spatial expression profiles
+        :param sample_id: Identifier to tag the outgoing `.h5ad`
+
+        :return: Output path for the expression `.h5ad` written to the session tmp directory
+        """
+        self.check_session_cache()
         out_path = f"{self._tmp_session_path}/{sample_id}.h5ad"
         adata.write_h5ad(Path(out_path))
         return out_path
@@ -77,16 +102,25 @@ class ZarrSDParser:
                    sample_id: str):
         """
         Write a segmentation mask to the in-application temporary storage
-        """
-        out_path = f"{self._tmp_session_path}/{sample_id}.tiff"
-        imwrite(out_path, mask_array.astype(np.float32))
-        return out_path
 
+        :param mask_array: `numpy` mask array with integers as mask object identifiers in `np.uint32` format
+        :param sample_id: Identifier to tag the outgoing mask
+
+        :return: Output path for the mask tiff written to the session tmp directory
+        """
+        self.check_session_cache()
+        out_path = f"{self._tmp_session_path}/{sample_id}.tiff"
+        imwrite(out_path, mask_array.astype(np.uint32))
+        return out_path
 
     @staticmethod
     def is_visium_hd(sdset: sd.SpatialData):
         """
         Determine if the spatialdata object has table keys corresponding to 10X Visium HD
+
+        :param sdset: `spatialdata` object containing either ST or multiplexed imaging measurements
+
+        :return: Boolean if any of the 10X Visium HD column identifiers are found in the tables
         """
         return any(col_id in sdset.tables for col_id in ZarrSDKeys.visium_hd_tables)
 
@@ -94,6 +128,11 @@ class ZarrSDParser:
     def scale_visium_hd_by_bin(adata: ad.AnnData, bin_size: int):
         """
         Scale the expression of a Visium HD dataset by the bin size
+
+        :param adata: `Anndata` containing spatial expression profiles
+        :param bin_size: Integer specifying the corresponding bin size to scale the spatial coordinates
+
+        :return: Scaled `Anndata` containing spatial coordinates scaled by the bin size
         """
         adata.obsm['spatial'] = adata.obsm['spatial'] / float(bin_size)
         adata.var_names_make_unique()
@@ -104,21 +143,93 @@ class ZarrSDParser:
     def is_xenium(sdset: sd.SpatialData):
         """
         Determine if the spatialdata object has shape keys corresponding to 10X Xenium
+
+        :param sdset: `spatialdata` object containing either ST or multiplexed imaging measurements
+
+        :return: Boolean if any of the 10X Xenium file identifiers are found in the shapes
         """
         return any(col_id in sdset.shapes for col_id in ZarrSDKeys.xenium_shapes)
 
     @staticmethod
-    def expr_uses_scalefactors(shape_frame: pd.DataFrame):
+    def xenium_cell_boundary_mask(sdset: sd.SpatialData,
+                                  flip: bool=True):
+        """
+        Generate the cell boundaries mask for a 10x Xenium dataset
+
+        :param sdset: `spatialdata` object containing either ST or multiplexed imaging measurements
+        :param flip: Whether to flip the mask along the y-axis due to rasterization
+
+        :return: Numpy mask array with cell boundaries and object ids of the type `np.uint32`
+        """
+        if 'cell_boundaries' in sdset.shapes:
+            adata = sdset.tables['table']
+            cells = sdset.shapes['cell_boundaries']
+
+            # get the int bounds to know where the segmentation mask is
+            x_min, y_min = np.min((adata.obsm['spatial']), axis=0)
+            x_max, y_max = np.max((adata.obsm['spatial']), axis=0)
+
+            transform = rasterio.transform.from_bounds(x_min, y_min, x_max,
+                                                       y_max, int(x_max - x_min), int(y_max - y_min))
+
+            shapes = [(geom, idx) for idx, geom in enumerate(cells.geometry)]
+
+            # Set the mask shape to be the same as the transcript bounds in rakaia
+            mask = rasterize(shapes=shapes, out_shape=(int(y_max - y_min), int(x_max - x_min)),
+                             transform=transform, dtype='int32')
+            return np.flip(mask, axis=0) if flip else mask
+        return None
+
+    @staticmethod
+    def expr_uses_scalefactors(shape_frame: pd.DataFrame,
+                               scale_col: str='radius'):
         """
         Determine if a provided shape frame supports scale factors for spots i.e. 10x Visium
+
+        :param shape_frame: `pd.DataFrame` of shape values associated with a particular ROI
+        :param scale_col: Column identifier to match the shape frame identifier to the table geometry
+
+        :return: Scaling float if the dataset uses a scaling factor, or `None` otherwise
         """
-        if 'radius' in shape_frame.columns and len(shape_frame['radius'].unique()) == 1:
-            return float(shape_frame['radius'].unique())
+        if scale_col in shape_frame.columns and len(shape_frame[scale_col].unique()) == 1:
+            return float(shape_frame[scale_col].unique())
         return None
+
+    def _iterate_shapes_by_region(self, sdset: sd.SpatialData,
+                                  id_col: str='region', scale_col: str='radius'):
+        """
+        Iterate each shape in spatialdata, treating it as a region with matched expr in `adata.obs['region']`
+
+        :param sdset: `spatialdata` object containing either ST or multiplexed imaging measurements
+        :param id_col: Identifier column in the table to link the shape identifier to expression profiles
+        :param scale_col: Column identifier in the shape frame to identify geometry, such as scaling factors
+
+        :return: Boolean indicating if any matched expression profiles by shape are found
+        """
+        found_expr = False
+        if len(sdset.shapes) > 0:
+            expr = sdset.tables['table']
+            for shape in sdset.shapes:
+                frame = pd.DataFrame(sdset[shape])
+                sub_expr = expr[expr.obs[id_col] == str(shape)].copy() if id_col in expr.obs else expr
+                if self.expr_uses_scalefactors(frame, scale_col):
+                    rad = float(frame[scale_col].unique())
+                    # only applies to 10X Visium spot-based
+                    sub_expr.uns = {'spatial': {str(shape):
+                                {'scalefactors': {'spot_diameter_fullres': 2 * rad}}}}
+                if len(sub_expr) > 0 and is_spatial_dataset(sub_expr):
+                    self._image_paths['uploads'].append(self.write_adata(sub_expr, shape))
+                    found_expr = True
+        return found_expr
+
 
     def _parse(self, zarr_path: Union[Path, str]):
         """
         Parse the zarr store to detect the technology and create the temporary files
+
+        :param zarr_path: Path to a `spatialdata` `zarr` store
+
+        :return: None
         """
         sdata = sd.read_zarr(zarr_path)
         # Case 1: if it's Xenium
@@ -126,7 +237,10 @@ class ZarrSDParser:
             # for now for xenium, just use the zarr basename as the mapping is one ROI per zarr
             sam_name = str(os.path.basename(zarr_path)).replace('.', '_')
             self._image_paths['uploads'].append(self.write_adata(sdata.tables['table'], sam_name))
-            # TODO: write the mask after modifying
+            mask = self.xenium_cell_boundary_mask(sdata)
+            if mask is not None:
+                self._mask_paths[sam_name] = self.write_mask(mask, sam_name)
+
         # Case 2: if it's Visium HD
         elif self.is_visium_hd(sdata):
             # here, zip through the shapes and table to get the expr with a sample name
@@ -136,26 +250,26 @@ class ZarrSDParser:
                     if bin_size in table:
                         expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size))
                         self._image_paths['uploads'].append(self.write_adata(expr, str(shape)))
-        # Process visium by iterating the shapes (one per ROI, the shape key is the sample)
+        # Process Visium by iterating the shapes (one per ROI, the shape key is the sample)
         else:
             expr = sdata.tables['table']
-            for shape in sdata.shapes:
-                frame = pd.DataFrame(sdata[shape])
-                sub_expr = expr[expr.obs['region'] == str(shape)].copy() if 'region' in expr.obs else expr
-                if self.expr_uses_scalefactors(frame):
-                    rad = float(frame['radius'].unique())
-                    sub_expr.uns = {'spatial': {str(shape): {'scalefactors': {'spot_diameter_fullres': 2 * rad}}}}
-                if len(sub_expr) > 0:
-                    self._image_paths['uploads'].append(self.write_adata(sub_expr, shape))
+            found_expr = self._iterate_shapes_by_region(sdata)
+            if is_spatial_dataset(expr) and not found_expr:
+                self._image_paths['uploads'].append(self.write_adata(expr,
+                str(os.path.basename(zarr_path)).replace('.', '_')))
 
     def get_files(self):
         """
-        Return the files from a zarr store parse. Should match the outputs from `parse_steinbock_dir`
+        Return the files from a zarr store parse. Should match the output tuples from `parse_steinbock_dir`
+
+        :return: Tuple of outputs matching the outputs from a steinbock directory: image paths, error config, mask paths,
+        quantification, UMAP coordinates, and scaling JSON
         """
         if self._zarr_path is not None:
             self._parse(self._zarr_path)
-        return (self._image_paths, self._error,
-                self._mask_paths, self._quant, self._umap, self._scaling)
+        return (self._image_paths,) + tuple([self.truthy_no_update(val) for val in
+                                             (self._error, self._mask_paths, self._quant,
+                                              self._umap, self._scaling)])
 
 class SpatialDefaults:
     """

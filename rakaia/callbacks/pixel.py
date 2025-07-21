@@ -170,8 +170,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
-            # TODO: potentially add parser here for zarr stores for spatialdata. will require writing h5ad files to tmp
-            if is_zarr_store(path):
+            if is_zarr_store(path) and sesh_id:
                 return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1())))).get_files()
             if is_steinbock_dir(path) and sesh_id:
                 return parse_steinbock_dir(path, error_config, key=f"umap_coordinates_{sesh_id}", use_unique_key=OVERWRITE)

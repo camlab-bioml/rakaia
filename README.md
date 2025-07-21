@@ -74,7 +74,7 @@ select the relevant operating system.
 Once conda is installed:
 
 ```
-conda create --name rakaia python=3.9
+conda create --name rakaia python=3.10
 conda activate rakaia
 cd rakaia
 pip install .

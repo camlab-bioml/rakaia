@@ -7,11 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-07-16
+## [0.24.0] - 2025-07-21
+
+**Now requires Python 3.10**
 
 ### Added
 
 - Expand WSI file types to include .ndpi
+- Ability to parse `spatialdata` `zarr` store
 
 ## [0.23.0] - 2025-07-15
 
