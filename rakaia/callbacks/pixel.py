@@ -171,7 +171,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
             if is_zarr_store(path) and sesh_id:
-                return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1())))).get_files()
+                return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session).get_files()
+            # for now, parsing a steinbock directory doesn't take into account any previous session uploads
             if is_steinbock_dir(path) and sesh_id:
                 return parse_steinbock_dir(path, error_config, key=f"umap_coordinates_{sesh_id}", use_unique_key=OVERWRITE)
             paths, error = parse_local_path_imports(path, validate_session_upload_config(cur_session), error_config)

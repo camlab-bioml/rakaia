@@ -146,6 +146,13 @@ def test_parse_sd_visium(get_current_dir):
         for path in parsed['uploads']:
             if os.access(path, os.W_OK):
                 os.remove(path)
+        # if current uploads already exist
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium.zarr'),
+                tmpdirname, {'uploads': ['already_there.h5ad']}).get_files()[0]
+        assert len(parsed['uploads']) == 3
+        for path in parsed['uploads']:
+            if os.path.isfile(path) and os.access(path, os.W_OK):
+                os.remove(path)
 
 def test_parse_sd_xenium(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:

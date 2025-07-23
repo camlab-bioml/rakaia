@@ -15,6 +15,7 @@ from rasterio.features import rasterize
 from tifffile import imwrite
 import dash
 from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
+from rakaia.utils.session import validate_session_upload_config
 
 class ZarrSDKeys:
     """
@@ -43,21 +44,23 @@ def is_zarr_store(local_dir: Union[Path, str]):
 
 class ZarrSDParser:
     """
-    Parse a spatialdata zarr-backed store for 10X Genomics ST outputs. Currently supports parsing
+    Parse a spatialdata zarr-backed store for 10X Genomics ST outputs. Currently, supports parsing
     or 10X Visium, Visium HD, and Xenium
 
     :param zarr_path: local directory path to the zarr store
     :param tmp_session_path: In-application path to where temporary spatial files should be written
+    :param cur_session_uploads: Dictionary of current uploads in the session if they exist, or `None`
 
     :return: None
     """
     def __init__(self, zarr_path: Union[Path, str, None]=None,
-                 tmp_session_path: Union[Path, str, None]=None):
+                 tmp_session_path: Union[Path, str, None]=None,
+                 cur_session_uploads: Union[dict, None]=None):
 
         self._zarr_path = zarr_path
         self._tmp_session_path = tmp_session_path
         # make the outputs match the `parse_steinbock_dir` output format/order
-        self._image_paths = {'uploads': []}
+        self._image_paths = validate_session_upload_config(cur_session_uploads)
         self._mask_paths = {}
         self._quant = None
         self._error = None
