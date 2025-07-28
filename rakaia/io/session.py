@@ -4,6 +4,7 @@ such as hover text, tab text, themes, download directory, etc.
 
 import os
 import json
+from pathlib import Path
 from typing import Union
 import h5py
 from pydantic import BaseModel
@@ -174,6 +175,18 @@ def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_ap
                                          mask_toggle, mask_level, mask_boundary, mask_hover).get_document()
         json.dump(dict_write, outfile)
     return param_json_path
+
+def write_canvas_shapes_to_json(dest_dir: Union[Path, str],
+                                canvas_layout: Union[dict, None]=None):
+    """
+    Write the current canvas shapes to JSON
+    """
+    if canvas_layout is not None and 'shapes' in canvas_layout and canvas_layout['shapes']:
+        param_json_path = str(os.path.join(dest_dir, 'canvas_shapes.json'))
+        with open(param_json_path, "w") as outfile:
+            json.dump(canvas_layout, outfile)
+        return param_json_path
+    return None
 
 def write_session_data_to_h5py(dest_dir, metadata_frame, data_dict, data_selection, blend_dict, mask=None):
     """

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-07-23
+## [0.24.0] - 2025-07-28
 
 **Now requires Python 3.10 or greater**
 
@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Expand WSI file types to include .ndpi
 - Ability to parse `spatialdata` `zarr` store
+- Ability to export current canvas shapes as JSON w/ re-upload #132
 
 ### Fixed
 

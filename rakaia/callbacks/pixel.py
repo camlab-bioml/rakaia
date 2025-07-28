@@ -87,7 +87,7 @@ from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
     subset_mask_for_data_export,
-    SessionServerside, panel_match, all_roi_match, sort_channel_dropdown)
+    SessionServerside, panel_match, all_roi_match, sort_channel_dropdown, write_canvas_shapes_to_json)
 from rakaia.io.readers import DashUploaderFileReader
 from rakaia.utils.db import (
     match_db_config_to_request_str,
@@ -1139,6 +1139,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             except Exception as e:
                 error_config, html_path = add_warning_to_error_config(error_config, str(e)), dash.no_update
             return html_path, error_config
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("download-canvas-shapes", "data"),
+        Input("btn-download-canvas-shapes", "n_clicks"),
+        State('annotation_canvas', 'relayoutData'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
+    def download_canvas_shapes(download_shapes, canvas_layout):
+        if canvas_layout is not None and 'shapes' in canvas_layout and canvas_layout['shapes']:
+            return dcc.send_file(write_canvas_shapes_to_json(download_shapes, canvas_layout))
         raise PreventUpdate
 
     @dash_app.callback(Output('download-session-config-json', 'data'),
@@ -2206,3 +2216,24 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         files = DashUploaderFileReader(status).return_filenames()
         return str(files[0]) if files else dash.no_update
+
+    @du.callback(Output('canvas-shapes-upload', 'data'),
+                 id='upload-canvas-shapes')
+    def upload_exported_canvas_shapes(status: du.UploadStatus):
+        """
+        Import a set of uploaded canvas shapes in JSON format into the current canvas
+        """
+        files = DashUploaderFileReader(status).return_filenames()
+        return json.load(open(files[0])) if files else dash.no_update
+
+    @dash_app.callback(
+        Output("annotation_canvas", 'figure', allow_duplicate=True),
+        Input('canvas-shapes-upload', 'data'),
+        [State("annotation_canvas", 'figure')])
+    def apply_shape_upload_to_canvas(shape_upload, cur_canvas):
+        """
+        Apply a set of imported canvas shapes from JSON format into the current canvas
+        """
+        if cur_canvas and shape_upload and 'shapes' in shape_upload and shape_upload['shapes']:
+            return CanvasLayout(cur_canvas).add_shapes_from_json(shape_upload)
+        raise PreventUpdate

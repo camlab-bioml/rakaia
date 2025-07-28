@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 import plotly.graph_objs as go
@@ -344,6 +345,10 @@ def test_canvas_layout_editor(get_current_dir):
     assert fig['layout']['shapes'][0]['type'] == 'circle'
     assert fig['layout']['shapes'][0]['x0'] == fig['layout']['shapes'][0]['y0'] == (50 - 4)
 
+    shapes = json.load(open(os.path.join(get_current_dir, 'canvas_shapes.json')))
+    fig = CanvasLayout(fig.to_dict()).add_shapes_from_json(shapes)
+    assert len(fig['layout']['shapes']) == 3
+    assert fig['layout']['shapes'][1]['type'] == 'path'
 
 def test_reset_graph_malformed():
     image = np.full((600, 600, 3), 255).astype(np.uint8)
