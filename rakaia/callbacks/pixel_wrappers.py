@@ -37,6 +37,17 @@ class AnnotationList:
         self.check_annotation_for_zoom(self.canvas_layout)
         self.check_annotation_for_shapes(self.canvas_layout)
 
+    @staticmethod
+    def is_path_annotation(annotation: dict):
+        """
+        Check if a particular annotation is from a path or not
+
+        :param annotation: Dictionary store of a canvas annotation from a shape
+
+        :return: Boolean indicating if the shape matches the parameters for a `svgpath`
+        """
+        return 'type' in annotation and annotation['type'] in ['path', 'line'] and 'path' in annotation
+
     def check_annotation_for_zoom(self, canvas_layout: Union[go.Figure, dict]):
         """
         Check if the current layout corresponds to a zoom event
@@ -61,7 +72,7 @@ class AnnotationList:
             # Set which shapes to use based on the checklist either all or the most recent
             shapes_use = canvas_layout['shapes'] if self.bulk_annot else [canvas_layout['shapes'][-1]]
             for shape in shapes_use:
-                if shape['type'] == 'path':
+                if self.is_path_annotation(shape):
                     self.annotations[shape['path']] = 'path'
                 elif shape['type'] == "rect":
                     key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}

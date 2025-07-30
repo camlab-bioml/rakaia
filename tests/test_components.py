@@ -349,6 +349,7 @@ def test_canvas_layout_editor(get_current_dir):
     fig = CanvasLayout(fig.to_dict()).add_shapes_from_json(shapes)
     assert len(fig['layout']['shapes']) == 3
     assert fig['layout']['shapes'][1]['type'] == 'path'
+    assert len(CanvasLayout(fig).get_layout()['shapes']) == 3
 
 def test_reset_graph_malformed():
     image = np.full((600, 600, 3), 255).astype(np.uint8)

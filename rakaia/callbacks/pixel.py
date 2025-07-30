@@ -23,6 +23,9 @@ from rakaia.inputs.pixel import (
     canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
     set_canvas_viewport, marker_correlation_children, reset_pixel_histogram)
+from rakaia.io.annotation import (
+    is_valid_shapes_upload,
+    write_canvas_shapes_to_json)
 from rakaia.parsers.lazy_load import parse_files_for_lazy_loading, SingleMarkerLazyLoader
 from rakaia.parsers.pixel import (
     FileParser,
@@ -87,7 +90,7 @@ from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
     subset_mask_for_data_export,
-    SessionServerside, panel_match, all_roi_match, sort_channel_dropdown, write_canvas_shapes_to_json)
+    SessionServerside, panel_match, all_roi_match, sort_channel_dropdown)
 from rakaia.io.readers import DashUploaderFileReader
 from rakaia.utils.db import (
     match_db_config_to_request_str,
@@ -1741,7 +1744,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('region-annotation', 'disabled'),
                        Input('annotation_canvas', 'relayoutData'),
                        State('data-collection', 'value'),
-                       Input('image_layers', 'value'),
+                       State('image_layers', 'value'),
                        prevent_initial_call=True)
     def enable_region_annotation_on_layout(cur_graph_layout, data_selection, current_blend):
         """
@@ -2224,16 +2227,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Import a set of uploaded canvas shapes in JSON format into the current canvas
         """
         files = DashUploaderFileReader(status).return_filenames()
-        return json.load(open(files[0])) if files else dash.no_update
+        return is_valid_shapes_upload(json.load(open(files[0])), True) if files else dash.no_update
 
     @dash_app.callback(
-        Output("annotation_canvas", 'figure', allow_duplicate=True),
+        Output('annotation_canvas', 'figure', allow_duplicate=True),
+        Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
         Input('canvas-shapes-upload', 'data'),
-        [State("annotation_canvas", 'figure')])
+        [State('annotation_canvas', 'figure')])
     def apply_shape_upload_to_canvas(shape_upload, cur_canvas):
         """
         Apply a set of imported canvas shapes from JSON format into the current canvas
         """
         if cur_canvas and shape_upload and 'shapes' in shape_upload and shape_upload['shapes']:
-            return CanvasLayout(cur_canvas).add_shapes_from_json(shape_upload)
+            graph_w_shapes = CanvasLayout(cur_canvas).add_shapes_from_json(shape_upload)
+            return graph_w_shapes, CanvasLayout(graph_w_shapes).get_layout()
         raise PreventUpdate
