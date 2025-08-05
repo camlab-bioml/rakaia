@@ -9,7 +9,7 @@ import webbrowser
 import os
 from threading import Timer
 from waitress import serve
-from rakaia import __version__, _program
+from rakaia._version import __version__
 from rakaia.entrypoint import init_app
 
 
@@ -93,7 +93,7 @@ def main(sysargs=sys.argv[1:]):
 
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
-            webbrowser.open_new_tab(f'http://127.0.0.1:{args.port}/{_program}')
+            webbrowser.open_new_tab(f'http://127.0.0.1:{args.port}/rakaia')
 
     # cli config gets passed to the app initialization for callbacks, etc.
 
