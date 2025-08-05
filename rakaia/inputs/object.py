@@ -62,10 +62,10 @@ class BarChartPartialModes:
     min = partial(PandasFrameSummaryModes.pd_min)
     median = partial(PandasFrameSummaryModes.pd_median)
 
-def get_cell_channel_expression_plot(measurement_frame, mode="mean",
-                                     subset_dict=None, drop_cols=True):
+def channel_expression_plot(measurement_frame, mode="mean",
+                            subset_dict=None, drop_cols=True):
     """
-    Generate a bar plot of the expression of channels by cell for a specific metric (mean, max, min, etc.)
+    Generate a bar plot of the expression of channels by object (i.e. cells) for a specific metric (mean, max, min, etc.)
     Ensure that the non-numeric columns are dropped prior to plotting
     """
     if subset_dict is not None and len(subset_dict) == 4:
@@ -84,12 +84,12 @@ def get_cell_channel_expression_plot(measurement_frame, mode="mean",
     summary_frame = pd.DataFrame(dropped, columns=[mode]).rename_axis("Channel").reset_index()
     if len(summary_frame) > 0 and summary_frame is not None:
         return px.bar(summary_frame, x="Channel", y=str(mode), color="Channel",
-                      title=f"Segmented Marker Expression ({len(measurement_frame)} cells)")
+                      title=f"Segmented Marker Expression ({len(measurement_frame)} objects)")
     return None
 
 def clustergram_axes_order(clustergram: Union[dict, go.Figure]):
     """
-    Get the order of channels and overlay sub types for a `dash_bio.Clustergram` for the figure data slots.
+    Get the order of channels and overlay subtypes for a `dash_bio.Clustergram` for the figure data slots.
     Returns a tuple of orders for both the x and y-axis
     """
     x_order = None
@@ -292,13 +292,13 @@ def expression_bar_plot_from_interactive_subsetting(quantification_dict, mode_va
             subset_frame, overlay = subset_measurements_frame_from_umap_coordinates(frame,
                             pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2']),
                             umap_layout)
-            fig = go.Figure(get_cell_channel_expression_plot(subset_frame,
-                                        subset_dict=None, mode=mode_value))
+            fig = go.Figure(channel_expression_plot(subset_frame,
+                                                    subset_dict=None, mode=mode_value))
             frame_return = subset_frame
         else:
             subset_zoom = None
-            fig = go.Figure(get_cell_channel_expression_plot(frame,
-                        subset_dict=subset_zoom, mode=mode_value))
+            fig = go.Figure(channel_expression_plot(frame,
+                                                    subset_dict=subset_zoom, mode=mode_value))
             frame_return = frame
         fig['layout']['uirevision'] = True
         return fig, frame_return

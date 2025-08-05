@@ -8,7 +8,7 @@ import pytest
 from dash.exceptions import PreventUpdate
 from statistics import mean, median
 from rakaia.inputs.object import (
-    get_cell_channel_expression_plot,
+    channel_expression_plot,
     object_umap_plot,
     expression_bar_plot_from_interactive_subsetting,
     channel_expression_summary,
@@ -27,40 +27,40 @@ def test_partial_bar_chart_modes(get_current_dir):
 
 def test_bar_graph_from_measurements_csv(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
-    cell_bar = get_cell_channel_expression_plot(measurements_csv)
+    cell_bar = channel_expression_plot(measurements_csv)
     assert isinstance(cell_bar, go.Figure)
     assert cell_bar['layout']['xaxis']['title']['text'] == "Channel"
     assert cell_bar['layout']['yaxis']['title']['text'] == "mean"
 
-    cell_bar_max = get_cell_channel_expression_plot(measurements_csv, mode="max")
+    cell_bar_max = channel_expression_plot(measurements_csv, mode="max")
     assert cell_bar_max['layout']['xaxis']['title']['text'] == "Channel"
     assert cell_bar_max['layout']['yaxis']['title']['text'] == "max"
-    assert cell_bar_max['layout']['title']['text'] == 'Segmented Marker Expression (244 cells)'
+    assert cell_bar_max['layout']['title']['text'] == 'Segmented Marker Expression (244 objects)'
 
-    cell_bar_min = get_cell_channel_expression_plot(measurements_csv, mode="min")
+    cell_bar_min = channel_expression_plot(measurements_csv, mode="min")
     assert cell_bar_min['layout']['xaxis']['title']['text'] == "Channel"
     assert cell_bar_min['layout']['yaxis']['title']['text'] == "min"
-    assert cell_bar_min['layout']['title']['text'] == 'Segmented Marker Expression (244 cells)'
+    assert cell_bar_min['layout']['title']['text'] == 'Segmented Marker Expression (244 objects)'
 
-    cell_bar_min = get_cell_channel_expression_plot(measurements_csv, mode="min", drop_cols=False)
+    cell_bar_min = channel_expression_plot(measurements_csv, mode="min", drop_cols=False)
     assert cell_bar_min['layout']['xaxis']['title']['text'] == "Channel"
     assert cell_bar_min['layout']['yaxis']['title']['text'] == "min"
-    assert cell_bar_min['layout']['title']['text'] == 'Segmented Marker Expression (244 cells)'
+    assert cell_bar_min['layout']['title']['text'] == 'Segmented Marker Expression (244 objects)'
 
-    cell_bar_median = get_cell_channel_expression_plot(measurements_csv, mode="median")
+    cell_bar_median = channel_expression_plot(measurements_csv, mode="median")
     assert cell_bar_median['layout']['xaxis']['title']['text'] == "Channel"
     assert cell_bar_median['layout']['yaxis']['title']['text'] == "median"
-    assert cell_bar_median['layout']['title']['text'] == 'Segmented Marker Expression (244 cells)'
+    assert cell_bar_median['layout']['title']['text'] == 'Segmented Marker Expression (244 objects)'
 
 def test_bar_graph_from_measurements_csv_with_subsetting(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
     subset_dict = {"x_max": 900, "x_min": 400, "y_max": 65, "y_min": 5}
-    cell_bar = get_cell_channel_expression_plot(measurements_csv, subset_dict=subset_dict)
-    assert '61 cells' in cell_bar['layout']['title']['text']
+    cell_bar = channel_expression_plot(measurements_csv, subset_dict=subset_dict)
+    assert '61 objects' in cell_bar['layout']['title']['text']
     # assert that no subset is made when the column is not found
     measurements_csv = measurements_csv.drop(['x_max'], axis=1)
-    cell_bar = get_cell_channel_expression_plot(measurements_csv, subset_dict=subset_dict)
-    assert '244 cells' in cell_bar['layout']['title']['text']
+    cell_bar = channel_expression_plot(measurements_csv, subset_dict=subset_dict)
+    assert '244 objects' in cell_bar['layout']['title']['text']
 
 def test_umap_plot(get_current_dir):
     measurements_dict = {"uploads": [os.path.join(get_current_dir, "cell_measurements.csv")]}
@@ -109,7 +109,7 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
     interactive_umap, frame = expression_bar_plot_from_interactive_subsetting(validated_measurements, "mean", {},
                                                                               {}, umap_dict, zoom_keys, None,
                                                                               category_column=category_column)
-    assert '(244 cells)' in interactive_umap['layout']['title']['text']
+    assert '(244 objects)' in interactive_umap['layout']['title']['text']
 
     umap_dict = {"UMAP1": list(range(900)), "UMAP2": list(range(900))}
     subset_layout = {'xaxis.range[0]': 400, 'xaxis.range[1]': 800, 'yaxis.range[0]': 65, 'yaxis.range[1]': 5}
@@ -120,7 +120,7 @@ def test_expression_plot_from_interactive_triggers(get_current_dir):
                                                                               category_column="sample",
                                                                               cols_drop=['sample'])
     assert interactive_umap['layout']['uirevision']
-    assert '(0 cells)' in interactive_umap['layout']['title']['text']
+    assert '(0 objects)' in interactive_umap['layout']['title']['text']
 
     with pytest.raises(PreventUpdate):
         expression_bar_plot_from_interactive_subsetting(None,

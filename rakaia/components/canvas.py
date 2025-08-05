@@ -506,6 +506,15 @@ class CanvasLayout:
             self.cur_shapes = [shape for shape in self.figure['layout']['shapes'] if shape and
                                'type' in shape and not is_bad_shape(shape)]
 
+    def get_layout(self) -> dict:
+        """
+        Get the layout of the current canvas
+
+        :return: Current canvas layout in dictionary format
+        """
+        return self.figure['layout']
+
+
     def get_fig(self) -> Union[go.Figure, dict]:
         """
         Return the modified canvas figure

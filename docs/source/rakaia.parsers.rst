@@ -9,45 +9,45 @@ rakaia.parsers.lazy\_load module
 
 .. automodule:: rakaia.parsers.lazy_load
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 rakaia.parsers.object module
 ----------------------------
 
 .. automodule:: rakaia.parsers.object
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 rakaia.parsers.pixel module
 ---------------------------
 
 .. automodule:: rakaia.parsers.pixel
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 rakaia.parsers.roi module
 -------------------------
 
 .. automodule:: rakaia.parsers.roi
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 rakaia.parsers.spatial module
 -----------------------------
 
 .. automodule:: rakaia.parsers.spatial
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:
 
 Module contents
 ---------------
 
 .. automodule:: rakaia.parsers
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

@@ -7,9 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-07-28
+## [0.24.0] - 2025-08-05
 
-**Now requires Python 3.10 or greater**
+**Now requires Python 3.10 or 3.11**
 
 ### Added
 
@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Better dropdown menu proportions for choose WSI
+
+
+### Removed
+
+- `dash-draggable` due to conflicts with newer dependencies
 
 ## [0.23.0] - 2025-07-15
 

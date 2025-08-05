@@ -6,5 +6,5 @@ Module contents
 
 .. automodule:: rakaia.static.assets
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

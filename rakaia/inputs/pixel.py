@@ -8,7 +8,6 @@ import dash
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import dcc, html
 import plotly.graph_objs as go
-import dash_draggable
 import cv2
 from plotly.graph_objs.layout import XAxis, YAxis
 import dash_bootstrap_components as dbc
@@ -29,7 +28,7 @@ def default_canvas_margins() -> dict:
 
 
 def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullscreen_mode=False,
-                                     draggable=False, filename: str = "canvas", delimiter: str = "+++"):
+                                     filename: str = "canvas", delimiter: str = "+++"):
     """
     Return the default dcc.Graph annotation figure input. For multiple annotation graphs, a unique input ID
     must be used
@@ -68,7 +67,7 @@ def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullsc
                                margin=default_canvas_margins()
                                )})
 
-    return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
+    return canvas
 
 
 def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=10000000, hovertext=False,

@@ -3,15 +3,18 @@ such as PDF, tiff (zipped), or CSV
 """
 
 import os
+from pathlib import Path
 import json
 from typing import Union
 import shutil
 import ast
+import dash
 import tifffile
 import numpy as np
 from dash import dcc
 import pandas as pd
 from dash.exceptions import PreventUpdate
+import plotly.graph_objs as go
 from rakaia.inputs.pixel import set_roi_identifier_from_length
 from rakaia.io.session import create_download_dir
 from rakaia.utils.object import (
@@ -271,3 +274,24 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
             return dcc.send_data_frame(frame.to_csv, f"{out_name}_points.csv", index=False)
         raise PreventUpdate
     raise PreventUpdate
+
+def write_canvas_shapes_to_json(dest_dir: Union[Path, str],
+                                canvas_layout: Union[dict, None]=None):
+    """
+    Write the current canvas shapes to JSON. Expects a `shapes` slow in the canvas layout dictionary
+    """
+    if canvas_layout is not None and 'shapes' in canvas_layout and canvas_layout['shapes']:
+        param_json_path = str(os.path.join(dest_dir, 'canvas_shapes.json'))
+        with open(param_json_path, "w") as outfile:
+            json.dump(canvas_layout, outfile)
+        return param_json_path
+    return None
+
+def is_valid_shapes_upload(shapes_dict: Union[dict, None]=None,
+                           return_obj: bool=False):
+    """
+    Check if the canvas shapes upload from JSON is valid with a populated `shapes` slot
+    """
+    if shapes_dict is not None and 'shapes' in shapes_dict and shapes_dict['shapes']:
+        return True if not return_obj else shapes_dict
+    return dash.no_update

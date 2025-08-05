@@ -14,5 +14,5 @@ Module contents
 
 .. automodule:: rakaia.static
    :members:
-   :undoc-members:
    :show-inheritance:
+   :undoc-members:

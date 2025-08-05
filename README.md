@@ -47,6 +47,8 @@ rakaia is built on:
 
 ## Installation
 
+**NOTE: As of rakaia 0.24.0, the required Python version(s) are either 3.10 or 3.11.**
+
 rakaia can be cloned and installed locally using access to the GitHub repository
 
 ```
@@ -74,7 +76,7 @@ select the relevant operating system.
 Once conda is installed:
 
 ```
-conda create --name rakaia python=3.10
+conda create --name rakaia python=3.11
 conda activate rakaia
 cd rakaia
 pip install .
