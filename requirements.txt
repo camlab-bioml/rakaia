@@ -75,6 +75,7 @@ multiprocess==0.70.14
 natsort==8.4.0
 networkx==3.1
 numba==0.59.0
+numcodecs==0.13.1
 numexpr==2.8.8
 numpy==1.26.4
 oauthlib==3.2.2

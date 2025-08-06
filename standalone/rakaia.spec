@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from rakaia import __version__
+from rakaia._version import __version__
 
 import distutils.util
 
@@ -20,9 +20,11 @@ required = [elem.lower() if elem not in keep_capital else elem for elem in requi
 from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 additional_deps = []
-for extra in required:
+for extra in required + ['rasterio']:
     additional_deps += collect_data_files(extra)
     additional_deps += copy_metadata(extra)
+
+additional_deps += collect_data_files("rasterio", include_py_files=True)
 
 block_cipher = None
 
@@ -35,7 +37,12 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=all_data,
-    hiddenimports=[],
+    hiddenimports = [
+    'rasterio.sample',
+    'rasterio.plot',
+    'rasterio.warp',
+    'rasterio.enums',
+    'rasterio.vrt'],
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],

@@ -1,1 +1,2 @@
 include rakaia/_version.py
+recursive-include rakaia *.json *.html *.css *.ico *.js *.png *.yaml *.jpg

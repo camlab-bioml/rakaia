@@ -41,7 +41,9 @@ WORKDIR /app/
 
 # RUN pip install -f https://extras.wxpython.org/wxPython4/extras/linux/gtk3/ubuntu-22.04 wxPython==4.2.1
 
-RUN pip install .
+RUN python3.11 -m pip install --upgrade pip
+RUN python3.11 -m pip install .
+
 
 ENV DISPLAY=:0.0
 
