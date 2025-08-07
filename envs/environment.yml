@@ -1,48 +1,35 @@
 name: rakaia
 channels:
   - defaults
+  - https://repo.anaconda.com/pkgs/main
+  - https://repo.anaconda.com/pkgs/r
 dependencies:
-  - _libgcc_mutex=0.1
-  - _openmp_mutex=5.1
   - bzip2=1.0.8
   - ca-certificates=2025.2.25
   - expat=2.7.1
-  - ld_impl_linux-64=2.40
+  - libcxx=17.0.6
   - libffi=3.4.4
-  - libgcc-ng=11.2.0
-  - libgomp=11.2.0
-  - libstdcxx-ng=11.2.0
-  - libuuid=1.41.5
-  - libxcb=1.17.0
-  - ncurses=6.4
-  - openssl=3.0.16
+  - ncurses=6.5
+  - openssl=3.0.17
   - pip=25.1
-  - pthread-stubs=0.3
-  - python=3.10.18
-  - readline=8.2
+  - python=3.11.13
+  - readline=8.3
   - sqlite=3.50.2
   - tk=8.6.14
-  - xorg-libx11=1.8.12
-  - xorg-libxau=1.0.12
-  - xorg-libxdmcp=1.1.5
-  - xorg-xorgproto=2024.1
   - xz=5.6.4
   - zlib=1.2.13
   - pip:
       - affine==2.4.0
       - aiobotocore==2.23.1
       - aiohappyeyeballs==2.6.1
-      - aiohttp==3.12.14
+      - aiohttp==3.12.15
       - aioitertools==0.12.0
       - aiosignal==1.4.0
-      - alabaster==1.0.0
+      - altgraph==0.17.4
       - anndata==0.9.1
-      - annotated-types==0.7.0
       - asciitree==0.3.3
       - async-generator==1.10
-      - async-timeout==5.0.1
       - attrs==23.1.0
-      - babel==2.17.0
       - beautifulsoup4==4.12.2
       - biopython==1.85
       - botocore==1.38.46
@@ -55,12 +42,11 @@ dependencies:
       - click-plugins==1.1.1.2
       - cligj==0.7.2
       - cloudpickle==3.1.1
-      - colorama==0.4.6
       - colorcet==3.1.0
       - colorspacious==1.1.2
       - colour==0.1.5
       - contourpy==1.0.7
-      - coverage==7.9.2
+      - coverage==7.10.2
       - cryptography==44.0.1
       - cycler==0.11.0
       - cython==0.29.35
@@ -72,7 +58,6 @@ dependencies:
       - dash-canvas==0.1.0
       - dash-core-components==2.0.0
       - dash-daq==0.5.0
-      - dash-draggable==0.1.2
       - dash-extensions==1.0.1
       - dash-google-auth==0.1.2
       - dash-html-components==2.0.0
@@ -84,12 +69,10 @@ dependencies:
       - dask==2024.11.2
       - dask-expr==1.1.19
       - dask-image==2024.5.3
-      - dataclass-wizard==0.30.1
       - datashader==0.17.0
       - dill==0.3.6
       - diskcache==5.6.1
       - dnspython==2.7.0
-      - docutils==0.21.2
       - editorconfig==0.12.3
       - exceptiongroup==1.1.1
       - fasteners==0.19
@@ -99,11 +82,10 @@ dependencies:
       - flask-cors==6.0.0
       - flask-dance==7.0.0
       - flask-httpauth==4.8.0
-      - flowio==1.4.0
       - fonttools==4.43.0
       - freeport==0.1.15
       - frozenlist==1.7.0
-      - fsspec==2023.6.0
+      - fsspec==2025.7.0
       - geopandas==1.1.1
       - geoparse==2.0.4
       - glasbey==0.2.0
@@ -113,7 +95,6 @@ dependencies:
       - igraph==0.10.4
       - imagecodecs==2023.9.18
       - imageio==2.31.0
-      - imagesize==1.4.1
       - imctools==2.1.8
       - importlib-metadata==6.6.0
       - importlib-resources==5.12.0
@@ -128,30 +109,29 @@ dependencies:
       - kaleido==0.2.1
       - kiwisolver==1.4.4
       - lazy-loader==0.2
-      - leidenalg==0.9.1
+      - leidenalg==0.10.2
       - llvmlite==0.42.0
       - locket==1.0.0
-      - lxml==4.9.2
-      - mando==0.7.1
+      - lxml==5.1.0
+      - macholib==1.16.3
       - markdown-it-py==3.0.0
       - markupsafe==2.1.3
       - matplotlib==3.7.1
       - mdurl==0.1.2
       - mongomock==4.1.2
       - more-itertools==9.1.0
-      - msgpack==1.1.1
       - multidict==6.6.3
       - multipledispatch==1.0.0
       - multiprocess==0.70.14
       - multiscale-spatial-image==2.0.2
-      - narwhals==1.47.1
+      - narwhals==2.0.1
       - natsort==8.4.0
       - nest-asyncio==1.6.0
       - networkx==3.1
       - numba==0.59.0
       - numcodecs==0.13.1
       - numexpr==2.8.8
-      - numpy==1.24.3
+      - numpy==1.26.4
       - oauthlib==3.2.2
       - ome-zarr==0.11.1
       - opencv-python-headless==4.8.1.78
@@ -167,6 +147,7 @@ dependencies:
       - phenograph==1.5.7
       - pillow==10.3.0
       - pims==0.7
+      - pkgconfig==1.5.5
       - platformdirs==4.3.8
       - plotly==6.0.0
       - pluggy==1.0.0
@@ -177,11 +158,12 @@ dependencies:
       - pycparser==2.21
       - pyct==0.5.0
       - pydantic==1.10.13
-      - pydantic-core==2.27.1
       - pygments==2.19.2
+      - pyinstaller==6.11.1
+      - pyinstaller-hooks-contrib==2025.8
       - pymongo==4.6.3
       - pynndescent==0.5.10
-      - pyogrio==0.11.0
+      - pyogrio==0.11.1
       - pyopenssl==25.0.0
       - pyparsing==3.0.9
       - pyproj==3.7.1
@@ -191,58 +173,45 @@ dependencies:
       - python-dateutil==2.8.2
       - pytz==2023.3
       - pyvips==2.2.3
-      - pywavelets==1.4.1
+      - pywavelets==1.5.0
       - pyyaml==6.0.2
-      - radon==6.0.1
+      - rakaia==0.24a4
       - rasterio==1.4.3
-      - readfcs==2.0.1
       - readimc==0.7.0
       - referencing==0.36.2
       - requests==2.32.4
       - requests-oauthlib==1.3.1
-      - retrying==1.4.0
-      - rich==14.0.0
-      - rpds-py==0.26.0
-      - s3fs==0.6.0
+      - retrying==1.4.2
+      - rich==14.1.0
+      - rpds-py==0.27.0
+      - s3fs==2025.7.0
       - scanpy==1.9.3
       - scikit-image==0.21.0
       - scikit-learn==1.5.0
-      - scipy==1.10.1
+      - scipy==1.14.1
       - seaborn==0.12.2
       - selenium==4.15.2
       - sentinels==1.0.0
       - session-info==1.0.0
-      - setuptools==78.1.1
+      - setuptools==80.9.0
       - shapely==2.1.1
       - shortuuid==1.0.12
       - six==1.16.0
       - slicerator==1.1.0
       - sniffio==1.3.0
-      - snowballstemmer==3.0.1
       - sortedcontainers==2.4.0
       - soupsieve==2.4.1
-      - spatial-image==1.1.0
+      - spatial-image==1.2.1
       - spatialdata==0.4.0
-      - spatialdata-io==0.1.5
-      - sphinx==8.1.3
-      - sphinxcontrib-applehelp==2.0.0
-      - sphinxcontrib-devhelp==2.0.0
-      - sphinxcontrib-htmlhelp==2.1.0
-      - sphinxcontrib-jsmath==1.0.1
-      - sphinxcontrib-qthelp==2.0.0
-      - sphinxcontrib-serializinghtml==2.0.0
       - statsmodels==0.14.0
       - stdlib-list==0.8.0
       - steinbock==0.16.1
-      - stringcase==1.2.0
-      - tblib==3.1.0
       - tenacity==8.2.2
       - texttable==1.6.7
       - threadpoolctl==3.1.0
       - tifffile==2023.8.12
       - tomli==2.0.1
       - toolz==1.0.0
-      - tornado==6.5.1
       - tqdm==4.66.3
       - trio==0.22.0
       - trio-websocket==0.10.2
@@ -257,7 +226,6 @@ dependencies:
       - wheel==0.38.4
       - wrapt==1.17.2
       - wsproto==1.2.0
-      - wxpython==4.2.0
       - xarray==2024.10.0
       - xarray-dataclasses==1.9.1
       - xarray-schema==0.0.3
@@ -266,5 +234,4 @@ dependencies:
       - xtiff==0.7.9
       - yarl==1.20.1
       - zarr==2.18.3
-      - zict==3.0.0
       - zipp==3.19.1

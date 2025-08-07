@@ -101,7 +101,7 @@ appears to happen on MacOS with Python 3.12+), then users should try installing 
 
 ```commandline
 pip uninstall parmed
-conda install -c conda-forge leidenalg
+conda install -c conda-forge leidenalg=0.10.2
 ```
 
 ### with Make

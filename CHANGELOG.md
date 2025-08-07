@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-08-05
+## [0.24.0] - 2025-08-06
 
 **Now requires Python 3.10, 3.11, or 3.12**
 
@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ability to parse `spatialdata` `zarr` store
 - Ability to export current canvas shapes as JSON w/ re-upload #132
 
+### Changed
+
+- fully convert to `pyproject.toml` for PEP compliance
+
 ### Fixed
 
 - Better dropdown menu proportions for choose WSI
@@ -25,6 +29,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 - `dash-draggable` due to conflicts with newer dependencies
+- deprecated files in `envs`: Singularity + pipenv
 
 ## [0.23.0] - 2025-07-15
 

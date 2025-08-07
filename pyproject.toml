@@ -1,6 +1,6 @@
 [project]
 name = "rakaia"
-version = "0.24a3"
+version = "0.24a4"
 description = "Scalable spatial biology analysis in the browser."
 readme = "README.md"
 requires-python = ">=3.10"
@@ -83,7 +83,7 @@ dependencies = [
   "kaleido==0.2.1",
   "kiwisolver==1.4.4",
   "lazy_loader==0.2",
-  "leidenalg==0.9.1",
+  "leidenalg==0.10.2",
   "llvmlite==0.42.0",
   "lxml==5.1.0",
   "MarkupSafe==2.1.3",

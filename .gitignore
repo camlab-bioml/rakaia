@@ -1,3 +1,5 @@
+*.icns
+*dmg*
 .snakemake_timestamp
 
 .DS_Store
