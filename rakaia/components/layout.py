@@ -180,7 +180,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                   html.Br(),
                                   html.B("Scalebar color", style={"margin-left": "15px"}),
                                   dcc.RadioItems([{'label': 'White', 'value': 'white'},
-                                        {'label': 'Black', 'value': 'black'}], 'black', inline=True, id="scalebar-color",
+                                        {'label': 'Black', 'value': 'black'}], 'white', inline=True, id="scalebar-color",
                                                  persistence=config['persistence'], persistence_type='local',
                                                  style={"accent-color": DEFAULT_WIDGET_COLOUR, "margin-left": "15px"},
                                 labelStyle={'display': 'flex', 'alignItems': 'center', 'gap': '4px'})],
