@@ -286,6 +286,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # "animate__animated animate__jello animate__slower"
         raise PreventUpdate
 
+    @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
+                       Input('data-collection', 'options'),
+                       State('data-collection', 'value'),
+                       prevent_initial_call=True)
+    def check_for_roi_autoload(ses_options, cur_roi):
+        """
+        Check if a single ROI has been loaded into the session, and load if so. Otherwise, do nothing
+        """
+        return ses_options[0] if (ses_options and len(ses_options) == 1 and not cur_roi) else dash.no_update
+
     @dash_app.callback(Output('data-collection', 'options', allow_duplicate=True),
                        Output('data-collection', 'value', allow_duplicate=True),
                        Output('image_layers', 'options', allow_duplicate=True),
@@ -917,7 +927,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 and len(channel_order) > 0 and not global_not_enabled and not channel_order_same and canvas_holder and \
                 data_selection in rgb_layers and rgb_layers[data_selection] and not dont_update and not empty_mask:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
-            legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+            legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
             try:
                 canvas = CanvasImage(rgb_layers, data_selection, currently_selected, mask_config, mask_selection,
@@ -925,9 +935,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover, show_each_channel_intensity,
                 image_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
-                custom_scale_val, apply_gating, gating_cell_id_list, scale_color, clust_selected)
+                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected)
                 fig = canvas.render_canvas()
-                if cluster_type == 'mask' or not apply_cluster_on_mask:
+                if str(cluster_type).lower() == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask and cluster_cat:
                     fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
@@ -976,10 +986,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id not in ["activate-coord"]:
                 try:
                     proportion = float(custom_scale_val / cur_dim[1]) if custom_scale_val is not None else 0.1
-                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion, scale_col)
+                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion, str(scale_col).lower())
                     x_axis_placement = set_x_axis_placement_of_scalebar(cur_dim[1], invert_annot)
                     cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
-                                pixel_ratio, cur_dim, legend_size, proportion, scale_col)
+                                pixel_ratio, cur_dim, legend_size, proportion, str(scale_col).lower())
                     return cur_graph, cur_graph_layout
                 except (ValueError, KeyError, AssertionError): raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
@@ -1030,7 +1040,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             x_axis_placement = set_x_axis_placement_of_scalebar(cur_dim[1], invert_annot)
             cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend", "channel-order"]:
-                legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+                legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
                                                  cluster_assignments_in_legend, cluster_assignments_dict,
                                                  data_selection, clust_selected, cluster_cat) if toggle_legend else ''
                 canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
@@ -1038,7 +1048,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id in ["toggle-canvas-scalebar", "scalebar-color"]:
                 proportion = float(custom_scale_val / cur_dim[1]) if custom_scale_val is not None else 0.1
                 canvas = CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
-                        pixel_ratio, cur_dim, legend_size, proportion, scalebar_col)
+                        pixel_ratio, cur_dim, legend_size, proportion, str(scalebar_col).lower())
                 return CanvasLayout(canvas).get_fig()
         raise PreventUpdate
 

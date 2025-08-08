@@ -9,13 +9,13 @@ rakaia.db.connection module
 
 .. automodule:: rakaia.db.connection
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------
 
 .. automodule:: rakaia.db
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:

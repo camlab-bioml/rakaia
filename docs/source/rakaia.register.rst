@@ -9,13 +9,13 @@ rakaia.register.process module
 
 .. automodule:: rakaia.register.process
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------
 
 .. automodule:: rakaia.register
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:

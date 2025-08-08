@@ -743,7 +743,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return SessionServerside(custom_gating_id_list(id_str), key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), dash.no_update
             elif None not in (roi_selection, quantification_dict, mask_selection) and cur_gate_selection and sesh_id:
                 id_list = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame.from_records(quantification_dict),
-                                mask_selection, intersection=(gating_type == 'intersection')).get_object_list()
+                                mask_selection, intersection=(str(gating_type).lower() == 'intersection')).get_object_list()
                 return SessionServerside(id_list, key=f"gating_cell_id_list_{sesh_id}", use_unique_key=OVERWRITE), reset_custom_gate_slider(ctx.triggered_id)
             return [] if gating_dict is not None else dash.no_update, dash.no_update if cur_gate_selection else False
         raise PreventUpdate
@@ -788,7 +788,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (roi_selection, quantification_dict, mask_selection, gate_val) and cur_gate_selection and sesh_id:
             indices = GatingObjectList(gating_dict, cur_gate_selection, pd.DataFrame(quantification_dict),
-                mask_selection, intersection=(gating_type == 'intersection')).get_query_indices_all()
+                mask_selection, intersection=(str(gating_type).lower() == 'intersection')).get_query_indices_all()
             return SessionServerside(apply_gating_to_all_rois(quantification_dict, indices, gate_col, gate_val,
             reset_to_default=(ctx.triggered_id == "gating-annotation-all-reset")), key=f"quantification_dict_{sesh_id}", use_unique_key=OVERWRITE)
         raise PreventUpdate

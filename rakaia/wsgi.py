@@ -116,6 +116,8 @@ def main(sysargs=sys.argv[1:]):
     if args.auto_open:
         Timer(1, open_browser).start()
 
+    print(f'rakaia is running at: http://127.0.0.1:{args.port}/rakaia \n')
+
     if CLI_CONFIG['is_dev_mode']:
         app.run(host=HOST, debug=CLI_CONFIG['is_dev_mode'], threaded=args.threading, port=args.port)
     else:

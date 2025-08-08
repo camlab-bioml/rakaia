@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-08-06
+## [0.24.0] - 2025-08-08
 
 **Now requires Python 3.10, 3.11, or 3.12**
 
@@ -16,14 +16,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Expand WSI file types to include .ndpi
 - Ability to parse `spatialdata` `zarr` store
 - Ability to export current canvas shapes as JSON w/ re-upload #132
+- Console statement for user for where rakaia is running #133
 
 ### Changed
 
 - fully convert to `pyproject.toml` for PEP compliance
+- auto-select if single ROI is uploaded #134
 
 ### Fixed
 
 - Better dropdown menu proportions for choose WSI
+- Consistent UI styling for tooling + radio selections #135
 
 
 ### Removed

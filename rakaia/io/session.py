@@ -4,7 +4,6 @@ such as hover text, tab text, themes, download directory, etc.
 
 import os
 import json
-from pathlib import Path
 from typing import Union
 import h5py
 from pydantic import BaseModel

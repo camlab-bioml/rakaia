@@ -9,37 +9,37 @@ rakaia.inputs.loaders module
 
 .. automodule:: rakaia.inputs.loaders
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 rakaia.inputs.metadata module
 -----------------------------
 
 .. automodule:: rakaia.inputs.metadata
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 rakaia.inputs.object module
 ---------------------------
 
 .. automodule:: rakaia.inputs.object
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 rakaia.inputs.pixel module
 --------------------------
 
 .. automodule:: rakaia.inputs.pixel
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------
 
 .. automodule:: rakaia.inputs
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:

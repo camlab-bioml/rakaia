@@ -28,29 +28,29 @@ rakaia.app module
 
 .. automodule:: rakaia.app
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 rakaia.entrypoint module
 ------------------------
 
 .. automodule:: rakaia.entrypoint
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 rakaia.wsgi module
 ------------------
 
 .. automodule:: rakaia.wsgi
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------
 
 .. automodule:: rakaia
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:

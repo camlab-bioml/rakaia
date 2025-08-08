@@ -124,7 +124,7 @@ class CanvasImage:
         self.cluster_assignments_dict = cluster_assignments_dict
         self.cluster_cat = cluster_cat
         self.cluster_frame = cluster_frame
-        self.cluster_type = cluster_type
+        self.cluster_type = str(cluster_type).lower()
         self.custom_scale_val = custom_scale_val
         self.apply_gating = apply_gating
         self.gating_cell_id_list = gating_cell_id_list

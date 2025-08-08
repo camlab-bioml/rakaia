@@ -9,13 +9,13 @@ rakaia.plugins.models module
 
 .. automodule:: rakaia.plugins.models
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
 
 Module contents
 ---------------
 
 .. automodule:: rakaia.plugins
    :members:
-   :show-inheritance:
    :undoc-members:
+   :show-inheritance:
