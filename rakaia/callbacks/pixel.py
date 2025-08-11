@@ -58,7 +58,10 @@ from rakaia.utils.pixel import (
     no_filter_chosen,
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
-    MarkerCorrelation, high_low_values_from_zoom_layout, layers_exist, add_saved_blend)
+    MarkerCorrelation,
+    high_low_values_from_zoom_layout,
+    layers_exist, add_saved_blend,
+    is_metadata_key)
 from rakaia.utils.quantification import limit_length_to_quantify
 from rakaia.utils.session import (
     validate_session_upload_config,
@@ -276,14 +279,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if upload_template is not None:
             datasets, selection_return, channels_return = [], None, None
             for roi in upload_template.keys():
-                if "metadata" not in roi: datasets.append(roi)
+                if not is_metadata_key(roi): datasets.append(roi)
             if cur_data_selection is not None:
                 selection_return = set_data_selection_after_import(datasets, cur_data_selection)
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0: channels_return = cur_layers_selected
             height_update = adjust_option_height_from_list_length(datasets)
             return datasets, selection_return, channels_return, height_update, datasets, disable_gallery_by_roi(datasets)
-            # can use an animation to draw attention to the data selection input
-            # "animate__animated animate__jello animate__slower"
         raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
@@ -510,7 +511,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         metadata_return = metadata_return if metadata_return is not None else dash.no_update
         if None not in (image_dict, new_blend_dict, data_selection) and sesh_id:
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
-            current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}
+            current_blend_dict = {key: value for key, value in current_blend_dict.items() if not is_metadata_key(key)}
             if panel_match(current_blend_dict, new_blend_dict) or all_roi_match(current_blend_dict, new_blend_dict, image_dict, delimiter):
                 current_blend_dict = new_blend_dict['channels'].copy() if new_blend_dict['channels'] else current_blend_dict
                 rgb_layers = {data_selection: {}}
