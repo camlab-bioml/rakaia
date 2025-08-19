@@ -1627,19 +1627,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Input('session_config', 'data'),
                        Output('unique-channel-list', 'options'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('alias-dict', 'data'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
-    def populate_gallery_channel_list(session_config, aliases):
+    def populate_gallery_channel_list(session_config, aliases, error_config):
         """
         Populate a list of all unique channel names for the gallery view
         """
         if session_config is not None and 'unique_images' in session_config.keys():
             try:
-                if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise AssertionError
-                return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
-            except AttributeError: raise DataImportError(ALERT.warnings["possible-disk-storage-error"])
-            except KeyError: return []
-        return []
+                if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise PanelMismatchError("")
+                return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']], dash.no_update
+            except Exception: return [], add_warning_to_error_config(error_config, "Warning: possible panel mismatch for uploads. Please refresh.")
+        return [], dash.no_update
 
     @dash_app.callback(Output('static-session-var', 'data'),
                        Input('images_in_blend', 'value'),
