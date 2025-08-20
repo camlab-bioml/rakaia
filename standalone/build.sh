@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
 
-pyinstaller ./rakaia.spec --noconfirm --clean
+pyinstaller $1 --noconfirm --clean
 chmod 777 dist/*
 chmod +x dist/*
