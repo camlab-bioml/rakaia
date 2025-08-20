@@ -1,0 +1,52 @@
+---
+title: "Running rakaia from a standalone executable"
+output: pdf_document
+---
+
+
+The rakaia executable (usually) requires the use of a terminal window to communicate with the underlying server.
+
+Once the zip bundle is downloaded and unzipped, there should be a single file named
+`rakaia_{os}_{version}` in the unzipped destination.
+
+## Windows
+
+On Windows, the executable can simply be opened by double-clicking the application icon. In some cases, it may require admin permissions. For this, right-click the application and select `Run as administrator`
+
+## macOS
+
+For macOS, right-click the executable file and select `Open with` -> `Other`. Select `Enable` -> `All Applications`,
+then navigate to `Applications` -> `Utilities` -> `Terminal`. Run the application by double-clicking.
+
+\
+**NOTE**: macOS users should first disable `Airplay Receiver` in `Settings`
+before executing the binary, as the receiver feature uses the same port
+as Rakaia's default.
+\
+
+**NOTE**: On macOS, it is possible that the rakaia executable will be
+flagged due to security reasons. If the application fails to start, users
+should check the security settings to see if rakaia is flagged from an unknown developer:
+https://support.apple.com/en-gb/guide/mac-help/mh40616/mac.
+If so, users should enable the software to be installed, then try opening the file again.
+
+## Linux
+
+On Linux, the application can be double-clicked or run through the command line:
+
+```
+./rakaia_linux-x86_64_{version}
+```
+
+Opening the application should trigger a new Terminal window. On first run, it may take a while as the application parses through all dependencies and verifies the bundled interpreter.
+
+
+**NOTE**: Double clicking the application on Linux will run it in the background without a terminal,
+and the port usage will need to be killed with fuser or kill.
+It is recommended to execute on Linux through the command line.
+
+## Troubleshooting
+
+### Windows SDK dependencies
+
+In certain cases, Windows user may need to install the [Windows Development SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) to have all required dll libraries for rakaia on windows.
