@@ -1,7 +1,7 @@
 # Building rakaia standalone
 
 rakaia supports building binaries distributions through [pyinstaller](https://pyinstaller.org/en/stable/).
-Binaries can be built for all major OS distributions (Windows, MacOS, and Linux).
+Binaries can be built for all major OS distributions (Windows, macOS, and Linux).
 
 
 ## pyinstaller installation
@@ -45,11 +45,17 @@ Once the zip bundle is downloaded and unzipped, there should be a single file na
 On Windows, the executable can simply be opened by double-clicking the application icon. In some cases, it may require
 admin permissions. For this, right-click the application and select `Run as administrator`
 
-For MacOS, right-click the executable file and select `Open with` -> `Other`. Select `Enable` -> `All Applications`,
-then navigate to `Applications` -> `Utilities` -> `Terminal`. Run the application by double clicking.
+For macOS, right-click the executable file and select `Open with` -> `Other`. Select `Enable` -> `All Applications`,
+then navigate to `Applications` -> `Utilities` -> `Terminal`. Run the application by double-clicking.
 
 ```
-Note: On MacOS, it is possible that the rakaia executable will be
+macOS users should first disable `Airplay Receiver` in `Settings`
+before executing the binary, as the receiver feature uses the same port
+as Rakaia's default.
+```
+
+```
+Note: On macOS, it is possible that the rakaia executable will be
 flagged due to security reasons. If the application fails to start, users
 should check the security settings to see if rakaia is flagged from an unknown developer:
 https://support.apple.com/en-gb/guide/mac-help/mh40616/mac.

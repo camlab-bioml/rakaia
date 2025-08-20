@@ -184,7 +184,7 @@ include-package-data = true
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["rakaia"]
+include = ["rakaia*"]
 
 [tool.setuptools.package-data]
 rakaia = ["*.json", "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml", "*.jpg"]
