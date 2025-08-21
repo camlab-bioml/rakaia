@@ -1,16 +1,16 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-from rakaia._version import __version__
 import distutils.util
 import sys
-from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 import os
+from rakaia._version import __version__
+from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 
 sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 COMPILING_PLATFORM = distutils.util.get_platform()
 
-
+# Safe name with version + platform
 safe_name = f"rakaia_{COMPILING_PLATFORM}_{__version__}".replace(".", "_").replace("-", "_")
 
 with open('../requirements.txt') as f:
@@ -18,9 +18,8 @@ with open('../requirements.txt') as f:
 
 keep_capital = ['Pillow', 'Cython', 'OpenSSL', 'Flask-HTTPAuth', 'PyWavelets']
 required = [elem.split("==")[0].replace("-", "_") for elem in required]
-required = [elem.lower() if elem not in keep_capital else elem for elem in required]
+required = [elem if elem in keep_capital else elem.lower() for elem in required]
 
-# Collect data files and metadata for dependencies
 additional_deps = []
 for pkg in required:
     additional_deps += collect_data_files(pkg)
@@ -36,7 +35,7 @@ all_data = additional_deps + [
 
 icon_path = "../rakaia/assets/rakaia.ico"
 if not os.path.isfile(icon_path):
-    icon_path = None  # skip icon if file missing
+    icon_path = None
 
 block_cipher = None
 
@@ -66,8 +65,8 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    [],          # empty list, remove a.binaries
-    [],          # no zipfiles in onedir
+    [],
+    [],
     name=safe_name,
     debug=False,
     strip=False,
@@ -79,10 +78,10 @@ exe = EXE(
 
 coll = COLLECT(
     exe,
-    a.binaries,  # pass binaries here, not in EXE
+    a.binaries,
     a.datas,
     strip=False,
     upx=True,
     upx_exclude=[],
-    name=safe_name
+    name=safe_name + "_dist"
 )
