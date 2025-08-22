@@ -3,25 +3,31 @@ title: "Running rakaia from a standalone executable"
 output: pdf_document
 ---
 
+## For Users
 
-The rakaia executable (usually) requires the use of a terminal window to communicate with the underlying server.
+This repository contains rakaia standalone builds for Windows, Linux, and macOS (currently only
+Intel-based laptops, M1/M2 builds are coming soon). You should download the zip bundle corresponding to your OS.
+Once the zip bundle is downloaded and unzipped, there should be a single file named `rakaia_{os}_{version}` in the unzipped destination.
 
-Once the zip bundle is downloaded and unzipped, there should be a single file named
-`rakaia_{os}_{version}` in the unzipped destination.
+**Note**: On initial execution, the bundles may take a while (3-4 minutes) to initialize, as
+the large number of package dependencies will need to be uncompressed. Subsequent executions of
+rakaia should be faster.
+
+Depending on your OS, the execution steps will vary slightly:
 
 ## Windows
 
 On Windows, the executable can simply be opened by double-clicking the application icon. In some cases, it may require admin permissions. For this, right-click the application and select `Run as administrator`
 
 ## macOS
-
-For macOS, right-click the executable file and select `Open with` -> `Other`. Select `Enable` -> `All Applications`,
-then navigate to `Applications` -> `Utilities` -> `Terminal`. Run the application by double-clicking.
-
-\
 **NOTE**: macOS users should first disable `Airplay Receiver` in `Settings`
 before executing the binary, as the receiver feature uses the same port
 as Rakaia's default.
+\
+
+For macOS, on first execution, right-click the executable file and select `Open with` -> `Other`. Select `Enable` -> `All Applications`,
+then navigate to `Applications` -> `Utilities` -> `Terminal`. Be sure to select `Always Open With`.
+This should only have to be set the first time the user interacts with the file. Run the application by double-clicking.
 \
 
 **NOTE**: On macOS, it is possible that the rakaia executable will be
@@ -39,13 +45,16 @@ On Linux, the application can be double-clicked or run through the command line:
 ```
 
 Opening the application should trigger a new Terminal window. On first run, it may take a while as the application parses through all dependencies and verifies the bundled interpreter.
-
+\
 
 **NOTE**: Double clicking the application on Linux will run it in the background without a terminal,
 and the port usage will need to be killed with fuser or kill.
 It is recommended to execute on Linux through the command line.
 
 ## Troubleshooting
+
+For general installation and run support, please contact mwatson@lunenfeld.ca
+
 
 ### Windows SDK dependencies
 
