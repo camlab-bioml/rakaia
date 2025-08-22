@@ -420,3 +420,17 @@ def reset_pixel_histogram(to_dict: bool = False):
                       font=dict(color="black"))
 
     return fig.to_dict() if to_dict else fig
+
+def set_annotation_layout(canvas_layout: Union[dict, None]=None,
+                          canvas: Union[dict, go.Figure, None]=None):
+    """
+    Set the canvas layout for an annotation based on the type used.
+    If the detected layout uses zoom, then do not use the shapes in the graph. Otherwise,
+    use the graph shapes to allow for re-dragged/modified shapes to be annotated.
+    """
+    if any(key in ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+           for key in canvas_layout) or canvas is None:
+        return canvas_layout
+    if 'layout' in canvas and 'shapes' in canvas['layout']:
+        return {'shapes': canvas['layout']['shapes']}
+    return canvas_layout

@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-08-20
+## [0.24.0] - 2025-08-22
 
 **Now requires Python 3.10, 3.11, or 3.12**
 
@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Better dropdown menu proportions for choose WSI
 - Consistent UI styling for tooling + radio selections #135
 - Empty parsing if `metadata` keyword in ROI identifier
+- Annotations now compatible with modified shapes (redrawn/drag)
 
 
 ### Removed

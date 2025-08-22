@@ -22,7 +22,7 @@ from rakaia.inputs.pixel import (
     set_range_slider_tick_markers,
     canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
-    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram)
+    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram, set_annotation_layout)
 from rakaia.io.annotation import (
     is_valid_shapes_upload,
     write_canvas_shapes_to_json)
@@ -121,7 +121,7 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     reset_on_visium_spot_size_change,
     no_channel_for_view,
-    empty_slider_values, use_channel_autofill)
+    empty_slider_values, use_channel_autofill, layout_has_modified_shape)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -1764,8 +1764,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         a shape is being added/edited. These represent a region selection that can be annotated
         """
         if None not in (cur_graph_layout, data_selection, current_blend) and len(current_blend) > 0:
-            if all([elem in cur_graph_layout for elem in ZOOM_KEYS]) or 'shapes' in cur_graph_layout and \
-                    len(cur_graph_layout['shapes']) > 0: return False
+            if all([elem in cur_graph_layout for elem in ZOOM_KEYS]) or ('shapes' in cur_graph_layout and
+            len(cur_graph_layout['shapes']) > 0) or layout_has_modified_shape(cur_graph_layout): return False
             return True
         return True
 
@@ -1800,11 +1800,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('gating-annotation-assignment', 'value'),
         State('gating-cell-list', 'data'),
         State('bulk-annotate-shapes', 'value'),
-        State('session_id_internal', 'data'))
+        State('session_id_internal', 'data'),
+        State('annotation_canvas', 'figure'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
                                canvas_layout, annotations_dict, data_selection, cur_layers, mask_toggle,
                                mask_selection, mask_blending_level, add_mask_boundary, annot_col, add_annot_gating,
-                               apply_gating, gating_annot_col, gating_annot_type, gating_cell_id_list, bulk_annot, sesh_id):
+                               apply_gating, gating_annot_col, gating_annot_type, gating_cell_id_list, bulk_annot, sesh_id, canvas):
         annotations_dict = check_for_valid_annotation_hash(annotations_dict, data_selection)
         # Option 1: if triggered from gating
         if ctx.triggered_id == "gating-annotation-create" and add_annot_gating and apply_gating and sesh_id and None not in \
@@ -1817,6 +1818,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and sesh_id and None not in \
                 (canvas_layout, data_selection, cur_layers) and annot_col and annotation_cell_type:
+            # set the layout used based on use of zoom or not to be compatible with modified shapes
+            canvas_layout = set_annotation_layout(canvas_layout, canvas)
             annotation_list = AnnotationList(canvas_layout, bulk_annot).get_annotations()
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = RegionAnnotation(title=annotation_title, body=annotation_body,

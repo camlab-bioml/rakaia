@@ -14,7 +14,7 @@ from rakaia.entrypoint import init_app
 
 
 def cli_parser():
-    """Retrieve the argparse parser arguments on aoo CLI initialization.
+    """Retrieve the argparse parser arguments on CLI initialization.
 
     :return: argparse Argument parser with provided CLI options
     """

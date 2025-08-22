@@ -32,8 +32,15 @@ For a directory of uncompressed dependencies, switch the spec file:
 source build.sh rakaia_onedir.spec
 ```
 
-For Windows, the commands should be run in a shell supporting bash commands
-such as `Git Bash for Windows` using the corresponding shell script above.
+### Building on Windows
+
+A few additional considerations need to be made when building on Windows:
+
+- the commands should be run in a shell supporting bash commands
+such as `Git Bash for Windows`
+- the minimal Python version for building should be `3.11` or greater to avoid
+build errors with `rasterio`
+- rakaia should not be built in a virtual env or conda
 
 The resulting application bundle file can be found in the `standalone/dist` directory as either a file executable
 without a file type extension (Linux), or as an exe file on Windows if single file is used.
