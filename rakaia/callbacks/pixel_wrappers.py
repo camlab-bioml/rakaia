@@ -32,10 +32,27 @@ class AnnotationList:
     def __init__(self, canvas_layout: Union[go.Figure, dict],
                              bulk_annot: bool=False):
         self.canvas_layout = canvas_layout
+        self.check_shape_annotations()
         self.bulk_annot = bulk_annot
         self.annotations = {}
         self.check_annotation_for_zoom(self.canvas_layout)
         self.check_annotation_for_shapes(self.canvas_layout)
+
+    @staticmethod
+    def ignore_shape(shape: dict):
+        """
+        Check if the shape should be ignored (i.e. a scale bar)
+        """
+        return ('y0' in shape and shape['y0'] == 0.05 and 'type' in shape and
+                shape['type'] == 'line') or ('type' in shape and shape['type'] == 'circle')
+
+    def check_shape_annotations(self):
+        """
+        Verify the canvas graph shapes prior to annotation
+        """
+        if self.canvas_layout is not None and 'shapes' in self.canvas_layout:
+            self.canvas_layout = {'shapes': [shape for shape in self.canvas_layout['shapes'] if not
+                                        self.ignore_shape(shape)]}
 
     @staticmethod
     def is_path_annotation(annotation: dict):
