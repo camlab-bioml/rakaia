@@ -10,7 +10,8 @@ from readimc.data.acquisition import Acquisition
 from tifffile import TiffFile
 from rakaia.utils.pixel import (
     split_string_at_pattern,
-    set_array_storage_type_from_config)
+    set_array_storage_type_from_config,
+    reshape_chan_first)
 from rakaia.parsers.spatial import (
     check_spatial_array_multi_channel,
     spatial_canvas_dimensions)
@@ -115,12 +116,12 @@ class SingleMarkerLazyLoader:
                     if pattern == self.acq:
                         self.set_mcd_acq_region_dims(acq)
                         if self.channel_selection:
-                            img = mcd_file.read_acquisition(acq, strict=False)
-                            for selection in self.channel_selection:
+                            chan_indices = [int(acq.channel_names.index(chan)) for chan in self.channel_selection]
+                            img_lazy = mcd_file.read_acquisition(acq, strict=False, channels=chan_indices)
+                            for selection, img in zip(self.channel_selection, img_lazy):
                                 if not self.image_dict[self.data_selection] or \
                                         self.image_dict[self.data_selection][selection] is None:
-                                    self.image_dict[self.data_selection][selection] = \
-                                    img[acq.channel_names.index(selection)].astype(
+                                    self.image_dict[self.data_selection][selection] = reshape_chan_first(img).astype(
                                         set_array_storage_type_from_config(self.array_store_type))
 
     def set_tiff_region_dims(self, tiff: TiffFile):

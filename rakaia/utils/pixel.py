@@ -833,3 +833,12 @@ def add_saved_blend(saved_blend_dict: dict=None, blend_name: str=None,
     if blend_name and cur_selected_channels:
         saved_blend_dict[blend_name] = list(cur_selected_channels)
     return saved_blend_dict
+
+
+def reshape_chan_first(arr: Union[np.ndarray, np.array]):
+    """
+    Reshape a (C, W, H) array to be (W, H)
+    """
+    if len(arr.shape) > 2:
+        return arr.reshape(arr.shape[1], arr.shape[2])
+    return arr

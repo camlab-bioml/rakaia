@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-08-22
+## [0.24.0] - 2025-08-25
 
 **Now requires Python 3.10, 3.11, or 3.12**
 
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - fully convert to `pyproject.toml` for PEP compliance
 - auto-select if single ROI is uploaded #134
 - Modal alert for panel mismatch on non-consecutive uploads
+- Single channel parsing from mcd now uses `readimc` subset indices
 
 ### Fixed
 
