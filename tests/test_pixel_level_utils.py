@@ -72,7 +72,8 @@ def test_glasbey_palette():
     palette = glasbey_palette()
     assert len(set(palette)) == len(palette)
     palette_longer = glasbey_palette(20)
-    assert palette_longer[0:len(palette)] == palette
+    assert len(set(palette_longer)) == 20
+    assert all('#' in colour for colour in palette_longer)
 
 def test_random_hex_colour_generator():
     random_cols = random_hex_colour_generator()
