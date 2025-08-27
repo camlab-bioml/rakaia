@@ -1158,9 +1158,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("download-canvas-shapes", "data"),
         Input("btn-download-canvas-shapes", "n_clicks"),
-        State('annotation_canvas', 'relayoutData'))
+        State('annotation_canvas', 'relayoutData'),
+        State('annotation_canvas', 'figure'))
     @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
-    def download_canvas_shapes(download_shapes, canvas_layout):
+    def download_canvas_shapes(download_shapes, canvas_layout, canvas):
+        canvas_layout = set_annotation_layout(canvas_layout, canvas)
         if canvas_layout is not None and 'shapes' in canvas_layout and canvas_layout['shapes']:
             return dcc.send_file(write_canvas_shapes_to_json(download_shapes, canvas_layout))
         raise PreventUpdate
