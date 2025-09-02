@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.24.0] - 2025-08-25
+## [0.24.0] - 2025-09-02
 
 **Now requires Python 3.10, 3.11, or 3.12**
 

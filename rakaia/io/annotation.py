@@ -14,8 +14,7 @@ import numpy as np
 from dash import dcc
 import pandas as pd
 from dash.exceptions import PreventUpdate
-import plotly.graph_objs as go
-from rakaia.inputs.pixel import set_roi_identifier_from_length
+from rakaia.inputs.pixel import set_roi_identifier_from_length, is_scalebar_annot
 from rakaia.io.session import create_download_dir
 from rakaia.utils.object import (
     get_min_max_values_from_zoom_box,
@@ -282,6 +281,7 @@ def write_canvas_shapes_to_json(dest_dir: Union[Path, str],
     """
     if canvas_layout is not None and 'shapes' in canvas_layout and canvas_layout['shapes']:
         param_json_path = str(os.path.join(dest_dir, 'canvas_shapes.json'))
+        canvas_layout = {'shapes': [shape for shape in canvas_layout['shapes'] if not is_scalebar_annot(shape)]}
         with open(param_json_path, "w") as outfile:
             json.dump(canvas_layout, outfile)
         return param_json_path

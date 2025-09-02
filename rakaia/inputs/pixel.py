@@ -421,16 +421,27 @@ def reset_pixel_histogram(to_dict: bool = False):
 
     return fig.to_dict() if to_dict else fig
 
+def is_scalebar_annot(annot: Union[dict, None]=None):
+    """
+    Check if a particular annotation corresponds to the scalebar
+    """
+    return (annot is not None and 'y0' in annot and annot['y0'] == 0.05 and
+            'type' in annot and annot['type'] == 'line')
+
 def set_annotation_layout(canvas_layout: Union[dict, None]=None,
-                          canvas: Union[dict, go.Figure, None]=None):
+                          canvas: Union[dict, go.Figure, None]=None,
+                          filter_scalebar: bool=True):
     """
     Set the canvas layout for an annotation based on the type used.
     If the detected layout uses zoom, then do not use the shapes in the graph. Otherwise,
     use the graph shapes to allow for re-dragged/modified shapes to be annotated.
+    Toggle the option to include the scalebar or not (usually, don't parse).
     """
     if any(key in ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
            for key in canvas_layout) or canvas is None:
         return canvas_layout
     if 'layout' in canvas and 'shapes' in canvas['layout']:
-        return {'shapes': canvas['layout']['shapes']}
+        shapes_use = [shape for shape in canvas['layout']['shapes'] if
+                     not is_scalebar_annot(shape)] if filter_scalebar else canvas['layout']['shapes']
+        return {'shapes': shapes_use}
     return canvas_layout
