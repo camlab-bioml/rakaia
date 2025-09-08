@@ -131,7 +131,7 @@ class ToolTips(BaseModel):
                                       "set at 150.",
                       "set-blends": "Save the current canvas channels in a named blend. Blends can be quickly toggled"
                                     " to compare marker expression across the current ROI.",
-                      "cluster-proj": "IMPORTANT: Using circles for cluster projection for > 1000 mask objects will "
+                      "cluster-proj": "IMPORTANT: Using circles for overlay projection for >1000 mask objects will "
                                       "lead to slow performance.",
                       "image-similarity": "Search for images that are similar to the current ROI. Requires "
                                           "image similarity scores for quantified images using a UMAP overlay.",
