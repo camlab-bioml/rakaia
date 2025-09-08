@@ -1,6 +1,6 @@
 [project]
 name = "rakaia"
-version = "0.24a1"
+dynamic = ["version"]
 description = "Scalable spatial biology analysis in the browser."
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
@@ -188,6 +188,9 @@ include = ["rakaia*"]
 
 [tool.setuptools.package-data]
 rakaia = ["*.json", "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml", "*.jpg"]
+
+[tool.setuptools.dynamic]
+version = {attr = "rakaia._version.__version__"}
 
 [build-system]
 requires = ["setuptools>=64", "wheel"]

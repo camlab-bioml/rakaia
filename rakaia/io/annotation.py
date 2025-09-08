@@ -277,7 +277,7 @@ def export_point_annotations_as_csv(n_clicks, roi_name, annotations_dict, data_s
 def write_canvas_shapes_to_json(dest_dir: Union[Path, str],
                                 canvas_layout: Union[dict, None]=None):
     """
-    Write the current canvas shapes to JSON. Expects a `shapes` slow in the canvas layout dictionary
+    Write the current canvas shapes to JSON. Expects a `shapes` slot in the canvas layout dictionary
     """
     if canvas_layout is not None and 'shapes' in canvas_layout and canvas_layout['shapes']:
         param_json_path = str(os.path.join(dest_dir, 'canvas_shapes.json'))
