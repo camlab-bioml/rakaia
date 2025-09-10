@@ -9,6 +9,25 @@
     transform: translate(-50%, 0);
 }
 
+#toggle-osi-coords.form-check-input {
+  background-color: #ffffff !important;
+  border-color: #0f4d92 !important;
+}
+
+#toggle-osi-coords.form-check-input::before {
+  background-color: #ffffff !important;
+}
+
+#toggle-osi-coords.form-check-input:checked {
+  background-color: #0f4d92 !important;
+  border-color: #0f4d92 !important;
+}
+
+#toggle-osi-coords.form-check-input:checked::before {
+  background-color: #0f4d92 !important;
+}
+
+
 #annotation_canvas .modebar {
     left: 60%;
     transform: translateX(-60%);

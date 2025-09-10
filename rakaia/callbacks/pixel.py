@@ -36,7 +36,7 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     xenium_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser
-from rakaia.register.process import update_coregister_hash, wsi_from_local_path
+from rakaia.register.process import update_coregister_hash, wsi_from_local_path, coordinate_scaling
 from rakaia.utils.cluster import cluster_assignments_from_config
 
 from rakaia.utils.decorator import (
@@ -177,7 +177,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
             if is_zarr_store(path) and sesh_id:
-                return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session).get_files()
+                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session).get_files()
+                # should we show an error on zarr reading as there can be version incompatibilities with raster, anndata, etc.?
+                except Exception as e: return dash.no_update, {'error': str(e)}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             # for now, parsing a steinbock directory doesn't take into account any previous session uploads
             if is_steinbock_dir(path) and sesh_id:
                 return parse_steinbock_dir(path, error_config, key=f"umap_coordinates_{sesh_id}", use_unique_key=OVERWRITE)
@@ -2205,8 +2207,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('coregister_options', 'value'),
         State('wsi-transformation-matrix', 'data'),
         State('wsi-scaling-factor', 'value'),
+        State('cur_roi_dimensions', 'data'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform, wsi_scale):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform, wsi_scale, cur_dim):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
         Currently only works for Visium (V1, V2, HD) with tissue positions in the `spatial` `obsm` slot
@@ -2215,6 +2218,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, transform)
             if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if not transform else (
                 xenium_coords_to_wsi_from_zoom(graph_layout, upload, transform, wsi_scale))
+            # TODO: potentially add in here coordinate transfer if not spatial using just the scaling factor and coordinates
+            elif wsi:
+                return coordinate_scaling(graph_layout, wsi_scale)
         raise PreventUpdate
 
     @dash_app.callback(

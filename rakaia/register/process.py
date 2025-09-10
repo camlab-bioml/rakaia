@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 import dash
 from rakaia.io.session import create_download_dir
+from rakaia.utils.pixel import high_low_values_from_zoom_layout
 
 WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf', 'ndpi', 'scn']
 
@@ -53,3 +54,23 @@ def dzi_tiles_from_image_path(image_path: Union[Path, str],
         image.dzsave(os.path.join(os.path.join(dest_dir, static_folder_prefix)),
                      suffix=".jpg", tile_size=256, overlap=1)
     except pyvips.Error: pass
+
+def coordinate_scaling(bounds: dict, scaling_val: float=0.2125,
+                       dim_normalize: Union[list, tuple, None]=None):
+    """
+    Define osd-compatible coordinates changed by a scaling factor
+    Ir dim normalize is passed (format: [y, x]), normalize by the dimensions to get between 0-1
+    """
+    x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(bounds)
+    height = int(int(y_high * scaling_val) - int(y_low * scaling_val))
+    width = int(int(x_high * scaling_val) - int(x_low * scaling_val))
+    # dimension normalization must use the scaling value as well as the dimensions to get between 0-1
+    if dim_normalize:
+        height = height / (int(dim_normalize[0]) * scaling_val)
+        width = width / (int(dim_normalize[1]) * scaling_val)
+        scaling_return = (f"{x_low / dim_normalize[1]},"
+                f"{y_low / dim_normalize[0]},{width},{height}")
+        print(scaling_return)
+        return scaling_return
+    print(f"{x_low * scaling_val},{y_low * scaling_val},{width},{height}")
+    return f"{x_low * scaling_val},{y_low * scaling_val},{width},{height}"
