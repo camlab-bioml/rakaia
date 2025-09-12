@@ -10,12 +10,12 @@ on:
 
 jobs:
   build:
-    name: rakaia test on ${{ matrix.os }}
+    name: rakaia test on ${{ matrix.os }} with ${{ matrix.python-version }}
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-        python-version: ["3.9"]
+        python-version: ["3.10", "3.11"]
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -36,7 +36,7 @@ jobs:
 #          singularity exec rakaia.sif which rakaia && python3 --version
         # shell: bash -l {0}
       - if: runner.os == 'Linux'
-        run: sudo apt-get -y update && sudo apt-get install -y libgl1-mesa-dev libvips-dev
+        run: sudo apt-get -y update && sudo apt-get install -y libgl1-mesa-dev libvips-dev build-essential cmake
       # - name: Install rakaia dependencies from requirements
       #   run: pip install -r requirements.txt
       - name: Install rakaia through pip after dependencies

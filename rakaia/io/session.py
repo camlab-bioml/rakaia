@@ -175,6 +175,7 @@ def write_blend_config_to_json(dest_dir, blend_dict, blend_layer_list, global_ap
         json.dump(dict_write, outfile)
     return param_json_path
 
+
 def write_session_data_to_h5py(dest_dir, metadata_frame, data_dict, data_selection, blend_dict, mask=None):
     """
     Write the current data dictionary and blend configuration to an h5py file
@@ -232,7 +233,6 @@ def subset_mask_for_data_export(canvas_layout, array_shape):
     except KeyError:
         pass
     return mask
-
 
 def sort_channel_dropdown(channel_list: Union[dict, None]=None, sort_channels: bool=False):
     """

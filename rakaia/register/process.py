@@ -7,7 +7,7 @@ from pathlib import Path
 import dash
 from rakaia.io.session import create_download_dir
 
-WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf']
+WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf', 'ndpi', 'scn']
 
 def wsi_from_local_path(path: str):
     """

@@ -1,0 +1,12 @@
+{
+    "_index": "_index",
+    "column-order": [
+        "in_tissue",
+        "array_row",
+        "array_col",
+        "location_id",
+        "region"
+    ],
+    "encoding-type": "dataframe",
+    "encoding-version": "0.2.0"
+}

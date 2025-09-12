@@ -6,24 +6,23 @@ from pathlib import Path
 from typing import Union
 from functools import partial
 import os
-
 import dash
 import numpy as np
-from tifffile import TiffFile
+from tifffile import TiffFile, TiffPage
 from readimc import MCDFile, TXTFile
 from scipy.sparse import issparse, csc_matrix
 import pandas as pd
 from PIL import Image
 import h5py
 import anndata as ad
-
 from rakaia.parsers.spatial import (
     spatial_canvas_dimensions,
     is_spot_based_spatial, is_spatial_dataset)
 from rakaia.utils.pixel import (
     split_string_at_pattern,
     set_array_storage_type_from_config,
-    get_default_channel_upper_bound_by_percentile)
+    get_default_channel_upper_bound_by_percentile,
+    is_metadata_key)
 from rakaia.utils.alert import PanelMismatchError
 
 class NoAcquisitionsParsedError(Exception):
@@ -79,6 +78,7 @@ class FileParser:
         self.lazy_load = lazy_load
         self.delimiter = delimiter
         self.panel_length = None
+        self.channel_labels_metadata = None
         if len(self.filepaths) > 0:
             self.image_dict['metadata'] = {}
             self.metadata_channels = []
@@ -174,7 +174,7 @@ class FileParser:
         self.blend_config = {}
         for roi in list(data_h5.keys()):
             self.image_dict[roi] = {}
-            if roi not in ['metadata', 'metadata_columns']:
+            if not is_metadata_key(roi):
                 channel_index = 1
                 for channel in data_h5[roi]:
                     try:
@@ -236,6 +236,30 @@ class FileParser:
                                      " different panel lengths. This is currently not supported by rakaia. "
                                      "Refresh your current session to re-import compatible imaging files.")
 
+    def check_imagej_labels(self, tiff: TiffFile):
+        """
+        Check if the provided tiff file has `ImageJ` formatted channel label metadata
+
+        :param tiff: Instance of a tifffile tiff object
+        :return: None
+        """
+        if tiff.is_imagej and 'Labels' in tiff.imagej_metadata:
+            self.channel_labels_metadata = tiff.imagej_metadata['Labels']
+
+    @staticmethod
+    def check_page_name_label(tiff_page: TiffPage, alt_name: Union[str, None]=None):
+        """
+        Check if the parsed tiff page has a channel name to infer as the label
+
+        :param tiff_page: parsed tiff page with associated tags
+        :param alt_name: Alternative label to give the channel if the required tag is not present.
+
+        :return: Parsed channel label from page name, or the alternative label (default is `None`).
+        """
+        if 'PageName' in tiff_page.tags:
+            return str(tiff_page.tags['PageName'].value)
+        return alt_name
+
     def parse_tiff(self, tiff_file, internal_name=None):
         """
         Parse a tiff file. A tiff file should be multiple pages where each page is an array for raw pixel intensities
@@ -246,37 +270,40 @@ class FileParser:
         :return: None
         """
         with TiffFile(tiff_file) as tif:
+            self.check_imagej_labels(tif)
             tiff_path = Path(tiff_file)
             # IMP: if the length of this tiff is not the same as the current metadata, implies that
             # the files have different channels/panels
             # pass if this is the cases
             if len(self.image_dict['metadata']) > 0:
                 self.check_for_valid_tiff_panel(tif)
-            multi_channel_index = 1
             basename = str(Path(tiff_path).stem)
             roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq" if \
                 internal_name is None else internal_name
             # treat each tiff as its own ROI and increment the acq index for each one
             self.image_dict[roi] = {}
+            page_index = 0
             for page in tif.pages:
-                identifier = str("channel_" + str(multi_channel_index))
+                identifier = str("channel_" + str(page_index + 1))
                 # tiff files could be RGB, so convert to greyscale for compatibility
                 self.image_dict[roi][identifier] = None if (self.lazy_load or
                         roi_requires_single_marker_load(int(page.shape[0] * page.shape[1]),
                         len(tif.pages))) else convert_rgb_to_greyscale(
                     page.asarray()).astype(set_array_storage_type_from_config(self.array_store_type))
                 # add in a generic description for the ROI per tiff file
-                if multi_channel_index == 1:
+                if page_index == 0:
                     self.dataset_information_frame["ROI"].append(str(roi))
                     self.dataset_information_frame["Dimensions"].append(
                         f"{page.asarray().shape[1]}x"
                         f"{page.asarray().shape[0]}")
                     self.dataset_information_frame["Panel"].append(
                         f"{len(tif.pages)} markers")
-                multi_channel_index += 1
                 self.append_channel_identifier_to_collection(identifier)
                 self.append_channel_identifier_to_channel_list(identifier)
-                self.append_channel_alias_to_label_list(identifier)
+                identifier = self.check_page_name_label(page, identifier)
+                label = self.channel_labels_metadata[page_index] if self.channel_labels_metadata else identifier
+                self.append_channel_alias_to_label_list(label)
+                page_index += 1
 
             if len(self.image_dict['metadata']) < 1:
                 self.set_hash_metadata(self.metadata_channels, self.metadata_labels)
@@ -502,14 +529,14 @@ def create_new_blending_dict(uploaded):
     current_blend_dict = {}
     panel_length = None
     for roi in uploaded.keys():
-        if "metadata" not in roi:
+        if not is_metadata_key(roi):
             if panel_length is None:
                 panel_length = len(uploaded[roi].keys())
             if len(uploaded[roi].keys()) != panel_length:
                 raise PanelMismatchError("The imported file(s) appear to have different panel lengths. "
                                          "This is currently not supported by rakaia. "
                             "Refresh your current session to re-import compatible imaging files.")
-    first_roi = [elem for elem in list(uploaded.keys()) if 'metadata' not in elem][0]
+    first_roi = [elem for elem in list(uploaded.keys()) if not is_metadata_key(elem)][0]
     for channel in uploaded[first_roi].keys():
         current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
                                        'filter_type': None, 'filter_val': None, 'filter_sigma': None}

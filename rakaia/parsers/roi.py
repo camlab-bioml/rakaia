@@ -17,7 +17,9 @@ import anndata as ad
 from rakaia.utils.pixel import (
     apply_preset_to_array,
     recolour_greyscale,
-    apply_filter_to_array, set_array_storage_type_from_config)
+    apply_filter_to_array,
+    set_array_storage_type_from_config,
+    reshape_chan_first)
 from rakaia.utils.object import validate_mask_shape_matches_image, convert_mask_to_object_boundary
 from rakaia.utils.roi import subset_mask_outline_using_cell_id_list
 from rakaia.parsers.object import (
@@ -174,6 +176,7 @@ class RegionThumbnail:
                                            roi in query_lists.keys()]
             return predefined_indices
         return predefined_indices
+
     @staticmethod
     def set_query_keywords(roi_keyword: str=None):
         """
@@ -384,15 +387,13 @@ class RegionThumbnail:
                         if self.roi_keyword_in_roi_identifier(roi_identifier) and roi_identifier \
                                 not in self.rois_exclude and \
                                 self.roi_within_dimension_threshold(acq.height_px, acq.width_px):
-                            channel_names = acq.channel_names
                             channel_index = 0
-                            img = mcd_file.read_acquisition(acq, strict=False)
+                            chan_indices = [int(acq.channel_names.index(chan)) for chan in self.currently_selected_channels]
+                            img_lazy = mcd_file.read_acquisition(acq, strict=False, channels=chan_indices)
                             acq_image = []
-                            for channel in img:
-                                # if the channel is in the current blend, use it
-                                if channel_names[channel_index] in self.currently_selected_channels and \
-                                        channel_names[channel_index] in self.blend_dict.keys():
-                                    recoloured = self.single_channel_process(channel, channel_names[channel_index])
+                            for selection, img in zip(self.currently_selected_channels, img_lazy):
+                                if selection in self.blend_dict.keys():
+                                    recoloured = self.single_channel_process(reshape_chan_first(img), selection)
                                     acq_image.append(recoloured)
                                 channel_index += 1
                             label = f"{basename}{self.delimiter}slide{slide_index}{self.delimiter}" \
@@ -400,7 +401,7 @@ class RegionThumbnail:
                             self.process_additive_image(acq_image, label)
                         else:
                             additional_query = None
-                            # use the look counter to make sure that once all of the indices are searched,
+                            # use the look counter to make sure that once all the indices are searched,
                             # it will just return what has been made nad not search indefinitely
                             look_counter = 0
                             while (additional_query is None or additional_query in self.query_selection) and \
@@ -615,7 +616,7 @@ class RegionThumbnail:
         Identify if an ROI keyword is in an ROI name.
 
         :param roi_identifier: String representation of the ROI inside the session.
-        :Return: bool indicating keyword presence of not.
+        :Return: bool indicating keyword presence or not.
         """
         if roi_identifier and self.keyword:
             return any(elem in roi_identifier for elem in self.keyword)

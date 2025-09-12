@@ -124,7 +124,7 @@ class CanvasImage:
         self.cluster_assignments_dict = cluster_assignments_dict
         self.cluster_cat = cluster_cat
         self.cluster_frame = cluster_frame
-        self.cluster_type = cluster_type
+        self.cluster_type = str(cluster_type).lower()
         self.custom_scale_val = custom_scale_val
         self.apply_gating = apply_gating
         self.gating_cell_id_list = gating_cell_id_list
@@ -505,6 +505,15 @@ class CanvasLayout:
                 isinstance(self.figure['layout']['shapes'], tuple):
             self.cur_shapes = [shape for shape in self.figure['layout']['shapes'] if shape and
                                'type' in shape and not is_bad_shape(shape)]
+
+    def get_layout(self) -> dict:
+        """
+        Get the layout of the current canvas
+
+        :return: Current canvas layout in dictionary format
+        """
+        return self.figure['layout']
+
 
     def get_fig(self) -> Union[go.Figure, dict]:
         """
@@ -923,10 +932,24 @@ class CanvasLayout:
         self.figure['layout']['shapes'] = self.cur_shapes
         return self.figure
 
+    def add_shapes_from_json(self, shape_uploads: Union[dict, None]=None):
+        """
+        Update a figure layout with exported shapes in JSON format. Assumes that there is a `shapes` key in the upload
+
+        :param shape_uploads: Dictionary of shapes to add. Assumes a `shapes` master key
+
+        :return:
+            `go.Figure` object or dictionary representing the object with imported shapes applied to the view
+        """
+        if shape_uploads and 'shapes' in shape_uploads and shape_uploads['shapes']:
+            self.cur_shapes = self.cur_shapes + shape_uploads['shapes']
+        self.figure['layout']['shapes'] = self.cur_shapes
+        return self.figure
+
 
 def reset_graph_with_malformed_template(graph: Union[go.Figure, dict]) -> Union[go.Figure, dict]:
     """
-    Parse a current graph that may have malformed shapes (i.e. a shape with a blank texttemplate in the 'label'
+    Parse a current graph that may have malformed shapes (i.e. a shape with a blank `texttemplate` in the 'label'
     slot), and return a cleaned graph dictionary object with the drag mode set to zoom
 
     :param graph: Current canvas in `go.Figure` object format

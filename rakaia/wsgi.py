@@ -9,12 +9,12 @@ import webbrowser
 import os
 from threading import Timer
 from waitress import serve
-from rakaia import __version__, _program
+from rakaia._version import __version__
 from rakaia.entrypoint import init_app
 
 
 def cli_parser():
-    """Retrieve the argparse parser arguments on aoo CLI initialization.
+    """Retrieve the argparse parser arguments on CLI initialization.
 
     :return: argparse Argument parser with provided CLI options
     """
@@ -93,7 +93,7 @@ def main(sysargs=sys.argv[1:]):
 
     def open_browser():
         if not os.environ.get("WERKZEUG_RUN_MAIN"):
-            webbrowser.open_new_tab(f'http://127.0.0.1:{args.port}/{_program}')
+            webbrowser.open_new_tab(f'http://127.0.0.1:{args.port}/rakaia')
 
     # cli config gets passed to the app initialization for callbacks, etc.
 
@@ -115,6 +115,8 @@ def main(sysargs=sys.argv[1:]):
     HOST = '127.0.0.1' if CLI_CONFIG['is_dev_mode'] else '0.0.0.0'
     if args.auto_open:
         Timer(1, open_browser).start()
+
+    print(f'rakaia is running at: http://127.0.0.1:{args.port}/rakaia \n')
 
     if CLI_CONFIG['is_dev_mode']:
         app.run(host=HOST, debug=CLI_CONFIG['is_dev_mode'], threaded=args.threading, port=args.port)

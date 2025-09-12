@@ -96,3 +96,10 @@ def use_channel_autofill(rgb_layers: dict, roi_selection: str,
     return autofill_toggle and autofill_enabled and (
             channel not in rgb_layers[roi_selection].keys() or
             rgb_layers[roi_selection][channel] is None)
+
+
+def layout_has_modified_shape(canvas_layout: Union[dict, None]=None):
+    """
+    Detect if the canvas layout has a modified shape (i.e. re-dragged)
+    """
+    return canvas_layout is not None and any('.path' in key for key in canvas_layout.keys())

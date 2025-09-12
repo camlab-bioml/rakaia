@@ -1,6 +1,8 @@
 import tempfile
 import os
+import json
 import numpy as np
+import dash
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -11,6 +13,9 @@ from rakaia.io.session import (
     all_roi_match,
     panel_match,
     sort_channel_dropdown)
+from rakaia.io.annotation import (
+    write_canvas_shapes_to_json,
+    is_valid_shapes_upload)
 
 def test_session_serverside_objects():
     blend_dict = {"channel_1": np.full((1000, 1000), 1)}
@@ -157,3 +162,22 @@ def test_sort_channel_options():
     assert list(sort_channel_dropdown(channels, True).keys()) == ['3', '4', '1', '2']
     assert list(sort_channel_dropdown(channels, False).keys()) == ['1', '2', '3', '4']
     assert sort_channel_dropdown(None, True) is None
+
+def test_write_canvas_shapes_to_json(get_current_dir):
+    shapes = json.load(open(os.path.join(get_current_dir, 'canvas_shapes.json')))
+    assert is_valid_shapes_upload(shapes)
+    assert 'shapes' in is_valid_shapes_upload(shapes, True)
+    assert len(is_valid_shapes_upload(shapes, True)['shapes']) == 2
+    assert isinstance(is_valid_shapes_upload({'shapes': []}), dash._callback.NoUpdate)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        download_dir = os.path.join(tmpdirname, "fdsdfsdlfkdn", 'downloads')
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
+        out_shapes = write_canvas_shapes_to_json(download_dir, {'shapes': []})
+        assert not out_shapes
+        assert not os.path.isfile(os.path.join(download_dir, 'canvas_shapes.json'))
+        out_shapes = write_canvas_shapes_to_json(download_dir, shapes)
+        assert out_shapes == str(os.path.join(download_dir, 'canvas_shapes.json'))
+        assert os.path.isfile(out_shapes)
+        if os.access(out_shapes, os.W_OK):
+            os.remove(out_shapes)

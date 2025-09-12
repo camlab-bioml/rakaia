@@ -1,4 +1,5 @@
 import os
+import tempfile
 import numpy as np
 import anndata as ad
 import pytest
@@ -14,7 +15,7 @@ from rakaia.parsers.spatial import (
     is_spatial_dataset,
     spatial_selection_can_transfer_coordinates,
     visium_coords_to_wsi_from_zoom,
-    get_visium_bin_scaling, xenium_coords_to_wsi_from_zoom)
+    get_visium_bin_scaling, xenium_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -129,3 +130,48 @@ def test_xenium_coords_to_wsi(get_current_dir):
     x, y, width, height = tuple([float(elem) for elem in string_coords.split(",")])
     assert y > x
     assert height > width
+
+
+def test_is_zarr_store(get_current_dir):
+    assert not is_zarr_store(os.path.join(get_current_dir, 'wsi'))
+    assert is_zarr_store(os.path.join(get_current_dir, 'subset_visium.zarr'))
+
+def test_parse_sd_visium(get_current_dir):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium.zarr'),
+                              tmpdirname).get_files()[0]
+        assert len(parsed['uploads']) == 2
+        assert all('ST8059' in elem for elem in parsed['uploads'])
+        assert all (os.path.exists(elem) for elem in parsed['uploads'])
+        for path in parsed['uploads']:
+            if os.access(path, os.W_OK):
+                os.remove(path)
+        # if current uploads already exist
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium.zarr'),
+                tmpdirname, {'uploads': ['already_there.h5ad']}).get_files()[0]
+        assert len(parsed['uploads']) == 3
+        for path in parsed['uploads']:
+            if os.path.isfile(path) and os.access(path, os.W_OK):
+                os.remove(path)
+
+def test_parse_sd_xenium(get_current_dir):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_xenium.zarr'),
+                              tmpdirname).get_files()
+        files = parsed[0]
+        assert len(files['uploads']) == 1
+        masks = parsed[2]
+        for file in (files['uploads'][0], masks['subset_xenium_zarr']):
+            if os.access(file, os.W_OK):
+                os.remove(file)
+
+def test_parse_sd_visium_hd(get_current_dir):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr'),
+                              tmpdirname).get_files()[0]
+        assert len(parsed['uploads']) == 3
+        for bin_size in ['002um', '008um', '016um']:
+            assert any(bin_size in file_out for file_out in parsed['uploads'])
+        for path in parsed['uploads']:
+            if os.access(path, os.W_OK):
+                os.remove(path)

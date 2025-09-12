@@ -325,6 +325,11 @@ def apply_preset_to_blend_dict(blend_dict, preset_dict):
             blend_dict[key] = value
     return blend_dict
 
+def is_metadata_key(key: str):
+    """
+    Check if an upload key corresponds to metadata
+    """
+    return key in ['metadata', 'metadata_columns']
 
 def get_all_images_by_channel_name(upload_dict, channel_name):
     """
@@ -332,7 +337,7 @@ def get_all_images_by_channel_name(upload_dict, channel_name):
     """
     images = {}
     for roi in list(upload_dict.keys()):
-        if 'metadata' not in roi:
+        if not is_metadata_key(roi):
             for channel in upload_dict[roi].keys():
                 if channel == channel_name:
                     if upload_dict[roi][channel] is not None:
@@ -349,7 +354,7 @@ def validate_incoming_metadata_table(metadata, upload_dict):
     """
     if isinstance(metadata, pd.DataFrame) and "Channel Label" in metadata.columns and upload_dict is not None and \
         all(len(upload_dict[roi]) == len(metadata.index) for roi in list(upload_dict.keys()) if
-            roi not in ['metadata', 'metadata_columns']):
+            not is_metadata_key(roi)):
         return metadata
     return None
 
@@ -828,3 +833,12 @@ def add_saved_blend(saved_blend_dict: dict=None, blend_name: str=None,
     if blend_name and cur_selected_channels:
         saved_blend_dict[blend_name] = list(cur_selected_channels)
     return saved_blend_dict
+
+
+def reshape_chan_first(arr: Union[np.ndarray, np.array]):
+    """
+    Reshape a (C, W, H) array to be (W, H)
+    """
+    if len(arr.shape) > 2:
+        return arr.reshape(arr.shape[1], arr.shape[2])
+    return arr

@@ -7,7 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.23.0] - 2025-07-03
+## [0.24.0] - 2025-09-08
+
+**Now requires Python 3.10, 3.11, or 3.12**
+
+### Added
+
+- Expand WSI file types to include .ndpi
+- Ability to parse `spatialdata` `zarr` store
+- Ability to export current canvas shapes as JSON w/ re-upload #132
+- Console statement for user for where rakaia is running #133
+- Parse channel metadata if tiff is from `ImageJ` or has a page name
+
+### Changed
+
+- fully convert to `pyproject.toml` for PEP compliance
+- auto-select if single ROI is uploaded #134
+- Modal alert for panel mismatch on non-consecutive uploads
+- Single channel parsing from mcd now uses `readimc` subset indices
+
+### Fixed
+
+- Better dropdown menu proportions for choose WSI
+- Consistent UI styling for tooling + radio selections #135
+- Empty parsing if `metadata` keyword in ROI identifier
+- Annotations now compatible with modified shapes (redrawn/drag)
+- Nomenclature for mask overlay projection #137
+
+
+### Removed
+
+- `dash-draggable` due to conflicts with newer dependencies
+- deprecated files in `envs`: Singularity + pipenv
+
+## [0.23.0] - 2025-07-15
 
 ### Added
 

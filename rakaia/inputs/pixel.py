@@ -8,7 +8,6 @@ import dash
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import dcc, html
 import plotly.graph_objs as go
-import dash_draggable
 import cv2
 from plotly.graph_objs.layout import XAxis, YAxis
 import dash_bootstrap_components as dbc
@@ -29,7 +28,7 @@ def default_canvas_margins() -> dict:
 
 
 def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullscreen_mode=False,
-                                     draggable=False, filename: str = "canvas", delimiter: str = "+++"):
+                                     filename: str = "canvas", delimiter: str = "+++"):
     """
     Return the default dcc.Graph annotation figure input. For multiple annotation graphs, a unique input ID
     must be used
@@ -68,7 +67,7 @@ def render_default_annotation_canvas(input_id: str = "annotation_canvas", fullsc
                                margin=default_canvas_margins()
                                )})
 
-    return dash_draggable.GridLayout(id='draggable', children=[canvas]) if draggable else canvas
+    return canvas
 
 
 def wrap_canvas_in_loading_screen_for_large_images(image=None, size_threshold=10000000, hovertext=False,
@@ -421,3 +420,28 @@ def reset_pixel_histogram(to_dict: bool = False):
                       font=dict(color="black"))
 
     return fig.to_dict() if to_dict else fig
+
+def is_scalebar_annot(annot: Union[dict, None]=None):
+    """
+    Check if a particular annotation corresponds to the scalebar
+    """
+    return (annot is not None and 'y0' in annot and annot['y0'] == 0.05 and
+            'type' in annot and annot['type'] == 'line')
+
+def set_annotation_layout(canvas_layout: Union[dict, None]=None,
+                          canvas: Union[dict, go.Figure, None]=None,
+                          filter_scalebar: bool=True):
+    """
+    Set the canvas layout for an annotation based on the type used.
+    If the detected layout uses zoom, then do not use the shapes in the graph. Otherwise,
+    use the graph shapes to allow for re-dragged/modified shapes to be annotated.
+    Toggle the option to include the scalebar or not (usually, don't parse).
+    """
+    if any(key in ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+           for key in canvas_layout) or canvas is None:
+        return canvas_layout
+    if 'layout' in canvas and 'shapes' in canvas['layout']:
+        shapes_use = [shape for shape in canvas['layout']['shapes'] if
+                     not is_scalebar_annot(shape)] if filter_scalebar else canvas['layout']['shapes']
+        return {'shapes': shapes_use}
+    return canvas_layout

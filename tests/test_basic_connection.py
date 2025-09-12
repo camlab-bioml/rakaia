@@ -1,3 +1,4 @@
+import sys
 import argparse
 import pytest
 from selenium.common import NoSuchElementException
@@ -65,20 +66,8 @@ def test_basic_app_load_from_locale(rakaia_flask_test_app, client):
     assert response.status_code == 200
     overview_png = client.get('/static/assets/app-preview.png')
     assert overview_png.status_code == 200
-    # test landing page alias
     assert client.get("/").data != b'Unauthorized Access'
     assert b'Scalable spatial biology analysis in the browser' in client.get("/").data
-    # assert client.get('/', headers={"Authorization": "Basic {}".format(credentials)}).data == response.data
-    # dash_duo.start_server(rakaia_flask_test_app.server)
-    # for elem in ['#upload-image', '#tiff-image-type', '#image_layers', "#images_in_blend"]:
-    #     assert dash_duo.find_element(elem) is not None
-    # with pytest.raises(NoSuchElementException):
-    #     assert dash_duo.find_element('#fake-input') is not None
-    #
-    # recursive_wait_for_elem(dash_duo, '#tab-quant', 1)
-    #
-    # for elem in ['#upload-quantification']:
-    #     assert dash_duo.find_element(elem) is not None
 
 
 def test_basic_cli_outputs():
@@ -118,6 +107,7 @@ def test_basic_cli_outputs():
 @pytest.mark.timeout(10)
 @pytest.mark.skipif(os.getenv("GITHUB_ACTIONS") == "true",
                     reason="Do not run main test in GA due to memory restrictions")
+@pytest.mark.skipif(sys.platform.startswith("win"), reason="Does not run on Windows")
 def test_basic_cli_outputs_main():
     """
     Assert that when valid arguments are passed to main, there is no system exit but rather the expected

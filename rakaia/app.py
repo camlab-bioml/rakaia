@@ -67,36 +67,6 @@ def init_dashboard(server, authentic_id, config=None):
         # https://github.com/fohrloop/dash-uploader/blob/dev/docs/dash-uploader.md#4-custom-handling-of-http-requests
         du.configure_upload(dash_app, str(cache_dest))
 
-    # for now, do not initiate the dash caching as it interferes on Windows OS and isn't strictly
-    # useful when serverside components can cache large stores much more effectively
-
-    # VALID_USERNAME_PASSWORD_PAIRS = {
-    #     'rakaia_user': 'rakaia'
-    # }
-    #
-    # dash_auth.BasicAuth(
-    #     dash_app,
-    #     VALID_USERNAME_PASSWORD_PAIRS
-    # )
-
-    # try:
-    #     cache = Cache(dash_app.server, config={
-    #         'CACHE_TYPE': 'redis',
-    #         'CACHE_REDIS_URL': os.environ.get('REDIS_URL', '')
-    #     })
-    # except (ModuleNotFoundError, RuntimeError) as no_redis:
-    #     try:
-    #         cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
-    #         background_callback_manager = DiskcacheManager(cache)
-    #     except DatabaseError:
-    #         cache = Cache(dash_app.server, config={
-    #             'CACHE_TYPE': 'filesystem',
-    #             'CACHE_DIR': 'cache-directory'
-    #         })
-    #
-    # cache = diskcache.Cache(os.path.join("/tmp/", "diskcache"))
-    # background_callback_manager = DiskcacheManager(cache)
-
     dash_app.layout = register_app_layout(config, str(cache_dest))
 
     dash_app.enable_dev_tools(debug=config['is_dev_mode'])

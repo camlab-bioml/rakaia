@@ -32,10 +32,38 @@ class AnnotationList:
     def __init__(self, canvas_layout: Union[go.Figure, dict],
                              bulk_annot: bool=False):
         self.canvas_layout = canvas_layout
+        self.check_shape_annotations()
         self.bulk_annot = bulk_annot
         self.annotations = {}
         self.check_annotation_for_zoom(self.canvas_layout)
         self.check_annotation_for_shapes(self.canvas_layout)
+
+    @staticmethod
+    def ignore_shape(shape: dict):
+        """
+        Check if the shape should be ignored (i.e. a scale bar)
+        """
+        return ('y0' in shape and shape['y0'] == 0.05 and 'type' in shape and
+                shape['type'] == 'line') or ('type' in shape and shape['type'] == 'circle')
+
+    def check_shape_annotations(self):
+        """
+        Verify the canvas graph shapes prior to annotation
+        """
+        if self.canvas_layout is not None and 'shapes' in self.canvas_layout:
+            self.canvas_layout = {'shapes': [shape for shape in self.canvas_layout['shapes'] if not
+                                        self.ignore_shape(shape)]}
+
+    @staticmethod
+    def is_path_annotation(annotation: dict):
+        """
+        Check if a particular annotation is from a path or not
+
+        :param annotation: Dictionary store of a canvas annotation from a shape
+
+        :return: Boolean indicating if the shape matches the parameters for a `svgpath`
+        """
+        return 'type' in annotation and annotation['type'] in ['path', 'line'] and 'path' in annotation
 
     def check_annotation_for_zoom(self, canvas_layout: Union[go.Figure, dict]):
         """
@@ -61,7 +89,7 @@ class AnnotationList:
             # Set which shapes to use based on the checklist either all or the most recent
             shapes_use = canvas_layout['shapes'] if self.bulk_annot else [canvas_layout['shapes'][-1]]
             for shape in shapes_use:
-                if shape['type'] == 'path':
+                if self.is_path_annotation(shape):
                     self.annotations[shape['path']] = 'path'
                 elif shape['type'] == "rect":
                     key = {k: shape[k] for k in ('x0', 'x1', 'y0', 'y1')}

@@ -1,7 +1,7 @@
 # Building rakaia standalone
 
 rakaia supports building binaries distributions through [pyinstaller](https://pyinstaller.org/en/stable/).
-Binaries can be built for all major OS distributions (Windows, MacOS, and Linux).
+Binaries can be built for all major OS distributions (Windows, macOS, and Linux).
 
 
 ## pyinstaller installation
@@ -22,33 +22,35 @@ from the rakaia home source directory:
 
 ```commandline
 cd standalone/
-source build.sh
+source build.sh rakaia.spec
 ```
 
-For Windows, the commands should be run in a shell supporting bash commands
-such as `Git Bash for Windows` using the corresponding shell script above.
+The spec file above compiles a single file executable, with compressed dependencies.
+For a directory of uncompressed dependencies, switch the spec file:
+
+```commandline
+source build.sh rakaia_onedir.spec
+```
+
+### Building on Windows
+
+A few additional considerations need to be made when building on Windows:
+
+- the commands should be run in a shell supporting bash commands
+such as `Git Bash for Windows`
+- the minimal Python version for building should be `3.11` or greater to avoid
+build errors with `rasterio`
+- rakaia should not be built in a virtual env or conda
 
 The resulting application bundle file can be found in the `standalone/dist` directory as either a file executable
-without a file type extension (Linux), or as an exe file on Windows.
+without a file type extension (Linux), or as an exe file on Windows if single file is used.
+For the onedir spec, a subdirectory containing a file executable and a `_internal` dependency
+directory will be generated.
 
 **For distributing the file, the bundle should be zipped prior to sharing so that file permission may be maintained
 across machines/environments.**
 
-
 ## Executing
 
-The rakaia executable requires the use of a terminal window to communicate with the underlying server.
-
-On Windows, the executable can simply be opened by double-clicking the application icon. In some cases, it may require
-admin permissions. For this, right-click the application and select `Run as administrator`
-
-For MacOS, right-click the executable file and select `Open with` -> `Other`. Select `Enable` -> `All Applications`,
-then navigate to `Applications` -> `Utilities` -> `Terminal`. Run the application by double clicking.
-
-Opening the application should trigger a new Terminal window. On first run, it may take a while as the application parses through all dependencies and verifies the bundled interpreter.
-
-## Troubleshooting
-
-### Windows SDK dependencies
-
-In certain cases, Windows user may need to install the [Windows Development SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) to have all required dll libraries for rakaia on windows.
+Please refer to the **INSTRUCTIONS.Rmd** file for
+information on executing the bundles.

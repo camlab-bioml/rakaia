@@ -1,0 +1,10 @@
+{
+    "_index": "_index",
+    "column-order": [
+        "gene_ids",
+        "feature_types",
+        "genome"
+    ],
+    "encoding-type": "dataframe",
+    "encoding-version": "0.2.0"
+}

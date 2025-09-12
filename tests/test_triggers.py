@@ -8,7 +8,8 @@ from rakaia.callbacks.triggers import (
     reset_on_visium_spot_size_change,
     no_channel_for_view,
     empty_slider_values,
-    use_channel_autofill)
+    use_channel_autofill,
+    layout_has_modified_shape)
 import numpy as np
 
 def test_triggers():
@@ -75,3 +76,13 @@ def test_reset_layers_on_visium_spot_change():
     raw_same, layers_same = reset_on_visium_spot_size_change("diff_trigger", raw, layers, "visium_1")
     assert raw_same == raw
     assert layers_same == layers
+
+def test_shape_redragged():
+    # test detection of an existing shape that is modified i.e. re-dragged
+    assert layout_has_modified_shape({'shapes[0].path':
+            'M408.33593749999994,95.21093749999999L397.3984375,92.08593749999999L379.4296875,92.08593749999999L355.2109375,'
+            '106.1484375L348.9609375,118.6484375L338.8046875,145.2109375L330.2109375,'
+            '163.9609375L323.9609375,196.7734375L327.8671875,203.8046875L341.1484375,205.3671875L364.5859375,'
+            '196.7734375L378.6484375,192.8671875L386.4609375,194.4296875Z'})
+    assert not layout_has_modified_shape({'autosize': True})
+    assert not layout_has_modified_shape(None)

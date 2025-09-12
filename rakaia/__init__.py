@@ -1,2 +1,1 @@
-_program = "rakaia"
-__version__ = "0.23.0"
+from ._version import __version__

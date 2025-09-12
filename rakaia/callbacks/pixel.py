@@ -22,7 +22,10 @@ from rakaia.inputs.pixel import (
     set_range_slider_tick_markers,
     canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
-    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram)
+    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram, set_annotation_layout)
+from rakaia.io.annotation import (
+    is_valid_shapes_upload,
+    write_canvas_shapes_to_json)
 from rakaia.parsers.lazy_load import parse_files_for_lazy_loading, SingleMarkerLazyLoader
 from rakaia.parsers.pixel import (
     FileParser,
@@ -32,7 +35,7 @@ from rakaia.parsers.pixel import (
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
-    xenium_coords_to_wsi_from_zoom
+    xenium_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser
 from rakaia.register.process import update_coregister_hash, wsi_from_local_path
 from rakaia.utils.cluster import cluster_assignments_from_config
 
@@ -55,7 +58,10 @@ from rakaia.utils.pixel import (
     no_filter_chosen,
     channel_filter_matches,
     ag_grid_cell_styling_conditions,
-    MarkerCorrelation, high_low_values_from_zoom_layout, layers_exist, add_saved_blend)
+    MarkerCorrelation,
+    high_low_values_from_zoom_layout,
+    layers_exist, add_saved_blend,
+    is_metadata_key)
 from rakaia.utils.quantification import limit_length_to_quantify
 from rakaia.utils.session import (
     validate_session_upload_config,
@@ -115,7 +121,7 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     reset_on_visium_spot_size_change,
     no_channel_for_view,
-    empty_slider_values, use_channel_autofill)
+    empty_slider_values, use_channel_autofill, layout_has_modified_shape)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -170,6 +176,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
+            if is_zarr_store(path) and sesh_id:
+                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session).get_files()
+                  # show an error on zarr reading as there can be version incompatibilities with raster, anndata, etc.
+                except Exception as e: return dash.no_update, {'error': str(e)}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+            # for now, parsing a steinbock directory doesn't take into account any previous session uploads
             if is_steinbock_dir(path) and sesh_id:
                 return parse_steinbock_dir(path, error_config, key=f"umap_coordinates_{sesh_id}", use_unique_key=OVERWRITE)
             paths, error = parse_local_path_imports(path, validate_session_upload_config(cur_session), error_config)
@@ -270,15 +281,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if upload_template is not None:
             datasets, selection_return, channels_return = [], None, None
             for roi in upload_template.keys():
-                if "metadata" not in roi: datasets.append(roi)
+                if not is_metadata_key(roi): datasets.append(roi)
             if cur_data_selection is not None:
                 selection_return = set_data_selection_after_import(datasets, cur_data_selection)
                 if cur_layers_selected is not None and len(cur_layers_selected) > 0: channels_return = cur_layers_selected
             height_update = adjust_option_height_from_list_length(datasets)
             return datasets, selection_return, channels_return, height_update, datasets, disable_gallery_by_roi(datasets)
-            # can use an animation to draw attention to the data selection input
-            # "animate__animated animate__jello animate__slower"
         raise PreventUpdate
+
+    @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
+                       Input('data-collection', 'options'),
+                       State('data-collection', 'value'),
+                       prevent_initial_call=True)
+    def check_for_roi_autoload(ses_options, cur_roi):
+        """
+        Check if a single ROI has been loaded into the session, and load if so. Otherwise, do nothing
+        """
+        return ses_options[0] if (ses_options and len(ses_options) == 1 and not cur_roi) else dash.no_update
 
     @dash_app.callback(Output('data-collection', 'options', allow_duplicate=True),
                        Output('data-collection', 'value', allow_duplicate=True),
@@ -494,7 +513,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         metadata_return = metadata_return if metadata_return is not None else dash.no_update
         if None not in (image_dict, new_blend_dict, data_selection) and sesh_id:
             # reformat the blend dict to remove the metadata key if reported with h5py so it will match
-            current_blend_dict = {key: value for key, value in current_blend_dict.items() if 'metadata' not in key}
+            current_blend_dict = {key: value for key, value in current_blend_dict.items() if not is_metadata_key(key)}
             if panel_match(current_blend_dict, new_blend_dict) or all_roi_match(current_blend_dict, new_blend_dict, image_dict, delimiter):
                 current_blend_dict = new_blend_dict['channels'].copy() if new_blend_dict['channels'] else current_blend_dict
                 rgb_layers = {data_selection: {}}
@@ -911,7 +930,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 and len(channel_order) > 0 and not global_not_enabled and not channel_order_same and canvas_holder and \
                 data_selection in rgb_layers and rgb_layers[data_selection] and not dont_update and not empty_mask:
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
-            legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+            legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
             try:
                 canvas = CanvasImage(rgb_layers, data_selection, currently_selected, mask_config, mask_selection,
@@ -919,9 +938,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover, show_each_channel_intensity,
                 image_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
-                custom_scale_val, apply_gating, gating_cell_id_list, scale_color, clust_selected)
+                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected)
                 fig = canvas.render_canvas()
-                if cluster_type == 'mask' or not apply_cluster_on_mask:
+                if str(cluster_type).lower() == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask and cluster_cat:
                     fig = CanvasLayout(fig).add_cluster_annotations_as_circles(mask_config[mask_selection]["raw"],
@@ -970,10 +989,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id not in ["activate-coord"]:
                 try:
                     proportion = float(custom_scale_val / cur_dim[1]) if custom_scale_val is not None else 0.1
-                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion, scale_col)
+                    cur_graph = CanvasLayout(cur_graph).update_scalebar_zoom_value(cur_graph_layout, pixel_ratio, proportion, str(scale_col).lower())
                     x_axis_placement = set_x_axis_placement_of_scalebar(cur_dim[1], invert_annot)
                     cur_graph = CanvasLayout(cur_graph).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
-                                pixel_ratio, cur_dim, legend_size, proportion, scale_col)
+                                pixel_ratio, cur_dim, legend_size, proportion, str(scale_col).lower())
                     return cur_graph, cur_graph_layout
                 except (ValueError, KeyError, AssertionError): raise PreventUpdate
             if ctx.triggered_id == "activate-coord":
@@ -1024,7 +1043,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             x_axis_placement = set_x_axis_placement_of_scalebar(cur_dim[1], invert_annot)
             cur_canvas = CanvasLayout(cur_canvas).clear_improper_shapes()
             if ctx.triggered_id in ["toggle-canvas-legend", "legend_orientation", "cluster-annotations-legend", "channel-order"]:
-                legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, legend_orientation,
+                legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
                                                  cluster_assignments_in_legend, cluster_assignments_dict,
                                                  data_selection, clust_selected, cluster_cat) if toggle_legend else ''
                 canvas = CanvasLayout(cur_canvas).toggle_legend(toggle_legend, legend_text, x_axis_placement, legend_size)
@@ -1032,7 +1051,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id in ["toggle-canvas-scalebar", "scalebar-color"]:
                 proportion = float(custom_scale_val / cur_dim[1]) if custom_scale_val is not None else 0.1
                 canvas = CanvasLayout(cur_canvas).toggle_scalebar(toggle_scalebar, x_axis_placement, invert_annot,
-                        pixel_ratio, cur_dim, legend_size, proportion, scalebar_col)
+                        pixel_ratio, cur_dim, legend_size, proportion, str(scalebar_col).lower())
                 return CanvasLayout(canvas).get_fig()
         raise PreventUpdate
 
@@ -1136,6 +1155,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             except Exception as e:
                 error_config, html_path = add_warning_to_error_config(error_config, str(e)), dash.no_update
             return html_path, error_config
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("download-canvas-shapes", "data"),
+        Input("btn-download-canvas-shapes", "n_clicks"),
+        State('annotation_canvas', 'relayoutData'),
+        State('annotation_canvas', 'figure'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
+    def download_canvas_shapes(download_shapes, canvas_layout, canvas):
+        canvas_layout = set_annotation_layout(canvas_layout, canvas)
+        if canvas_layout is not None and 'shapes' in canvas_layout and canvas_layout['shapes']:
+            return dcc.send_file(write_canvas_shapes_to_json(download_shapes, canvas_layout))
         raise PreventUpdate
 
     @dash_app.callback(Output('download-session-config-json', 'data'),
@@ -1600,19 +1631,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(Input('session_config', 'data'),
                        Output('unique-channel-list', 'options'),
+                       Output('session_alert_config', 'data', allow_duplicate=True),
                        Input('alias-dict', 'data'),
+                       State('session_alert_config', 'data'),
                        prevent_initial_call=True)
-    def populate_gallery_channel_list(session_config, aliases):
+    def populate_gallery_channel_list(session_config, aliases, error_config):
         """
         Populate a list of all unique channel names for the gallery view
         """
         if session_config is not None and 'unique_images' in session_config.keys():
             try:
-                if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise AssertionError
-                return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']]
-            except AttributeError: raise DataImportError(ALERT.warnings["possible-disk-storage-error"])
-            except KeyError: return []
-        return []
+                if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise PanelMismatchError("")
+                return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']], dash.no_update
+            except Exception: return [], add_warning_to_error_config(error_config, "Warning: possible panel mismatch for uploads. Please refresh.")
+        return [], dash.no_update
 
     @dash_app.callback(Output('static-session-var', 'data'),
                        Input('images_in_blend', 'value'),
@@ -1728,7 +1760,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('region-annotation', 'disabled'),
                        Input('annotation_canvas', 'relayoutData'),
                        State('data-collection', 'value'),
-                       Input('image_layers', 'value'),
+                       State('image_layers', 'value'),
                        prevent_initial_call=True)
     def enable_region_annotation_on_layout(cur_graph_layout, data_selection, current_blend):
         """
@@ -1736,8 +1768,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         a shape is being added/edited. These represent a region selection that can be annotated
         """
         if None not in (cur_graph_layout, data_selection, current_blend) and len(current_blend) > 0:
-            if all([elem in cur_graph_layout for elem in ZOOM_KEYS]) or 'shapes' in cur_graph_layout and \
-                    len(cur_graph_layout['shapes']) > 0: return False
+            if all([elem in cur_graph_layout for elem in ZOOM_KEYS]) or ('shapes' in cur_graph_layout and
+            len(cur_graph_layout['shapes']) > 0) or layout_has_modified_shape(cur_graph_layout): return False
             return True
         return True
 
@@ -1772,11 +1804,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('gating-annotation-assignment', 'value'),
         State('gating-cell-list', 'data'),
         State('bulk-annotate-shapes', 'value'),
-        State('session_id_internal', 'data'))
+        State('session_id_internal', 'data'),
+        State('annotation_canvas', 'figure'))
     def add_annotation_to_dict(create_annotation, annotation_title, annotation_body, annotation_cell_type,
                                canvas_layout, annotations_dict, data_selection, cur_layers, mask_toggle,
                                mask_selection, mask_blending_level, add_mask_boundary, annot_col, add_annot_gating,
-                               apply_gating, gating_annot_col, gating_annot_type, gating_cell_id_list, bulk_annot, sesh_id):
+                               apply_gating, gating_annot_col, gating_annot_type, gating_cell_id_list, bulk_annot, sesh_id, canvas):
         annotations_dict = check_for_valid_annotation_hash(annotations_dict, data_selection)
         # Option 1: if triggered from gating
         if ctx.triggered_id == "gating-annotation-create" and add_annot_gating and apply_gating and sesh_id and None not in \
@@ -1789,6 +1822,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # Option 2: if triggered from region drawing
         elif ctx.triggered_id == "create-annotation" and create_annotation and sesh_id and None not in \
                 (canvas_layout, data_selection, cur_layers) and annot_col and annotation_cell_type:
+            # set the layout used based on use of zoom or not to be compatible with modified shapes
+            canvas_layout = set_annotation_layout(canvas_layout, canvas)
             annotation_list = AnnotationList(canvas_layout, bulk_annot).get_annotations()
             for key, value in annotation_list.items():
                 annotations_dict[data_selection][key] = RegionAnnotation(title=annotation_title, body=annotation_body,
@@ -2203,3 +2238,26 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         files = DashUploaderFileReader(status).return_filenames()
         return str(files[0]) if files else dash.no_update
+
+    @du.callback(Output('canvas-shapes-upload', 'data'),
+                 id='upload-canvas-shapes')
+    def upload_exported_canvas_shapes(status: du.UploadStatus):
+        """
+        Import a set of uploaded canvas shapes in JSON format into the current canvas
+        """
+        files = DashUploaderFileReader(status).return_filenames()
+        return is_valid_shapes_upload(json.load(open(files[0])), True) if files else dash.no_update
+
+    @dash_app.callback(
+        Output('annotation_canvas', 'figure', allow_duplicate=True),
+        Output('annotation_canvas', 'relayoutData', allow_duplicate=True),
+        Input('canvas-shapes-upload', 'data'),
+        [State('annotation_canvas', 'figure')])
+    def apply_shape_upload_to_canvas(shape_upload, cur_canvas):
+        """
+        Apply a set of imported canvas shapes from JSON format into the current canvas
+        """
+        if cur_canvas and shape_upload and 'shapes' in shape_upload and shape_upload['shapes']:
+            graph_w_shapes = CanvasLayout(cur_canvas).add_shapes_from_json(shape_upload)
+            return graph_w_shapes, CanvasLayout(graph_w_shapes).get_layout()
+        raise PreventUpdate

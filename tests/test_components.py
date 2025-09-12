@@ -1,3 +1,4 @@
+import json
 import numpy as np
 from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 import plotly.graph_objs as go
@@ -5,6 +6,7 @@ import plotly.express as px
 import pandas as pd
 import os
 from PIL import Image
+from rakaia.inputs.pixel import set_annotation_layout
 
 def test_basic_canvas_image():
 
@@ -344,6 +346,19 @@ def test_canvas_layout_editor(get_current_dir):
     assert fig['layout']['shapes'][0]['type'] == 'circle'
     assert fig['layout']['shapes'][0]['x0'] == fig['layout']['shapes'][0]['y0'] == (50 - 4)
 
+    shapes = json.load(open(os.path.join(get_current_dir, 'canvas_shapes.json')))
+    fig = CanvasLayout(fig.to_dict()).add_shapes_from_json(shapes)
+    assert len(fig['layout']['shapes']) == 3
+    assert fig['layout']['shapes'][1]['type'] == 'path'
+    assert len(CanvasLayout(fig).get_layout()['shapes']) == 3
+
+    # check for the layout when annotating based on the presence of zoom or not
+    layout_shapes = set_annotation_layout({'autosize': True}, fig)
+    assert layout_shapes == {'shapes': fig['layout']['shapes']}
+    view_window = {'xaxis.range[0]': 225.0, 'xaxis.range[1]': 275.0,
+                             'yaxis.range[0]': 275.0, 'yaxis.range[1]': 225.0}
+    layout_zoom = set_annotation_layout(view_window, fig)
+    assert layout_zoom == view_window
 
 def test_reset_graph_malformed():
     image = np.full((600, 600, 3), 255).astype(np.uint8)

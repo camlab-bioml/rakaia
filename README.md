@@ -47,6 +47,8 @@ rakaia is built on:
 
 ## Installation
 
+**NOTE: As of rakaia 0.24.0, the required Python version(s) are 3.10+ (3.10 or 3.11 recommended).**
+
 rakaia can be cloned and installed locally using access to the GitHub repository
 
 ```
@@ -74,13 +76,15 @@ select the relevant operating system.
 Once conda is installed:
 
 ```
-conda create --name rakaia python=3.9
+conda create --name rakaia python=3.11
 conda activate rakaia
 cd rakaia
 pip install .
 ```
 
-### Installation failure for ParmED
+### Installation troubleshooting
+
+#### ParmED
 
 If installation of the [ParmEd](https://github.com/ParmEd/ParmEd) library fails (appears to be
 more prevalent on older versions of macOS), then users should try installing it from conda source:
@@ -88,6 +92,16 @@ more prevalent on older versions of macOS), then users should try installing it 
 ```commandline
 pip uninstall parmed
 conda install -c conda-forge parmed=4.3.0
+```
+
+#### leidenalg
+
+If installation of the [leidenalg](https://github.com/vtraag/leidenalg) library fails (
+appears to happen on MacOS with Python 3.12+), then users should try installing it from conda source:
+
+```commandline
+pip uninstall parmed
+conda install -c conda-forge leidenalg=0.10.2
 ```
 
 ### with Make
