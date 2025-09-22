@@ -5,11 +5,10 @@ output: pdf_document
 
 ## For Users
 
-This repository contains rakaia standalone builds for Windows, Linux, and macOS (currently only
-Intel-based laptops, M1/M2 builds are coming soon). You should download the zip bundle corresponding to your OS.
-Once the zip bundle is downloaded and unzipped, there should be a single file named `rakaia_{os}_{version}` in the unzipped destination.
+This repository contains rakaia standalone builds for Windows, Linux, and macOS (built separately for Intel vs. Silicon architectures, see below). You should download the zip bundle corresponding to your OS and architecture.
+Once the zip bundle is downloaded and unzipped, there should be a single file named `rakaia_{os}_{arch}_{version}` in the unzipped destination.
 
-**Note**: On initial execution, the bundles may take a while (3-4 minutes) to initialize, as
+**Note**: On initial execution, the bundles may take a while (2-3 minutes) to initialize, as
 the large number of package dependencies will need to be uncompressed. Subsequent executions of
 rakaia should be faster.
 
@@ -21,8 +20,9 @@ On Windows, the executable can simply be opened by double-clicking the applicati
 
 ## macOS
 **NOTE**: macOS users should first disable `Airplay Receiver` in `Settings`
-before executing the binary, as the receiver feature uses the same port
-as Rakaia's default.
+before executing the binary, as the receiver feature uses the same port as Rakaia's default port (5000).
+
+**NOTE**: macOS builds for Rakaia are made separately for Silicon (M-chip) and Intel architectures. Builds for Intel-compatible architecture will have **x86_64** in the name, whereas a build compatible with M chips for Silicon will have **universal2** in the name. Users should be sure to select the build zip for the appropriate chip architecture, or there will be compilation platform errors on opening.
 \
 
 For macOS, on first execution, right-click the executable file and select `Open with` -> `Other`. Select `Enable` -> `All Applications`,
@@ -58,4 +58,4 @@ For general installation and run support, please contact mwatson@lunenfeld.ca
 
 ### Windows SDK dependencies
 
-In certain cases, Windows user may need to install the [Windows Development SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) to have all required dll libraries for rakaia on windows.
+Although unlikely, in certain cases, Windows user may need to install the [Windows Development SDK](https://developer.microsoft.com/en-us/windows/downloads/windows-sdk/) to have all required dll libraries for rakaia on windows.

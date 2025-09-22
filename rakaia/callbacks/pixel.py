@@ -1767,6 +1767,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Enable the region annotation button to be selectable when the canvas is either zoomed in on, or
         a shape is being added/edited. These represent a region selection that can be annotated
         """
+        # TODO: this logic still blanks out annotation if shapes exist on the canvas but zoom is switched to but not used
         if None not in (cur_graph_layout, data_selection, current_blend) and len(current_blend) > 0:
             if all([elem in cur_graph_layout for elem in ZOOM_KEYS]) or ('shapes' in cur_graph_layout and
             len(cur_graph_layout['shapes']) > 0) or layout_has_modified_shape(cur_graph_layout): return False

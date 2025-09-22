@@ -159,8 +159,8 @@ def test_parse_sd_xenium(get_current_dir):
         parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_xenium.zarr'),
                               tmpdirname).get_files()
         files = parsed[0]
-        assert len(files['uploads']) == 1
         masks = parsed[2]
+        assert len(files['uploads']) == len(masks) == 1
         for file in (files['uploads'][0], masks['subset_xenium_zarr']):
             if os.access(file, os.W_OK):
                 os.remove(file)
@@ -172,6 +172,17 @@ def test_parse_sd_visium_hd(get_current_dir):
         assert len(parsed['uploads']) == 3
         for bin_size in ['002um', '008um', '016um']:
             assert any(bin_size in file_out for file_out in parsed['uploads'])
+        for path in parsed['uploads']:
+            if os.access(path, os.W_OK):
+                os.remove(path)
+
+def test_parse_sd_other_spatial(get_current_dir):
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        # if not detected as 10x, export each table as a spatial region with the table key in the name
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_other_spatial.zarr'),
+                                  tmpdirname).get_files()[0]
+        assert len(parsed['uploads']) == 1
+        assert 'subset_other_spatial_zarr_table' in parsed['uploads'][0]
         for path in parsed['uploads']:
             if os.access(path, os.W_OK):
                 os.remove(path)

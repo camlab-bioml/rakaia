@@ -45,7 +45,7 @@ def is_zarr_store(local_dir: Union[Path, str]):
 class ZarrSDParser:
     """
     Parse a spatialdata zarr-backed store for 10X Genomics ST outputs. Currently, supports parsing
-    or 10X Visium, Visium HD, and Xenium
+    for 10X Visium, Visium HD, and Xenium
 
     :param zarr_path: local directory path to the zarr store
     :param tmp_session_path: In-application path to where temporary spatial files should be written
@@ -253,13 +253,18 @@ class ZarrSDParser:
                     if bin_size in table:
                         expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size))
                         self._image_paths['uploads'].append(self.write_adata(expr, str(shape)))
-        # Process Visium by iterating the shapes (one per ROI, the shape key is the sample)
+
         else:
-            expr = sdata.tables['table']
+            # expr = sdata.tables['table']
+            # Case 3: process Visium by iterating the shapes (one per ROI, the shape key is the sample)
             found_expr = self._iterate_shapes_by_region(sdata)
-            if is_spatial_dataset(expr) and not found_expr:
-                self._image_paths['uploads'].append(self.write_adata(expr,
-                str(os.path.basename(zarr_path)).replace('.', '_')))
+            if not found_expr:
+                # Case 4: if not 10x, iterate each table here as its own spatial expression set instead of using a set table key
+                for table_key in sdata.tables.keys():
+                    if is_spatial_dataset(sdata.tables[table_key]):
+                        # use the table key in the file name output
+                        self._image_paths['uploads'].append(self.write_adata(sdata.tables[table_key],
+                        f"{str(os.path.basename(zarr_path)).replace('.', '_')}_{table_key}"))
 
     def get_files(self):
         """

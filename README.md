@@ -82,6 +82,16 @@ cd rakaia
 pip install .
 ```
 
+### vips for WSI rendering (optional)
+
+To view WSIs such as H&E, an installation of [libvips](https://www.libvips.org/) is required,
+and is not installed through the pip installation above.
+
+Users should visit the [vips installation page](https://www.libvips.org/install.html) for
+instructions on installing for a specific OS.
+
+**Note**: macOS users should install `vips` using `brew` as opposed to conda.
+
 ### Installation troubleshooting
 
 #### ParmED
