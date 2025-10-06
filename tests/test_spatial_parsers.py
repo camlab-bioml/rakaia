@@ -21,15 +21,15 @@ from rakaia.parsers.object import visium_mask
 def test_identify_h5ad_in_uploads(get_current_dir):
     uploads = {"uploads": [os.path.join(get_current_dir, "for_recolour.tiff"),
                            os.path.join(get_current_dir, "visium_thalamus.h5ad")]}
-    h5ad_found = parse_files_for_lazy_loading(uploads, "visium_thalamus+++slide0+++acq")
+    h5ad_found = parse_files_for_lazy_loading(uploads, "visium_thalamus+++slideNA+++acq")
     assert h5ad_found == os.path.join(get_current_dir, "visium_thalamus.h5ad")
-    assert parse_files_for_lazy_loading(uploads, "other_visium+++slide0+++acq") is None
-    assert parse_files_for_lazy_loading([], "visium_thalamus+++slide0+++acq") is None
+    assert parse_files_for_lazy_loading(uploads, "other_visium+++slideNA+++acq") is None
+    assert parse_files_for_lazy_loading([], "visium_thalamus+++slideNA+++acq") is None
 
 def test_basic_visium_anndata_parser(get_current_dir):
     visium_parser = FileParser([os.path.join(get_current_dir, "visium_thalamus.h5ad")])
     assert len(visium_parser.metadata_labels) == len(visium_parser.metadata_channels) == 250
-    assert all(elem is None for elem in visium_parser.image_dict['visium_thalamus+++slide0+++acq'].values())
+    assert all(elem is None for elem in visium_parser.image_dict['visium_thalamus+++slideNA+++acq'].values())
 
 def test_visium_generate_spot_grid(get_current_dir):
     grid_image = spatial_grid_single_marker(os.path.join(get_current_dir, "visium_thalamus.h5ad"),
@@ -61,20 +61,20 @@ def test_visium_generate_spot_grid(get_current_dir):
 def test_parse_image_dict_for_missing_spot_grids(get_current_dir):
     adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
     assert is_spatial_dataset(adata)
-    image_dict = {'visium_thalamus+++slide0+++acq': {marker: None for marker in list(adata.var_names)}}
+    image_dict = {'visium_thalamus+++slideNA+++acq': {marker: None for marker in list(adata.var_names)}}
     image_dict_back = check_spatial_array_multi_channel(image_dict,
-            'visium_thalamus+++slide0+++acq', adata, list(adata.var_names)[0:2])
-    for marker in image_dict_back['visium_thalamus+++slide0+++acq'].keys():
+            'visium_thalamus+++slideNA+++acq', adata, list(adata.var_names)[0:2])
+    for marker in image_dict_back['visium_thalamus+++slideNA+++acq'].keys():
         if marker in list(adata.var_names)[0:2]:
-            assert image_dict_back['visium_thalamus+++slide0+++acq'][marker] is not None
-            assert image_dict_back['visium_thalamus+++slide0+++acq'][marker].shape == (925, 1011)
+            assert image_dict_back['visium_thalamus+++slideNA+++acq'][marker] is not None
+            assert image_dict_back['visium_thalamus+++slideNA+++acq'][marker].shape == (925, 1011)
         else:
-            assert image_dict_back['visium_thalamus+++slide0+++acq'][marker] is None
+            assert image_dict_back['visium_thalamus+++slideNA+++acq'][marker] is None
 
 
 def test_parse_visium_spot_mask(get_current_dir):
     uploads = {"uploads": [os.path.join(get_current_dir, "visium_thalamus.h5ad")]}
-    mask_dict, names = visium_mask({}, 'visium_thalamus---slide0---acq',
+    mask_dict, names = visium_mask({}, 'visium_thalamus---slideNA---acq',
                                    uploads, delimiter="---")
     assert 'visium_thalamus' in names
     assert 'visium_thalamus' in mask_dict.value.keys()
@@ -88,10 +88,10 @@ def test_detect_spatial_can_perform_coord_transfer(get_current_dir):
     """
     uploads = {"uploads": ['fake_file.txt', 'data.h5', 'mask.tiff',
                            os.path.join(get_current_dir, 'visium_thalamus.h5ad')]}
-    can_transfer, file = spatial_selection_can_transfer_coordinates('visium_thalamus+++slide0+++acq', uploads)
+    can_transfer, file = spatial_selection_can_transfer_coordinates('visium_thalamus+++slideNA+++acq', uploads)
     assert can_transfer
     assert str(file) == str(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))
-    can_transfer, file = spatial_selection_can_transfer_coordinates('fake_file+++slide0+++acq', uploads)
+    can_transfer, file = spatial_selection_can_transfer_coordinates('fake_file+++slideNA+++acq', uploads)
     assert not can_transfer
     assert file is None
 
@@ -168,7 +168,7 @@ def test_parse_sd_xenium(get_current_dir):
 def test_parse_sd_visium_hd(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
         parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr'),
-                              tmpdirname).get_files()[0]
+                              os.path.join(tmpdirname, 'other_spatial')).get_files()[0]
         assert len(parsed['uploads']) == 3
         for bin_size in ['002um', '008um', '016um']:
             assert any(bin_size in file_out for file_out in parsed['uploads'])

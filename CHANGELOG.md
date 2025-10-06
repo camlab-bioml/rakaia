@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.25.0] - 2025-09-22
+## [0.25.0] - 2025-10-06
 
 ### Changed
 
 - Default parse for non 10x `spatialdata` iterates all spatial tables
+- Slide identifier and index in dataset strings
 
 ## [0.24.0] - 2025-09-08
 

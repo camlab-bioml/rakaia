@@ -375,7 +375,7 @@ class RegionThumbnail:
         basename = str(Path(file_path).stem)
         queries_by_name = []
         with MCDFile(file_path) as mcd_file:
-            slide_index = 0
+            slide_index = 1
             for slide_inside in mcd_file.slides:
                 self.set_mcd_query_selection(slide_inside, queries_by_name)
                 for query in self.query_selection:

@@ -110,7 +110,7 @@ If installation of the [leidenalg](https://github.com/vtraag/leidenalg) library 
 appears to happen on MacOS with Python 3.12+), then users should try installing it from conda source:
 
 ```commandline
-pip uninstall parmed
+pip uninstall leidenalg
 conda install -c conda-forge leidenalg=0.10.2
 ```
 

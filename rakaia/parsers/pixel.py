@@ -84,7 +84,7 @@ class FileParser:
             self.metadata_channels = []
             self.metadata_labels = []
             self.experiment_index = 0
-            self.slide_index = 0
+            self.slide_index = 1
             self.acq_index = 0
             self.blend_config = None
             self.roi_name = roi_name
@@ -278,7 +278,7 @@ class FileParser:
             if len(self.image_dict['metadata']) > 0:
                 self.check_for_valid_tiff_panel(tif)
             basename = str(Path(tiff_path).stem)
-            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq" if \
+            roi = f"{basename}{self.delimiter}slideNA{self.delimiter}acq" if \
                 internal_name is None else internal_name
             # treat each tiff as its own ROI and increment the acq index for each one
             self.image_dict[roi] = {}
@@ -334,7 +334,7 @@ class FileParser:
         with MCDFile(mcd_filepath) as mcd_file:
             channel_names = None
             channel_labels = None
-            slide_index = 0
+            slide_index = 1
             acq_index = 0
             for slide in mcd_file.slides:
                 for acq in slide.acquisitions:
@@ -443,7 +443,7 @@ class FileParser:
             if len(self.metadata_channels) > 0:
                 self.check_for_valid_txt_panel(txt_channel_names, txt_channel_labels)
             basename = str(Path(txt_filepath).stem)
-            roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
+            roi = f"{str(basename)}{self.delimiter}slideNA" \
                   f"{self.delimiter}acq" if internal_name is None else internal_name
             self.image_dict[roi] = {}
             if not self.lazy_load:
@@ -480,7 +480,7 @@ class FileParser:
         anndata = ad.read_h5ad(h5ad_filepath)
         if is_spot_based_spatial(anndata) or is_spatial_dataset(anndata):
             basename = str(Path(h5ad_filepath).stem)
-            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq"
+            roi = f"{basename}{self.delimiter}slideNA{self.delimiter}acq"
             self.metadata_channels = list(anndata.var_names)
             self.metadata_labels = list(anndata.var_names)
             # get the channel names from the var names
