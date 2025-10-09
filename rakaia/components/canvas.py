@@ -172,13 +172,32 @@ class CanvasImage:
 
         image = self.overlay_grid_on_additive_image(image)
         self.image = image
+        comp_level, comp_format = self.set_px_compression_params(image)
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
-                                # currently set to lowest possible compression level for speed
-                                binary_compression_level=1)
+                                # set to the lowest level unless the image is very large
+                                binary_compression_level=comp_level,
+                                # allow lossy jpg format is very large image
+                                binary_format=comp_format)
+
+    @staticmethod
+    def set_px_compression_params(array, dim_limit: int=10000,
+                                  pixel_limit: int=70000000):
+        """
+        Set the binary compression format and level for the incoming image based on its size.
+        Use PNG for sufficiently small images and allow lossy JPG for larger than the `dim_limit`
+
+        :param array: RGB blended image to send to the frontend
+        :param dim_limit: Integer dimension limit in either x or y-plane to determine the optimal binary format
+        :param pixel_limit: Integer total image size limit to determine optimal binary format
+
+        :return: Tuple: (compression level, compression format) depending on the array dimensions ((4, `png`) if sufficiently large)
+        """
+        return (4, 'jpg') if (array.shape[0] >= dim_limit or array.shape[1] >= dim_limit or
+                         (int(array.shape[0]) * int(array.shape[1]) >= pixel_limit)) else (1, 'png')
 
     def get_previous_uirevision(self):
         """
-        # try to get the uirevision status from the current graph if it exists.
+        Get the uirevision status from the current graph if it exists.
         Two possible truthy values are toggled when shapes are cleared
         :return: None
         """

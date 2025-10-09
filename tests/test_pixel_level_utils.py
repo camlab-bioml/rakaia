@@ -249,7 +249,6 @@ def test_filtering_intensity_changes_none(get_current_dir):
 
     assert int(np.max(greyscale)) == int(np.max(filtered_1))
 
-
 def test_filtering_intensity_changes_low(get_current_dir):
     greyscale_image = Image.open(os.path.join(get_current_dir, "for_recolour.tiff"))
     greyscale = np.array(greyscale_image)
