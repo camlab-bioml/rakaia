@@ -157,10 +157,13 @@ def test_parse_sd_visium(get_current_dir):
 def test_parse_sd_xenium(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
         parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_xenium.zarr'),
-                              tmpdirname).get_files()
+                              tmpdirname, None, {
+                'mask_1': 'fake_path_to_mask.tiff'}).get_files()
         files = parsed[0]
         masks = parsed[2]
-        assert len(files['uploads']) == len(masks) == 1
+        assert len(files['uploads']) == 1
+        # count the existing session mask when adding new cell segmentation mask
+        assert len(masks) == 2
         for file in (files['uploads'][0], masks['subset_xenium_zarr']):
             if os.access(file, os.W_OK):
                 os.remove(file)

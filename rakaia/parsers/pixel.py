@@ -63,7 +63,7 @@ class FileParser:
     :return: None
     """
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5",
-               ".h5ad": "h5ad"}
+               ".h5ad": "h5ad", ".TIF": "tiff", ".TIFF": "tiff"}
 
     def __init__(self, filepaths: list, array_store_type: str="float", lazy_load: bool=True,
                  single_roi_parse: bool=True, roi_name: Union[str, None]=None,

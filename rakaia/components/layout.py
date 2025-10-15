@@ -243,7 +243,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 text='Choose or drop imaging/spatial data files',
                                     chunk_size=100,
                                     max_total_size=5000000, max_files=1000,
-                                    filetypes=['tif', 'tiff', 'h5', 'mcd', 'txt', 'h5ad'],
+                                    filetypes=['tif', 'tiff', 'h5', 'mcd', 'txt', 'h5ad', 'TIF', 'TIFF'],
                                           default_style={"line-height": "5vh", "min-height": "7vh",
                                                          "max-height": "7vh",
                                                          "vertical-align": "top"}),

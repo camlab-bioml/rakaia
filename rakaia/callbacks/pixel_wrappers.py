@@ -128,7 +128,7 @@ def parse_local_path_imports(path: str, session_config: dict, error_config: dict
         error_config["error"] = None
         return session_config, dash.no_update
     elif os.path.isdir(path):
-        extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5", "*.h5ad"]
+        extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5", "*.h5ad", "*.TIF", "*.TIFF"]
         for extension in extensions:
             session_config['uploads'].extend(Path(path).glob(extension))
         session_config['uploads'] = [str(elem) for elem in session_config['uploads']]
@@ -142,7 +142,7 @@ class SteinbockParserKeys:
     Define the subdirectories and permissible file extensions for parsing a steinbock output directory
     """
     sub_directories = ['quantification', 'mcd', 'deepcell']
-    extensions = ['.tiff', '.tif', '.h5ad', '.mcd', '.txt']
+    extensions = ['.tiff', '.tif', '.h5ad', '.mcd', '.txt', '.TIF', '.TIFF']
     base_names = ['umap_coordinates']
 
 def is_steinbock_dir(directory):

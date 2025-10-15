@@ -88,7 +88,7 @@ class SingleMarkerLazyLoader:
         self.width, self.height, self.x_min, self.y_min = spatial_canvas_dimensions(h5ad_filepath)
         if self.channel_selection:
             self.image_dict = check_spatial_array_multi_channel(self.image_dict, self.data_selection,
-                                                                h5ad_filepath, self.channel_selection, self.spot_size)
+                            h5ad_filepath, self.channel_selection, self.spot_size, self.array_store_type)
 
     def set_mcd_acq_region_dims(self, acq: Acquisition):
         """

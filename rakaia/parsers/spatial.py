@@ -14,7 +14,8 @@ import spatialdata as sd
 from rasterio.features import rasterize
 from tifffile import imwrite
 import dash
-from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
+from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout, \
+    set_array_storage_type_from_config
 from rakaia.utils.session import validate_session_upload_config
 
 class ZarrSDKeys:
@@ -49,19 +50,22 @@ class ZarrSDParser:
 
     :param zarr_path: local directory path to the zarr store
     :param tmp_session_path: In-application path to where temporary spatial files should be written
-    :param cur_session_uploads: Dictionary of current uploads in the session if they exist, or `None`
+    :param cur_session_uploads: Dictionary of current imaging uploads in the session if they exist, or `None`
+    :param cur_mask_uploads: Dictionary of current mask uploads in the session if they exist, or `None`
 
     :return: None
     """
     def __init__(self, zarr_path: Union[Path, str, None]=None,
                  tmp_session_path: Union[Path, str, None]=None,
-                 cur_session_uploads: Union[dict, None]=None):
+                 cur_session_uploads: Union[dict, None]=None,
+                 cur_mask_uploads: Union[dict, None]=None):
 
         self._zarr_path = zarr_path
         self._tmp_session_path = tmp_session_path
         # make the outputs match the `parse_steinbock_dir` output format/order
         self._image_paths = validate_session_upload_config(cur_session_uploads)
-        self._mask_paths = {}
+        self._mask_paths = {} if (cur_mask_uploads is None or
+                                not isinstance(cur_mask_uploads, dict)) else cur_mask_uploads
         self._quant = None
         self._error = None
         self._umap = None
@@ -386,7 +390,8 @@ def spatial_marker_to_dense_flat(spot_array: Union[np.array, np.ndarray]):
 
 def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union[str, None],
                                spot_size: Union[int, None]=None, downscale: bool=True,
-                               as_mask: int=False):
+                               as_mask: int=False,
+                               array_store_type: str="float"):
     """
     Extracts spot values for a specific gene marker and arranges them in a 2D grid
     based on the spatial coordinates. Requires either a named marker for expression spots,
@@ -403,7 +408,8 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
         adata[:, adata.var_names.get_loc(gene_marker)].X)
 
     # Convert to dense array if the data is sparse
-    spot_values = spatial_marker_to_dense_flat(spot_values)
+    spot_values = spatial_marker_to_dense_flat(spot_values).astype(
+                set_array_storage_type_from_config(array_store_type))
 
     suf_expr = spot_values > 0
     spot_values = spot_values[suf_expr]
@@ -462,14 +468,16 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
 
 def check_spatial_array_multi_channel(image_dict: dict, data_selection: str,
                                       adata: ad.AnnData, channel_list: list,
-                                      spot_size: Union[int,float]=55):
+                                      spot_size: Union[int,float]=55,
+                                      array_store_type: str="float"):
     """
     Check the current raw image dictionary for missing spatial arrays using the currently selected
     marker list (current blend). If markers are missing, add the expression arrays (non-sparse) to the dictionary
     """
     for selection in channel_list:
         if not image_dict[data_selection] or image_dict[data_selection][selection] is None:
-            image_dict[data_selection][selection] = spatial_grid_single_marker(adata, selection, spot_size)
+            image_dict[data_selection][selection] = spatial_grid_single_marker(adata, selection, spot_size,
+                                                    True, False, array_store_type)
     return image_dict
 
 

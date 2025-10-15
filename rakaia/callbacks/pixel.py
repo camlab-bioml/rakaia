@@ -172,12 +172,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_config', 'data'),
                        State('session_alert_config', 'data'),
                        State('session_id_internal', 'data'),
+                       State('mask-uploads', 'data'),
                        prevent_initial_call=True)
-    def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id):
+    def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id, mask_uploads):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
             if is_zarr_store(path) and sesh_id:
-                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session).get_files()
+                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session, mask_uploads).get_files()
                   # show an error on zarr reading as there can be version incompatibilities with raster, anndata, etc.
                 except Exception as e: return dash.no_update, {'error': str(e)}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             # for now, parsing a steinbock directory doesn't take into account any previous session uploads
@@ -196,7 +197,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             import wx
             app = wx.App(None)
             dialog = wx.FileDialog(None, 'Open', str(Path.home()), style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
-                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad|*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad")
+                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad|*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad;*.TIF;*.TIFF")
             if dialog.ShowModal() == wx.ID_OK:
                 filenames = dialog.GetPaths()
                 if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
