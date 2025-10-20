@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.25.0] - 2025-10-15
+## [0.25.0] - 2025-10-20
+
+### Added
+
+- Ability to parse `anndata.obs` as cluster projection frame #140
 
 ### Changed
 
@@ -16,10 +20,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Toggle canvas compression format and level for sufficiently large ROIs
 - Expand accepted tiff file extensions
 - Use CLI array store type for .h5ad imports
+- Default spatial marker radius of 4
+- Remove limits on timeout and file number for server side file cache system
 
 ### Fixed
 
 - Include current session mask uploads when parsing `zarr`
+- Set category size limit when importing cluster projections
 
 ## [0.24.0] - 2025-09-08
 

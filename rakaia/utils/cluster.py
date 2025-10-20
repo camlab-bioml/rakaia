@@ -136,7 +136,8 @@ def subset_cluster_frame(cluster_data: dict, roi_selection: str, clust_variable:
     return cluster_data
 
 def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_cluster_dict: dict=None,
-                                          roi_selection: str=None) -> Union[dict, None]:
+                                          roi_selection: str=None,
+                                          cat_limit: int=100) -> Union[dict, None]:
     """
     Generate a dictionary of random colours to assign to the clusters for a specific ROI
     cluster frame dict contains the cluster assignments by ROI
@@ -148,9 +149,10 @@ def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_clu
             cluster_assignments[roi_selection] = {}
         cluster_assignments = match_cluster_hash_to_cluster_frame(cluster_frame_dict, cluster_assignments, roi_selection)
         for cluster_cat in cluster_frame_dict[roi_selection].keys():
+            # only import clusters without too many unique values, implies categorical
             unique_clusters = [str(i) for i in
             pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_cat].unique().tolist()]
-            if cluster_cat not in ClusterIdentifiers.id_cols and \
+            if len(unique_clusters) < cat_limit and cluster_cat not in ClusterIdentifiers.id_cols and \
                     (check_diff_cluster_subtypes(cluster_assignments, roi_selection, cluster_cat,
                     unique_clusters) or cluster_cat not in cluster_assignments[roi_selection].keys()):
                 cluster_assignments[roi_selection][cluster_cat] = {}

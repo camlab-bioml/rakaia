@@ -602,3 +602,15 @@ def xenium_coords_to_wsi_from_zoom(bounds: dict,
     height = int(out_y_max - out_y_min)
     width = int(out_x_max - out_x_min)
     return f"{out_x_min},{out_y_min},{width},{height}"
+
+def anndata_obs_to_projection_frame(adata: Union[ad.AnnData, str]):
+    """
+    Output the `anndata.obs` slot as a data frame compatible with categorical projection
+    """
+    adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
+    metadata = adata.obs.copy()
+    # give each element an object id that matches to a mask
+    # !IMPORTANT!: only works when the object order descending matches the mask order (i.e. Visium and Xenium)
+    metadata['object_id'] = range(1, (len(adata) + 1), 1)
+    metadata.index = range(1, (len(adata) + 1), 1)
+    return metadata.drop('cell_id', axis=1) if 'cell_id' in metadata.columns else metadata

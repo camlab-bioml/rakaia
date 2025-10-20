@@ -28,6 +28,7 @@ from rakaia.parsers.object import (
     read_in_mask_array_from_filepath,
     validate_imported_csv_annotations,
     GatingObjectList, visium_mask, apply_gating_to_all_rois)
+from rakaia.parsers.spatial import anndata_obs_to_projection_frame
 from rakaia.plugins import run_quantification_model
 from rakaia.utils.alert import add_warning_to_error_config, AlertMessage
 from rakaia.utils.decorator import DownloadDirGenerator
@@ -56,7 +57,7 @@ from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.io.readers import DashUploaderFileReader
 from rakaia.utils.roi import dict_of_roi_cell_ids
 from rakaia.io.session import SessionServerside
-from rakaia.utils.session import non_truthy_to_prevent_update
+from rakaia.utils.session import non_truthy_to_prevent_update, roi_from_anndata_file
 from rakaia.utils.cluster import (
     assign_colours_to_cluster_annotations,
     cluster_label_children,
@@ -600,6 +601,26 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection,
             pd.read_csv(uploads[0]), options, delim), key=f"cluster_assignments_{sesh_id}", use_unique_key=OVERWRITE), \
                 set_cluster_col_dropdown(pd.read_csv(uploads[0]))
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output('imported-cluster-frame', 'data', allow_duplicate=True),
+        Output('cluster-col', 'options', allow_duplicate=True),
+        State('imported-cluster-frame', 'data'),
+        State('data-collection', 'value'),
+        State('session_id_internal', 'data'),
+        State('data-collection', 'options'),
+        State('dataset-delimiter', 'value'),
+        State('session_config', 'data'),
+        Input('clust-import-h5ad', 'n_clicks'))
+    def add_cluster_assignment_from_h5ad(cur_clusters, data_selection, sesh_id, options, delim, sesh_uploads, import_clust):
+        """
+        Add a cluster projection frame to the dropdown if the current data selection is backed by an .h5ad file
+        """
+        if import_clust and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(sesh_uploads, data_selection, delim):
+            meta_frame = anndata_obs_to_projection_frame(roi_from_anndata_file(sesh_uploads, data_selection, delim))
+            return SessionServerside(cluster_annotation_frame_import(cur_clusters, data_selection, meta_frame, options, delim),
+                key=f"cluster_assignments_{sesh_id}", use_unique_key=OVERWRITE), set_cluster_col_dropdown(meta_frame)
         raise PreventUpdate
 
     @dash_app.callback(

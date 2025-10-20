@@ -189,7 +189,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                         html.Div([html.B("Custom spatial marker radius", style={"margin-right": "20px"},
                                 id="spatial-rad-label"),
                                 dbc.Tooltip(TOOLTIPS['spatial-rad'], target="spatial-rad-label"),
-                                  dcc.Input(id='spatial-spot-rad', type='number', value=None, debounce=True,
+                                  dcc.Input(id='spatial-spot-rad', type='number', value=4, debounce=True,
                                             style={"width": "20%", "height": "50%"},
                                             persistence=config['persistence'], persistence_type='local'),
                                   ], style={"display": "flex"}),
@@ -1372,6 +1372,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                      "margin-bottom": "20px"}),
                                     dbc.Tooltip('Supported file types: CSV',
                                                 target="upload-cluster-annotations")]),
+                                html.Div([
+                                    dbc.Button("Import projections from .h5ad", id="clust-import-h5ad",
+                                               style={"background-color": DEFAULT_WIDGET_COLOUR,
+                                                      "margin-right": "10px"})
+                                ], style={"margin-right": "15px", "margin-top": "10px", 'justifyContent': 'center',
+                                       'textAlign': "center"}),
+                                dbc.Tooltip(TOOLTIPS['clust-h5ad'], target="clust-import-h5ad", placement='bottom'),
                                 html.Div([daq.ToggleSwitch(label='Apply overlay',
                                 id='toggle-cluster-annotations', labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR,
                                 style={"margin-right": "15px", "margin-top": "10px", 'justifyContent': 'center',

@@ -150,7 +150,8 @@ class ToolTips(BaseModel):
                       "region-annotate-all": "By default, only the most recently drawn shape is annotated.",
                       "query-obj-min": "Define a minimum number of objects required per ROI when querying from the UMAP. "
                                        "ROIs without the minimum object number will not be displayed in the gallery.",
-                      "download-region-statistics": "Download the region statistic table (CSV)"}
+                      "download-region-statistics": "Download the region statistic table (CSV)",
+                      "clust-h5ad": "If the current ROI is derived from an anndata or zarr store, add cluster projections from the `.obs` slot."}
 
 
 class PanelMismatchError(Exception):

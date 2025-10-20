@@ -45,7 +45,7 @@ def init_dashboard(server, authentic_id, config=None):
         if os.path.exists(cache_dest):
             shutil.rmtree(cache_dest, ignore_errors=True)
 
-        backend_dir = FileSystemBackend(cache_dir=cache_dest)
+        backend_dir = FileSystemBackend(cache_dir=cache_dest, threshold=0, default_timeout=0)
         dash_app = DashProxy(__name__,
                         update_title=None,
                         transforms=[ServersideOutputTransform(backends=[backend_dir])],

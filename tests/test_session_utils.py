@@ -8,7 +8,8 @@ from rakaia.utils.session import (
     validate_session_upload_config,
     channel_dropdown_selection,
     sleep_on_small_roi,
-    set_data_selection_after_import)
+    set_data_selection_after_import,
+    roi_from_anndata_file)
 import tempfile
 from dash.exceptions import PreventUpdate
 
@@ -71,3 +72,8 @@ def test_set_data_selection():
     assert set_data_selection_after_import(roi_options, None) == "roi_1"
     assert not set_data_selection_after_import(None, None)
     assert not set_data_selection_after_import(None, "roi_2")
+
+def test_roi_from_anndata():
+    uploads = {"uploads": ['not_anndata.txt', 'not_anndata.mcd', 'from_anndata.h5ad']}
+    assert roi_from_anndata_file(uploads, "from_anndata+++slideNA+++acq")
+    assert not roi_from_anndata_file(uploads, "not_anndata+++slideNA+++acq")

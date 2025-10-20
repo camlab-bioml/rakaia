@@ -15,7 +15,11 @@ from rakaia.parsers.spatial import (
     is_spatial_dataset,
     spatial_selection_can_transfer_coordinates,
     visium_coords_to_wsi_from_zoom,
-    get_visium_bin_scaling, xenium_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser)
+    get_visium_bin_scaling,
+    xenium_coords_to_wsi_from_zoom,
+    is_zarr_store,
+    ZarrSDParser,
+    anndata_obs_to_projection_frame)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -189,3 +193,11 @@ def test_parse_sd_other_spatial(get_current_dir):
         for path in parsed['uploads']:
             if os.access(path, os.W_OK):
                 os.remove(path)
+
+def test_projection_metadata_from_anndata(get_current_dir):
+    adata = ad.read_h5ad(os.path.join(get_current_dir, "visium_thalamus.h5ad"))
+    adata.obs['cell_id'] = range(1, (len(adata) + 1), 1)
+    projection_frame = anndata_obs_to_projection_frame(adata)
+    assert len(projection_frame) == len(adata)
+    assert 'object_id' in projection_frame.columns
+    assert 'cell_id' not in projection_frame.columns
