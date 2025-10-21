@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.25.0] - 2025-10-20
+## [0.25.0] - 2025-10-21
 
 ### Added
 
@@ -27,6 +27,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Include current session mask uploads when parsing `zarr`
 - Set category size limit when importing cluster projections
+- Check for existing cluster annotations on all import methods
 
 ## [0.24.0] - 2025-09-08
 
