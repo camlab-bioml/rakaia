@@ -7,21 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.25.0] - 2025-10-21
+## [0.25.0] - 2025-10-28
 
 ### Added
 
 - Ability to parse `anndata.obs` as cluster projection frame #140
+- Output segmentation masks for Visium HD
+- Expand accepted tiff file extensions
 
 ### Changed
 
 - Default parse for non 10x `spatialdata` iterates all spatial tables
 - Slide identifier and index in dataset strings
 - Toggle canvas compression format and level for sufficiently large ROIs
-- Expand accepted tiff file extensions
 - Use CLI array store type for .h5ad imports
 - Default spatial marker radius of 4
 - Remove limits on timeout and file number for server side file cache system
+- Exclude the smallest micron bin size for Visium HD from `spatialdata`
 
 ### Fixed
 

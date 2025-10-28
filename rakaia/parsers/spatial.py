@@ -14,6 +14,7 @@ import spatialdata as sd
 from rasterio.features import rasterize
 from tifffile import imwrite
 import dash
+from shapely import affinity
 from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout, \
     set_array_storage_type_from_config
 from rakaia.utils.session import validate_session_upload_config
@@ -26,7 +27,7 @@ class ZarrSDKeys:
     dirs_include = ['images', 'points', 'shapes', 'tables']
     visium_hd_tables = ['square_002um', 'square_008um', 'square_016um']
     xenium_shapes = ['cell_boundaries', 'cell_circles', 'nucleus_boundaries']
-    visium_hd_bin_sizes = ["2", "8", "16"]
+    visium_hd_bin_sizes = ["8", "16"]
 
 
 def is_zarr_store(local_dir: Union[Path, str]):
@@ -158,26 +159,36 @@ class ZarrSDParser:
         return any(col_id in sdset.shapes for col_id in ZarrSDKeys.xenium_shapes)
 
     @staticmethod
-    def xenium_cell_boundary_mask(sdset: sd.SpatialData,
-                                  flip: bool=True):
+    def spatial_segmentation_mask(sdset: sd.SpatialData,
+                                  flip: bool=True,
+                                  shape_key: str="cell_boundaries",
+                                  table_key: str="table",
+                                  scale_factor: int | None=None):
         """
-        Generate the cell boundaries mask for a 10x Xenium dataset
+        Generate a spatial segmentation mask from a shape frame with a matching expression table
 
         :param sdset: `spatialdata` object containing either ST or multiplexed imaging measurements
         :param flip: Whether to flip the mask along the y-axis due to rasterization
-
-        :return: Numpy mask array with cell boundaries and object ids of the type `np.uint32`
+        :param shape_key: Key for the shape in the sdata `shapes` slot. Provides the segmentation polygons.
+        :param table_key: Key for the table in the sdata `tables` slot. Provides the coordinate limits for the output mask.
+        :param scale_factor: Integer value for scaling the mask objects. Default is `None`
+        :return: Numpy mask array with object (i.e. cell) boundaries and object ids of the type `np.uint32`
         """
-        if 'cell_boundaries' in sdset.shapes:
-            adata = sdset.tables['table']
-            cells = sdset.shapes['cell_boundaries']
+        if shape_key in sdset.shapes and table_key in sdset.tables:
+            adata = sdset.tables[table_key]
+            cells = sdset.shapes[shape_key]
 
             # get the int bounds to know where the segmentation mask is
             x_min, y_min = np.min((adata.obsm['spatial']), axis=0)
             x_max, y_max = np.max((adata.obsm['spatial']), axis=0)
 
             transform = rasterio.transform.from_bounds(x_min, y_min, x_max,
-                                                       y_max, int(x_max - x_min), int(y_max - y_min))
+                        y_max, int(x_max - x_min), int(y_max - y_min))
+
+            if scale_factor:
+                # scale the segmentation by the bin size (i.e. Visium HD)
+                cells["geometry"] = cells["geometry"].apply(
+                    lambda geom: affinity.scale(geom, xfact=(1/scale_factor), yfact=(1/scale_factor), origin=(0, 0)))
 
             shapes = [(geom, idx) for idx, geom in enumerate(cells.geometry)]
 
@@ -229,6 +240,26 @@ class ZarrSDParser:
                     found_expr = True
         return found_expr
 
+    def _iterate_visium_hd_bins(self, sdata: sd.SpatialData,
+                                output_masks: bool=True):
+        """
+        Iterate through matched shape frames and expression tables y bin size for Visium HD
+
+        :param sdata: `Spatialdata` object containing a Visium HD dataset
+
+        :return: None
+        """
+        # here, zip through the shapes and table to get the expr with a sample name
+        for shape, table in zip(sdata.shapes, sdata.tables):
+            # parse through the bin sizes, and see if it's in the current shape
+            for bin_size in ZarrSDKeys.visium_hd_bin_sizes:
+                if bin_size in table:
+                    expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size))
+                    self._image_paths['uploads'].append(self.write_adata(expr, str(shape)))
+                    if str(table) in str(shape) and output_masks:
+                        mask = self.spatial_segmentation_mask(sdata, True, str(shape), str(table), int(bin_size))
+                        if mask is not None:
+                            self._mask_paths[str(shape)] = self.write_mask(mask, str(shape))
 
     def _parse(self, zarr_path: Union[Path, str]):
         """
@@ -244,22 +275,15 @@ class ZarrSDParser:
             # for now for xenium, just use the zarr basename as the mapping is one ROI per zarr
             sam_name = str(os.path.basename(zarr_path)).replace('.', '_')
             self._image_paths['uploads'].append(self.write_adata(sdata.tables['table'], sam_name))
-            mask = self.xenium_cell_boundary_mask(sdata)
+            mask = self.spatial_segmentation_mask(sdata)
             if mask is not None:
                 self._mask_paths[sam_name] = self.write_mask(mask, sam_name)
 
         # Case 2: if it's Visium HD
         elif self.is_visium_hd(sdata):
-            # here, zip through the shapes and table to get the expr with a sample name
-            for shape, table in zip(sdata.shapes, sdata.tables):
-                # parse through the bin sizes, and see if it's in the current shape
-                for bin_size in ZarrSDKeys.visium_hd_bin_sizes:
-                    if bin_size in table:
-                        expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size))
-                        self._image_paths['uploads'].append(self.write_adata(expr, str(shape)))
+            self._iterate_visium_hd_bins(sdata)
 
         else:
-            # expr = sdata.tables['table']
             # Case 3: process Visium by iterating the shapes (one per ROI, the shape key is the sample)
             found_expr = self._iterate_shapes_by_region(sdata)
             if not found_expr:

@@ -175,13 +175,16 @@ def test_parse_sd_xenium(get_current_dir):
 def test_parse_sd_visium_hd(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
         parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr'),
-                              os.path.join(tmpdirname, 'other_spatial')).get_files()[0]
-        assert len(parsed['uploads']) == 3
-        for bin_size in ['002um', '008um', '016um']:
-            assert any(bin_size in file_out for file_out in parsed['uploads'])
-        for path in parsed['uploads']:
-            if os.access(path, os.W_OK):
-                os.remove(path)
+                              os.path.join(tmpdirname, 'other_spatial')).get_files()
+        files = parsed[0]
+        masks = parsed[2]
+        assert len(files['uploads']) == len(masks) == 2
+        for bin_size in ['008um', '016um']:
+            assert any(bin_size in file_out for file_out in files['uploads'])
+        for upload_path, upload_mask in zip(files['uploads'], masks.values()):
+            if os.access(upload_path, os.W_OK) and os.access(upload_mask, os.W_OK):
+                os.remove(upload_path)
+                os.remove(upload_mask)
 
 def test_parse_sd_other_spatial(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
