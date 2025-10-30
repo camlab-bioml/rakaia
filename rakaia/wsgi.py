@@ -23,8 +23,8 @@ def cli_parser():
                                      usage='''
             rakaia can be initialized from the command line using: \n
             rakaia \n
-            From here, navigate to http://127.0.0.1:5000/ or http://0.0.0.0:5000/ to access rakaia. \n
-            If a different port is used, replace 5000 with the provided port number.''')
+            From here, navigate to http://127.0.0.1:8080/ or http://0.0.0.0:8080/ to access rakaia. \n
+            If a different port is used, replace 8080 with the provided port number.''')
 
     parser.add_argument('-v', "--version", action="version",
                         help="Show the current rakaia version then exit. Does not execute the application.",
@@ -40,9 +40,9 @@ def cli_parser():
                         help="Enable a local file dialog with wxPython to browse and read local files. Default: False",
                         dest="use_local_dialog")
     parser.add_argument('-p', "--port", action="store",
-                        help="Set the port for rakaia on local runs. Default: 5000. Other options to consider are "
-                             "8050, 8080",
-                        dest="port", default=5000, type=int)
+                        help="Set the port for rakaia on local runs. Default: 8080. Other options to consider are "
+                             "5000, 8050",
+                        dest="port", default=8080, type=int)
     parser.add_argument('-dv', "--dev-mode", action="store_true",
                         help="Run the application in dev mode. This will give in-app feedback on errors, "
                              "but will be slower. Default: not enabled",
@@ -91,10 +91,6 @@ def main(sysargs=sys.argv[1:]):
     parser = cli_parser()
     args = parser.parse_args(sysargs)
 
-    def open_browser():
-        if not os.environ.get("WERKZEUG_RUN_MAIN"):
-            webbrowser.open_new_tab(f'http://127.0.0.1:{args.port}/rakaia')
-
     # cli config gets passed to the app initialization for callbacks, etc.
 
     CLI_CONFIG = {"use_local_dialog": args.use_local_dialog,
@@ -106,9 +102,14 @@ def main(sysargs=sys.argv[1:]):
                   'is_dev_mode': args.is_dev_mode,
                   'cache_dest': args.cache_dest}
 
+    PORT = args.port
     # if using an executable like pyinstaller, always run waitress
     if getattr(sys, 'frozen', False):
         CLI_CONFIG['is_dev_mode'] = False
+
+    def open_browser():
+        if not os.environ.get("WERKZEUG_RUN_MAIN"):
+            webbrowser.open_new_tab(f'http://127.0.0.1:{PORT}/rakaia')
 
     app = init_app(cli_config=CLI_CONFIG)
     #   https://stackoverflow.com/questions/64107108/what-is-the-issue-with-binding-to-all-interfaces-and-what-are-the-alternatives
@@ -116,13 +117,16 @@ def main(sysargs=sys.argv[1:]):
     if args.auto_open:
         Timer(1, open_browser).start()
 
-    print(f'rakaia is running at: http://127.0.0.1:{args.port}/rakaia \n')
+    print(f'rakaia is running at: http://127.0.0.1:{PORT}/rakaia \n')
 
-    if CLI_CONFIG['is_dev_mode']:
-        app.run(host=HOST, debug=CLI_CONFIG['is_dev_mode'], threaded=args.threading, port=args.port)
-    else:
-        serve(app, host=HOST, port=args.port, threads=args.threads)
-
+    try:
+        if CLI_CONFIG['is_dev_mode']:
+            app.run(host=HOST, debug=CLI_CONFIG['is_dev_mode'], threaded=args.threading, port=PORT)
+        else:
+            serve(app, host=HOST, port=PORT, threads=args.threads)
+    except OSError:
+        sys.stderr.write(f"Port {PORT} is currently occupied, so rakaia cannot launch. \n"
+                         f"Change the port or disable the process running at {PORT}")
 
 if __name__ == "__main__":
     main()

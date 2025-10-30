@@ -147,7 +147,7 @@ After installation, rakaia can be run through conda or simply executed using the
 conda activate rakaia
 rakaia
 ```
-The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access rakaia.
+The user should then navigate to `http://127.0.0.1:8080/` or `http://0.0.0.0:8080/` to access rakaia.
 
 ### Help
 

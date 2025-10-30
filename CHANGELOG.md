@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default spatial marker radius of 4
 - Remove limits on timeout and file number for server side file cache system
 - Exclude the smallest micron bin size for Visium HD from `spatialdata`
+- Set default port of `8080`
 
 ### Fixed
 

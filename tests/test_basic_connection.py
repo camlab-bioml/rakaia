@@ -30,18 +30,18 @@ import tempfile
 def test_for_connection():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(2)
-    Popen(["echo yes| freeport 5000"], stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
+    Popen(["echo yes| freeport 8080"], stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
     # p.stdin.write("yes\n")
     # p.communicate(input=b'yes')
-    result = sock.connect_ex(('localhost', 5000))
+    result = sock.connect_ex(('localhost', 8080))
     assert result != 0
     # assert result == 0
     new_process = Popen(["rakaia"],
                         stdout=PIPE, stdin=PIPE, stderr=PIPE, shell=True)
-    result = sock.connect_ex(('localhost', 5000))
+    result = sock.connect_ex(('localhost', 8080))
     assert result == 103
     new_process.kill()
-    result = sock.connect_ex(('localhost', 5000))
+    result = sock.connect_ex(('localhost', 8080))
     assert result != 103 and result != 0
 
 
@@ -74,13 +74,13 @@ def test_basic_cli_outputs():
     parser = cli_parser()
     assert isinstance(parser, argparse.ArgumentParser)
     args = parser.parse_args([])
-    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': True, 'is_dev_mode': False, 'loading': True, 'port': 8080, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
     parser = cli_parser()
     args = parser.parse_args(['-da'])
-    assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 5000, 'threading': True,
+    assert vars(args) == {'auto_open': False, 'is_dev_mode': False, 'loading': True, 'port': 8080, 'threading': True,
                           'use_local_dialog': False, 'persistence': True, 'swatches': None, 'array_type': 'float',
                           'serverside_overwrite': True, 'cache_dest': tempfile.gettempdir(), 'threads': 8}
     assert "rakaia can be initialized from the command line using:" in parser.usage
@@ -128,9 +128,8 @@ def test_basic_cli_outputs_main():
     except TimeoutException:
         assert True
 
-
 def test_basic_app_return():
-    config = {'auto_open': False, 'port': 5000, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
+    config = {'auto_open': False, 'port': 8080, 'use_local_dialog': False, 'use_loading': False, 'persistence': True,
               'swatches': None, 'is_dev_mode': False, 'cache_dest': tempfile.gettempdir(), 'serverside_overwrite': True,
               'threads': 8}
     app = init_app(config)
