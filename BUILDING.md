@@ -32,6 +32,10 @@ For a directory of uncompressed dependencies, switch the spec file:
 source build.sh rakaia_onedir.spec
 ```
 
+Building with `onedir` for both macOS and Windows appears to make initialization
+faster (noticeable faster on macOS), while the performance is comparable
+to a single file on Linux.
+
 ### Building on Windows
 
 A few additional considerations need to be made when building on Windows:
@@ -44,7 +48,7 @@ build errors with `rasterio`
 
 The resulting application bundle file can be found in the `standalone/dist` directory as either a file executable
 without a file type extension (Linux), or as an exe file on Windows if single file is used.
-For the onedir spec, a subdirectory containing a file executable and a `_internal` dependency
+For the `onedir` spec, a subdirectory containing a file executable and a `_internal` dependency
 directory will be generated.
 
 **For distributing the file, the bundle should be zipped prior to sharing so that file permission may be maintained
