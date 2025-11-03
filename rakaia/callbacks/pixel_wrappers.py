@@ -120,7 +120,7 @@ def parse_global_filter_values_from_json(config_dict):
 def parse_local_path_imports(path: str, session_config: dict, error_config: dict):
     """
     Parse the path of either a local filepath or directory to retrieve the imaging datasets associated with it
-    Return a dictionary error and a no update callback if there if the path does not correspond to a proper filepath
+    Return a dictionary error and a no update callback if the path does not correspond to a proper filepath
     or a directory
     """
     if os.path.isfile(path):

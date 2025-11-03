@@ -138,11 +138,11 @@ def test_xenium_coords_to_wsi(get_current_dir):
 
 def test_is_zarr_store(get_current_dir):
     assert not is_zarr_store(os.path.join(get_current_dir, 'wsi'))
-    assert is_zarr_store(os.path.join(get_current_dir, 'subset_visium.zarr'))
+    assert is_zarr_store(os.path.join(get_current_dir, 'subset_visium.zarr/'))
 
 def test_parse_sd_visium(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
-        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium.zarr'),
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium.zarr/'),
                               tmpdirname).get_files()[0]
         assert len(parsed['uploads']) == 2
         assert all('ST8059' in elem for elem in parsed['uploads'])
@@ -151,7 +151,7 @@ def test_parse_sd_visium(get_current_dir):
             if os.access(path, os.W_OK):
                 os.remove(path)
         # if current uploads already exist
-        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium.zarr'),
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium.zarr/'),
                 tmpdirname, {'uploads': ['already_there.h5ad']}).get_files()[0]
         assert len(parsed['uploads']) == 3
         for path in parsed['uploads']:
@@ -160,7 +160,7 @@ def test_parse_sd_visium(get_current_dir):
 
 def test_parse_sd_xenium(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
-        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_xenium.zarr'),
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_xenium.zarr/'),
                               tmpdirname, None, {
                 'mask_1': 'fake_path_to_mask.tiff'}).get_files()
         files = parsed[0]
@@ -174,7 +174,7 @@ def test_parse_sd_xenium(get_current_dir):
 
 def test_parse_sd_visium_hd(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
-        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr'),
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr/'),
                               os.path.join(tmpdirname, 'other_spatial')).get_files()
         files = parsed[0]
         masks = parsed[2]
@@ -189,7 +189,7 @@ def test_parse_sd_visium_hd(get_current_dir):
 def test_parse_sd_other_spatial(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
         # if not detected as 10x, export each table as a spatial region with the table key in the name
-        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_other_spatial.zarr'),
+        parsed = ZarrSDParser(os.path.join(get_current_dir, 'subset_other_spatial.zarr/'),
                                   tmpdirname).get_files()[0]
         assert len(parsed['uploads']) == 1
         assert 'subset_other_spatial_zarr_table' in parsed['uploads'][0]

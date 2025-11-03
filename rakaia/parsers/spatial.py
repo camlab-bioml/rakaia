@@ -61,7 +61,7 @@ class ZarrSDParser:
                  cur_session_uploads: Union[dict, None]=None,
                  cur_mask_uploads: Union[dict, None]=None):
 
-        self._zarr_path = zarr_path
+        self._zarr_path = str(Path(zarr_path).resolve())
         self._tmp_session_path = tmp_session_path
         # make the outputs match the `parse_steinbock_dir` output format/order
         self._image_paths = validate_session_upload_config(cur_session_uploads)
