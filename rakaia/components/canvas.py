@@ -176,12 +176,12 @@ class CanvasImage:
         self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
                                 # set to the lowest level unless the image is very large
                                 binary_compression_level=comp_level,
-                                # allow lossy jpg format is very large image
+                                # allow lossy jpg format if very large image
                                 binary_format=comp_format)
 
     @staticmethod
-    def set_px_compression_params(array, dim_limit: int=10000,
-                                  pixel_limit: int=70000000):
+    def set_px_compression_params(array, dim_limit: int=15000,
+                                  pixel_limit: int=150000000):
         """
         Set the binary compression format and level for the incoming image based on its size.
         Use PNG for sufficiently small images and allow lossy JPG for larger than the `dim_limit`
