@@ -16,9 +16,9 @@ def wsi_from_local_path(path: str):
     if os.path.isfile(path) and any([path.endswith(ext) for ext in WSI_FILE_EXTENSIONS]):
         return [path]
     if os.path.isdir(path):
-        return [str(os.path.join(path, file)) for
+        return list(set([str(os.path.join(path, file)) for
                 file in os.listdir(path) if any(file.endswith(ext)
-                for ext in WSI_FILE_EXTENSIONS)]
+                for ext in WSI_FILE_EXTENSIONS)]))
     return None
 
 def update_coregister_hash(cur_hash: Union[dict, None],

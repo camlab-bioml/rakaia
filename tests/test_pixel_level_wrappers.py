@@ -94,9 +94,9 @@ def test_parse_global_filters():
                                          "global_filter_type": "median", "global_filter_val": 5,
                                          "global_filter_sigma": 1}}}
 
-    globals = parse_global_filter_values_from_json(config_dict['config'])
+    global_vals = parse_global_filter_values_from_json(config_dict['config'])
 
-    assert all([isinstance(elem, dash._callback.NoUpdate) for elem in globals])
+    assert all([isinstance(elem, dash._callback.NoUpdate) for elem in global_vals])
 
     config_dict = {"config": {"filter": {"global_apply_filter": False,
                                          "missing_key": "median", "global_filter_val": 5,

@@ -131,7 +131,7 @@ def parse_local_path_imports(path: str, session_config: dict, error_config: dict
         extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5", "*.h5ad", "*.TIF", "*.TIFF"]
         for extension in extensions:
             session_config['uploads'].extend(Path(path).glob(extension))
-        session_config['uploads'] = [str(elem) for elem in session_config['uploads']]
+        session_config['uploads'] = list(set([str(elem) for elem in session_config['uploads']]))
         return session_config, dash.no_update
     error_config["error"] = AlertMessage().warnings["invalid_path"]
     return dash.no_update, error_config
