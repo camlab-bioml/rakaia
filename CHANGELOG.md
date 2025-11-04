@@ -7,13 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.25.0] - 2025-11-03
+## [0.25.0] - 2025-11-04
 
 ### Added
 
 - Ability to parse `anndata.obs` as cluster projection frame #140
 - Output segmentation masks for Visium HD
 - Expand accepted tiff file extensions
+- Toggle to enforce single marker lazy for every ROI
 
 ### Changed
 

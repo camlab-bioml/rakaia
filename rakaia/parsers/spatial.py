@@ -299,7 +299,7 @@ class ZarrSDParser:
         Return the files from a zarr store parse. Should match the output tuples from `parse_steinbock_dir`
 
         :return: Tuple of outputs matching the outputs from a steinbock directory: image paths, error config, mask paths,
-        quantification, UMAP coordinates, and scaling JSON
+        quantification, UMAP coordinates, and scaling JSON.
         """
         if self._zarr_path is not None:
             self._parse(self._zarr_path)
