@@ -60,7 +60,7 @@ def is_rgb_color(value):
 
 def default_picker_swatches(config):
     """
-    Return a list of default swatches for the mantine ColorPicker based on the contents of the config
+    Return a list of default swatches for the `mantine` ColorPicker based on the contents of the config
     """
     DEFAULTS = ["#FF0000", "#00FF00", "#0000FF", "#00FFFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
     try:
@@ -85,19 +85,19 @@ def recolour_greyscale(array, colour):
     Convert a greyscale image into an RGB with a designated colour
     """
     if colour not in ['#ffffff', '#FFFFFF']:
-        image = Image.fromarray(array)
-        # image = image.convert('RGB')
-        red, green, blue = ImageColor.getcolor(colour, "RGB")
+        r, g, b = ImageColor.getcolor(colour, "RGB")
+        colour_vec = np.array([r, g, b], dtype=np.float32) / 255.0
 
-        array = np.array(image).astype(np.float32)
-        array = ne.evaluate("array / 255.0")
-        # Multiply greyscale intensity by color components (broadcasted)
-        r = ne.evaluate("array * red").astype(np.uint8)
-        g = ne.evaluate("array * green").astype(np.uint8)
-        b = ne.evaluate("array * blue").astype(np.uint8)
+        if not np.issubdtype(array.dtype, np.floating):
+            array = array.astype(np.float32, copy=False)
 
-        # Stack channels into a 3D array
-        rgb = np.stack([r, g, b], axis=-1)
+        array /= 255.0
+
+        rgb = np.empty((*array.shape, 3), dtype=np.uint8)
+
+        np.multiply(array, colour_vec[0]*255, out=rgb[..., 0], casting="unsafe")
+        np.multiply(array, colour_vec[1]*255, out=rgb[..., 1], casting="unsafe")
+        np.multiply(array, colour_vec[2]*255, out=rgb[..., 2], casting="unsafe")
 
         return rgb
 
@@ -237,24 +237,24 @@ def filter_by_upper_and_lower_bound(array, lower_bound, upper_bound):
     Uses linear scaling instead of 0 to max upper bound scaling: pixels close to the boundary of the lower bound
     are scaled relative to their intensity to the lower bound instead of the full scale factor
     """
-    # https://github.com/BodenmillerGroup/histocat-web/blob/c598cd07506febf0b7c209626d4eb869761f2e62/backend/histocat/core/image.py
-    lower_bound = float(lower_bound) if lower_bound is not None else 0.0
-    if upper_bound is not None:
-        upper_bound = float(upper_bound)
-        array = np.minimum(array, upper_bound)
+    arr = np.asarray(array)
 
-    # shift array by subtracting lower_bound, but floor at 0
-    array = np.maximum(array - lower_bound, 0)
+    lower = float(lower_bound) if lower_bound is not None else 0.0
 
-    # scale if upper_bound is provided
     if upper_bound is not None:
-        denom = upper_bound - lower_bound
+        upper = float(upper_bound)
+        arr = np.minimum(arr, upper)
+
+    arr = np.maximum(arr - lower, 0)
+
+    if upper_bound is not None:
+        denom = upper - lower
         scale_factor = 255.0 / (denom if denom != 0 else 255.0)
         if scale_factor != 1.0 and scale_factor > 0:
-            array = ne.evaluate("array * scale_factor")
-
-    return array
-
+            if arr.dtype != np.float64:
+                arr = arr.astype(np.float64, copy=False)
+            arr = ne.evaluate("arr * scale_factor", local_dict={"arr": arr, "scale_factor": float(scale_factor)})
+    return arr
 
 def pixel_hist_from_array(array, subset_number=1000000, keep_max=True):
     """
@@ -492,16 +492,19 @@ def get_additive_image(layer_dict: dict, channel_list: list) -> np.array:
     Create an additive blended image array from a list of marker channels
     By default, return the array as a 32-byte float array before clipping to RGB value range
     """
-    if layer_dict and channel_list:
-        image_shape = layer_dict[channel_list[0]].shape
-        image = np.zeros(image_shape)
-        channel_list = [channel for channel in channel_list if channel in layer_dict.keys()]
-        if channel_list:
-            for elem in channel_list:
-                blend = layer_dict[elem]
-                image = ne.evaluate("image + blend")
-        return image.astype(np.float32)
-    return None
+    if not layer_dict or not channel_list:
+        return None
+
+    channels = [ch for ch in channel_list if ch in layer_dict]
+
+    image_shape = layer_dict[channels[0]].shape
+    image = np.zeros(image_shape, dtype=np.float32)
+
+    # add each channel in-place to reduce memory usage
+    for ch in channels:
+        np.add(image, layer_dict[ch], out=image, casting='unsafe')
+
+    return image.astype(np.float32)
 
 def get_region_dim_from_roi_dictionary(roi_dictionary):
     """

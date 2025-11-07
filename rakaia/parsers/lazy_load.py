@@ -21,7 +21,7 @@ class SingleMarkerLazyLoaderExtensions:
     """
     Defines the file type extensions for datasets that are supported for single marker lazy loading
     """
-    extensions = ['.h5ad', '.mcd', '.tiff']
+    extensions = ['.h5ad', '.mcd', '.tiff', '.tif', '.TIF', '.TIFF']
 
 
 def parse_files_for_lazy_loading(uploads: Union[list, dict], data_selection: str, delimiter: str= "+++"):
@@ -49,7 +49,8 @@ class SingleMarkerLazyLoader:
     :return: None
     """
     # defines the file types that are currently supported for single channel lazy loading
-    MATCHES = {".mcd": "mcd", ".h5ad": "h5ad", ".tiff": "tiff"}
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5",
+               ".h5ad": "h5ad", ".TIF": "tiff", ".TIFF": "tiff"}
 
     def __init__(self, image_dict: dict, data_selection: str,
                 session_uploads: dict,
@@ -88,7 +89,7 @@ class SingleMarkerLazyLoader:
         self.width, self.height, self.x_min, self.y_min = spatial_canvas_dimensions(h5ad_filepath)
         if self.channel_selection:
             self.image_dict = check_spatial_array_multi_channel(self.image_dict, self.data_selection,
-                                                                h5ad_filepath, self.channel_selection, self.spot_size)
+                            h5ad_filepath, self.channel_selection, self.spot_size, self.array_store_type)
 
     def set_mcd_acq_region_dims(self, acq: Acquisition):
         """

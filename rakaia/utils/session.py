@@ -8,6 +8,9 @@ import time
 import shutil
 from dash.exceptions import PreventUpdate
 
+from rakaia.utils.pixel import split_string_at_pattern
+
+
 def remove_rakaia_caches(directory):
     """
     Remove any rakaia caches from the specified directory
@@ -63,4 +66,15 @@ def set_data_selection_after_import(roi_options: Union[list, None]=None, cur_dat
         return cur_data_selection
     if roi_options:
         return roi_options[0]
+    return None
+
+def roi_from_anndata_file(uploads: Union[list, dict], data_selection: str, delimiter: str= "+++"):
+    """
+    Check the current ROI selection to check if it came from an `Anndata` file (i.e. `.h5ad`); return upload path if so.
+    """
+    uploads = uploads['uploads'] if isinstance(uploads, dict) and 'uploads' in uploads else uploads
+    exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
+    for upload in uploads:
+        if exp in upload and upload.endswith('.h5ad'):
+            return upload
     return None

@@ -24,7 +24,7 @@ def test_roi_query_parser(get_current_dir):
                   "Ir193": {"color": "#FF0000", "x_lower_bound": 0, "x_upper_bound": 1, "filter_type": None, "filter_val": None},
                   "Pb208": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None, "filter_val": None}}
 
-    dataset_exclude = "query+++slide0+++PAP_1"
+    dataset_exclude = "query+++slide1+++PAP_1"
     random.seed(1)
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 4,
                                                  [dataset_exclude]).get_image_dict()
@@ -68,7 +68,7 @@ def test_roi_query_parser(get_current_dir):
     roi_query = RegionThumbnail(session_config, blend_dict, channels, 3,
             predefined_indices=indices, query_cell_id_lists=objs, query_obj_min=6).get_image_dict()
     assert len(roi_query) == 1
-    assert 'query+++slide0+++HIER_2' in roi_query.keys()
+    assert 'query+++slide1+++HIER_2' in roi_query.keys()
 
 def test_query_parser_tiff(get_current_dir):
     mcd = os.path.join(get_current_dir, "for_recolour.tiff")
@@ -81,7 +81,7 @@ def test_query_parser_tiff(get_current_dir):
                                 dataset_options=list(parse.keys()),
                                 mask_dict=mask_dict,
                                 predefined_indices=query_selection).get_image_dict()
-    assert 'for_recolour+++slide0+++acq' in roi_query.keys()
+    assert 'for_recolour+++slideNA+++acq' in roi_query.keys()
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
@@ -89,7 +89,7 @@ def test_query_parser_tiff(get_current_dir):
                                 dataset_options=list(parse.keys()),
                                 mask_dict=mask_dict,
                                 single_channel_view=True).get_image_dict()
-    assert 'for_recolour+++slide0+++acq' in roi_query_single_view.keys()
+    assert 'for_recolour+++slideNA+++acq' in roi_query_single_view.keys()
     assert len(roi_query_single_view) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query_single_view.values()])
 
@@ -100,7 +100,7 @@ def test_query_parser_txt(get_current_dir):
     blend_dict = create_new_blending_dict(parse)
     roi_query = RegionThumbnail(session_config, blend_dict, ['Gd160'], 1,
                                 dataset_options=list(parse.keys())).get_image_dict()
-    assert 'query_from_text+++slide0+++acq' in roi_query.keys()
+    assert 'query_from_text+++slideNA+++acq' in roi_query.keys()
     assert len(roi_query) == 1
     assert all([(isinstance(arr, np.ndarray) and np.mean(arr) > 0) for arr in roi_query.values()])
 
@@ -113,15 +113,15 @@ def test_query_parser_visium_h5ad(get_current_dir):
         selected = params['config']['blend']
     roi_query = RegionThumbnail(session_config, blend_dict, selected, 1,
                 dataset_options=list(parse.keys())).get_image_dict()
-    assert 'visium_thalamus+++slide0+++acq' in roi_query.keys()
+    assert 'visium_thalamus+++slideNA+++acq' in roi_query.keys()
 
-    assert list(roi_query['visium_thalamus+++slide0+++acq'][460, 475]) == [255, 0, 0]
-    assert list(roi_query['visium_thalamus+++slide0+++acq'][540, 130]) == [0, 0, 255]
+    assert list(roi_query['visium_thalamus+++slideNA+++acq'][460, 475]) == [255, 0, 0]
+    assert list(roi_query['visium_thalamus+++slideNA+++acq'][540, 130]) == [0, 0, 255]
 
 def test_roi_query_parser_predefined(get_current_dir):
     mcd = os.path.join(get_current_dir, "query.mcd")
     session_config = {"uploads": [str(mcd)]}
-    dataset_selection = "query+++slide0+++PAP_1"
+    dataset_selection = "query+++slide1+++PAP_1"
     channels = ["Ir191", "Ir193"]
     blend_dict = {"ArAr80": {"color": "#FFFFFF", "x_lower_bound": None, "x_upper_bound": None, "filter_type": None,
                              "filter_val": None},
@@ -163,27 +163,27 @@ def test_roi_query_parser_predefined(get_current_dir):
     query_cell_id_lists = {'PAP_1': [7]}
     roi_query_w_mask = RegionThumbnail(session_config, blend_dict, channels, 4, [],
                             predefined_indices=defined_names, mask_dict=mask_roi_dict,
-                                       dataset_options=['query+++slide0+++PAP_1'],
+                                       dataset_options=['query+++slide1+++PAP_1'],
                             query_cell_id_lists=query_cell_id_lists).get_image_dict()
     assert len(roi_query_w_mask) == 1
     assert dataset_selection in roi_query_w_mask.keys()
-    assert not np.array_equal(roi_query['query+++slide0+++PAP_1'], roi_query_w_mask['query+++slide0+++PAP_1'])
+    assert not np.array_equal(roi_query['query+++slide1+++PAP_1'], roi_query_w_mask['query+++slide1+++PAP_1'])
 
     # assertion if no query cells are used, just use the boundary
     roi_query_w_mask = RegionThumbnail(session_config, blend_dict, channels, 4, [],
                                        predefined_indices=defined_names, mask_dict=mask_roi_dict,
-                                       dataset_options=['query+++slide0+++PAP_1'],
+                                       dataset_options=['query+++slide1+++PAP_1'],
                                        query_cell_id_lists=None).get_image_dict()
     assert len(roi_query_w_mask) == 1
     assert dataset_selection in roi_query_w_mask.keys()
-    assert not np.array_equal(roi_query['query+++slide0+++PAP_1'], roi_query_w_mask['query+++slide0+++PAP_1'])
+    assert not np.array_equal(roi_query['query+++slide1+++PAP_1'], roi_query_w_mask['query+++slide1+++PAP_1'])
 
     # assert nothing is returned if the names don't match
     defined_names = {'names': ['PAP_1_mask']}
     query_cell_id_lists = {'PAP_1_mask': [7]}
     roi_query_w_mask = RegionThumbnail(session_config, blend_dict, channels, 4, [],
                                        predefined_indices=defined_names, mask_dict=mask_roi_dict,
-                                       dataset_options=['query+++slide0+++PAP_1'],
+                                       dataset_options=['query+++slide1+++PAP_1'],
                                        query_cell_id_lists=query_cell_id_lists).get_image_dict()
 
     assert not roi_query_w_mask

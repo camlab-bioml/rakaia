@@ -28,10 +28,10 @@ def test_basic_conversion_rgb_to_greyscale():
 def test_basic_parser_tiff_to_dict(get_current_dir):
     uploaded_dict = FileParser([os.path.join(get_current_dir, "for_recolour.tiff")]).image_dict
     assert len(uploaded_dict['metadata']) > 0
-    assert 'for_recolour+++slide0+++acq' in uploaded_dict.keys()
+    assert 'for_recolour+++slideNA+++acq' in uploaded_dict.keys()
     assert 'experiment1' not in uploaded_dict.keys()
-    assert len(uploaded_dict['for_recolour+++slide0+++acq'].keys()) == 1
-    assert all([elem is None for elem in uploaded_dict['for_recolour+++slide0+++acq'].values()])
+    assert len(uploaded_dict['for_recolour+++slideNA+++acq'].keys()) == 1
+    assert all([elem is None for elem in uploaded_dict['for_recolour+++slideNA+++acq'].values()])
 
     blending_dict = create_new_blending_dict(uploaded_dict)
     assert all([elem in ['#FFFFFF', None] for elem in \
@@ -56,11 +56,11 @@ def test_basic_parser_fake_mcd(get_current_dir):
 def test_basic_parser_from_mcd(get_current_dir):
     parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
     uploaded_dict = parser.image_dict
-    assert 'query+++slide0+++Xylene_5' in uploaded_dict.keys()
+    assert 'query+++slide1+++Xylene_5' in uploaded_dict.keys()
     assert 'metadata' in uploaded_dict.keys()
-    assert len(uploaded_dict['query+++slide0+++Xylene_5']) == 11
+    assert len(uploaded_dict['query+++slide1+++Xylene_5']) == 11
     # the values will all be none for the mcd because of lazy loading
-    assert all([value is None for value in uploaded_dict['query+++slide0+++Xylene_5'].values()])
+    assert all([value is None for value in uploaded_dict['query+++slide1+++Xylene_5'].values()])
     dataset_info = parser.get_parsed_information()
     assert len(dataset_info['ROI']) == 6
     assert '11 markers' in dataset_info['Panel']
@@ -85,28 +85,28 @@ def test_basic_parser_exceptions(get_current_dir):
 def test_basic_parser_blend_dict_from_lazy_loading(get_current_dir):
     parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
     uploaded_dict = parser.image_dict
-    assert 'query+++slide0+++Xylene_5' in uploaded_dict.keys()
-    assert all([elem is None for elem in uploaded_dict['query+++slide0+++Xylene_5'].values()])
+    assert 'query+++slide1+++Xylene_5' in uploaded_dict.keys()
+    assert all([elem is None for elem in uploaded_dict['query+++slide1+++Xylene_5'].values()])
     session_config = {"uploads": [os.path.join(get_current_dir, "query.mcd")]}
-    new_upload_dict = image_dict_from_lazy_load('query+++slide0+++Xylene_5', session_config)
-    assert all([elem is not None for elem in new_upload_dict['query+++slide0+++Xylene_5'].values()])
+    new_upload_dict = image_dict_from_lazy_load('query+++slide1+++Xylene_5', session_config)
+    assert all([elem is not None for elem in new_upload_dict['query+++slide1+++Xylene_5'].values()])
 
 def test_basic_parser_lazy_loading_2(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "query_from_text.txt")])
     uploaded_dict = uploaded.image_dict
-    assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++acq'].values()])
+    assert all([elem is None for elem in uploaded_dict['query_from_text+++slideNA+++acq'].values()])
     session_config = {"uploads": [os.path.join(get_current_dir, "query_from_text.txt")]}
-    new_upload_dict = image_dict_from_lazy_load('query_from_text+++slide0+++acq', session_config)
-    assert all([elem is not None for elem in new_upload_dict['query_from_text+++slide0+++acq'].values()])
+    new_upload_dict = image_dict_from_lazy_load('query_from_text+++slideNA+++acq', session_config)
+    assert all([elem is not None for elem in new_upload_dict['query_from_text+++slideNA+++acq'].values()])
 
 
 def test_basic_parser_from_text(get_current_dir):
     uploaded = FileParser([os.path.join(get_current_dir, "query_from_text.txt")])
     uploaded_dict = uploaded.image_dict
     assert 'metadata' in uploaded_dict.keys()
-    assert 'query_from_text+++slide0+++acq' in uploaded_dict.keys()
-    assert len(uploaded_dict['query_from_text+++slide0+++acq'].keys()) == 4
-    assert all([elem is None for elem in uploaded_dict['query_from_text+++slide0+++acq'].values()])
+    assert 'query_from_text+++slideNA+++acq' in uploaded_dict.keys()
+    assert len(uploaded_dict['query_from_text+++slideNA+++acq'].keys()) == 4
+    assert all([elem is None for elem in uploaded_dict['query_from_text+++slideNA+++acq'].values()])
     # trying a panel of 2 with a current panel of 4 produces an exception
     with pytest.raises(PanelMismatchError):
         uploaded.check_for_valid_txt_panel(["fake_1", "fake_2"], ["fake_1", "fake_2"])
@@ -189,6 +189,6 @@ def test_layer_dict_status():
 def test_setting_current_channels(get_current_dir):
     parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
     uploaded_dict = parser.image_dict
-    assert set_current_channels(uploaded_dict, 'query+++slide0+++EtOH_6', ['Xe131']) == ['Xe131']
+    assert set_current_channels(uploaded_dict, 'query+++slide1+++EtOH_6', ['Xe131']) == ['Xe131']
     assert not set_current_channels(uploaded_dict, 'bad_query', ['Xe131'])
-    assert not set_current_channels(uploaded_dict, 'query+++slide0+++EtOH_6', ['missing'])
+    assert not set_current_channels(uploaded_dict, 'query+++slide1+++EtOH_6', ['missing'])

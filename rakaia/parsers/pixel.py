@@ -60,14 +60,17 @@ class FileParser:
     :param single_roi_parse: When parsing mcd files, if only a single ROI should be parsed when using lazy loading.
     :param roi_name: When parsing mcd files and not using lazy loading, pass a single ROI name to pull from an mcd.
     :param internal_name: When not using lazy loading, retain the current ROI selection string
+    :param delimiter: Pattern used to concatenate the ROI identifiers in-session (default is `+++`).
+    :param enforce_single_marker_load: Whether to enforce that every ROI channel is loaded into memory only when added to the canvas. Default is `False`.
     :return: None
     """
     MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5",
-               ".h5ad": "h5ad"}
+               ".h5ad": "h5ad", ".TIF": "tiff", ".TIFF": "tiff"}
 
     def __init__(self, filepaths: list, array_store_type: str="float", lazy_load: bool=True,
                  single_roi_parse: bool=True, roi_name: Union[str, None]=None,
-                 internal_name: Union[str, None]=None, delimiter: str="+++"):
+                 internal_name: Union[str, None]=None, delimiter: str="+++",
+                 enforce_single_marker_load: bool=False):
 
         self.check_for_valid_array_type(array_store_type)
         self.filepaths = [str(x) for x in filepaths]
@@ -79,12 +82,13 @@ class FileParser:
         self.delimiter = delimiter
         self.panel_length = None
         self.channel_labels_metadata = None
+        self.enforce_single_marker_load = enforce_single_marker_load
         if len(self.filepaths) > 0:
             self.image_dict['metadata'] = {}
             self.metadata_channels = []
             self.metadata_labels = []
             self.experiment_index = 0
-            self.slide_index = 0
+            self.slide_index = 1
             self.acq_index = 0
             self.blend_config = None
             self.roi_name = roi_name
@@ -278,7 +282,7 @@ class FileParser:
             if len(self.image_dict['metadata']) > 0:
                 self.check_for_valid_tiff_panel(tif)
             basename = str(Path(tiff_path).stem)
-            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq" if \
+            roi = f"{basename}{self.delimiter}slideNA{self.delimiter}acq" if \
                 internal_name is None else internal_name
             # treat each tiff as its own ROI and increment the acq index for each one
             self.image_dict[roi] = {}
@@ -288,7 +292,7 @@ class FileParser:
                 # tiff files could be RGB, so convert to greyscale for compatibility
                 self.image_dict[roi][identifier] = None if (self.lazy_load or
                         roi_requires_single_marker_load(int(page.shape[0] * page.shape[1]),
-                        len(tif.pages))) else convert_rgb_to_greyscale(
+                        len(tif.pages)) or self.enforce_single_marker_load) else convert_rgb_to_greyscale(
                     page.asarray()).astype(set_array_storage_type_from_config(self.array_store_type))
                 # add in a generic description for the ROI per tiff file
                 if page_index == 0:
@@ -334,7 +338,7 @@ class FileParser:
         with MCDFile(mcd_filepath) as mcd_file:
             channel_names = None
             channel_labels = None
-            slide_index = 0
+            slide_index = 1
             acq_index = 0
             for slide in mcd_file.slides:
                 for acq in slide.acquisitions:
@@ -353,7 +357,8 @@ class FileParser:
                     channel_index = 0
                     for channel in acq.channel_names:
                         self.image_dict[roi][channel] = None if (self.lazy_load or
-                        roi_requires_single_marker_load(channel, len(acq.channel_labels))) else channel.astype(
+                        roi_requires_single_marker_load(channel, len(acq.channel_labels)) or
+                        self.enforce_single_marker_load) else channel.astype(
                                     set_array_storage_type_from_config(self.array_store_type))
                         self.append_channel_identifier_to_collection(channel_names[channel_index])
                         # add information about the ROI into the description list
@@ -391,7 +396,7 @@ class FileParser:
                                         internal_name, list(acq.channel_names))
                         channel_names = acq.channel_names
                         if not roi_requires_single_marker_load(int(int(acq.metadata['MaxX']) * int(acq.metadata['MaxY'])),
-                                len(acq.channel_names)):
+                                len(acq.channel_names)) and not self.enforce_single_marker_load:
                             channel_index = 0
                             img = mcd_file.read_acquisition(acq, strict=False)
                             for channel in img:
@@ -443,7 +448,7 @@ class FileParser:
             if len(self.metadata_channels) > 0:
                 self.check_for_valid_txt_panel(txt_channel_names, txt_channel_labels)
             basename = str(Path(txt_filepath).stem)
-            roi = f"{str(basename)}{self.delimiter}slide{str(self.slide_index)}" \
+            roi = f"{str(basename)}{self.delimiter}slideNA" \
                   f"{self.delimiter}acq" if internal_name is None else internal_name
             self.image_dict[roi] = {}
             if not self.lazy_load:
@@ -480,7 +485,7 @@ class FileParser:
         anndata = ad.read_h5ad(h5ad_filepath)
         if is_spot_based_spatial(anndata) or is_spatial_dataset(anndata):
             basename = str(Path(h5ad_filepath).stem)
-            roi = f"{basename}{self.delimiter}slide{str(self.slide_index)}{self.delimiter}acq"
+            roi = f"{basename}{self.delimiter}slideNA{self.delimiter}acq"
             self.metadata_channels = list(anndata.var_names)
             self.metadata_labels = list(anndata.var_names)
             # get the channel names from the var names
@@ -538,15 +543,14 @@ def create_new_blending_dict(uploaded):
                             "Refresh your current session to re-import compatible imaging files.")
     first_roi = [elem for elem in list(uploaded.keys()) if not is_metadata_key(elem)][0]
     for channel in uploaded[first_roi].keys():
-        current_blend_dict[channel] = {'color': None, 'x_lower_bound': None, 'x_upper_bound': None,
+        current_blend_dict[channel] = {'color': '#FFFFFF', 'x_lower_bound': None, 'x_upper_bound': None,
                                        'filter_type': None, 'filter_val': None, 'filter_sigma': None}
-        current_blend_dict[channel]['color'] = '#FFFFFF'
     return current_blend_dict if current_blend_dict else dash.no_update
 
 
 def image_dict_from_lazy_load(dataset_selection: str, session_config: dict,
                               array_store_type: str="float",
-                              delimiter: str="+++"):
+                              delimiter: str="+++", enforce_single_marker_load: bool=False):
     """
     Generate an ROI raw array dictionary with an ROI read from a filepath for lazy loading
     """
@@ -562,7 +566,8 @@ def image_dict_from_lazy_load(dataset_selection: str, session_config: dict,
     if file_path is not None:
         upload_dict_new = FileParser(filepaths=[file_path], array_store_type=array_store_type,
                                      lazy_load=False, single_roi_parse=True, internal_name=dataset_selection,
-                                     roi_name=acq_name, delimiter=delimiter).image_dict
+                                     roi_name=acq_name, delimiter=delimiter,
+                                     enforce_single_marker_load=enforce_single_marker_load).image_dict
         return upload_dict_new
     return None
 

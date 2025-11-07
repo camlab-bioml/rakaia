@@ -82,6 +82,16 @@ cd rakaia
 pip install .
 ```
 
+### vips for WSI rendering (optional)
+
+To view WSIs such as H&E, an installation of [libvips](https://www.libvips.org/) is required,
+and is not installed through the pip installation above.
+
+Users should visit the [vips installation page](https://www.libvips.org/install.html) for
+instructions on installing for a specific OS.
+
+**Note**: macOS users should install `vips` using `brew` as opposed to conda.
+
 ### Installation troubleshooting
 
 #### ParmED
@@ -100,7 +110,7 @@ If installation of the [leidenalg](https://github.com/vtraag/leidenalg) library 
 appears to happen on MacOS with Python 3.12+), then users should try installing it from conda source:
 
 ```commandline
-pip uninstall parmed
+pip uninstall leidenalg
 conda install -c conda-forge leidenalg=0.10.2
 ```
 
@@ -137,7 +147,7 @@ After installation, rakaia can be run through conda or simply executed using the
 conda activate rakaia
 rakaia
 ```
-The user should then navigate to `http://127.0.0.1:5000/` or `http://0.0.0.0:5000/` to access rakaia.
+The user should then navigate to `http://127.0.0.1:8080/` or `http://0.0.0.0:8080/` to access rakaia.
 
 ### Help
 

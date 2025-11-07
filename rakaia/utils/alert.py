@@ -88,8 +88,8 @@ class AlertMessage(BaseModel):
                                        "3. If querying using image similarity, that similarity scores have been computed "
                                        "using a UMAP overlay. Scores can be computed from the UMAP options under "
                                        "the quantification tab.",
-                      "no_channel_gallery": "Note: Channel tile gallery not rendered for spatial datasets or "
-                                            "ROIs that can't load fully into memory.",
+                      "no_channel_gallery": "Note: Channel tile gallery not rendered for spatial datasets, "
+                                            "ROIs that can't load fully into memory, or when single marker lazy loading is enforced.",
                       "no_umap_gallery": "UMAP gallery not rendered. The UMAP gallery requires outputs "
                                          "from the steinbock snakemake pipeline v0.0.4 or greater. Ensure that: "
                                          "\n - pipeline outputs have been imported from a directory using the local filepath"
@@ -150,7 +150,11 @@ class ToolTips(BaseModel):
                       "region-annotate-all": "By default, only the most recently drawn shape is annotated.",
                       "query-obj-min": "Define a minimum number of objects required per ROI when querying from the UMAP. "
                                        "ROIs without the minimum object number will not be displayed in the gallery.",
-                      "download-region-statistics": "Download the region statistic table (CSV)"}
+                      "download-region-statistics": "Download the region statistic table (CSV)",
+                      "clust-h5ad": "If the current ROI is derived from an anndata or zarr store, "
+                                    "add cluster projections from the `.obs` slot.",
+                      "always-single-marker-load": "If toggled on, for every ROI, channels are loaded into memory only when added to the canvas. "
+                                    "Disables the channel gallery and in-app quantification. Improves speed when single ROIs >2-3GB."}
 
 
 class PanelMismatchError(Exception):

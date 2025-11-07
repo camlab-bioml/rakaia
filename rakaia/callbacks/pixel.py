@@ -172,12 +172,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_config', 'data'),
                        State('session_alert_config', 'data'),
                        State('session_id_internal', 'data'),
+                       State('mask-uploads', 'data'),
                        prevent_initial_call=True)
-    def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id):
+    def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id, mask_uploads):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
             if is_zarr_store(path) and sesh_id:
-                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session).get_files()
+                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session, mask_uploads).get_files()
                   # show an error on zarr reading as there can be version incompatibilities with raster, anndata, etc.
                 except Exception as e: return dash.no_update, {'error': str(e)}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             # for now, parsing a steinbock directory doesn't take into account any previous session uploads
@@ -196,7 +197,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             import wx
             app = wx.App(None)
             dialog = wx.FileDialog(None, 'Open', str(Path.home()), style=wx.FD_OPEN | wx.FD_MULTIPLE | wx.FD_FILE_MUST_EXIST,
-                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad|*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad")
+                                   wildcard="*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad|*.tiff;*.tif;*.mcd;*.txt;*.h5;*.h5ad;*.TIF;*.TIFF")
             if dialog.ShowModal() == wx.ID_OK:
                 filenames = dialog.GetPaths()
                 if filenames is not None and len(filenames) > 0 and isinstance(filenames, list):
@@ -238,8 +239,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('natsort-uploads', 'value'),
                        State('dataset-delimiter', 'value'),
                        State('session_id_internal', 'data'),
+                       State('always-single-marker-loading', 'value'),
                        prevent_initial_call=True)
-    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config, natsort, delimiter, sesh_id):
+    def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config, natsort, delimiter,
+                                                sesh_id, enforce_sm_lazy_load):
         """
         Create session variables from the list of imported file paths
         Note that a message will be supplied if more than one type of file is passed
@@ -253,7 +256,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             error_config = add_warning_to_error_config(error_config, suffix_add) if ('from_steinbock'
                             not in session_dict.keys() and suffix_add) else dash.no_update
             try:
-                fileparser = FileParser(files, array_store_type=app_config['array_store_type'], delimiter=delimiter)
+                fileparser = FileParser(files, array_store_type=app_config['array_store_type'],
+                                        delimiter=delimiter, enforce_single_marker_load=enforce_sm_lazy_load)
                 session_dict['unique_images'] = fileparser.unique_image_names
                 columns = [{'id': p, 'name': p, 'editable': False} for p in fileparser.dataset_information_frame.keys()]
                 data = pd.DataFrame(fileparser.get_parsed_information()).to_dict(orient='records')
@@ -344,9 +348,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('data-selection-refresh', 'n_clicks'),
                        State('session_id_internal', 'data'),
                        State('session_alert_config', 'data'),
+                       State('always-single-marker-loading', 'value'),
                        prevent_initial_call=True)
     def create_dropdown_options(upload_template, data_selection, names, cur_chan_selection, session_config,
-                                sort_channels, enable_zoom, cur_dimensions, delimiter, refresh, sesh_id, error_config):
+                                sort_channels, enable_zoom, cur_dimensions, delimiter, refresh, sesh_id, error_config, always_sm_lazy):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
@@ -358,7 +363,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # set a small default grid width and height for no loading. Add loading if incoming ROI is large
                 channels_return, grid_width, grid_height, dim_return = sort_channel_dropdown(names, sort_channels), 1, 1, dash.no_update
                 if ctx.triggered_id not in ["sort-channels-alpha", "alias-dict"]:
-                    image_dict = image_dict_from_lazy_load(data_selection, session_config, app_config['array_store_type'], delimiter)
+                    image_dict = image_dict_from_lazy_load(data_selection, session_config, app_config['array_store_type'], delimiter, always_sm_lazy)
                     image_dict = image_dict if image_dict is not None else upload_template
                     if not image_dict[data_selection] or (image_dict[data_selection] and
                         all([elem is None for elem in image_dict[data_selection].values()])):
@@ -1767,6 +1772,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Enable the region annotation button to be selectable when the canvas is either zoomed in on, or
         a shape is being added/edited. These represent a region selection that can be annotated
         """
+        # TODO: this logic still blanks out annotation if shapes exist on the canvas but zoom is switched to but not used
         if None not in (cur_graph_layout, data_selection, current_blend) and len(current_blend) > 0:
             if all([elem in cur_graph_layout for elem in ZOOM_KEYS]) or ('shapes' in cur_graph_layout and
             len(cur_graph_layout['shapes']) > 0) or layout_has_modified_shape(cur_graph_layout): return False

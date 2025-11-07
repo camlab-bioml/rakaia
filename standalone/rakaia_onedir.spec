@@ -9,8 +9,6 @@ from PyInstaller.utils.hooks import collect_data_files, copy_metadata
 sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 COMPILING_PLATFORM = distutils.util.get_platform()
-
-# Safe name with version + platform
 safe_name = f"rakaia_{COMPILING_PLATFORM}_{__version__}".replace(".", "_").replace("-", "_")
 
 with open('../requirements.txt') as f:
@@ -65,13 +63,14 @@ pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 exe = EXE(
     pyz,
     a.scripts,
-    [],
+    a.binaries,
+    a.zipfiles,
+    a.datas,
     [],
     name=safe_name,
     debug=False,
     strip=False,
-    upx=True,
-    upx_exclude=[],
+    upx=False,
     console=True,
     icon=icon_path
 )
@@ -79,9 +78,9 @@ exe = EXE(
 coll = COLLECT(
     exe,
     a.binaries,
+    a.zipfiles,
     a.datas,
     strip=False,
-    upx=True,
-    upx_exclude=[],
+    upx=False,
     name=safe_name + "_dist"
 )

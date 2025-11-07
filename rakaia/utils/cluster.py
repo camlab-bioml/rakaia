@@ -93,7 +93,10 @@ def split_cluster_frame_upload_multi_roi(cur_cluster_dict: Union[dict,None]=None
                             dataset_options, delimiter, None,
                             ClusterIdentifiers.multi_roi_cols).get_matches()
         if match and identifier:
-            cur_cluster_dict[roi] = cluster_frame[cluster_frame[identifier] == match]
+            frame_subset = cluster_frame[cluster_frame[identifier] == match]
+            cur_cluster_dict[roi] = frame_subset if (roi not in cur_cluster_dict or not
+        isinstance(cur_cluster_dict[roi], pd.DataFrame)) else (
+            merge_clust_frames(cur_cluster_dict[roi], frame_subset))
     return cur_cluster_dict
 
 
@@ -114,8 +117,26 @@ def cluster_annotation_frame_import(cur_cluster_dict: Union[dict,None]=None, roi
 
     # Case 2: single ROI, map to current ROI only
     if any(elem in list(cluster_frame.columns) for elem in ClusterIdentifiers.id_cols) and roi_selection:
-        cur_cluster_dict[roi_selection] = cluster_frame
+        # if any annotations exist, merge them in
+        cur_cluster_dict[roi_selection] = cluster_frame if (roi_selection not in cur_cluster_dict or not
+        isinstance(cur_cluster_dict[roi_selection], pd.DataFrame)) else (
+            merge_clust_frames(cur_cluster_dict[roi_selection], cluster_frame))
     return cur_cluster_dict if len(cur_cluster_dict) > 0 else None
+
+def merge_clust_frames(current_frame: pd.DataFrame, incoming_frame: pd.DataFrame):
+    """
+    Merge an existing cluster annotation frame with incoming annotations matched to the same ROI
+    """
+    return pd.merge(current_frame, incoming_frame,
+             left_on=cluster_merge_priority_col(current_frame),
+             right_on=cluster_merge_priority_col(incoming_frame), how='inner')
+
+
+def cluster_merge_priority_col(clust_frame: pd.DataFrame):
+    """
+    Define the default priority column for merging cluster annotation frames
+    """
+    return 'object_id' if 'object_id' in clust_frame.columns else 'cell_id'
 
 def subset_cluster_frame(cluster_data: dict, roi_selection: str, clust_variable: str,
                          cluster_cats: Union[list, None]=None,
@@ -136,7 +157,8 @@ def subset_cluster_frame(cluster_data: dict, roi_selection: str, clust_variable:
     return cluster_data
 
 def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_cluster_dict: dict=None,
-                                          roi_selection: str=None) -> Union[dict, None]:
+                                          roi_selection: str=None,
+                                          cat_limit: int=100) -> Union[dict, None]:
     """
     Generate a dictionary of random colours to assign to the clusters for a specific ROI
     cluster frame dict contains the cluster assignments by ROI
@@ -148,9 +170,10 @@ def assign_colours_to_cluster_annotations(cluster_frame_dict: dict=None, cur_clu
             cluster_assignments[roi_selection] = {}
         cluster_assignments = match_cluster_hash_to_cluster_frame(cluster_frame_dict, cluster_assignments, roi_selection)
         for cluster_cat in cluster_frame_dict[roi_selection].keys():
+            # only import clusters without too many unique values, implies categorical
             unique_clusters = [str(i) for i in
             pd.DataFrame(cluster_frame_dict[roi_selection])[cluster_cat].unique().tolist()]
-            if cluster_cat not in ClusterIdentifiers.id_cols and \
+            if len(unique_clusters) < cat_limit and cluster_cat not in ClusterIdentifiers.id_cols and \
                     (check_diff_cluster_subtypes(cluster_assignments, roi_selection, cluster_cat,
                     unique_clusters) or cluster_cat not in cluster_assignments[roi_selection].keys()):
                 cluster_assignments[roi_selection][cluster_cat] = {}

@@ -14,7 +14,9 @@ import spatialdata as sd
 from rasterio.features import rasterize
 from tifffile import imwrite
 import dash
-from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
+from shapely import affinity
+from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout, \
+    set_array_storage_type_from_config
 from rakaia.utils.session import validate_session_upload_config
 
 class ZarrSDKeys:
@@ -25,7 +27,7 @@ class ZarrSDKeys:
     dirs_include = ['images', 'points', 'shapes', 'tables']
     visium_hd_tables = ['square_002um', 'square_008um', 'square_016um']
     xenium_shapes = ['cell_boundaries', 'cell_circles', 'nucleus_boundaries']
-    visium_hd_bin_sizes = ["2", "8", "16"]
+    visium_hd_bin_sizes = ["8", "16"]
 
 
 def is_zarr_store(local_dir: Union[Path, str]):
@@ -45,23 +47,26 @@ def is_zarr_store(local_dir: Union[Path, str]):
 class ZarrSDParser:
     """
     Parse a spatialdata zarr-backed store for 10X Genomics ST outputs. Currently, supports parsing
-    or 10X Visium, Visium HD, and Xenium
+    for 10X Visium, Visium HD, and Xenium
 
     :param zarr_path: local directory path to the zarr store
     :param tmp_session_path: In-application path to where temporary spatial files should be written
-    :param cur_session_uploads: Dictionary of current uploads in the session if they exist, or `None`
+    :param cur_session_uploads: Dictionary of current imaging uploads in the session if they exist, or `None`
+    :param cur_mask_uploads: Dictionary of current mask uploads in the session if they exist, or `None`
 
     :return: None
     """
     def __init__(self, zarr_path: Union[Path, str, None]=None,
                  tmp_session_path: Union[Path, str, None]=None,
-                 cur_session_uploads: Union[dict, None]=None):
+                 cur_session_uploads: Union[dict, None]=None,
+                 cur_mask_uploads: Union[dict, None]=None):
 
-        self._zarr_path = zarr_path
+        self._zarr_path = str(Path(zarr_path).resolve())
         self._tmp_session_path = tmp_session_path
         # make the outputs match the `parse_steinbock_dir` output format/order
         self._image_paths = validate_session_upload_config(cur_session_uploads)
-        self._mask_paths = {}
+        self._mask_paths = {} if (cur_mask_uploads is None or
+                                not isinstance(cur_mask_uploads, dict)) else cur_mask_uploads
         self._quant = None
         self._error = None
         self._umap = None
@@ -154,26 +159,36 @@ class ZarrSDParser:
         return any(col_id in sdset.shapes for col_id in ZarrSDKeys.xenium_shapes)
 
     @staticmethod
-    def xenium_cell_boundary_mask(sdset: sd.SpatialData,
-                                  flip: bool=True):
+    def spatial_segmentation_mask(sdset: sd.SpatialData,
+                                  flip: bool=True,
+                                  shape_key: str="cell_boundaries",
+                                  table_key: str="table",
+                                  scale_factor: int | None=None):
         """
-        Generate the cell boundaries mask for a 10x Xenium dataset
+        Generate a spatial segmentation mask from a shape frame with a matching expression table
 
         :param sdset: `spatialdata` object containing either ST or multiplexed imaging measurements
         :param flip: Whether to flip the mask along the y-axis due to rasterization
-
-        :return: Numpy mask array with cell boundaries and object ids of the type `np.uint32`
+        :param shape_key: Key for the shape in the sdata `shapes` slot. Provides the segmentation polygons.
+        :param table_key: Key for the table in the sdata `tables` slot. Provides the coordinate limits for the output mask.
+        :param scale_factor: Integer value for scaling the mask objects. Default is `None`
+        :return: Numpy mask array with object (i.e. cell) boundaries and object ids of the type `np.uint32`
         """
-        if 'cell_boundaries' in sdset.shapes:
-            adata = sdset.tables['table']
-            cells = sdset.shapes['cell_boundaries']
+        if shape_key in sdset.shapes and table_key in sdset.tables:
+            adata = sdset.tables[table_key]
+            cells = sdset.shapes[shape_key]
 
             # get the int bounds to know where the segmentation mask is
             x_min, y_min = np.min((adata.obsm['spatial']), axis=0)
             x_max, y_max = np.max((adata.obsm['spatial']), axis=0)
 
             transform = rasterio.transform.from_bounds(x_min, y_min, x_max,
-                                                       y_max, int(x_max - x_min), int(y_max - y_min))
+                        y_max, int(x_max - x_min), int(y_max - y_min))
+
+            if scale_factor:
+                # scale the segmentation by the bin size (i.e. Visium HD)
+                cells["geometry"] = cells["geometry"].apply(
+                    lambda geom: affinity.scale(geom, xfact=(1/scale_factor), yfact=(1/scale_factor), origin=(0, 0)))
 
             shapes = [(geom, idx) for idx, geom in enumerate(cells.geometry)]
 
@@ -225,6 +240,26 @@ class ZarrSDParser:
                     found_expr = True
         return found_expr
 
+    def _iterate_visium_hd_bins(self, sdata: sd.SpatialData,
+                                output_masks: bool=True):
+        """
+        Iterate through matched shape frames and expression tables y bin size for Visium HD
+
+        :param sdata: `Spatialdata` object containing a Visium HD dataset
+
+        :return: None
+        """
+        # here, zip through the shapes and table to get the expr with a sample name
+        for shape, table in zip(sdata.shapes, sdata.tables):
+            # parse through the bin sizes, and see if it's in the current shape
+            for bin_size in ZarrSDKeys.visium_hd_bin_sizes:
+                if bin_size in table:
+                    expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size))
+                    self._image_paths['uploads'].append(self.write_adata(expr, str(shape)))
+                    if str(table) in str(shape) and output_masks:
+                        mask = self.spatial_segmentation_mask(sdata, True, str(shape), str(table), int(bin_size))
+                        if mask is not None:
+                            self._mask_paths[str(shape)] = self.write_mask(mask, str(shape))
 
     def _parse(self, zarr_path: Union[Path, str]):
         """
@@ -240,33 +275,31 @@ class ZarrSDParser:
             # for now for xenium, just use the zarr basename as the mapping is one ROI per zarr
             sam_name = str(os.path.basename(zarr_path)).replace('.', '_')
             self._image_paths['uploads'].append(self.write_adata(sdata.tables['table'], sam_name))
-            mask = self.xenium_cell_boundary_mask(sdata)
+            mask = self.spatial_segmentation_mask(sdata)
             if mask is not None:
                 self._mask_paths[sam_name] = self.write_mask(mask, sam_name)
 
         # Case 2: if it's Visium HD
         elif self.is_visium_hd(sdata):
-            # here, zip through the shapes and table to get the expr with a sample name
-            for shape, table in zip(sdata.shapes, sdata.tables):
-                # parse through the bin sizes, and see if it's in the current shape
-                for bin_size in ZarrSDKeys.visium_hd_bin_sizes:
-                    if bin_size in table:
-                        expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size))
-                        self._image_paths['uploads'].append(self.write_adata(expr, str(shape)))
-        # Process Visium by iterating the shapes (one per ROI, the shape key is the sample)
+            self._iterate_visium_hd_bins(sdata)
+
         else:
-            expr = sdata.tables['table']
+            # Case 3: process Visium by iterating the shapes (one per ROI, the shape key is the sample)
             found_expr = self._iterate_shapes_by_region(sdata)
-            if is_spatial_dataset(expr) and not found_expr:
-                self._image_paths['uploads'].append(self.write_adata(expr,
-                str(os.path.basename(zarr_path)).replace('.', '_')))
+            if not found_expr:
+                # Case 4: if not 10x, iterate each table here as its own spatial expression set instead of using a set table key
+                for table_key in sdata.tables.keys():
+                    if is_spatial_dataset(sdata.tables[table_key]):
+                        # use the table key in the file name output
+                        self._image_paths['uploads'].append(self.write_adata(sdata.tables[table_key],
+                        f"{str(os.path.basename(zarr_path)).replace('.', '_')}_{table_key}"))
 
     def get_files(self):
         """
         Return the files from a zarr store parse. Should match the output tuples from `parse_steinbock_dir`
 
         :return: Tuple of outputs matching the outputs from a steinbock directory: image paths, error config, mask paths,
-        quantification, UMAP coordinates, and scaling JSON
+        quantification, UMAP coordinates, and scaling JSON.
         """
         if self._zarr_path is not None:
             self._parse(self._zarr_path)
@@ -381,7 +414,8 @@ def spatial_marker_to_dense_flat(spot_array: Union[np.array, np.ndarray]):
 
 def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union[str, None],
                                spot_size: Union[int, None]=None, downscale: bool=True,
-                               as_mask: int=False):
+                               as_mask: int=False,
+                               array_store_type: str="float"):
     """
     Extracts spot values for a specific gene marker and arranges them in a 2D grid
     based on the spatial coordinates. Requires either a named marker for expression spots,
@@ -398,7 +432,8 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
         adata[:, adata.var_names.get_loc(gene_marker)].X)
 
     # Convert to dense array if the data is sparse
-    spot_values = spatial_marker_to_dense_flat(spot_values)
+    spot_values = spatial_marker_to_dense_flat(spot_values).astype(
+                set_array_storage_type_from_config(array_store_type))
 
     suf_expr = spot_values > 0
     spot_values = spot_values[suf_expr]
@@ -457,14 +492,16 @@ def spatial_grid_single_marker(adata: Union[ad.AnnData, str], gene_marker: Union
 
 def check_spatial_array_multi_channel(image_dict: dict, data_selection: str,
                                       adata: ad.AnnData, channel_list: list,
-                                      spot_size: Union[int,float]=55):
+                                      spot_size: Union[int,float]=55,
+                                      array_store_type: str="float"):
     """
     Check the current raw image dictionary for missing spatial arrays using the currently selected
     marker list (current blend). If markers are missing, add the expression arrays (non-sparse) to the dictionary
     """
     for selection in channel_list:
         if not image_dict[data_selection] or image_dict[data_selection][selection] is None:
-            image_dict[data_selection][selection] = spatial_grid_single_marker(adata, selection, spot_size)
+            image_dict[data_selection][selection] = spatial_grid_single_marker(adata, selection, spot_size,
+                                                    True, False, array_store_type)
     return image_dict
 
 
@@ -589,3 +626,15 @@ def xenium_coords_to_wsi_from_zoom(bounds: dict,
     height = int(out_y_max - out_y_min)
     width = int(out_x_max - out_x_min)
     return f"{out_x_min},{out_y_min},{width},{height}"
+
+def anndata_obs_to_projection_frame(adata: Union[ad.AnnData, str]):
+    """
+    Output the `anndata.obs` slot as a data frame compatible with categorical projection
+    """
+    adata = ad.read_h5ad(adata) if not isinstance(adata, ad.AnnData) else adata
+    metadata = adata.obs.copy()
+    # give each element an object id that matches to a mask
+    # !IMPORTANT!: only works when the object order descending matches the mask order (i.e. Visium and Xenium)
+    metadata['object_id'] = range(1, (len(adata) + 1), 1)
+    metadata.index = range(1, (len(adata) + 1), 1)
+    return metadata.drop('cell_id', axis=1) if 'cell_id' in metadata.columns else metadata

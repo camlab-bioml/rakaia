@@ -19,7 +19,7 @@ from rakaia.io.session import SessionServerside
 
 def test_parse_steinbock_dir(get_current_dir):
     assert not is_steinbock_dir(os.path.join(get_current_dir, 'cell_measurements.csv'))
-    steinbock_dir = str(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    steinbock_dir = str(os.path.join(get_current_dir, 'steinbock', 'test_mcd/'))
     assert is_steinbock_dir(steinbock_dir)
     mcd, error, masks, quant, umap, scaling = parse_steinbock_dir(steinbock_dir, None, True,
                                     key="umap_coordinates", use_unique_key=True)
@@ -94,16 +94,16 @@ def test_parse_global_filters():
                                          "global_filter_type": "median", "global_filter_val": 5,
                                          "global_filter_sigma": 1}}}
 
-    globals = parse_global_filter_values_from_json(config_dict['config'])
+    global_vals = parse_global_filter_values_from_json(config_dict['config'])
 
-    assert all([isinstance(elem, dash._callback.NoUpdate) for elem in globals])
+    assert all([isinstance(elem, dash._callback.NoUpdate) for elem in global_vals])
 
     config_dict = {"config": {"filter": {"global_apply_filter": False,
                                          "missing_key": "median", "global_filter_val": 5,
                                          "global_filter_sigma": 1}}}
 
-    globals = parse_global_filter_values_from_json(config_dict['config'])
-    assert all([isinstance(elem, dash._callback.NoUpdate) for elem in globals])
+    global_vals = parse_global_filter_values_from_json(config_dict['config'])
+    assert all([isinstance(elem, dash._callback.NoUpdate) for elem in global_vals])
 
 def test_import_paths_from_local(get_current_dir):
     mcd_file = os.path.join(get_current_dir, 'query.mcd')
@@ -111,9 +111,11 @@ def test_import_paths_from_local(get_current_dir):
     assert imports['uploads']
     assert 'query.mcd' in imports['uploads'][0]
     assert isinstance(error, dash._callback.NoUpdate)
-    imports, error = parse_local_path_imports(get_current_dir, {'uploads': []}, {"error": None})
+    imports, error = parse_local_path_imports(f"{get_current_dir}/", {'uploads': []}, {"error": None})
     assert imports['uploads']
     assert isinstance(error, dash._callback.NoUpdate)
+    imports, error = parse_local_path_imports(f"{get_current_dir}/wsi/", {'uploads': []}, {"error": None})
+    assert len(imports['uploads']) == 2
     imports, error = parse_local_path_imports('', {'uploads': []}, {"error": None})
     assert error['error']
     assert isinstance(imports, dash._callback.NoUpdate)
@@ -140,7 +142,7 @@ def test_null_json_update():
     assert tup_return[2] == {"error": "No error here"}
 
 def test_umap_png_parse(get_current_dir):
-    umap_files = parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+    umap_files = parse_steinbock_umap(os.path.join(get_current_dir, 'steinbock', 'test_mcd/'))
     assert len(umap_files) == 3
     for dist in [0, 0.1, 0.25]:
         assert any([str(dist) in file_name for file_name in umap_files])
@@ -149,7 +151,7 @@ def test_umap_png_parse(get_current_dir):
 def test_umap_gallery_reactive_search(get_current_dir):
 
     coords_from_click = umap_coordinates_from_gallery_click('umap_min_dist_0.25',
-                        os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+                        os.path.join(get_current_dir, 'steinbock', 'test_mcd/'))
     coord_frame = pd.read_csv(os.path.join(get_current_dir, 'steinbock', 'test_mcd',
                                            'export', 'umap', 'umap_min_dist_0.25_coordinates.csv'))
     assert coord_frame.equals(pd.DataFrame(coords_from_click.value))
@@ -157,7 +159,7 @@ def test_umap_gallery_reactive_search(get_current_dir):
                         os.path.join(get_current_dir, 'steinbock'))
     assert isinstance(none_found, dash._callback.NoUpdate)
     none_found_2 = umap_coordinates_from_gallery_click('umap_min_dist_1',
-                        os.path.join(get_current_dir, 'steinbock', 'test_mcd'))
+                        os.path.join(get_current_dir, 'steinbock', 'test_mcd/'))
     assert isinstance(none_found_2, dash._callback.NoUpdate)
 
 def test_allow_disable_rois_in_channel_gallery():

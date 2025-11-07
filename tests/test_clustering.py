@@ -37,6 +37,11 @@ def test_populating_cluster_annotation_dict():
     assert "roi_2" not in session_cluster_dict.keys()
     assert "roi_1" in session_cluster_dict.keys()
 
+    cluster_frame_2 = pd.DataFrame({"cell_id": [1, 2, 3, 4, 5],
+                                  "cluster_2": ["epithelial"] * 5})
+    session_cluster_dict = cluster_annotation_frame_import(session_cluster_dict, "roi_1", cluster_frame_2)
+    assert 'cluster_2' in session_cluster_dict['roi_1'].columns
+
 def test_populating_cluster_annotation_dict_multi_roi(get_current_dir):
 
     multi_roi = pd.read_csv(os.path.join(get_current_dir, "multi_roi_clusters.csv"))

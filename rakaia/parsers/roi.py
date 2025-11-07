@@ -63,7 +63,8 @@ class RegionThumbnail:
     :return: None
     """
     # define string attribute matches for the partial
-    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5ad": "h5ad"}
+    MATCHES = {".mcd": "mcd", ".tiff": "tiff", ".tif": "tiff", ".txt": "txt", ".h5": "h5",
+               ".h5ad": "h5ad", ".TIF": "tiff", ".TIFF": "tiff"}
 
     def __init__(self, session_config, blend_dict, currently_selected_channels, num_queries=5, rois_exclude=None,
                  predefined_indices=None, mask_dict=None, dataset_options=None, query_cell_id_lists=None,
@@ -375,7 +376,7 @@ class RegionThumbnail:
         basename = str(Path(file_path).stem)
         queries_by_name = []
         with MCDFile(file_path) as mcd_file:
-            slide_index = 0
+            slide_index = 1
             for slide_inside in mcd_file.slides:
                 self.set_mcd_query_selection(slide_inside, queries_by_name)
                 for query in self.query_selection:

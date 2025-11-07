@@ -120,7 +120,7 @@ def parse_global_filter_values_from_json(config_dict):
 def parse_local_path_imports(path: str, session_config: dict, error_config: dict):
     """
     Parse the path of either a local filepath or directory to retrieve the imaging datasets associated with it
-    Return a dictionary error and a no update callback if there if the path does not correspond to a proper filepath
+    Return a dictionary error and a no update callback if the path does not correspond to a proper filepath
     or a directory
     """
     if os.path.isfile(path):
@@ -128,10 +128,10 @@ def parse_local_path_imports(path: str, session_config: dict, error_config: dict
         error_config["error"] = None
         return session_config, dash.no_update
     elif os.path.isdir(path):
-        extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5", "*.h5ad"]
+        extensions = ["*.tiff", "*.mcd", "*.tif", "*.txt", "*.h5", "*.h5ad", "*.TIF", "*.TIFF"]
         for extension in extensions:
             session_config['uploads'].extend(Path(path).glob(extension))
-        session_config['uploads'] = [str(elem) for elem in session_config['uploads']]
+        session_config['uploads'] = list(set([str(elem) for elem in session_config['uploads']]))
         return session_config, dash.no_update
     error_config["error"] = AlertMessage().warnings["invalid_path"]
     return dash.no_update, error_config
@@ -142,7 +142,7 @@ class SteinbockParserKeys:
     Define the subdirectories and permissible file extensions for parsing a steinbock output directory
     """
     sub_directories = ['quantification', 'mcd', 'deepcell']
-    extensions = ['.tiff', '.tif', '.h5ad', '.mcd', '.txt']
+    extensions = ['.tiff', '.tif', '.h5ad', '.mcd', '.txt', '.TIF', '.TIFF']
     base_names = ['umap_coordinates']
 
 def is_steinbock_dir(directory):
