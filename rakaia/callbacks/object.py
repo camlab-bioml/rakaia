@@ -221,12 +221,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 if ctx.triggered_id == "umap-projection-options" and channel_overlay is None: return dash.no_update, blank_umap
                 quantification_dict = pd.DataFrame.from_records(quantification_dict)
                 # do not use patch if updating the coordinates
-                use_patch = False if (ctx.triggered_id == "umap-projection") else True
-                if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay, use_patch=use_patch):
-                    return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
-                else:
-                    umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
-                    display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
+                # do not patch figure if sub-setting is used because it'll be a different subset every time
+                # use_patch = False if (ctx.triggered_id == "umap-projection") else True
+                # if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay, use_patch=False):
+                #     return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
+                # else:
+                umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
         except (BadRequest, TypeError): return dash.no_update, {'display': 'None'}
         return dash.no_update, blank_umap
