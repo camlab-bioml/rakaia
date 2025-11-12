@@ -186,7 +186,6 @@ def channel_expression_summary(measurements, cols_include=None, drop_cols=False,
         plot_bgcolor="white",
         paper_bgcolor="white",
         font=dict(color="black"))
-
     return fig
 
 def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overlay: Union[str, None]=None,

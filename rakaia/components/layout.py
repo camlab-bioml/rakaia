@@ -1687,6 +1687,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                         "background-color": DEFAULT_WIDGET_COLOUR}),
                                         html.Br(),
                                         html.Br(),
+                                        html.Div([
+                                        html.H6("Subset UMAP points", id='subset-umap-header', style={"margin-top": "3px"}),
+                                        dcc.Input(type="number", value=75000, id='subset-umap-val',
+                                        style={"width": "25%", "margin-left": "5px"}, min=0, max=500000, step=1, debounce=True),
+                                        dbc.Tooltip(TOOLTIPS['subset-umap'], target="subset-umap-header", placement='left'),
+                                        ], style={"display": "flex"}),
+                                        html.Br(),
                                         html.B("Query settings", style={"float": "left", "margin-bottom": "10px"}),
                                         html.Br(),
                                         html.Div([

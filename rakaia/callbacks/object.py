@@ -211,9 +211,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('quantification-dict', 'data'),
                        State('umap-plot', 'figure'),
                        Input('quantify-cur-roi-execute', 'n_clicks'),
-                       State('read-filepath', 'value'),
+                       Input('subset-umap-val', 'value'),
                        prevent_initial_call=True)
-    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant, local_filepath):
+    def plot_umap_for_measurements(embeddings, channel_overlay, quantification_dict, cur_umap_fig, trigger_quant, subset_val):
         try:
             blank_umap = {'display': 'None'} if (len(pd.DataFrame(embeddings)) != len(pd.DataFrame.from_records(quantification_dict)) or
                                              ctx.triggered_id == 'quantify-cur-roi-execute') else dash.no_update
@@ -226,7 +226,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # if umap_eligible_patch(cur_umap_fig, quantification_dict, channel_overlay, use_patch=False):
                 #     return patch_umap_figure(quantification_dict, channel_overlay), {'display': 'inline-block'}
                 # else:
-                umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig)
+                umap = object_umap_plot(embeddings, channel_overlay, quantification_dict, cur_umap_fig, subset=subset_val)
                 display = {'display': 'inline-block'} if isinstance(umap, go.Figure) else blank_umap
                 return umap, display
         except (BadRequest, TypeError): return dash.no_update, {'display': 'None'}
