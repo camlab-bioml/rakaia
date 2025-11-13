@@ -154,7 +154,10 @@ class ToolTips(BaseModel):
                       "clust-h5ad": "If the current ROI is derived from an anndata or zarr store, "
                                     "add cluster projections from the `.obs` slot.",
                       "always-single-marker-load": "If toggled on, for every ROI, channels are loaded into memory only when added to the canvas. "
-                                    "Disables the channel gallery and in-app quantification. Improves speed when single ROIs >2-3GB."}
+                                    "Disables the channel gallery and in-app quantification. Improves speed when single ROIs >2-3GB.",
+                      "subset-umap": "Set the maximum number of UMAP points to render. Smaller values increase the UMAP"
+                                     " speed, but also increase the chance of missing categories and/or mismatch in the true number of objects vs. ones that are visible. "
+                                     "For best performance, it's recommended to render <~100,000 UMAP objects; if left blank, all quantified points are rendered."}
 
 
 class PanelMismatchError(Exception):

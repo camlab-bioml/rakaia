@@ -186,13 +186,13 @@ def channel_expression_summary(measurements, cols_include=None, drop_cols=False,
         plot_bgcolor="white",
         paper_bgcolor="white",
         font=dict(color="black"))
-
     return fig
 
 def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overlay: Union[str, None]=None,
                      quantification_dict: Union[pd.DataFrame, dict, None]=None,
                      cur_umap_fig: Union[go.Figure, dict, None]=None,
-                     categorical_size_limit: Union[int, float]=100) -> Union[go.Figure, dict]:
+                     categorical_size_limit: Union[int, float]=100,
+                     subset: Union[int, None]=75000) -> Union[go.Figure, dict]:
     """
     Generate a data frame of UMAP coordinates for a dataset of segmented objects based on channel expression
     Overlay color groupings can be passed as either numerical or categorical. Categorical variables are either
@@ -203,6 +203,7 @@ def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overla
         umap_frame = pd.DataFrame(embeddings, columns=['UMAP1', 'UMAP2'])
         palette = None
         opacity_setting = 0.5 if len(umap_frame) > 1000 else None
+        category_order = None
         try:
             if channel_overlay:
                 if is_string_dtype(quant_frame[channel_overlay]) or \
@@ -210,8 +211,14 @@ def object_umap_plot(embeddings: Union[pd.DataFrame, dict, None], channel_overla
                     quant_frame[channel_overlay] = quant_frame[channel_overlay].apply(str)
                     palette = glasbey_palette(len(quant_frame[channel_overlay].value_counts()))
                 umap_frame[channel_overlay] = quant_frame[channel_overlay]
+                # need to maintain the category order from the original for the restyle parser to work
+                category_order = {channel_overlay: umap_frame[channel_overlay].dropna().unique().tolist()}
+            # need to reset and sort the index after sampling to preserve the order to match the restyle parser
+            umap_frame = umap_frame.reset_index().sample(n=subset).sort_index().set_index("index") if \
+                (subset and len(umap_frame) > subset) else umap_frame
             fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2", color=channel_overlay,
-                             color_discrete_sequence=palette, opacity=opacity_setting)
+                             color_discrete_sequence=palette, opacity=opacity_setting,
+                             category_orders=category_order)
         except KeyError:
             fig = px.scatter(umap_frame, x="UMAP1", y="UMAP2", opacity=opacity_setting)
             fig['data'][0]['showlegend'] = True
