@@ -149,6 +149,24 @@ rakaia
 ```
 The user should then navigate to `http://127.0.0.1:8080/` or `http://0.0.0.0:8080/` to access rakaia.
 
+## Docker
+
+rakaia is available to run through a Docker container:
+
+```commandline
+docker build -t rakaia .
+```
+
+By default, the ports `8080` and `5000` are suggested for use. If
+the user uses `5000`, the port will need to be specified in the run command:
+
+```commandline
+docker run -p 8080:8080 -v /home/:/home/ rakaia:latest rakaia -da
+# or run with the alternative port
+docker run -p 5000:5000 -v /home/:/home/ rakaia:latest rakaia -da -p 5000
+
+```
+
 ### Help
 
 The ClI options for running rakaia can be viewed using:
