@@ -158,23 +158,26 @@ def parse_and_validate_measurements_csv(session_dict, error_config=None, use_per
     Use percentile filtering for removing hot pixel cells
     """
     if session_dict is not None and 'uploads' in session_dict.keys() and len(session_dict['uploads']) > 0:
-        if str(session_dict['uploads'][0]).endswith('.csv'):
-            quantification_worksheet, warning = validate_incoming_measurements_csv(
-                pd.read_csv(session_dict['uploads'][0]))
-        elif str(session_dict['uploads'][0]).endswith('.h5ad'):
-            quantification_worksheet, warning = validate_quantification_from_anndata(
-                parse_quantification_sheet_from_h5ad(session_dict['uploads'][0]))
-        else:
-            quantification_worksheet, warning = None, "Error: could not find a valid quantification sheet."
-        measurements_return = filter_measurements_csv_by_channel_percentile(
-            quantification_worksheet).to_dict(orient="records") if use_percentile else \
-            quantification_worksheet.to_dict(orient="records") if quantification_worksheet is not None else None
-        cols_return = quantification_worksheet.columns if quantification_worksheet is not None else None
-        warning_return = dash.no_update
-        if warning is not None:
-            error_config = add_warning_to_error_config(error_config, warning)
-            warning_return = error_config
-        return measurements_return, cols_return, warning_return
+        try:
+            if str(session_dict['uploads'][0]).endswith('.csv'):
+                quantification_worksheet, warning = validate_incoming_measurements_csv(
+                    pd.read_csv(session_dict['uploads'][0]))
+            elif str(session_dict['uploads'][0]).endswith('.h5ad'):
+                quantification_worksheet, warning = validate_quantification_from_anndata(
+                    parse_quantification_sheet_from_h5ad(session_dict['uploads'][0]))
+            else:
+                quantification_worksheet, warning = None, "Error: could not find a valid quantification sheet."
+            measurements_return = filter_measurements_csv_by_channel_percentile(
+                quantification_worksheet).to_dict(orient="records") if use_percentile else \
+                quantification_worksheet.to_dict(orient="records") if quantification_worksheet is not None else None
+            cols_return = quantification_worksheet.columns if quantification_worksheet is not None else None
+            warning_return = dash.no_update
+            if warning is not None:
+                error_config = add_warning_to_error_config(error_config, warning)
+                warning_return = error_config
+            return measurements_return, cols_return, warning_return
+        except (QuantificationFormatError, ValueError) as e:
+            return None, None, add_warning_to_error_config(error_config, str(e))
     raise PreventUpdate
 
 

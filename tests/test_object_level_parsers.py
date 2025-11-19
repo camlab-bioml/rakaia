@@ -94,6 +94,12 @@ def test_parsing_incoming_measurements_csv(get_current_dir):
     assert validated_measurements is None
     assert err is not None
 
+    measurements_dict = {"uploads": [os.path.join(get_current_dir, "cluster_assignments.csv")]}
+    validated_measurements, cols, err = parse_and_validate_measurements_csv(measurements_dict)
+    assert validated_measurements is None
+    assert cols is None
+    assert 'missing at least one of' in err['error']
+
     with pytest.raises(PreventUpdate):
         parse_and_validate_measurements_csv(None)
     with pytest.raises(PreventUpdate):
