@@ -35,7 +35,7 @@ from rakaia.parsers.pixel import (
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
-    xenium_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser
+    xenium_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_coregister_hash, wsi_from_local_path
 from rakaia.utils.cluster import cluster_assignments_from_config
 
@@ -177,8 +177,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id, mask_uploads):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
-            if is_zarr_store(path) and sesh_id:
-                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session, mask_uploads).get_files()
+            # pass either the parent directory or subdirectories depending on how any zarr stores are found
+            if (is_zarr_store(path) or is_parent_directory_of_zarr_store(path)) and sesh_id:
+                try: return ZarrSDParser(zarr_parent_parse(path), str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session, mask_uploads).get_files()
                   # show an error on zarr reading as there can be version incompatibilities with raster, anndata, etc.
                 except Exception as e: return dash.no_update, {'error': str(e)}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             # for now, parsing a steinbock directory doesn't take into account any previous session uploads

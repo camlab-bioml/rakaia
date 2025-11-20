@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.26.0] - 2025-11-19
+## [0.26.0] - 2025-11-20
+
+### Changed
+
+- zarr parsing now accepts parent directory of multiple `zarr` subdirectories
+- increase bottom margins in channel and dataset gallery
+- Change toggle label for filters #143
 
 ### Fixed
 

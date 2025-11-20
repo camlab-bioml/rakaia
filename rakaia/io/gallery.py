@@ -270,7 +270,7 @@ def channel_tile_gallery_children(tiles: Union[dict, None],
                         dbc.Tooltip(f'Add {label} to canvas',
                         target={'type': 'gallery-channel', 'index': key})]),
                         dbc.CardImg(src=tile_greyscale_conversion(tile_image, use_greyscale),
-                        bottom=True)]), width=3))
+                        bottom=True)]), width=3, style={"margin-bottom": "20px"}))
     return row_children
 
 
@@ -315,7 +315,7 @@ def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_
                     dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
                     bottom=True, style=style,
                     className='align-self-center')]),
-                    width=col_width))
+                    width=col_width, style={"margin-bottom": "20px"}))
             roi_list.append(key)
     return row_children, roi_list
 

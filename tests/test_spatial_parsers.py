@@ -19,7 +19,7 @@ from rakaia.parsers.spatial import (
     xenium_coords_to_wsi_from_zoom,
     is_zarr_store,
     ZarrSDParser,
-    anndata_obs_to_projection_frame)
+    anndata_obs_to_projection_frame, is_parent_directory_of_zarr_store, zarr_parent_parse)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -135,6 +135,15 @@ def test_xenium_coords_to_wsi(get_current_dir):
     assert y > x
     assert height > width
 
+def test_parse_zarr_top_level(get_current_dir):
+    assert is_parent_directory_of_zarr_store(get_current_dir)
+    assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'wsi/'))
+
+    all_paths = zarr_parent_parse(os.path.join(get_current_dir, '/'))
+    assert all(str(sub_path).endswith('zarr') for sub_path in all_paths)
+    single_path = zarr_parent_parse(os.path.join(get_current_dir, 'subset_visium.zarr/'))
+    assert len(single_path) == 1
+    assert 'subset_visium.zarr' in single_path[0]
 
 def test_is_zarr_store(get_current_dir):
     assert not is_zarr_store(os.path.join(get_current_dir, 'wsi'))
