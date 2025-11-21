@@ -445,3 +445,16 @@ def set_annotation_layout(canvas_layout: Union[dict, None]=None,
                      not is_scalebar_annot(shape)] if filter_scalebar else canvas['layout']['shapes']
         return {'shapes': shapes_use}
     return canvas_layout
+
+def highlight_blend_in_panel_table(cur_channels: Union[list, None]=None,
+                                   col_identifier: str="Channel Name",
+                                   highlight_colour: str="#f2f2f2"):
+    """
+    Define a set of `dash_table` conditional row styles based on the channels currently selected in the canvas.
+    If currently selected, highlight the channel row with the highlight colour in the editable panel table
+    """
+    if not cur_channels:
+        return []
+    return [{"if": {"filter_query": f"{{{col_identifier}}} = '{channel}'"},
+            "backgroundColor": f"{highlight_colour}"}
+        for channel in cur_channels]

@@ -4,6 +4,7 @@ import plotly.graph_objs as go
 import pytest
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import html
+
 from rakaia.inputs.pixel import (
     render_default_annotation_canvas,
     wrap_canvas_in_loading_screen_for_large_images,
@@ -18,7 +19,8 @@ from rakaia.inputs.pixel import (
     set_canvas_viewport,
     marker_correlation_children,
     reset_pixel_histogram,
-    canvas_aspect_ratio_from_layout)
+    canvas_aspect_ratio_from_layout,
+    highlight_blend_in_panel_table)
 from rakaia.parsers.pixel import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -236,3 +238,10 @@ def test_blank_reset_histogram():
     blank_hist = reset_pixel_histogram(True)
     assert blank_hist['layout']['margin'] == {'b': 15, 'l': 5, 'pad': 0, 'r': 5, 't': 20}
     assert not blank_hist['layout']['xaxis']['showticklabels']
+
+def test_panel_table_restyling():
+    assert not highlight_blend_in_panel_table(None)
+    styles_3 = highlight_blend_in_panel_table(['channel_1', 'channel_2', 'channel_last'])
+    assert isinstance(styles_3, list)
+    assert len(styles_3) == 3
+    assert all('Channel Name' in con_style['if']['filter_query'] for con_style in styles_3)

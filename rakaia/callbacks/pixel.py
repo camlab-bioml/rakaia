@@ -22,7 +22,8 @@ from rakaia.inputs.pixel import (
     set_range_slider_tick_markers,
     canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
-    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram, set_annotation_layout)
+    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram, set_annotation_layout,
+    highlight_blend_in_panel_table)
 from rakaia.io.annotation import (
     is_valid_shapes_upload,
     write_canvas_shapes_to_json)
@@ -1133,6 +1134,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 p in upload_template['metadata'].keys()], pd.DataFrame(upload_template['metadata']).to_dict(orient='records')
             except ValueError: raise PreventUpdate
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("imc-panel-editable", "style_data_conditional"),
+        Input('image_layers', 'value'),
+        prevent_initial_call=True)
+    def populate_metadata_table(cur_channels):
+        """
+        Highlight the channels in the current blend in the panel table with row styling
+        """
+        return highlight_blend_in_panel_table(cur_channels)
 
     @dash_app.callback(
         Input("imc-panel-editable", "data"),
