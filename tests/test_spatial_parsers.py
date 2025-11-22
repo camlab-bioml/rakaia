@@ -138,6 +138,7 @@ def test_xenium_coords_to_wsi(get_current_dir):
 def test_parse_zarr_top_level(get_current_dir):
     assert is_parent_directory_of_zarr_store(get_current_dir)
     assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'wsi/'))
+    assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'query.mcd'))
 
     all_paths = zarr_parent_parse(os.path.join(get_current_dir, '/'))
     assert all(str(sub_path).endswith('zarr') for sub_path in all_paths)

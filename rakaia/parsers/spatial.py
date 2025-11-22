@@ -35,11 +35,11 @@ def is_zarr_store(local_dir: Union[Path, str]):
     Define if a provided directory is a zarr store
     """
     # Case 1: if the base directory has either of these files, say it is a zarr store
-    if (os.path.exists(os.path.join(local_dir, 'zmetadata')) or
+    if os.path.isdir(local_dir) and (os.path.exists(os.path.join(local_dir, 'zmetadata')) or
             os.path.exists(os.path.join(local_dir, '.zgroup'))):
         return True
     # Case 2: search in any of the potential spatialdata subdirectories for the .zgroup file
-    if any(os.path.exists(os.path.join(local_dir, str_dir, '.zgroup')) for
+    if os.path.isdir(local_dir) and any(os.path.exists(os.path.join(local_dir, str_dir, '.zgroup')) for
            str_dir in ZarrSDKeys.dirs_include):
         return True
     return False
@@ -48,9 +48,10 @@ def is_parent_directory_of_zarr_store(local_dir: Union[Path, str]):
     """
     Check if the directory passed is a parent directory for one or more zarr stores
     """
-    for sub_dir in Path(local_dir).iterdir():
-        if sub_dir.is_dir() and is_zarr_store(sub_dir):
-            return True
+    if os.path.isdir(local_dir):
+        for sub_dir in Path(local_dir).iterdir():
+            if sub_dir.is_dir() and is_zarr_store(sub_dir):
+                return True
     return False
 
 def zarr_parent_parse(local_dir: Union[Path, str]):
