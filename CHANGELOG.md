@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.26.0] - 2025-11-21
+## [0.26.0] - 2025-11-24
 
 ### Added
 
@@ -22,6 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Modal popup warning on quantification format error
+- Better gallery proportions for all ROIs #146
+- Don't reset panel table on subsequent uploads #147
 
 ## [0.25.0] - 2025-11-11
 

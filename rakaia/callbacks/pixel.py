@@ -1127,9 +1127,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("imc-panel-editable", "columns"),
         Output("imc-panel-editable", "data"),
-        Input('uploaded_dict_template', 'data'))
-    def populate_metadata_table(upload_template):
-        if upload_template is not None and upload_template['metadata'] is not None:
+        Input('uploaded_dict_template', 'data'),
+        State("imc-panel-editable", "data"))
+    def populate_metadata_table(upload_template, cur_panel):
+        # only set here once on data upload; subsequent uploads assume matched panel!
+        if upload_template is not None and upload_template['metadata'] is not None and cur_panel is None:
             try: return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                 p in upload_template['metadata'].keys()], pd.DataFrame(upload_template['metadata']).to_dict(orient='records')
             except ValueError: raise PreventUpdate
