@@ -20,7 +20,8 @@ from rakaia.inputs.pixel import (
     marker_correlation_children,
     reset_pixel_histogram,
     canvas_aspect_ratio_from_layout,
-    highlight_blend_in_panel_table)
+    highlight_blend_in_panel_table,
+    canvas_zoom_used)
 from rakaia.parsers.pixel import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -245,3 +246,9 @@ def test_panel_table_restyling():
     assert isinstance(styles_3, list)
     assert len(styles_3) == 3
     assert all('Channel Name' in con_style['if']['filter_query'] for con_style in styles_3)
+
+def test_canvas_zoom_used():
+    assert canvas_zoom_used({'xaxis.range[0]': 597.512350562311, 'xaxis.range[1]': 767.7478344332787,
+            'yaxis.range[0]': 419.1645161290323, 'yaxis.range[1]': 309.7838709677419})
+    assert not canvas_zoom_used({'layout': {'xaxis': {"range": [0, 1000]}, 'yaxis': {"range": [2500, 0]}}})
+    assert not canvas_zoom_used(None)

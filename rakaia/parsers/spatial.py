@@ -618,15 +618,15 @@ def trim_neg_val(val):
     """
     return 0.1 if val < 0 else val
 
-def xenium_coords_to_wsi_from_zoom(bounds: dict,
+def canvas_coords_to_wsi_from_zoom(bounds: dict,
                                    adata: Union[ad.AnnData, str],
                                    transformation_matrix: Union[np.ndarray, str],
                                    scaling_factor: float=0.21):
     """
-    Convert a series of zoom coordinates from 10X Xenium to a matched WSI (i.e. H & E).
+    Convert a series of zoom coordinates to a matched WSI (i.e. H & E) using a transformation matrix.
     Assumes that an affine transformation matrix with the last row being `[0 0 1]` is provided,
     and that the pixel coordinates for the original hires image are in the `spatial`
-    `obsm` slot. Additionally requires a Xenium scaling factor which by default is given at the 0 series level
+    `obsm` slot. Additionally requires a specific scaling factor which by default is given at the 0 series level
     described here: https://kb.10xgenomics.com/hc/en-us/articles/11636252598925-What-are-the-Xenium-image-scale-factors
     Returns a string of comma separated values: x_min, y_min, height, width
     """

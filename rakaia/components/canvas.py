@@ -300,7 +300,7 @@ class CanvasImage:
             fig.update_layout(hovermode="x")
 
         fig = go.Figure(fig)
-        fig.update_layout(newshape=dict(line=dict(color="white")))
+        fig.update_layout(newshape={"line": {'color': 'white'}})
 
         # set how far in from the lefthand corner the scale bar and colour legends should be
         # higher values mean closer to the centre
@@ -451,7 +451,7 @@ class CanvasImage:
         :return: `go.Figure` object or dictionary representing the object with the margin and grid line layout applied
         """
         fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False,
-                          newshape=dict(line=dict(color="white")),
+                          newshape={"line": {'color': 'white'}},
                           xaxis=XAxis(showticklabels=False, domain=[0, 1]),
                           yaxis=YAxis(showticklabels=False, domain=[0, 1]),
                           margin=default_canvas_margins())
@@ -568,7 +568,7 @@ class CanvasLayout:
             proportion = float(proportion / pixel_ratio)
         except ZeroDivisionError: pass
         fig = go.Figure(self.figure)
-        fig.update_layout(newshape=dict(line=dict(color="white")))
+        fig.update_layout(newshape={"line": {'color': 'white'}})
         # default length is 0.1 (10% of the canvas), but want to make adjustable
         # set the x0 and x1 depending on if the bar is inverted or not
         x_0 = x_axis_placement if not invert_annot else (x_axis_placement - proportion)
@@ -609,7 +609,7 @@ class CanvasLayout:
             `go.Figure` object or dictionary representing the object with the canvas scalebar added
         """
         fig = go.Figure(self.figure)
-        fig.update_layout(newshape=dict(line=dict(color="white")))
+        fig.update_layout(newshape={"line": {'color': 'white'}})
         if legend_text != '':
             fig.add_annotation(text=legend_text, font={"size": legend_size + 1}, xref='paper',
                                    yref='paper',
@@ -813,7 +813,7 @@ class CanvasLayout:
                 index = self.figure['layout']['annotations'].index(annotations)
                 self.figure['layout']['annotations'][index]['text'] = scale_text
         fig = go.Figure(self.figure)
-        fig.update_layout(newshape=dict(line=dict(color="white")))
+        fig.update_layout(newshape={"line": {'color': 'white'}})
         return fig.to_dict()
 
     def clear_improper_shapes(self) -> Union[go.Figure, dict]:
@@ -925,7 +925,7 @@ class CanvasLayout:
         fig['layout']['annotations'] = None
         fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),
                           yaxis=YAxis(showticklabels=False, range=[new_y_high, new_y_low]))
-        fig.update_layout(newshape=dict(line=dict(color="white")))
+        fig.update_layout(newshape={"line": {'color': 'white'}})
         # cur_graph['layout']['xaxis']['domain'] = [0, 1]
         # cur_graph['layout']['dragmode'] = "zoom"
         fig['layout']['shapes'] = shapes

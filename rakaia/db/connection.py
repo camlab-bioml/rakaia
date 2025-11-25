@@ -5,8 +5,8 @@ from pymongo.mongo_client import MongoClient
 from pymongo.server_api import ServerApi
 from pymongo.collection import Collection
 from pymongo.errors import ConfigurationError
-from rakaia.utils.db import format_blend_config_document_for_insert
 import certifi
+from rakaia.utils.db import format_blend_config_document_for_insert
 
 class AtlasDatabaseConnection:
     """

@@ -295,7 +295,7 @@ class FullScreenCanvas:
             fig = go.Figure(self.canvas)
             fig.update_layout(dragmode='pan')
             fig.update_layout(xaxis_showgrid=False, yaxis_showgrid=False, xaxis=XAxis(showticklabels=False),
-                              yaxis=YAxis(showticklabels=False), margin=dict(l=0, r=0, b=0, t=0, pad=0))
+                              yaxis=YAxis(showticklabels=False), margin={"l": 0, "r": 0, "b": 0, "t": 0, "pad": 0})
             return fig
         return self.canvas
 

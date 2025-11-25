@@ -12,8 +12,8 @@ import dash
 import tifffile
 import numpy as np
 from dash import dcc
-import pandas as pd
 from dash.exceptions import PreventUpdate
+import pandas as pd
 from rakaia.inputs.pixel import set_roi_identifier_from_length, is_scalebar_annot
 from rakaia.io.session import create_download_dir
 from rakaia.utils.object import (

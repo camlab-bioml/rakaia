@@ -18,6 +18,8 @@ from rakaia.io.session import SessionTheme
 from rakaia.utils.pixel import split_string_at_pattern, get_region_dim_from_roi_dictionary
 from rakaia.utils.object import convert_mask_to_object_boundary
 
+ZOOM_KEYS = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
+
 def default_canvas_margins() -> dict:
     """
     Define the default margins for the canvas `go.Figure` as a dictionary
@@ -458,3 +460,9 @@ def highlight_blend_in_panel_table(cur_channels: Union[list, None]=None,
     return [{"if": {"filter_query": f"{{{col_identifier}}} = '{channel}'"},
             "backgroundColor": f"{highlight_colour}"}
         for channel in cur_channels]
+
+def canvas_zoom_used(graph_layout: Union[dict, list, None]=None):
+    """
+    Check if the canvas component has a zoom layout event applied
+    """
+    return graph_layout is not None and all([elem in graph_layout for elem in ZOOM_KEYS])
