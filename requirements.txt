@@ -43,7 +43,7 @@ Flask-Caching==2.0.2
 Flask-Cors==6.0.0
 Flask-Dance==7.0.0
 Flask-HTTPAuth==4.8.0
-fonttools==4.43.0
+fonttools==4.61.0
 freeport==0.1.15
 GEOparse==2.0.4
 glasbey==0.3.0
