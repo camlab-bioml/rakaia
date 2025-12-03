@@ -11,7 +11,8 @@ from rakaia.register.process import (
     dzi_tiles_from_image_path,
     update_wsi_hash,
     wsi_from_local_path,
-    match_wsi_name_to_transformation_matrix)
+    match_wsi_name_to_transformation_matrix,
+    transformation_selection_in_cache)
 
 def test_parse_wsi_path(get_current_dir):
     files = wsi_from_local_path(os.path.join(get_current_dir, 'wsi'))
@@ -84,6 +85,13 @@ def test_generate_dzi_tiles(get_current_dir):
                                   download_dir)
 
         assert not os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
+
+def test_transform_name_in_cache():
+    assert not transformation_selection_in_cache(None, None)
+    assert not transformation_selection_in_cache(None ,"transform_1")
+    assert not transformation_selection_in_cache({"transform": np.ones(100)}, None)
+    assert transformation_selection_in_cache({"transform": np.ones(100)}, "transform") is not None
+    assert not transformation_selection_in_cache({"transform": np.ones(100)}, "transform_1")
 
 
 def test_name_match_wsi_transform():

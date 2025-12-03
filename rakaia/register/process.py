@@ -61,6 +61,16 @@ def dzi_tiles_from_image_path(image_path: Union[Path, str],
                      suffix=".jpg", tile_size=256, overlap=1)
     except pyvips.Error: pass
 
+def transformation_selection_in_cache(transform_cache: Union[dict, None]=None,
+                                      transform_selection: Union[str, None]=None):
+    """
+    Check if a dropdown WSI transformation matrix name is present in the cache. Additionally,
+    checks if either the cache or the selection exist
+    """
+    if None not in (transform_cache, transform_selection) and transform_selection in transform_cache:
+        return transform_cache[transform_selection]
+    return None
+
 def match_wsi_name_to_transformation_matrix(wsi_name: str, transform_options: Union[list, None]=None):
     """
     Search for a name match among the WSI transformation dropdown options for the currently selected WSI.

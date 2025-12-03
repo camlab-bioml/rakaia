@@ -103,6 +103,21 @@ class AnnotationList:
         """
         return self.annotations
 
+def check_for_old_filter_label(filter_vals: Union[list, bool, None]):
+    """
+    Check for the old filter label(s) that used `refresh` in the label, and change to the updated version
+    """
+    if isinstance(filter_vals, list):
+        new_vals = []
+        for filter_val in filter_vals:
+            if 'refresh' in filter_val:
+                new_vals.append(' Apply filter')
+            else:
+                new_vals.append(filter_val)
+        return new_vals[0:1] if len(new_vals) > 0 else new_vals
+    return filter_vals
+
+
 def parse_global_filter_values_from_json(config_dict):
     """
     parse the global filter values from a config JSON
@@ -110,7 +125,7 @@ def parse_global_filter_values_from_json(config_dict):
     global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma = \
         dash.no_update, dash.no_update, dash.no_update, dash.no_update
     if 'filter' in config_dict and all([elem in config_dict['filter'].keys() for elem in GLOBAL_FILTER_KEYS]):
-        global_apply_filter = config_dict['filter']['global_apply_filter']
+        global_apply_filter = check_for_old_filter_label(config_dict['filter']['global_apply_filter'])
         global_filter_type = config_dict['filter']['global_filter_type']
         global_filter_val = config_dict['filter']['global_filter_val']
         global_filter_sigma = config_dict['filter']['global_filter_sigma']
@@ -276,7 +291,7 @@ def no_json_db_updates(error_config: dict=None):
         dash.no_update, dash.no_update, dash.no_update, None, None, dash.no_update, dash.no_update, \
         dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
 
-def disable_gallery_by_roi(datasets: Union[list, None]=None):
+def disable_gallery_by_roi(datasets: Union[list, str, None]=None):
     """
     Toggle if the channel gallery should be searchable by ROI depending on how many datasets are currently imported
     """
