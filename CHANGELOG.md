@@ -7,12 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.26.0] - 2025-12-03
+## [0.26.0] - 2025-12-04
 
 ### Added
 
 - Current blend channels highlighted in panel table #144
 - Ability to upload and choose from multiple WSI transformation matrices #145
+- Expand WSI file extensions accepted: jpg, jpeg
 
 ### Changed
 

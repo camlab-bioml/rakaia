@@ -10,7 +10,8 @@ import numpy as np
 
 from rakaia.io.session import create_download_dir
 
-WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf', 'ndpi', 'scn', 'TIF', 'TIFF']
+WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf', 'ndpi', 'scn', 'TIF',
+                       'TIFF', 'jpg', 'jpeg', 'JPG', 'JPEG']
 
 def wsi_from_local_path(path: str):
     """
