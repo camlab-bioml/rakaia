@@ -10,6 +10,7 @@ import sys ; sys.setrecursionlimit(sys.getrecursionlimit() * 5)
 
 with open('../requirements.txt') as f:
     required = f.read().splitlines()
+    required = [package for package in required if '#' not in package]
 
 keep_capital = ['Pillow', 'Cython', 'OpenSSL', 'Flask-HTTPAuth', 'PyWavelets']
 
