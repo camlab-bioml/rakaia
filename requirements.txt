@@ -136,7 +136,6 @@ tenacity==8.2.2
 texttable==1.6.7
 threadpoolctl==3.1.0
 tifffile==2023.8.12
-toml==0.10.2
 tomli==2.0.1
 tqdm==4.66.3
 trio-websocket==0.10.2
@@ -145,7 +144,7 @@ typing_extensions==4.12.0
 tzdata==2023.3
 umap-learn==0.5.4
 urllib3-secure-extra==0.1.0
-urllib3==2.5.0
+urllib3==2.6.0
 uv==0.9.15
 waitress==3.0.1
 wheel==0.38.4
