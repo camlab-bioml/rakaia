@@ -50,7 +50,7 @@ def get_current_or_default_filter_apply(apply_channel_filter: Union[list, bool],
     if apply_channel_filter and None not in (filter_type, filter_val, filter_sigma):
         to_apply_filter = dash.no_update
     else:
-        to_apply_filter = [' Apply/refresh filter'] if None not in (filter_type, filter_val, filter_sigma) else []
+        to_apply_filter = [' Apply filter'] if None not in (filter_type, filter_val, filter_sigma) else []
     return to_apply_filter
 
 def get_current_or_default_filter_param(current_filter_param: Union[str, int, float]=None,
@@ -84,7 +84,7 @@ def get_current_default_params_with_preset(filter_type: str= "median", filter_va
     """
     Return the default blend parameters (color and filter) from the current values when using a preset
     """
-    to_apply_filter = [' Apply/refresh filter'] if None not in (filter_type, filter_val) else []
+    to_apply_filter = [' Apply filter'] if None not in (filter_type, filter_val) else []
     filter_type_return = filter_type if filter_type is not None else "median"
     filter_val_return = filter_val if filter_val is not None else 3
     filter_sigma_return = filter_sigma if filter_sigma is not None else 1.0

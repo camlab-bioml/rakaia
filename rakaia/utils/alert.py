@@ -157,7 +157,11 @@ class ToolTips(BaseModel):
                                     "Disables the channel gallery and in-app quantification. Improves speed when single ROIs >2-3GB.",
                       "subset-umap": "Set the maximum number of UMAP points to render. Smaller values increase the UMAP"
                                      " speed, but also increase the chance of missing categories and/or mismatch in the true number of objects vs. ones that are visible. "
-                                     "For best performance, it's recommended to render <~100,000 UMAP objects; if left blank, all quantified points are rendered."}
+                                     "For best performance, it's recommended to render <~100,000 UMAP objects; if left blank, all quantified points are rendered.",
+                      "wsi-transform": "Select an affine transformation matrix to map the canvas image to the current WSI;"
+                                       " if selected, zooming and panning on the blend canvas will apply transformed coordinates to the WSI viewer. "
+                                       "Imported matrices are tagged by their import filename; matched names between image and transformation files allow "
+                                       "auto-selection on WSI change."}
 
 
 class PanelMismatchError(Exception):

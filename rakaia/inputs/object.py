@@ -348,7 +348,7 @@ def channel_expression_from_interactive_subsetting(quantification_dict: Union[di
     """
     if quantification_dict is not None and len(quantification_dict) > 0:
         frame = pd.DataFrame.from_records(quantification_dict)
-        # use a umap overlay to group the heatmap only if it's categorical
+        # use the umap overlay to group the heatmap only if it's categorical
         overlay_use = {umap_overlay: frame[umap_overlay]} if umap_overlay and \
                 (1 < len(frame[umap_overlay].value_counts()) <= categorical_size_limit) else None
         # IMP: perform category sub-setting before removing columns

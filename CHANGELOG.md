@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2025-12-04
+
+### Added
+
+- Current blend channels highlighted in panel table #144
+- Ability to upload and choose from multiple WSI transformation matrices #145
+- Expand WSI file extensions accepted: jpg, jpeg
+
+### Changed
+
+- zarr parsing now accepts parent directory of multiple `zarr` subdirectories
+- increase bottom margins in channel and dataset gallery
+- Change toggle label for filters #143
+- WSI dropdown now doesn't use filetype extension, just stem base name
+
+### Fixed
+
+- Modal popup warning on quantification format error
+- Better gallery proportions for all ROIs #146
+- Don't reset panel table on subsequent uploads #147
+- Handle old global filter label, migration to new label #149
+
 ## [0.25.0] - 2025-11-11
 
 ### Added

@@ -17,12 +17,14 @@ import plotly.graph_objs as go
 from natsort import natsorted, ns
 import shortuuid
 from rakaia.inputs.pixel import (
+    ZOOM_KEYS,
     wrap_canvas_in_loading_screen_for_large_images,
     invert_annotations_figure,
     set_range_slider_tick_markers,
     canvas_legend_text,
     set_x_axis_placement_of_scalebar, update_canvas_filename,
-    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram, set_annotation_layout)
+    set_canvas_viewport, marker_correlation_children, reset_pixel_histogram, set_annotation_layout,
+    highlight_blend_in_panel_table, canvas_zoom_used)
 from rakaia.io.annotation import (
     is_valid_shapes_upload,
     write_canvas_shapes_to_json)
@@ -35,8 +37,9 @@ from rakaia.parsers.pixel import (
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
-    xenium_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser
-from rakaia.register.process import update_coregister_hash, wsi_from_local_path
+    canvas_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
+from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
+    transformation_selection_in_cache
 from rakaia.utils.cluster import cluster_assignments_from_config
 
 from rakaia.utils.decorator import (
@@ -137,7 +140,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     dash_app.config.suppress_callback_exceptions = True
     DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
     ALERT = AlertMessage()
-    ZOOM_KEYS = ['xaxis.range[1]', 'xaxis.range[0]', 'yaxis.range[1]', 'yaxis.range[0]']
     OVERWRITE = app_config['serverside_overwrite']
 
     @du.callback(Output('uploads', 'data'),
@@ -177,8 +179,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def get_session_uploads_from_local_path(path, clicks, cur_session, error_config, sesh_id, mask_uploads):
         if path and clicks > 0:
             error_config = {"error": None} if error_config is None else error_config
-            if is_zarr_store(path) and sesh_id:
-                try: return ZarrSDParser(path, str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session, mask_uploads).get_files()
+            # pass either the parent directory or subdirectories depending on how any zarr stores are found
+            if (is_zarr_store(path) or is_parent_directory_of_zarr_store(path)) and sesh_id:
+                try: return ZarrSDParser(zarr_parent_parse(path), str(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()))), cur_session, mask_uploads).get_files()
                   # show an error on zarr reading as there can be version incompatibilities with raster, anndata, etc.
                 except Exception as e: return dash.no_update, {'error': str(e)}, dash.no_update, dash.no_update, dash.no_update, dash.no_update
             # for now, parsing a steinbock directory doesn't take into account any previous session uploads
@@ -1125,13 +1128,25 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("imc-panel-editable", "columns"),
         Output("imc-panel-editable", "data"),
-        Input('uploaded_dict_template', 'data'))
-    def populate_metadata_table(upload_template):
-        if upload_template is not None and upload_template['metadata'] is not None:
+        Input('uploaded_dict_template', 'data'),
+        State("imc-panel-editable", "data"))
+    def populate_metadata_table(upload_template, cur_panel):
+        # only set here once on data upload; subsequent uploads assume matched panel!
+        if upload_template is not None and upload_template['metadata'] is not None and cur_panel is None:
             try: return [{'id': p, 'name': p, 'editable': make_metadata_column_editable(p)} for
                 p in upload_template['metadata'].keys()], pd.DataFrame(upload_template['metadata']).to_dict(orient='records')
             except ValueError: raise PreventUpdate
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("imc-panel-editable", "style_data_conditional"),
+        Input('image_layers', 'value'),
+        prevent_initial_call=True)
+    def populate_metadata_table(cur_channels):
+        """
+        Highlight the channels in the current blend in the panel table with row styling
+        """
+        return highlight_blend_in_panel_table(cur_channels)
 
     @dash_app.callback(
         Input("imc-panel-editable", "data"),
@@ -1691,7 +1706,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('window_config', 'data'),
                        prevent_initial_call=True)
     def update_bound_display(cur_graph, cur_graph_layout):
-        if None not in (cur_graph, cur_graph_layout) and all([elem in cur_graph_layout for elem in ZOOM_KEYS]):
+        if None not in (cur_graph, cur_graph_layout) and canvas_zoom_used(cur_graph_layout):
             # only update if these keys are used for drag or pan to set custom coordinates
             return bounds_text(*high_low_values_from_zoom_layout(cur_graph_layout))
         # if the zoom is reset to the default, clear the bound window
@@ -1774,7 +1789,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         # TODO: this logic still blanks out annotation if shapes exist on the canvas but zoom is switched to but not used
         if None not in (cur_graph_layout, data_selection, current_blend) and len(current_blend) > 0:
-            if all([elem in cur_graph_layout for elem in ZOOM_KEYS]) or ('shapes' in cur_graph_layout and
+            if canvas_zoom_used(cur_graph_layout) or ('shapes' in cur_graph_layout and
             len(cur_graph_layout['shapes']) > 0) or layout_has_modified_shape(cur_graph_layout): return False
             return True
         return True
@@ -2172,7 +2187,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        prevent_initial_call=False)
     def update_coregister_hash_from_uploads(transfer_upload, cur_hash, trigger_local, local_wsi):
         transfer = wsi_from_local_path(local_wsi) if (ctx.triggered_id == "import-local-wsi" and local_wsi and trigger_local) else transfer_upload
-        return update_coregister_hash(cur_hash, transfer)
+        return update_wsi_hash(cur_hash, transfer)
 
     @dash_app.callback(Output('coregister_options', 'options'),
                        Input('coregister_hash', 'data'),
@@ -2187,21 +2202,24 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('coregister_options', 'value'),
                        Output('openseadragon-container', 'hidden'),
+                       Output('wsi_transform_options', 'value'),
                        Input('coregister_options', 'value'),
                        State('coregister_hash', 'data'),
                        State('session_id_internal', 'data'),
                        State('session_alert_config', 'data'),
+                       State('wsi_transform_options', 'options'),
                        prevent_initial_call=False)
-    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config):
+    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config, transform_options):
         """
-        Compute dzi tiles for the osd wsi viewer when a selection is made
+        Compute dzi tiles for the osd wsi viewer when a selection is made. Additionally, attempt to
+        find a matched WSI transformation matrix from the dropdown menu based on WSI name overlap.
         """
         if reg_select and cur_hash and sesh_id and reg_select in cur_hash:
             try:
                 from rakaia.register.process import dzi_tiles_from_image_path
                 dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                return True, dash.no_update, dash.no_update, False
-            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True
+                return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options)
+            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2211,18 +2229,20 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('dataset-delimiter', 'value'),
         State('data-collection', 'value'),
         State('coregister_options', 'value'),
-        State('wsi-transformation-matrix', 'data'),
+        State('wsi-transformation-matrix-cache', 'data'),
         State('wsi-scaling-factor', 'value'),
+        State('wsi_transform_options', 'value'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform, wsi_scale):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform_cache, wsi_scale, transform_selection):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
-        Currently only works for Visium (V1, V2, HD) with tissue positions in the `spatial` `obsm` slot
+        Currently only compatible with 10x Genomics Visium, Xenium, Visium HD
         """
-        if graph_layout and wsi and data_select and session_config and all([elem in graph_layout for elem in ZOOM_KEYS]):
-            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, transform)
-            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if not transform else (
-                xenium_coords_to_wsi_from_zoom(graph_layout, upload, transform, wsi_scale))
+        if graph_layout and wsi and data_select and session_config and canvas_zoom_used(graph_layout):
+            matrix_transform = transformation_selection_in_cache(transform_cache, transform_selection)
+            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
+            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if matrix_transform is None else (
+                canvas_coords_to_wsi_from_zoom(graph_layout, upload, matrix_transform, wsi_scale))
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2239,11 +2259,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                  id='upload-transformation-coordinates')
     def upload_wsi_transformation_matrix(status: du.UploadStatus):
         """
-        Upload a metadata panel separate from the auto-generated metadata panel. This must be parsed against the existing
-        datasets to ensure that it matches the number of channels
+        Upload one or multiple transformation CSVs for WSI alignment to the OSD viewer
         """
         files = DashUploaderFileReader(status).return_filenames()
-        return str(files[0]) if files else dash.no_update
+        return files if files else dash.no_update
+
+    @dash_app.callback(
+        Output('wsi-transformation-matrix-cache', 'data'),
+        Output('wsi_transform_options', 'options'),
+        Input('wsi-transformation-matrix', 'data'),
+        State('wsi-transformation-matrix-cache', 'data'),
+        State('session_id_internal', 'data'))
+    def cache_wsi_matrices(transform_upload, cur_transform_cache, sesh_id):
+        if transform_upload and sesh_id:
+            transform_options = update_wsi_hash(cur_transform_cache, transform_upload, True)
+            return SessionServerside(transform_options, key=f"wsi_transformation_cache_{sesh_id}",
+                                     use_unique_key=OVERWRITE), list(transform_options.keys())
+        raise PreventUpdate
 
     @du.callback(Output('canvas-shapes-upload', 'data'),
                  id='upload-canvas-shapes')

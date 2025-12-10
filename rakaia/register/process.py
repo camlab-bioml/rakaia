@@ -5,9 +5,13 @@ from typing import Union
 import shutil
 from pathlib import Path
 import dash
+import pandas as pd
+import numpy as np
+
 from rakaia.io.session import create_download_dir
 
-WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf', 'ndpi', 'scn', 'TIF', 'TIFF']
+WSI_FILE_EXTENSIONS = ['tif', 'tiff', 'svs', 'btf', 'ndpi', 'scn', 'TIF',
+                       'TIFF', 'jpg', 'jpeg', 'JPG', 'JPEG']
 
 def wsi_from_local_path(path: str):
     """
@@ -21,17 +25,21 @@ def wsi_from_local_path(path: str):
                 for ext in WSI_FILE_EXTENSIONS)]))
     return None
 
-def update_coregister_hash(cur_hash: Union[dict, None],
-                           new_upload: Union[str, Path, list, None]=None):
+def update_wsi_hash(cur_hash: Union[dict, None],
+                    new_upload: Union[str, Path, list, None]=None,
+                    read_as_array: bool=False):
     """
-    Update the co-register hash with new file upload
+    Update a dictionary for WSI uploads (either WSI images or transformation matrices in CSV format).
     """
     uploads = [new_upload] if isinstance(new_upload, str) else new_upload
     cur_hash = cur_hash if cur_hash is not None else {}
     if uploads:
         for upload in uploads:
             if upload and os.path.isfile(upload):
-                cur_hash[os.path.basename(upload)] = upload
+                # ignore any extra extensions such as .ome.tiff
+                wsi_identifier = str(Path(upload).stem).split(".")[0]
+                cur_hash[wsi_identifier] = upload if not read_as_array else (
+                    np.array(pd.read_csv(upload, header=None)))
         return cur_hash if cur_hash else dash.no_update
     return dash.no_update
 
@@ -53,3 +61,26 @@ def dzi_tiles_from_image_path(image_path: Union[Path, str],
         image.dzsave(os.path.join(os.path.join(dest_dir, static_folder_prefix)),
                      suffix=".jpg", tile_size=256, overlap=1)
     except pyvips.Error: pass
+
+def transformation_selection_in_cache(transform_cache: Union[dict, None]=None,
+                                      transform_selection: Union[str, None]=None):
+    """
+    Check if a dropdown WSI transformation matrix name is present in the cache. Additionally,
+    checks if either the cache or the selection exist
+    """
+    if None not in (transform_cache, transform_selection) and transform_selection in transform_cache:
+        return transform_cache[transform_selection]
+    return None
+
+def match_wsi_name_to_transformation_matrix(wsi_name: str, transform_options: Union[list, None]=None):
+    """
+    Search for a name match among the WSI transformation dropdown options for the currently selected WSI.
+    Assumes that the WSI file name is in the imported transformation name, or partial overlap (i.e.
+    the entire WSI base name is in the transformation name).
+    """
+    if wsi_name and transform_options:
+        for transform in transform_options:
+            if str(wsi_name) in str(transform):
+                return str(transform)
+        return None
+    return None

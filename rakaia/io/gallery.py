@@ -243,6 +243,8 @@ def tile_greyscale_conversion(tile_array: np.array,
 # IMP: specifying n_clicks on button addition can trigger an erroneous selection
 # https://github.com/facultyai/dash-bootstrap-components/issues/1047
 
+# set the enforceable height for a gallery tile ROI
+GALLERY_TILE_MAX_HEIGHT = "500px"
 
 def channel_tile_gallery_children(tiles: Union[dict, None],
                                   gradient: str="greyscale"):
@@ -270,13 +272,16 @@ def channel_tile_gallery_children(tiles: Union[dict, None],
                         dbc.Tooltip(f'Add {label} to canvas',
                         target={'type': 'gallery-channel', 'index': key})]),
                         dbc.CardImg(src=tile_greyscale_conversion(tile_image, use_greyscale),
-                        bottom=True)]), width=3))
+                        bottom=True, style={# "minHeight": f"{GALLERY_TILE_MAX_HEIGHT}",
+                                            "maxHeight": f"{GALLERY_TILE_MAX_HEIGHT}",
+                                            "width": "auto", "objectFit": "contain"}
+                        )]), width=3, style={"margin-bottom": "20px"}))
     return row_children
 
 
 def umap_gallery_children(tiles: Union[dict, None]):
     """
-    Generate the children for the umap image gallery for min distance plots from the `steinbock` pipeline
+    Generate the children for the UMAP image gallery for min distance plots from the `steinbock` pipeline
     """
     row_children = []
     tiles = tiles if tiles else {}
@@ -315,7 +320,7 @@ def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_
                     dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),
                     bottom=True, style=style,
                     className='align-self-center')]),
-                    width=col_width))
+                    width=col_width, style={"margin-bottom": "20px"}))
             roi_list.append(key)
     return row_children, roi_list
 
@@ -325,8 +330,8 @@ def channel_column_template(channel_name: str, channel_array: Union[np.array, np
     Set the HTML column template for a channel array to export in HTML format
     """
     chan_str = channel_array
-    # if channel is passed as base64 string, the data image dir is already provided
     data_dir = ""
+
     if not isinstance(channel_array, str):
         channel_array = Image.fromarray(resize_for_canvas(channel_array)).convert('RGB')
         buffered = BytesIO()
@@ -334,11 +339,19 @@ def channel_column_template(channel_name: str, channel_array: Union[np.array, np
         base64_channel = base64.b64encode(buffered.getvalue())
         chan_str = base64_channel.decode()
         data_dir = "data:image/png;base64, "
-    return f"<div class='column'>" \
-            f"<h3 id={channel_name} style='margin: 15px;' class='card-text'>{channel_name} </b>" \
-            f"<img style='max-width: 100%; max-height: 100%; min-width: 100%;" \
-             f"min-height: 100%;' src='{data_dir}{str(chan_str)}'>" \
-            "</div>"
+
+    return (
+        f"<div class='column' "
+        f"style='display:flex; flex-direction:column; align-items:center; "
+        f"justify-content:flex-start; padding:5px;'>"
+        f"<h3 id='{channel_name}' style='margin:5px 0;' class='card-text'>{channel_name}</h3>"
+        f"<img src='{data_dir}{chan_str}' "
+        f"style='max-height:{GALLERY_TILE_MAX_HEIGHT}; max-width:100%; "
+        f"height:auto; width:auto; object-fit:contain; margin-bottom:15px;'/>"
+
+        f"</div>"
+    )
+
 
 def gallery_export_template(dest_file: str, tiles: dict, num_cols: int=4):
     """

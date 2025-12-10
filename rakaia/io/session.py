@@ -32,7 +32,8 @@ class TabText(BaseModel):
                     "experiments. rakaia requires internal channel identifiers (stored under" \
                     " the channel name) that are used within rakaia sessions to identify individual biomarkers." \
                     " Channel labels may be edited under the final column of the metadata table; these " \
-                    "labels will be applied to the canvas and session inputs."
+                    "labels will be applied to the canvas and session inputs. \n" \
+                    "Channels in the current blend are highlighted by row."
     channel_tiles: str = "Each region is comprised of one or more images corresponding to the " \
                          "expression of a biomarker. Individual biomarker images, termed tiles, are visible in the " \
                          "channel gallery when an ROI is selected, and one or more biomarkers can be added to the canvas " \

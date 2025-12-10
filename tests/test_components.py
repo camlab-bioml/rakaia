@@ -31,7 +31,7 @@ def test_basic_canvas_image():
     show_each_channel_intensity = []
     raw_data_dict = canvas_layers
     aliases = {"channel_1": "first", "channel_2": "second", "channel_3": "third"}
-    global_apply_filter = [' Apply/refresh filter']
+    global_apply_filter = [' Apply filter']
     global_filter_type = "gaussian"
     global_filter_val = 5
     global_filter_sigma = 1

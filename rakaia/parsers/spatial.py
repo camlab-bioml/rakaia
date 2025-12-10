@@ -35,14 +35,37 @@ def is_zarr_store(local_dir: Union[Path, str]):
     Define if a provided directory is a zarr store
     """
     # Case 1: if the base directory has either of these files, say it is a zarr store
-    if (os.path.exists(os.path.join(local_dir, 'zmetadata')) or
+    if os.path.isdir(local_dir) and (os.path.exists(os.path.join(local_dir, 'zmetadata')) or
             os.path.exists(os.path.join(local_dir, '.zgroup'))):
         return True
-    # Case 2: search in any of the potential spatialdata sub-directories for the .zgroup file
-    if any(os.path.exists(os.path.join(local_dir, str_dir, '.zgroup')) for
+    # Case 2: search in any of the potential spatialdata subdirectories for the .zgroup file
+    if os.path.isdir(local_dir) and any(os.path.exists(os.path.join(local_dir, str_dir, '.zgroup')) for
            str_dir in ZarrSDKeys.dirs_include):
         return True
     return False
+
+def is_parent_directory_of_zarr_store(local_dir: Union[Path, str]):
+    """
+    Check if the directory passed is a parent directory for one or more zarr stores
+    """
+    if os.path.isdir(local_dir):
+        for sub_dir in Path(local_dir).iterdir():
+            if sub_dir.is_dir() and is_zarr_store(sub_dir):
+                return True
+    return False
+
+def zarr_parent_parse(local_dir: Union[Path, str]):
+    """
+    Parse a directory path for zarr stores. If the directory passed is a zarr store, return it.
+    Otherwise, check if the directory is the parent of any zarr stores in the subdirectory
+    """
+    if is_zarr_store(local_dir):
+        return [local_dir]
+    zarr_sub_paths = []
+    for sub_dir in Path(local_dir).iterdir():
+        if sub_dir.is_dir() and is_zarr_store(sub_dir):
+            zarr_sub_paths.append(str(sub_dir))
+    return zarr_sub_paths
 
 class ZarrSDParser:
     """
@@ -56,12 +79,13 @@ class ZarrSDParser:
 
     :return: None
     """
-    def __init__(self, zarr_path: Union[Path, str, None]=None,
+    def __init__(self, zarr_path: Union[Path, str, list, None]=None,
                  tmp_session_path: Union[Path, str, None]=None,
                  cur_session_uploads: Union[dict, None]=None,
                  cur_mask_uploads: Union[dict, None]=None):
 
-        self._zarr_path = str(Path(zarr_path).resolve())
+        self._zarr_path = [str(Path(sub_path).resolve()) for sub_path in zarr_path] if (
+            isinstance(zarr_path, list)) else [str(Path(zarr_path).resolve())]
         self._tmp_session_path = tmp_session_path
         # make the outputs match the `parse_steinbock_dir` output format/order
         self._image_paths = validate_session_upload_config(cur_session_uploads)
@@ -302,7 +326,8 @@ class ZarrSDParser:
         quantification, UMAP coordinates, and scaling JSON.
         """
         if self._zarr_path is not None:
-            self._parse(self._zarr_path)
+            for sub_path in self._zarr_path:
+                self._parse(sub_path)
         return (self._image_paths,) + tuple([self.truthy_no_update(val) for val in
                                              (self._error, self._mask_paths, self._quant,
                                               self._umap, self._scaling)])
@@ -593,15 +618,15 @@ def trim_neg_val(val):
     """
     return 0.1 if val < 0 else val
 
-def xenium_coords_to_wsi_from_zoom(bounds: dict,
+def canvas_coords_to_wsi_from_zoom(bounds: dict,
                                    adata: Union[ad.AnnData, str],
                                    transformation_matrix: Union[np.ndarray, str],
                                    scaling_factor: float=0.21):
     """
-    Convert a series of zoom coordinates from 10X Xenium to a matched WSI (i.e. H & E).
+    Convert a series of zoom coordinates to a matched WSI (i.e. H & E) using a transformation matrix.
     Assumes that an affine transformation matrix with the last row being `[0 0 1]` is provided,
     and that the pixel coordinates for the original hires image are in the `spatial`
-    `obsm` slot. Additionally requires a Xenium scaling factor which by default is given at the 0 series level
+    `obsm` slot. Additionally requires a specific scaling factor which by default is given at the 0 series level
     described here: https://kb.10xgenomics.com/hc/en-us/articles/11636252598925-What-are-the-Xenium-image-scale-factors
     Returns a string of comma separated values: x_min, y_min, height, width
     """

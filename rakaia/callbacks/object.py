@@ -13,10 +13,11 @@ from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
-
 from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap, umap_coordinates_from_gallery_click, is_steinbock_dir
 from rakaia.callbacks.triggers import set_annotation_indices_to_remove
-from rakaia.inputs.pixel import set_roi_identifier_from_length
+from rakaia.inputs.pixel import (
+    set_roi_identifier_from_length,
+    ZOOM_KEYS)
 from rakaia.io.gallery import umap_gallery_children, umap_pipeline_tiles
 from rakaia.parsers.object import (
     RestyleDataParser,
@@ -42,8 +43,8 @@ from rakaia.utils.object import (
 from rakaia.inputs.object import (
     channel_expression_from_interactive_subsetting,
     object_umap_plot,
-    umap_eligible_patch,
-    patch_umap_figure,
+    # umap_eligible_patch,
+    # patch_umap_figure,
     reset_custom_gate_slider)
 from rakaia.io.pdf import AnnotationPDFWriter
 from rakaia.io.annotation import AnnotationRegionWriter
@@ -153,14 +154,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if quantification_dict is not None and sesh_id:
             quantification_dict = pd.DataFrame.from_records(quantification_dict)
             umap_layout = {'xaxis.autorange': True, 'yaxis.autorange': True} if umap_layout is None else umap_layout
-            zoom_keys = ['xaxis.range[0]', 'xaxis.range[1]', 'yaxis.range[0]', 'yaxis.range[1]']
             if ctx.triggered_id in ['umap-plot']:
                 try: subtypes, keep = RestyleDataParser(restyle_data, quantification_dict,
                                     umap_col_selection, prev_categories).get_callback_structures()
                 except (TypeError, KeyError): subtypes, keep = None, None
             else: subtypes, keep = None, None
             try: fig, frame, out_cols = channel_expression_from_interactive_subsetting(quantification_dict, umap_layout, embeddings,
-                zoom_keys, ctx.triggered_id, True, umap_col_selection, subtypes, channels_to_display,
+                ZOOM_KEYS, ctx.triggered_id, True, umap_col_selection, subtypes, channels_to_display,
                 normalize=normalize_heatmap, subset_val=subset_heatmap, umap_overlay=umap_col_selection, transpose=transpose)
             except (BadRequest, IndexError):
                 raise PreventUpdate

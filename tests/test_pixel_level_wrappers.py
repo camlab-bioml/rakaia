@@ -14,7 +14,8 @@ from rakaia.callbacks.pixel_wrappers import (
     parse_steinbock_umap,
     umap_coordinates_from_gallery_click,
     parse_steinbock_scaling,
-    disable_gallery_by_roi)
+    disable_gallery_by_roi,
+    check_for_old_filter_label)
 from rakaia.io.session import SessionServerside
 
 def test_parse_steinbock_dir(get_current_dir):
@@ -167,3 +168,10 @@ def test_allow_disable_rois_in_channel_gallery():
     assert disable_gallery_by_roi('roi_1')
     assert disable_gallery_by_roi(['roi_1'])
     assert not disable_gallery_by_roi(['roi_1', 'roi_2'])
+
+def test_correct_old_filter_label():
+    assert not check_for_old_filter_label(False)
+    assert check_for_old_filter_label(True)
+    assert check_for_old_filter_label([' Apply/refresh filter']) == [' Apply filter']
+    assert check_for_old_filter_label([' Apply/refresh filter', ' Apply/refresh filter']) == [' Apply filter']
+    assert check_for_old_filter_label([]) == []

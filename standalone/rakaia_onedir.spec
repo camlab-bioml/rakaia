@@ -13,6 +13,7 @@ safe_name = f"rakaia_{COMPILING_PLATFORM}_{__version__}".replace(".", "_").repla
 
 with open('../requirements.txt') as f:
     required = f.read().splitlines()
+    required = [package for package in required if '#' not in package]
 
 keep_capital = ['Pillow', 'Cython', 'OpenSSL', 'Flask-HTTPAuth', 'PyWavelets']
 required = [elem.split("==")[0].replace("-", "_") for elem in required]

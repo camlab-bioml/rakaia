@@ -36,7 +36,7 @@ def test_basic_filter_parsers():
     assert get_current_channel_blend_params(blend_dict, "channel_2") == (None, None, None, None)
 
     assert isinstance(get_current_or_default_filter_apply(True, "median", 3, 1.0), dash._callback.NoUpdate)
-    assert get_current_or_default_filter_apply(False, "median", 3, 1.0) == [' Apply/refresh filter']
+    assert get_current_or_default_filter_apply(False, "median", 3, 1.0) == [' Apply filter']
 
     assert get_current_or_default_filter_param(3, 1) == 1
     assert isinstance(get_current_or_default_filter_param(3, 3), dash._callback.NoUpdate)

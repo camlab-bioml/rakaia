@@ -16,10 +16,10 @@ from rakaia.parsers.spatial import (
     spatial_selection_can_transfer_coordinates,
     visium_coords_to_wsi_from_zoom,
     get_visium_bin_scaling,
-    xenium_coords_to_wsi_from_zoom,
+    canvas_coords_to_wsi_from_zoom,
     is_zarr_store,
     ZarrSDParser,
-    anndata_obs_to_projection_frame)
+    anndata_obs_to_projection_frame, is_parent_directory_of_zarr_store, zarr_parent_parse)
 from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
@@ -128,13 +128,23 @@ def test_hd_visium_spot_coords_to_wsi(get_current_dir):
 def test_xenium_coords_to_wsi(get_current_dir):
     bounds = {'xaxis.range[0]': 36.7, 'xaxis.range[1]': 281.0,
               'yaxis.range[0]': 31.8, 'yaxis.range[1]': 147.1}
-    string_coords = xenium_coords_to_wsi_from_zoom(bounds,
-                os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad'),
-                os.path.join(get_current_dir, 'melanoma_xenium_transformation.csv'))
+    string_coords = canvas_coords_to_wsi_from_zoom(bounds,
+                                                   os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad'),
+                                                   os.path.join(get_current_dir, 'melanoma_xenium_transformation.csv'))
     x, y, width, height = tuple([float(elem) for elem in string_coords.split(",")])
     assert y > x
     assert height > width
 
+def test_parse_zarr_top_level(get_current_dir):
+    assert is_parent_directory_of_zarr_store(get_current_dir)
+    assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'wsi/'))
+    assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'query.mcd'))
+
+    all_paths = zarr_parent_parse(os.path.join(get_current_dir, '/'))
+    assert all(str(sub_path).endswith('zarr') for sub_path in all_paths)
+    single_path = zarr_parent_parse(os.path.join(get_current_dir, 'subset_visium.zarr/'))
+    assert len(single_path) == 1
+    assert 'subset_visium.zarr' in single_path[0]
 
 def test_is_zarr_store(get_current_dir):
     assert not is_zarr_store(os.path.join(get_current_dir, 'wsi'))

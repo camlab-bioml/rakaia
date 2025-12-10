@@ -4,6 +4,7 @@ import plotly.graph_objs as go
 import pytest
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import html
+
 from rakaia.inputs.pixel import (
     render_default_annotation_canvas,
     wrap_canvas_in_loading_screen_for_large_images,
@@ -18,7 +19,9 @@ from rakaia.inputs.pixel import (
     set_canvas_viewport,
     marker_correlation_children,
     reset_pixel_histogram,
-    canvas_aspect_ratio_from_layout)
+    canvas_aspect_ratio_from_layout,
+    highlight_blend_in_panel_table,
+    canvas_zoom_used)
 from rakaia.parsers.pixel import create_new_blending_dict
 import dash_core_components as dcc
 from PIL import Image
@@ -236,3 +239,16 @@ def test_blank_reset_histogram():
     blank_hist = reset_pixel_histogram(True)
     assert blank_hist['layout']['margin'] == {'b': 15, 'l': 5, 'pad': 0, 'r': 5, 't': 20}
     assert not blank_hist['layout']['xaxis']['showticklabels']
+
+def test_panel_table_restyling():
+    assert not highlight_blend_in_panel_table(None)
+    styles_3 = highlight_blend_in_panel_table(['channel_1', 'channel_2', 'channel_last'])
+    assert isinstance(styles_3, list)
+    assert len(styles_3) == 3
+    assert all('Channel Name' in con_style['if']['filter_query'] for con_style in styles_3)
+
+def test_canvas_zoom_used():
+    assert canvas_zoom_used({'xaxis.range[0]': 597.512350562311, 'xaxis.range[1]': 767.7478344332787,
+            'yaxis.range[0]': 419.1645161290323, 'yaxis.range[1]': 309.7838709677419})
+    assert not canvas_zoom_used({'layout': {'xaxis': {"range": [0, 1000]}, 'yaxis': {"range": [2500, 0]}}})
+    assert not canvas_zoom_used(None)

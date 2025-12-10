@@ -94,24 +94,27 @@ instructions on installing for a specific OS.
 
 ### Installation troubleshooting
 
-#### ParmED
+#### Dependency error installation on macOS
 
-If installation of the [ParmEd](https://github.com/ParmEd/ParmEd) library fails (appears to be
-more prevalent on older versions of macOS), then users should try installing it from conda source:
+Depending on the user combination of macOS and Python
+version used, the following dependencies can experience installation
+errors from source:
+
+```commandline
+parmed==4.3.0
+pyarrow==21.0.0
+pyogrio==0.11.1
+pyvips==2.2.3
+```
+
+If any of these packages fails to install, the user
+should attempt an installation from conda and/or conda forge
+(example shown below with `parmed`) by uninstalling from pip
+and installing the specified version using `conda`:
 
 ```commandline
 pip uninstall parmed
-conda install -c conda-forge parmed=4.3.0
-```
-
-#### leidenalg
-
-If installation of the [leidenalg](https://github.com/vtraag/leidenalg) library fails (
-appears to happen on MacOS with Python 3.12+), then users should try installing it from conda source:
-
-```commandline
-pip uninstall leidenalg
-conda install -c conda-forge leidenalg=0.10.2
+conda install -c conda-forge parmed==4.3.0
 ```
 
 ### with Make
