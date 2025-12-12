@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.26.0] - 2025-12-12
+
+### Added
+
+- CLI script for headless additive blending of files using
+existing JSON output #150
+
 ## [0.26.0] - 2025-12-04
 
 ### Added
