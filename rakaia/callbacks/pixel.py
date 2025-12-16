@@ -157,11 +157,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output('session_id', 'children'),
         Output('session_id_internal', 'data'),
+        Output('uploaded_dict', 'data', allow_duplicate=True),
         Input('session_id_internal', 'data'),
+        State('uploaded_dict', 'data'),
         prevent_initial_call=False)
-    def set_session_id(internal_id):
-        session_id = internal_id if internal_id else str(uuid.uuid4())
-        return session_id, session_id
+    def set_session_id(internal_id, cur_image_dict):
+        """
+        Generate a unique session ID for the individual browser window. If one already exists (i.e. refresh),
+        use it to either overwrite server-side transformations, or maintain a persistent session
+        """
+        #TODO: potentially check here for persistent variables and data, and allow the user to keep or make a new session?
+        # IMP: server side data can be also persisted with `storage_type="session"` in `dcc.Store`
+        sesh_id = internal_id if internal_id else str(uuid.uuid4())
+        return sesh_id, sesh_id, SessionServerside(cur_image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE) if cur_image_dict is not None else dash.no_update
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -243,9 +251,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-delimiter', 'value'),
                        State('session_id_internal', 'data'),
                        State('always-single-marker-loading', 'value'),
+                       State('uploaded_dict_template', 'data'),
                        prevent_initial_call=True)
     def create_upload_dict_from_filepath_string(session_dict, current_blend, error_config, natsort, delimiter,
-                                                sesh_id, enforce_sm_lazy_load):
+                                                sesh_id, enforce_sm_lazy_load, cur_template):
         """
         Create session variables from the list of imported file paths
         Note that a message will be supplied if more than one type of file is passed
@@ -269,8 +278,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             except Exception as e:
                 error_config = add_warning_to_error_config(None, str(e))
                 return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config
-            return SessionServerside(fileparser.image_dict, key=f"upload_dict_{sesh_id}",
-                                     use_unique_key=OVERWRITE), session_dict, blend_return, columns, data, error_config
+            return SessionServerside(fileparser.image_dict, key=f"upload_dict_template_{sesh_id}",
+                    use_unique_key=OVERWRITE) if cur_template is None else dash.no_update, session_dict, blend_return, columns, data, error_config
         raise PreventUpdate
 
     @dash_app.callback(Output('data-collection', 'options'),
@@ -299,11 +308,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(Output('data-collection', 'value', allow_duplicate=True),
                        Input('data-collection', 'options'),
                        State('data-collection', 'value'),
+                       State('roi-selection-persistent', 'data'),
                        prevent_initial_call=True)
-    def check_for_roi_autoload(ses_options, cur_roi):
+    def check_for_roi_autoload_or_persistent(ses_options, cur_roi, roi_in_session):
         """
         Check if a single ROI has been loaded into the session, and load if so. Otherwise, do nothing
         """
+        # TODO: the persistent roi can be updated here
+        if roi_in_session and roi_in_session in ses_options: return roi_in_session
         return ses_options[0] if (ses_options and len(ses_options) == 1 and not cur_roi) else dash.no_update
 
     @dash_app.callback(Output('data-collection', 'options', allow_duplicate=True),
@@ -339,6 +351,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('cur_roi_dimensions', 'data'),
                        Output('roi-loaded', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
+                       Output('roi-selection-persistent', 'data'),
                        State('uploaded_dict_template', 'data'),
                        Input('data-collection', 'value'),
                        Input('alias-dict', 'data'),
@@ -352,9 +365,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_id_internal', 'data'),
                        State('session_alert_config', 'data'),
                        State('always-single-marker-loading', 'value'),
+                       State('uploaded_dict', 'data'),
                        prevent_initial_call=True)
     def create_dropdown_options(upload_template, data_selection, names, cur_chan_selection, session_config,
-                                sort_channels, enable_zoom, cur_dimensions, delimiter, refresh, sesh_id, error_config, always_sm_lazy):
+                                sort_channels, enable_zoom, cur_dimensions, delimiter, refresh, sesh_id, error_config, always_sm_lazy, cur_dict):
         """
         Update the image layers and dropdown options when a new ROI is selected.
         Additionally, check the dimension of the incoming ROI, and wrap the annotation canvas in a load screen
@@ -396,13 +410,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     channels_selected = set_current_channels(image_dict, data_selection, cur_chan_selection)
                     return (channel_dropdown_selection(channels_return, names), channels_selected, SessionServerside(
                         image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE), canvas_return,
-                        set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update, dash.no_update)
+                        set_roi_tooltip_based_on_length(data_selection, delimiter), dim_return, dash.no_update, dash.no_update, data_selection)
                 elif ctx.triggered_id in ["sort-channels-alpha", "alias-dict"] and names is not None:
                     return channel_dropdown_selection(channels_return, names), dash.no_update, dash.no_update, \
-                        dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
+                        dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, data_selection
                 raise PreventUpdate
             except Exception as e: return ([], [], dash.no_update, dash.no_update, dash.no_update, dash.no_update,
-                        dash.no_update, add_warning_to_error_config(error_config, str(e)))
+                        dash.no_update, add_warning_to_error_config(error_config, str(e))), data_selection
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'config'),
@@ -421,25 +435,30 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('channel-quantification-list', 'value'),
                        Output('baseline-channel-cor', 'options'),
                        Output('target-channel-cor', 'options'),
+                       Output('image_layers', 'value', allow_duplicate=True),
                        Input('image_layers', 'options'),
                        Input('alias-dict', 'data'),
                        State('channel-quantification-list', 'value'),
                        Input('quant-toggle-list', 'value'),
+                       State('chan-selection-persistent', 'data'),
                        prevent_initial_call=True)
-    def create_channel_options_for_quantification_correlation(channel_options,
-                                                              aliases, cur_selection, toggle_channels_quant):
+    def create_channel_options_for_quantification_correlation(channel_options, aliases, cur_selection, toggle_channels_quant, chan_persistent):
         """
         Create the dropdown options for the channels for quantification and marker correlation
         If channels are already selected, keep them and just update the labels
         """
+        # TODO: can check here for persistent channel blend?
         channel_list_options = [{'label': value, 'value': key} for key, value in aliases.items()] if aliases else []
-        channel_list_selected = list(aliases.keys()) if ctx.triggered_id == 'alias-dict' else cur_selection
+        channel_list_selected = list(aliases.keys()) if (ctx.triggered_id == 'alias-dict' and aliases) else cur_selection
+        blend_persistent = chan_persistent if (chan_persistent and channel_options and
+            all(elem in [val['value'] for val in channel_options] for elem in chan_persistent)) else dash.no_update
         if ctx.triggered_id == 'quant-toggle-list':
             channel_list_selected = [elem['value'] for elem in channel_list_options] if toggle_channels_quant else []
-        return limit_length_to_quantify(channel_list_options), channel_list_selected, channel_list_options, channel_list_options
+        return limit_length_to_quantify(channel_list_options), channel_list_selected, channel_list_options, channel_list_options, blend_persistent
 
     @dash_app.callback(Output('images_in_blend', 'options'),
                        Output('images_in_blend', 'value'),
+                       Output('chan-selection-persistent', 'data'),
                        Input('image_layers', 'value'),
                        Input('alias-dict', 'data'),
                        State('images_in_blend', 'value'),
@@ -453,7 +472,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if not all([elem in names.keys() for elem in chosen_for_blend]): raise PreventUpdate
             channel_auto_fill = dash.no_update
             if chosen_for_blend[-1] != cur_channel_mod: channel_auto_fill = chosen_for_blend[-1]
-            return [{'label': names[i], 'value': i} for i in chosen_for_blend], channel_auto_fill
+            return [{'label': names[i], 'value': i} for i in chosen_for_blend], channel_auto_fill, chosen_for_blend
         raise PreventUpdate
 
     @dash_app.callback(Input('session_config', 'data'),
@@ -574,11 +593,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('allow_autofill_col', 'data', allow_duplicate=True),
                        State('session_id_internal', 'data'),
                        State('allow_autofill_col', 'data'),
+                       State('uploaded_dict', 'data'),
                        prevent_initial_call=True)
     def update_blend_dict_on_channel_selection(add_to_layer, image_dict, current_blend_dict, data_selection,
                                                param_dict, rgb_layers, preset_selection, preset_dict,
                                                cur_image_in_mod_menu, autofill_channel_colours, session_dict,
-                                               spatial_spot_size, delimiter, sesh_id, allow_autofill):
+                                               spatial_spot_size, delimiter, sesh_id, allow_autofill, cur_dict):
         """
         Update the blend dictionary when a new channel is added to the multichannel selector
         """
@@ -1772,8 +1792,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Will arise if more labels are provided than there are channels, which will create blank key entries
         in the metadata list and alias dictionary
         """
-        if any([elem in ['', ' '] for elem in gene_aliases.keys()]) or any([elem['Channel Name'] in
-            ['', ' '] or elem['Channel Label'] in ['', ' '] for elem in metadata_editable]):
+        if (gene_aliases is not None and any([elem in ['', ' '] for elem in gene_aliases.keys()]) or
+                (metadata_editable and any([elem['Channel Name'] in ['', ' '] or elem['Channel Label'] in ['', ' '] for elem in metadata_editable]))):
             return add_warning_to_error_config(error_config, ALERT.warnings["metadata_format_error"])
         raise PreventUpdate
 
