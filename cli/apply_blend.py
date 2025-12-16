@@ -1,6 +1,6 @@
 """
 Use a headless version of rakaia file parsing and additive image blending to generate
-a series of blended tiffs from a list of filepaths (CLI) using an existing JSON blend parameter
+a series of blended images (tiff or png) from a list of filepaths (CLI) using an existing JSON blend parameter set
 """
 
 import argparse
@@ -65,9 +65,14 @@ def main(sysargs=sys.argv[1:]):
         # get the key representation of every dataset
         # use the initial params if .txt is used, as it is not lazy loaded
         use_lazy_load = False if str(file).endswith('.txt') else True
-        initial_parse = {key: value for key, value in FileParser([str(file)],
+        try:
+            initial_parse = {key: value for key, value in FileParser([str(file)],
                         lazy_load=use_lazy_load).image_dict.items() if key not in
                           ['metadata', 'metadata_columns']}
+        except TypeError:
+            print("\033[31m" + "ERROR: no files with accepted extensions (.mcd, .txt, .tiff, or .h5ad) "
+                               "were found. Please review the CLI inputs.")
+            sys.exit(1)
         for roi in list(initial_parse.keys()):
             try:
                 array_loaded = initial_parse if not use_lazy_load else (
@@ -103,5 +108,10 @@ def main(sysargs=sys.argv[1:]):
                                    "rakaia JSON output format, or for a different panel than the files to be processed. "
                                    "Please review the CLI inputs.")
                 sys.exit(1)
+            except TypeError:
+                print("\033[31m" + "Could not process the blend. Please double check that there is at least "
+                                   "one channel selected in the `config`[`blend`] slot of the params JSON.")
+                sys.exit(1)
+
 if __name__ == "__main__":
     main()
