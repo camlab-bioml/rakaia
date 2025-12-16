@@ -68,7 +68,7 @@ def set_data_selection_after_import(roi_options: Union[list, None]=None, cur_dat
         return cur_data_selection
     if roi_options:
         return roi_options[0]
-    return dash.no_update
+    return None
 
 def roi_from_anndata_file(uploads: Union[list, dict], data_selection: str, delimiter: str= "+++"):
     """

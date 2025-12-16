@@ -311,13 +311,15 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('set-mask-name', 'n_clicks'),
                        State('mask-dict', 'data'),
                        State('session_id_internal', 'data'),
+                       State('roi-selection-persistent', 'data'),
                        prevent_initial_call=True)
-    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, sesh_id):
+    def set_mask_dict_and_options(mask_uploads, chosen_mask_name, set_mask, cur_mask_dict, sesh_id, per_roi):
         # cases where the callback should occur: if the mask dict is longer than 1 and triggered by the dictionary
         # or, if there is a single mask and the trigger is setting the mask name
-        multi_upload = ctx.triggered_id == "mask-uploads" and len(mask_uploads) > 1
-        single_upload = ctx.triggered_id == 'set-mask-name' and len(mask_uploads) == 1
-        if multi_upload or single_upload and sesh_id:
+        multi_upload = ctx.triggered_id == "mask-uploads" and mask_uploads is not None and len(mask_uploads) > 1
+        single_upload = ctx.triggered_id == 'set-mask-name' and mask_uploads is not None and len(mask_uploads) == 1
+        already_in_session = None not in (cur_mask_dict, per_roi)
+        if (multi_upload or single_upload or already_in_session) and sesh_id:
             mask_dict, options = read_in_mask_array_from_filepath(mask_uploads, chosen_mask_name, set_mask,
             cur_mask_dict, unique_key_serverside=OVERWRITE, session_id=sesh_id)
             # if any of the names are longer than 40 characters, increase the height to make them visible
