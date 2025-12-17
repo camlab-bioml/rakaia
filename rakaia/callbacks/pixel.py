@@ -71,7 +71,10 @@ from rakaia.utils.session import (
     channel_dropdown_selection,
     sleep_on_small_roi,
     set_data_selection_after_import)
-from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
+from rakaia.components.canvas import (
+    CanvasImage,
+    CanvasLayout,
+    reset_graph_with_malformed_template)
 from rakaia.io.display import (
     RegionSummary,
     output_current_canvas_as_tiff,
@@ -158,6 +161,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('session_id', 'children'),
         Output('session_id_internal', 'data'),
         Output('uploaded_dict', 'data', allow_duplicate=True),
+        Output("persistent-alert-modal", "is_open"),
         Input('session_id_internal', 'data'),
         State('uploaded_dict', 'data'),
         prevent_initial_call=False)
@@ -169,7 +173,24 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         #TODO: potentially check here for persistent variables and data, and allow the user to keep or make a new session?
         # IMP: server side data can be also persisted with `storage_type="session"` in `dcc.Store`
         sesh_id = internal_id if internal_id else str(uuid.uuid4())
-        return sesh_id, sesh_id, SessionServerside(cur_image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE) if cur_image_dict is not None else dash.no_update
+        return (sesh_id, sesh_id, SessionServerside(cur_image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE)
+        if cur_image_dict is not None else dash.no_update, True if cur_image_dict is not None else False)
+
+    # TODO: even when using a key for the child div, this doesn't trigger a full re-render
+    # @dash_app.callback(
+    #     Output('rakaia-main', 'children'),
+    #     Input('trigger-fresh-session', 'n_clicks'),
+    #     prevent_initial_call=False)
+    # def refresh_cur_session(trigger_new_session):
+    #     """
+    #     Refresh the application session by re-rendering the entire layout, thereby resetting persistence.
+    #     """
+    #     if trigger_new_session:
+    #         config = app_config.copy()
+    #         config['persistence'] = False
+    #         print(config)
+    #         return register_layout_children(config, cache_dest)
+    #     raise PreventUpdate
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),

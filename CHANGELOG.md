@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.26.0] - 2025-12-12
+## [0.27.0] - 2025-12-16
+
+### Changed
+
+- Ability to retain a persistent session on page refresh #151
 
 ### Added
 

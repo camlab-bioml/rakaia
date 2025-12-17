@@ -1,6 +1,5 @@
 """Module containing the primary function to return the application layout
 as an `html.Div`"""
-
 from typing import Union
 from pathlib import Path
 from dash import dash_table
@@ -27,7 +26,7 @@ from rakaia.register.process import WSI_FILE_EXTENSIONS
 
 def register_app_layout(config: dict, cache_dest: Union[str, Path]):
     """
-    Define the application UI layout using user-defined CLI arguments
+    Define the UI layout children for the main application `Div`
     """
 
     # set the default colours for the swatches from the config input
@@ -35,12 +34,23 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
     DEFAULT_WIDGET_COLOUR = SessionTheme().widget_colour
     TOOLTIPS = ToolTips().tooltips
 
-    return html.Div([
+    return html.Div(id='rakaia-main', children=[
         dash_tour_component.DashTour(accentColor=DEFAULT_WIDGET_COLOUR,
             steps= DataImportTour().steps, isOpen=False, id="tour_component"),
         # this is the generic error modal that will pop up on specific errors return by the alert dict
         dbc.Modal(children=dbc.ModalBody([html.Div(id='alert-information', style={'whiteSpace': 'pre-line'})]),
                   id="alert-modal", size='xl'),
+        # this modal is for informing users of current session persistence, with the option to start new
+        dbc.Modal(children=dbc.ModalBody([
+        html.B(TOOLTIPS['persistent-session']),
+            html.Br(),
+            html.A(
+                dbc.Button("Start new session", id="trigger-fresh-session",
+                           className="mb-3", color="primary", n_clicks=0,
+                           style={"margin-top": "10px", "background-color": DEFAULT_WIDGET_COLOUR}), href="/rakaia/",
+                target="_blank"
+            ),
+        ]), id="persistent-alert-modal", size='xl'),
         # this modal is for the fullscreen view and does not belong in a nested tab
         dbc.Modal(children=[dbc.ModalHeader(),
             dbc.ModalBody
@@ -209,7 +219,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                         style={"margin-left": "10px", "margin-top": "15px"}),
                 html.A(f"v{__version__}", className="navbar-brand me-0 px-3", href="#")], style={"display": "flex"})],
             style={"margin-bottom": "7.5px", "display": "flex", "height": "40%"}),
-            # TODO: handle the persistent value prop here for the dropdown
             html.Div([dcc.Dropdown(id='data-collection', multi=False, options=[],
                 placeholder='Load an ROI into the canvas', style={'justifyContent': 'right', 'white-space':'initial',
                 'overflow-wrap': 'anywhere', 'textAlign': 'right'}, persistence=config['persistence'],
@@ -1067,7 +1076,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                         html.Div([html.Div([daq.ToggleSwitch(label='Apply mask', id='apply-mask',
                                             labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR,
                                             style={"margin-left": "20px", "margin-top": "15px", "textAlign": "center", "width": "50%"},
-                                            persistence=config['persistence'], persistence_type='local'),
+                                            persistence=config['persistence'], persistence_type='session'),
                                             dcc.Checklist(options=[' add boundary'], value=[' add boundary'],
                                             id="add-mask-boundary", style={"margin": "15px", "accent-color": DEFAULT_WIDGET_COLOUR},
                                             labelStyle={'display': 'flex', 'alignItems': 'center', "gap": "4px",
@@ -1905,8 +1914,8 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         # use a blank template for the lazy loading
         wrap_child_in_loading(dcc.Store(id="uploaded_dict_template"), wrap=config['use_loading']),
         wrap_child_in_loading(dcc.Store(id="session_config", storage_type="session"), wrap=config['use_loading']),
-        dcc.Store(id="window_config"),
-        dcc.Store(id="param_config"),
+        dcc.Store(id="window_config", storage_type="session"),
+        dcc.Store(id="param_config", storage_type="session"),
         dcc.Store(id="session_alert_config"),
         dcc.Store(id="blending_colours", storage_type="session"),
         dcc.Store(id="image_presets"),
@@ -1916,12 +1925,11 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id="image-metadata"),
         dcc.Store(id="canvas-layers", storage_type="session"),
         dcc.Store(id="alias-dict", storage_type="session"),
-        dcc.Store(id="static-session-var"),
+        dcc.Store(id="static-session-var", storage_type="session"),
         dcc.Store(id="session_config_quantification"),
         wrap_child_in_loading(dcc.Store(id="quantification-dict", storage_type="session"), wrap=config['use_loading']),
         dcc.Store(id="mask-dict", storage_type="session"),
         dcc.Store(id="mask-uploads", storage_type="session"),
-        dcc.Store(id="figure-cache"),
         dcc.Store(id="uploads"),
         dcc.Store(id="uploads_cluster"),
         dcc.Store(id="current_canvas_image"),
@@ -1933,16 +1941,16 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id="dataset-query-gallery-list"),
         dcc.Store(id="quantification-query-indices"),
         dcc.Store(id='cur-umap-subset-category-counts'),
-        dcc.Store(id='cur_roi_dimensions'),
+        dcc.Store(id='cur_roi_dimensions', storage_type="session"),
         dcc.Store(id='imported-annotations-csv'),
         dcc.Store(id='imported-cluster-frame'),
         dcc.Store(id='cluster-colour-assignments-dict', storage_type="session"),
         dcc.Store(id="database-connection"),
         dcc.Store(id="db-saved-configs"),
         dcc.Store(id="gating-dict", storage_type="session"),
-        dcc.Store(id="gating-cell-list", storage_type="session"),
+        dcc.Store(id="gating-cell-list"),
         # maintain a list of cell ids for each ROI from the quant query to subset the mask
-        dcc.Store(id='query-cell-id-lists', storage_type="session"),
+        dcc.Store(id='query-cell-id-lists'),
         dcc.Store(id='saved-blends'),
         dcc.Store(id='custom-metadata'),
         dcc.Store(id='image-prioritization-cor'),
@@ -1952,7 +1960,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id='allow_autofill_col', data=False),
         # use transfer for upload files to the hash, hash to store the filepaths
         dcc.Store(id='coregister-upload-transfer'),
-        dcc.Store(id='wsi-transformation-matrix'),
+        dcc.Store(id='wsi-transformation-matrix', storage_type="session"),
         dcc.Store(id='wsi-transformation-matrix-cache', storage_type="session"),
         dcc.Store(id='coregister_hash', storage_type="session"),
         dcc.Store(id='session_id_internal', data=None, storage_type="session"),
