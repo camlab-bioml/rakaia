@@ -163,8 +163,7 @@ class ToolTips(BaseModel):
                                        "Imported matrices are tagged by their import filename; matched names between image and transformation files allow "
                                        "auto-selection on WSI change.",
                       "persistent-session": "rakaia has detected a previous session, which is loaded by default. Click the button "
-               "below to initiate a new session in a new window. This current session "
-               "will be active until the tab is closed."}
+               "below to initiate a new session in the current window."}
 
 
 class PanelMismatchError(Exception):

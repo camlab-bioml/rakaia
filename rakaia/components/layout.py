@@ -47,8 +47,9 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
             html.A(
                 dbc.Button("Start new session", id="trigger-fresh-session",
                            className="mb-3", color="primary", n_clicks=0,
-                           style={"margin-top": "10px", "background-color": DEFAULT_WIDGET_COLOUR}), href="/rakaia/",
-                target="_blank"
+                           style={"margin-top": "10px", "background-color": DEFAULT_WIDGET_COLOUR}),
+                # unblock this to have rakaia open a new window session
+                #href="/rakaia/", target="_blank"
             ),
         ]), id="persistent-alert-modal", size='xl'),
         # this modal is for the fullscreen view and does not belong in a nested tab

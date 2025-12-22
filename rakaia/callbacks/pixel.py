@@ -176,21 +176,38 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return (sesh_id, sesh_id, SessionServerside(cur_image_dict, key=f"upload_dict_{sesh_id}", use_unique_key=OVERWRITE)
         if cur_image_dict is not None else dash.no_update, True if cur_image_dict is not None else False)
 
-    # TODO: even when using a key for the child div, this doesn't trigger a full re-render
-    # @dash_app.callback(
-    #     Output('rakaia-main', 'children'),
-    #     Input('trigger-fresh-session', 'n_clicks'),
-    #     prevent_initial_call=False)
-    # def refresh_cur_session(trigger_new_session):
-    #     """
-    #     Refresh the application session by re-rendering the entire layout, thereby resetting persistence.
-    #     """
-    #     if trigger_new_session:
-    #         config = app_config.copy()
-    #         config['persistence'] = False
-    #         print(config)
-    #         return register_layout_children(config, cache_dest)
-    #     raise PreventUpdate
+    @dash_app.callback(
+        Input('trigger-fresh-session', 'n_clicks'),
+        Output('data-collection', 'options', allow_duplicate=True),
+        Output('image_layers', 'options', allow_duplicate=True),
+        Output('data-collection', 'value', allow_duplicate=True),
+        Output('image_layers', 'value', allow_duplicate=True),
+        Output('dataset-preview-table', 'data', allow_duplicate=True),
+        Output('uploaded_dict_template', 'data', allow_duplicate=True),
+        Output('uploaded_dict', 'data', allow_duplicate=True),
+        Output('session_config', 'data', allow_duplicate=True),
+        Output('blending_colours', 'data', allow_duplicate=True),
+        Output('canvas-layers', 'data', allow_duplicate=True),
+        Output('mask-dict', 'data', allow_duplicate=True),
+        Output('mask-uploads', 'data', allow_duplicate=True),
+        Output('annotations-dict', 'data', allow_duplicate=True),
+        Output('quantification-dict', 'data', allow_duplicate=True),
+        Output('wsi-transformation-matrix-cache', 'data', allow_duplicate=True),
+        Output('coregister_hash', 'data', allow_duplicate=True),
+        Output('roi-selection-persistent', 'data', allow_duplicate=True),
+        Output('chan-selection-persistent', 'data', allow_duplicate=True),
+        Output('alias-dict', 'data', allow_duplicate=True),
+        Output('image-gallery-row', 'children', allow_duplicate=True),
+        Output('imc-panel-editable', 'data', allow_duplicate=True),
+        Output('quantification-heatmap-full', 'figure', allow_duplicate=True),
+        prevent_initial_call=False)
+    def start_new_session(trigger_new_session):
+        """
+        Clear the current persistent session and start a new one
+        """
+        if trigger_new_session: return ([], []) + tuple([None] * 19) + ({'data': []},)
+        raise PreventUpdate
+
 
     @dash_app.callback(Output('session_config', 'data', allow_duplicate=True),
                        Output('session_alert_config', 'data', allow_duplicate=True),
@@ -336,7 +353,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Check if a single ROI has been loaded into the session, and load if so. Otherwise, do nothing
         """
         # TODO: the persistent roi can be updated here
-        if roi_in_session and roi_in_session in ses_options: return roi_in_session
+        if None not in (roi_in_session, ses_options) and roi_in_session in ses_options: return roi_in_session
         return ses_options[0] if (ses_options and len(ses_options) == 1 and not cur_roi) else dash.no_update
 
     @dash_app.callback(Output('data-collection', 'options', allow_duplicate=True),
@@ -1700,7 +1717,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Populate a list of all unique channel names for the gallery view
         """
-        if session_config is not None and 'unique_images' in session_config.keys():
+        if None not in (session_config, aliases) and 'unique_images' in session_config.keys():
             try:
                 if not all([elem in aliases.keys() for elem in session_config['unique_images']]): raise PanelMismatchError("")
                 return [{'label': aliases[i], 'value': i} for i in session_config['unique_images']], dash.no_update
