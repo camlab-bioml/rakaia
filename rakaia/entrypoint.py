@@ -44,7 +44,7 @@ def init_app(cli_config):
     #     "rakaia_user": generate_password_hash("rakaia-1")
     # }
 
-    app.config["APPLICATION_ROOT"] = "/"
+    # app.config["APPLICATION_ROOT"] = "/"
 
     # set the steinbock mask dtype environment variable before the module is read
     # https://github.com/BodenmillerGroup/steinbock/issues/131

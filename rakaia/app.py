@@ -54,12 +54,14 @@ def init_dashboard(server, authentic_id, config=None):
                         assets_folder="assets",
                         external_scripts=["https://cdn.jsdelivr.net/npm/openseadragon@5.0/build/openseadragon/openseadragon.min.js"],
                         routes_pathname_prefix="/rakaia/",
+                        requests_pathname_prefix="/rakaia/",
+                        assets_url_path = "/rakaia/assets",
                         suppress_callback_exceptions=True,
                         prevent_initial_callbacks=True)
 
         dash_app._favicon = 'rakaia.ico'
         dash_app.title = "rakaia"
-        server.config['APPLICATION_ROOT'] = "/rakaia"
+        # server.config['APPLICATION_ROOT'] = "/rakaia"
         # do not use debugging mode if production is used
         server.config['FLASK_DEBUG'] = config['is_dev_mode']
 
@@ -77,4 +79,4 @@ def init_dashboard(server, authentic_id, config=None):
     init_db_callbacks(dash_app, tmpdirname, authentic_id, config)
     init_metadata_level_callbacks(dash_app, tmpdirname, authentic_id, config)
 
-    return dash_app.server
+    return dash_app
