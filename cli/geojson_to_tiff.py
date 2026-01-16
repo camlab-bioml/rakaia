@@ -11,7 +11,7 @@ import warnings
 
 def cli_parser():
     parser = argparse.ArgumentParser(add_help=False,
-            description="Convert a geojson tiff into a greyscale tiff mask array. Requires the user to set the "
+            description="Convert a geojson file into a greyscale tiff mask array. Requires the user to set the "
                         "output dimensions of the tiff. Certain annotations can be ignored as holes/blank in the "
                         "final output mask.",
             usage='Example:\n python geojson_to_tiff.py -i input.geojson -o output.tiff -x 1500 -y 1200 -ht "Lumen"')

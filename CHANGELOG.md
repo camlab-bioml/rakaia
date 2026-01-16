@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.27.0] - 2026-01-07
+
+### Added
+
+- CLI script for headless additive blending of files using
+existing JSON output #150
+
+### Fixed
+
+- Unique zip directory for every invocation of mask download #153
+
 ## [0.26.0] - 2025-12-04
 
 ### Added

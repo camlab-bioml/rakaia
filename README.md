@@ -92,6 +92,14 @@ instructions on installing for a specific OS.
 
 **Note**: macOS users should install `vips` using `brew` as opposed to conda.
 
+### C++ build tools on Windows
+
+Users may require `Microsoft Visual C++` on Windows to properly build
+dependencies such as `ParmEd`. `Microsoft C++ Build Tools`
+can be downloaded and installed from here:
+https://visualstudio.microsoft.com/visual-cpp-build-tools/
+
+
 ### Installation troubleshooting
 
 #### Dependency error installation on macOS
