@@ -427,11 +427,14 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('mask-dict', 'data'),
         State('apply-mask', 'value'),
         State('mask-options', 'value'))
-    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads', 'annotation_masks'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id))
     def download_annotations_masks(download_mask, annotations_dict, canvas_layers,
                                  data_selection, image_dict, mask_dict, apply_mask, mask_selection):
         if download_mask and None not in (annotations_dict, canvas_layers, data_selection, image_dict) and \
                 data_selection in annotations_dict and len(annotations_dict[data_selection]) > 0:
+            # IMP: need to make sure that the zip destination is unique for every invocation, or
+            # the shared instance will accumulate downloads for multiple users
+            download_mask = os.path.join(str(download_mask), str(uuid.uuid1()), 'downloads', 'annotation_masks')
             first_image = get_region_dim_from_roi_dictionary(image_dict[data_selection])
             # check that the mask is compatible with the current image
             if None not in (mask_dict, mask_selection) and apply_mask and validate_mask_shape_matches_image(first_image,
