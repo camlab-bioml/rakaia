@@ -7,6 +7,7 @@ import pandas as pd
 from rakaia.parsers.pixel import create_new_blending_dict
 from PIL import Image
 import numpy as np
+from skimage import measure
 from rakaia.utils.pixel import (
     recolour_greyscale,
     apply_preset_to_array,
@@ -45,7 +46,8 @@ from rakaia.utils.pixel import (
     hpf_max_diff,
     hpf_max_diff_from_path,
     hpf_max_diff_from_rect,
-    upper_bound_for_range_slider)
+    upper_bound_for_range_slider,
+    transform_svg_path_affine)
 
 def test_string_splitting():
     exp, slide, acq = split_string_at_pattern("+exp1++++slide0+++acq1")
@@ -759,3 +761,52 @@ def test_saving_blend():
     assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}
     saved = add_saved_blend(saved, "empty")
     assert saved == {'immune': ['CD8', 'CD3'], 'infiltration': ['chan_1', 'chan_4', 'chan_5']}
+
+
+def test_transform_svg_path():
+
+    svg_path_str = ("M134.70844809374017,45.842820977445825L102.29638779223264,"
+                    "44.33528328900361L87.97477975203164,"
+                    "45.08905213322472L78.17578477715726,51.11920288699357L"
+                    "66.11548326961957,70.71719283674231L64.60794558117736,"
+                    "86.54633856538553L68.37678980228289,100.86794660558652L"
+                    "72.89940286760952,136.2950822839785L80.43709130982057,"
+                    "158.90814761061165L87.97477975203164,165.6920672086016L"
+                    "97.0200058826849,165.6920672086016L114.35668929977032,"
+                    "156.64684107794835L132.44714156107685,144.58653957041065L"
+                    "146.01498075705675,141.57146419352623L164.10543301836327,"
+                    "143.83277072618955L185.21096065655422,134.03377575131518L"
+                    "190.48734256610197,125.74231846488301L195.00995563142857,"
+                    "88.05387625382774L199.53256869675522,76.74734359051115L"
+                    "200.28633754097632,76.74734359051115L191.99488025454417,"
+                    "77.50111243473226L183.70342296811202,80.51618781161669L"
+                    "171.64312146057432,78.25488127895336L167.8742772394688,"
+                    "72.97849936940563L167.8742772394688,71.47096168096341Z")
+
+    original_mask = path_to_mask(svg_path_str, (600, 600)).astype(np.uint32)
+    # rotate 90 degrees about the middle of the shape
+    transform_rotate_about_middle = np.array([
+        [0.0, -1.0, 226.0],
+        [1.0, 0.0, -26.0],
+        [0.0, 0.0, 1.0],
+    ])
+
+    new_mask = path_to_mask(transform_svg_path_affine(svg_path_str,
+                transform_rotate_about_middle), (600, 600)).astype(np.uint32)
+    assert int(np.sum(original_mask)) == int(np.sum(new_mask))
+
+    # scale down by 0.5 and translate along both x and y
+    scale_down_translate = np.array([
+        [0.5, 0.0, 100.0],
+        [0.0, 0.5, 100.0],
+        [0.0, 0.0, 1.0],
+    ])
+
+    new_mask = path_to_mask(transform_svg_path_affine(svg_path_str,
+    scale_down_translate), (600, 600)).astype(np.uint32)
+    assert int(np.sum(original_mask)) > int(np.sum(new_mask))
+
+    props_original = measure.regionprops(original_mask)
+    props_new = measure.regionprops(new_mask)
+    # the centroid should be larger in the new mask due to translation
+    assert all(float(a_i) > float(b_i) for a_i, b_i in zip(props_new[0].centroid, props_original[0].centroid))

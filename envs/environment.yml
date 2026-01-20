@@ -205,6 +205,8 @@ dependencies:
       - statsmodels==0.14.0
       - stdlib-list==0.8.0
       - steinbock==0.16.1
+      - svgpathtools==1.7.2
+      - svgwrite==1.4.3
       - tenacity==8.2.2
       - texttable==1.6.7
       - threadpoolctl==3.1.0
