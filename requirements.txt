@@ -88,7 +88,7 @@ numpy==1.26.4
 oauthlib==3.2.2
 opencv-python-headless==4.8.1.78
 outcome==1.2.0
-packaging==23.1
+packaging==24.0
 pandas==2.3.1
 patsy==0.5.3
 percy==2.0.2
@@ -147,7 +147,7 @@ urllib3-secure-extra==0.1.0
 urllib3==2.6.3
 uv==0.9.15
 waitress==3.0.1
-wheel==0.38.4
+wheel==0.46.3
 wsproto==1.2.0
 xarray==2024.10.0
 xmltodict==0.13.0
