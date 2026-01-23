@@ -161,7 +161,9 @@ class ToolTips(BaseModel):
                       "wsi-transform": "Select an affine transformation matrix to map the canvas image to the current WSI;"
                                        " if selected, zooming and panning on the blend canvas will apply transformed coordinates to the WSI viewer. "
                                        "Imported matrices are tagged by their import filename; matched names between image and transformation files allow "
-                                       "auto-selection on WSI change."}
+                                       "auto-selection on WSI change.",
+                      "downsample-roi-thumbnail": "Render down-sampled ROIs in the dataset gallery. Down-sampling may be faster "
+                                                  "and could save browser memory at the cost of thumbnail resolution."}
 
 
 class PanelMismatchError(Exception):
