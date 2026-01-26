@@ -27,6 +27,15 @@ const viewer = OpenSeadragon({
     return viewer;
 };
 
+function renderTiles(viewer) {
+    // get the unique client key from flask used to serve the static folder
+    const session_id = document.getElementById("session_id").innerText;
+    const newPath = `/static/coregister_${session_id}.dzi`
+    //viewer = renderOSDCanvas(initialTileSource);
+    const newTileSource = checkStatus(newPath);
+    viewer.open(newTileSource);
+    }
+
 function observeCoordChange(mutationsList, viewer) {
     return new MutationObserver((mutationsList) => {
         for (let mutation of mutationsList) {
@@ -44,6 +53,17 @@ function observeCoordChange(mutationsList, viewer) {
     });
 }
 
+function observeTilesUpdated(mutationsList, viewer) {
+    return new MutationObserver((mutationsList) => {
+        for (let mutation of mutationsList) {
+        try {
+        renderTiles(viewer);
+        } catch (error) {
+        viewer.open(null)};
+        }
+    });
+}
+
 const observer = new MutationObserver(() => {
 
     const initialTileSource = checkStatus('/static/coregister.dzi');
@@ -51,12 +71,7 @@ const observer = new MutationObserver(() => {
     observer.disconnect();
 
     document.getElementById("update-coregister").addEventListener('click', function(e) {
-    // get the unique client key from flask used to serve the static folder
-    const session_id = document.getElementById("session_id").innerText;
-    let newPath = `/static/coregister_${session_id}.dzi`
-    //viewer = renderOSDCanvas(initialTileSource);
-    const newTileSource = checkStatus(newPath);
-    viewer.open(newTileSource);
+    renderTiles(viewer);
     });
     if (performance.navigation.type == performance.navigation.TYPE_RELOAD) {
         viewer.open(null);}
@@ -76,7 +91,16 @@ const observer = new MutationObserver(() => {
     characterData: true, // Detect changes inside text nodes
     subtree: true, // Watch for changes inside child elements
     childList: true // Detect additions/removals of child nodes
-});
+    });
+
+    const tilesUpdate = document.getElementById("tiles_updated")
+    const tilesListener = observeTilesUpdated(tilesUpdate, viewer)
+    tilesListener.observe(tilesUpdate, {
+    characterData: true,
+    subtree: true,
+    childList: true
+    });
+
 });
 
 observer.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });

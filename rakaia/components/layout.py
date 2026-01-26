@@ -650,6 +650,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                         width=10),
                                          # use this to get the client session id in the DOM for openseadragon
                                          html.Div(id="session_id", children=None, style={"display": "none"}),
+                                         html.Div(id="tiles_updated", children=None, style={"display": "none"}),
                                          html.Div(id="transfer_coordinates", children=None, style={"display": "none"}),
                                          dbc.Col([
                                              html.Br(),
