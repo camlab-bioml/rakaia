@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.28.0] - 2026-01-26
+## [0.28.0] - 2026-01-27
 
 ### Added
 
@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Auto-detect updates to WSI tiles in `osd` view #155
+
+### Fixed
+
+- Skip any corrupted files on ROI gallery generation
 
 ## [0.27.0] - 2026-01-07
 
