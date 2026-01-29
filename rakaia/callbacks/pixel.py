@@ -37,11 +37,11 @@ from rakaia.parsers.pixel import (
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
-    canvas_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
+    is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.utils.cluster import cluster_assignments_from_config
-
+from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
 from rakaia.utils.pixel import (
@@ -2243,7 +2243,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             matrix_transform = transformation_selection_in_cache(transform_cache, transform_selection)
             eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
             if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if matrix_transform is None else (
-                canvas_coords_to_wsi_from_zoom(graph_layout, upload, matrix_transform, wsi_scale))
+                WSICanvasAffineCoordTransfer(graph_layout, upload, matrix_transform).process_coordinates(wsi_scale))
         raise PreventUpdate
 
     @dash_app.callback(
