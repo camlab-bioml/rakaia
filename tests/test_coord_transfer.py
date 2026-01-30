@@ -2,7 +2,7 @@ import os
 import numpy as np
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 
-def test_xenium_coords_to_wsi(get_current_dir):
+def test_non_visium_coord_transfer(get_current_dir):
     bounds = {'xaxis.range[0]': 36.7, 'xaxis.range[1]': 281.0,
               'yaxis.range[0]': 31.8, 'yaxis.range[1]': 147.1}
     string_coords = (WSICanvasAffineCoordTransfer(bounds,

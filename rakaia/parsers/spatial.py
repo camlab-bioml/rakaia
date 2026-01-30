@@ -528,7 +528,6 @@ def check_spatial_array_multi_channel(image_dict: dict, data_selection: str,
                                                     True, False, array_store_type)
     return image_dict
 
-
 def get_spatial_spot_radius(adata: ad.AnnData, alt_spot_size: Union[int, None]=None):
     """
     Parse the Visium Anndata object for the spot size relative to the original image,
@@ -556,12 +555,14 @@ def spatial_selection_can_transfer_coordinates(data_selection: str,
     """
     exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
     for upload in session_uploads['uploads']:
-        if (exp in upload and ((upload.endswith('h5ad') and
+        # return if it's spot based because the coordinates are handled differently
+        is_spot_type_assay = (upload.endswith('h5ad') and
                 (visium_has_scaling_factors(ad.read_h5ad(upload)) or
-                 visium_has_bin_scaling(ad.read_h5ad(upload)))) or
+                 visium_has_bin_scaling(ad.read_h5ad(upload))))
+        if (exp in upload and (is_spot_type_assay or
                  transformation_matrix is not None)):
-            return True, upload
-    return False, None
+            return True, upload, is_spot_type_assay
+    return False, None, False
 
 def visium_has_bin_scaling(adata: Union[str, ad.AnnData],
                            key: str="scaling_visium_hd"):

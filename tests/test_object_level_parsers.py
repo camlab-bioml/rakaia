@@ -310,17 +310,14 @@ def test_csv_to_anndata(get_current_dir):
 def test_gating_cell_ids(get_current_dir):
 
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
-
+    only_test_1 = measurements_csv[measurements_csv['sample'] == 'test_1']
     for channel in ['156Gd_FOXA1', '157Gd_COL17', '158Gd_GATA3', '159Tb_DCN']:
         for increment in [0.1, 0.3, 0.5, 0.7, 0.8]:
             gating_dict = {'157Gd_COL17': {'lower_bound': increment, 'upper_bound': 1}}
             gating_objects = GatingObjectList(gating_dict, [channel], measurements_csv, "test_1_mask")
             cell_ids = gating_objects.get_object_list()
-            measurements_csv['positive'] = np.where(measurements_csv['cell_id'].isin(cell_ids),
-                                                    'yes', 'no')
-            only_test_1 = measurements_csv[measurements_csv['sample'] == 'test_1']
-            pos_cells = only_test_1[only_test_1['positive'] == 'yes'][channel]
-            neg_cells = only_test_1[only_test_1['positive'] == 'no'][channel]
+            pos_cells = only_test_1[only_test_1['cell_id'].isin(cell_ids)][channel]
+            neg_cells = only_test_1[~only_test_1['cell_id'].isin(cell_ids)][channel]
             if not np.isnan(np.mean(pos_cells)):
                 assert np.mean(pos_cells) > np.mean(neg_cells)
             if not np.isnan(np.min(pos_cells)):

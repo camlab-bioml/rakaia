@@ -2241,8 +2241,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if graph_layout and wsi and data_select and session_config and canvas_zoom_used(graph_layout):
             matrix_transform = transformation_selection_in_cache(transform_cache, transform_selection)
-            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
-            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if matrix_transform is None else (
+            eligible, upload, is_spot_type = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
+            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if is_spot_type else (
                 WSICanvasAffineCoordTransfer(graph_layout, upload, matrix_transform).process_coordinates(wsi_scale))
         raise PreventUpdate
 

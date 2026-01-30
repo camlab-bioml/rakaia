@@ -93,28 +93,38 @@ def test_detect_spatial_can_perform_coord_transfer(get_current_dir):
                            os.path.join(get_current_dir, 'visium_thalamus.h5ad'),
                            os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad'),
                            os.path.join(get_current_dir, 'query.mcd')]}
-    can_transfer, file = spatial_selection_can_transfer_coordinates('visium_thalamus+++slideNA+++acq', uploads)
-    assert can_transfer
-    assert str(file) == str(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))
-    can_transfer, file = spatial_selection_can_transfer_coordinates('fake_file+++slideNA+++acq', uploads)
-    assert not can_transfer
-    assert file is None
 
-    cant_transfer, file = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq', uploads)
+    # can transfer Visium
+    can_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('visium_thalamus+++slideNA+++acq', uploads)
+    assert can_transfer
+    assert is_spot
+    assert str(file) == str(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))
+
+    # cannot transfer if the data selection doesn't match an upload
+    can_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('fake_file+++slideNA+++acq', uploads)
+    assert (False, None, False) == (can_transfer, file, is_spot)
+
+    # Cannot transfer Xenium without the transformation
+    cant_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq', uploads)
     assert not cant_transfer
-    can_transfer, file = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq',
+
+    # transfer Xenium with transformation
+    can_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq',
                                                                     uploads, transformation_matrix='transform_1')
     assert can_transfer
     assert str(file) == os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad')
+    assert not is_spot
 
-    cant_transfer_mcd, file = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
+    # Similar to Xenium, IMC can transfer with a transformation selected
+    cant_transfer_mcd, file, is_spot = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
                                                                     uploads)
-    assert not cant_transfer_mcd, file
+    assert (False, None, False) == (cant_transfer_mcd, file, is_spot)
 
-    can_transfer_mcd, file = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
+    can_transfer_mcd, file, is_spot = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
                                                    uploads, transformation_matrix='transform_1')
     assert can_transfer_mcd
     assert str(file) == os.path.join(get_current_dir, 'query.mcd')
+    assert not is_spot
 
 
 def test_visium_spot_coords_to_wsi(get_current_dir):
