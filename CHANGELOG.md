@@ -7,16 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.28.0] - 2026-01-30
+## [0.28.0] - 2026-02-02
 
 ### Added
 
 - Toggle for down-sampling ROI gallery thumbnails
+- Toggle to inverse WSI transformation matrix #157
 
 ### Changed
 
 - Auto-detect updates to WSI tiles in `osd` view #155
 - Extend canvas to osd coord transfer to non-Anndata ROIs
+- Local persistence on WSI scaling factor
 
 ### Fixed
 

@@ -2233,8 +2233,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('wsi-transformation-matrix-cache', 'data'),
         State('wsi-scaling-factor', 'value'),
         State('wsi_transform_options', 'value'),
+        State('wsi-matrix-inverse', 'value'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform_cache, wsi_scale, transform_selection):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform_cache, wsi_scale,
+                                    transform_selection, use_inverse):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
         Currently only compatible with 10x Genomics Visium, Xenium, Visium HD
@@ -2243,7 +2245,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             matrix_transform = transformation_selection_in_cache(transform_cache, transform_selection)
             eligible, upload, is_spot_type = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
             if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if is_spot_type else (
-                WSICanvasAffineCoordTransfer(graph_layout, upload, matrix_transform).process_coordinates(wsi_scale))
+                WSICanvasAffineCoordTransfer(graph_layout, upload, matrix_transform).process_coordinates(wsi_scale, use_inverse))
         raise PreventUpdate
 
     @dash_app.callback(

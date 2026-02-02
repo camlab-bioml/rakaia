@@ -23,23 +23,29 @@ class WSICanvasAffineCoordTransfer:
         self.transform = np.array(pd.read_csv(transformation_matrix, header=None)) if not (
             isinstance(transformation_matrix, np.ndarray)) else transformation_matrix
 
-    def process_coordinates(self, scaling_factor: float=0.21):
+    def process_coordinates(self, scaling_factor: float=0.21,
+                            use_inverse: Union[bool, str, None]=True):
         """
-        Process the coordinates given from the canvas with a designated scaling factor
+        Process the coordinates given from the canvas with a designated scaling factor for a matched WSI view
 
         :param scaling_factor: Pixel scaling factor denoting the microns per pixel conversion for the WSI.
+        :param use_inverse: Whether to use the inverse transform or not. Use the inverse if the matrix maps WSI -> canvas.
+
+        :return: String [x_min,y_min,width,height] in pixels of the matched bound in the WSI view, compatible with osd JS.
         """
         # https://kb.10xgenomics.com/hc/en-us/articles/11636252598925-What-are-the-Xenium-image-scale-factors
+        # need to compute the actual tissue x and y min from the Anndata coordinates
         grid_width, grid_height, x_min, y_min = spatial_canvas_dimensions(self.adata) if (
             self.adata) else (0, 0, 0, 0)
         x_low, x_high, y_low, y_high = high_low_values_from_zoom_layout(self.bounds)
 
+        matrix_use = inv(self.transform) if use_inverse else self.transform
         # get the bounds for two opposite corners to get the full bound
-        both_low = np.matmul(inv(self.transform),
+        both_low = np.matmul(matrix_use,
                              np.array([trim_neg_val((x_low + x_min) / scaling_factor),
                                        trim_neg_val((y_low + y_min) / scaling_factor), 1]))
 
-        both_high = np.matmul(inv(self.transform),
+        both_high = np.matmul(matrix_use,
                               np.array([trim_neg_val((x_high + x_min) / scaling_factor),
                                         trim_neg_val((y_high + y_min) / scaling_factor), 1]))
 
