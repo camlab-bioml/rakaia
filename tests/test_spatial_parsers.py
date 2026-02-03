@@ -87,7 +87,9 @@ def test_parse_visium_spot_mask(get_current_dir):
 
 def test_detect_spatial_can_perform_coord_transfer(get_current_dir):
     """
-    Currently, only visium spot-based can perform spatial coordinate transfer
+    Detect if an assay can perform coordinate transfer to the WSI view. Must be either:
+    - spot-based Visium assay with a WSI loaded, or
+    - any assay with an affine transformation selected
     """
     uploads = {"uploads": ['fake_file.txt', 'data.h5', 'mask.tiff',
                            os.path.join(get_current_dir, 'visium_thalamus.h5ad'),
@@ -106,7 +108,7 @@ def test_detect_spatial_can_perform_coord_transfer(get_current_dir):
 
     # Cannot transfer Xenium without the transformation
     cant_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq', uploads)
-    assert not cant_transfer
+    assert (False, None, False) == (cant_transfer, file, is_spot)
 
     # transfer Xenium with transformation
     can_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq',
@@ -115,11 +117,12 @@ def test_detect_spatial_can_perform_coord_transfer(get_current_dir):
     assert str(file) == os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad')
     assert not is_spot
 
-    # Similar to Xenium, IMC can transfer with a transformation selected
+    # IMC cannot transfer without an affine transformation selection
     cant_transfer_mcd, file, is_spot = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
                                                                     uploads)
     assert (False, None, False) == (cant_transfer_mcd, file, is_spot)
 
+    # Similar to Xenium, IMC can transfer with a transformation selected
     can_transfer_mcd, file, is_spot = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
                                                    uploads, transformation_matrix='transform_1')
     assert can_transfer_mcd
@@ -158,7 +161,7 @@ def test_parse_zarr_top_level(get_current_dir):
     assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'wsi/'))
     assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'query.mcd'))
 
-    all_paths = zarr_parent_parse(os.path.join(get_current_dir, '/'))
+    all_paths = zarr_parent_parse(f"{get_current_dir}/")
     assert all(str(sub_path).endswith('zarr') for sub_path in all_paths)
     single_path = zarr_parent_parse(os.path.join(get_current_dir, 'subset_visium.zarr/'))
     assert len(single_path) == 1

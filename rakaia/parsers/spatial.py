@@ -546,7 +546,7 @@ def get_spatial_spot_radius(adata: ad.AnnData, alt_spot_size: Union[int, None]=N
 def spatial_selection_can_transfer_coordinates(data_selection: str,
                               session_uploads: Union[list, dict],
                               delimiter: str="+++",
-                              transformation_matrix: Union[str, np.array, None]=None,):
+                              transformation_matrix: Union[str, np.array, None]=None):
     """
     Detect if the current data selection is a spatial dataset that can perform coordinate
     transfer to a WSI (i.e. H & E). Iterates over the current
@@ -555,7 +555,7 @@ def spatial_selection_can_transfer_coordinates(data_selection: str,
     """
     exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
     for upload in session_uploads['uploads']:
-        # return if it's spot based because the coordinates are handled differently
+        # return if it's spot based because the tissue positions = spatial coordinates for Visium
         is_spot_type_assay = (upload.endswith('h5ad') and
                 (visium_has_scaling_factors(ad.read_h5ad(upload)) or
                  visium_has_bin_scaling(ad.read_h5ad(upload))))

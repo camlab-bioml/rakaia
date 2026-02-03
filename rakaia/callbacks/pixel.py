@@ -2239,7 +2239,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                     transform_selection, use_inverse):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
-        Currently only compatible with 10x Genomics Visium, Xenium, Visium HD
+        Compatible with spot-based assays or when an affine transformation matrix (CSV upload) is selected.
         """
         if graph_layout and wsi and data_select and session_config and canvas_zoom_used(graph_layout):
             matrix_transform = transformation_selection_in_cache(transform_cache, transform_selection)

@@ -5,7 +5,7 @@ and session messages
 import pathlib
 from typing import Union
 from pydantic import BaseModel
-import dash_core_components as dcc
+from dash import dcc
 
 class DataImportTour(BaseModel):
     """
