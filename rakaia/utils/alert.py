@@ -5,6 +5,7 @@ and session messages
 import pathlib
 from typing import Union
 from pydantic import BaseModel
+from dash import dcc
 
 class DataImportTour(BaseModel):
     """
@@ -143,9 +144,9 @@ class ToolTips(BaseModel):
                                      " all markers to quantify need to be loaded into the current canvas.",
                       "umap_min_dist": "From 0 to 1. Smaller distances pack the UMAP points more tightly together, "
                                        "while larger values spread out clusters.",
-                      "wsi-scaling-factor": "Set the image scale factor (μm/pixel) for WSIs relative to the canvas. For 10X Xenium, "
-                                            "Search `Xenium image scale factors` on the 10X Genomics website "
-                                            "to get the scaling factors for a specific image level.",
+                      "wsi-scaling-factor": dcc.Markdown("Set the resolution (μm/pixel) for WSIs relative to the canvas, computed as: \n\n"
+                                            "canvas resolution (μm/pixel) * WSI resolution (μm/pixel). \n\nE.g. For 10x Xenium, "
+                                            "Search `Xenium image scale factors` on the 10x website for scale factors by image level."),
                       "default-scaling": "Reset the lower bound to 0, and the upper bound to the 99th percentile",
                       "region-annotate-all": "By default, only the most recently drawn shape is annotated.",
                       "query-obj-min": "Define a minimum number of objects required per ROI when querying from the UMAP. "
@@ -163,7 +164,10 @@ class ToolTips(BaseModel):
                                        "Imported matrices are tagged by their import filename; matched names between image and transformation files allow "
                                        "auto-selection on WSI change.",
                       "persistent-session": "rakaia has detected a previous session, which is loaded by default. Click the button "
-               "below to initiate a new session in the current window."}
+               "below to initiate a new session in the current window.",
+                      "downsample-roi-thumbnail": "Render down-sampled ROIs in the dataset gallery. Down-sampling may be faster "
+                                                  "and could save browser memory at the cost of thumbnail resolution.",
+                      "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates."}
 
 
 class PanelMismatchError(Exception):

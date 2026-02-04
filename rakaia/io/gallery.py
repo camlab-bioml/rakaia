@@ -296,7 +296,8 @@ def umap_gallery_children(tiles: Union[dict, None]):
     return row_children
 
 
-def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_ratio_tall=0.9):
+def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_ratio_tall=0.9,
+                               subsample_thumbnail: bool=False):
     """
     Return a series of columns and rows for across dataset ROi queries. Each element will be a dbc Card preview
     of the ROI image from the current blend dictionary with the option to click to load into the canvas
@@ -315,6 +316,8 @@ def roi_query_gallery_children(image_dict, col_width=4, max_size=28, max_aspect_
                          "justifyContent": "center"}
             else:
                 style = None
+            # TODO: Should the thumbnail subsampling be proportional to size? for now, dimension hard-coded
+            value = value if not subsample_thumbnail else resize_for_canvas(value, 1000)
             row_children.append(dbc.Col(dbc.Card([dbc.CardBody([html.B(label, className="card-text"),
                     thumbnail_load_button('data-query-gallery', key)]),
                     dbc.CardImg(src=Image.fromarray(value.astype(np.uint8)),

@@ -4,6 +4,14 @@ rakaia.register package
 Submodules
 ----------
 
+rakaia.register.coordinates module
+----------------------------------
+
+.. automodule:: rakaia.register.coordinates
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rakaia.register.process module
 ------------------------------
 

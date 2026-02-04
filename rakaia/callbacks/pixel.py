@@ -37,11 +37,11 @@ from rakaia.parsers.pixel import (
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
-    canvas_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
+    is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.utils.cluster import cluster_assignments_from_config
-
+from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
 from rakaia.utils.pixel import (
@@ -180,6 +180,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Input('trigger-fresh-session', 'n_clicks'),
         Output('data-collection', 'options', allow_duplicate=True),
         Output('image_layers', 'options', allow_duplicate=True),
+        Output('wsi_transform_options', 'options', allow_duplicate=True),
         Output('data-collection', 'value', allow_duplicate=True),
         Output('image_layers', 'value', allow_duplicate=True),
         Output('dataset-preview-table', 'data', allow_duplicate=True),
@@ -200,12 +201,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('image-gallery-row', 'children', allow_duplicate=True),
         Output('imc-panel-editable', 'data', allow_duplicate=True),
         Output('quantification-heatmap-full', 'figure', allow_duplicate=True),
+        # TODO: need to also clear the WSI dropdown menus here
         prevent_initial_call=False)
     def start_new_session(trigger_new_session):
         """
         Clear the current persistent session and start a new one
         """
-        if trigger_new_session: return ([], []) + tuple([None] * 19) + ({'data': []},)
+        if trigger_new_session: return ([], [], []) + tuple([None] * 19) + ({'data': []},)
         raise PreventUpdate
 
 
@@ -2254,13 +2256,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Update the dropdown selection menu to select uploaded WSIs when uploads are updated
         """
-        return list(cur_hash.keys()) if cur_hash is not None and cur_hash else dash.no_update
+        return list(cur_hash.keys()) if cur_hash is not None and cur_hash else []
 
     @dash_app.callback(Output('coregister-transfer', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('coregister_options', 'value'),
                        Output('openseadragon-container', 'hidden'),
                        Output('wsi_transform_options', 'value'),
+                       Output('tiles_updated', 'children'),
                        Input('coregister_options', 'value'),
                        State('coregister_hash', 'data'),
                        State('session_id_internal', 'data'),
@@ -2276,8 +2279,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 from rakaia.register.process import dzi_tiles_from_image_path
                 dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options)
-            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None
+                return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
+            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2290,17 +2293,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('wsi-transformation-matrix-cache', 'data'),
         State('wsi-scaling-factor', 'value'),
         State('wsi_transform_options', 'value'),
+        State('wsi-matrix-inverse', 'value'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform_cache, wsi_scale, transform_selection):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform_cache, wsi_scale,
+                                    transform_selection, use_inverse):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
-        Currently only compatible with 10x Genomics Visium, Xenium, Visium HD
+        Compatible with spot-based assays or when an affine transformation matrix (CSV upload) is selected.
         """
         if graph_layout and wsi and data_select and session_config and canvas_zoom_used(graph_layout):
             matrix_transform = transformation_selection_in_cache(transform_cache, transform_selection)
-            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
-            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if matrix_transform is None else (
-                canvas_coords_to_wsi_from_zoom(graph_layout, upload, matrix_transform, wsi_scale))
+            eligible, upload, is_spot_type = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
+            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if is_spot_type else (
+                WSICanvasAffineCoordTransfer(graph_layout, upload, matrix_transform).process_coordinates(wsi_scale, use_inverse))
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2333,7 +2338,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             transform_options = update_wsi_hash(cur_transform_cache, transform_upload, True)
             return SessionServerside(transform_options, key=f"wsi_transformation_cache_{sesh_id}",
                                      use_unique_key=OVERWRITE), list(transform_options.keys())
-        raise PreventUpdate
+        return None, []
 
     @du.callback(Output('canvas-shapes-upload', 'data'),
                  id='upload-canvas-shapes')
