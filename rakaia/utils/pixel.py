@@ -24,6 +24,8 @@ from dash.exceptions import PreventUpdate
 import cv2
 import numexpr as ne
 import glasbey
+from svgpathtools import parse_path, Path, Line
+
 
 def split_string_at_pattern(string, pattern="+++"):
     """
@@ -183,6 +185,54 @@ def path_to_mask(path: str, shape: tuple):
     mask[rr_row, cc_col] = True
     mask = ndimage.binary_fill_holes(mask)
     return mask
+
+def transform_svg_path_affine(svgpath_str: str, matrix: Union[np.ndarray, np.array]):
+    """
+    Apply a 3x3 affine transformation (as numpy array) to an SVG path string
+    and return a compact path string.
+    """
+
+    path = parse_path(svgpath_str)
+
+    def affine(z):
+        x, y = z.real, z.imag
+        x_new = matrix[0,0]*x + matrix[0,1]*y + matrix[0,2]
+        y_new = matrix[1,0]*x + matrix[1,1]*y + matrix[1,2]
+        return complex(x_new, y_new)
+
+    # Transform each path segment
+    segments = []
+    for seg in path:
+        if isinstance(seg, Line):
+            segments.append(Line(affine(seg.start), affine(seg.end)))
+        # IMP: for now, only line segments are included in the path from the canvas component
+        # elif isinstance(seg, CubicBezier):
+        #     segments.append(CubicBezier(
+        #         affine(seg.start),
+        #         affine(seg.control1),
+        #         affine(seg.control2),
+        #         affine(seg.end)
+        #     ))
+        # elif isinstance(seg, QuadraticBezier):
+        #     segments.append(QuadraticBezier(
+        #         affine(seg.start),
+        #         affine(seg.control),
+        #         affine(seg.end)
+        #     ))
+        # elif isinstance(seg, Arc):
+        #     segments.append(Arc(
+        #         affine(seg.start),
+        #         seg.radius,
+        #         seg.rotation,
+        #         seg.arc,
+        #         seg.sweep,
+        #         affine(seg.end)
+        #     ))
+
+    path_t = Path(*segments)
+    s = path_t.d()
+    return s.replace(" ", "") # return without any whitespace
+
 
 def get_bounding_box_for_svg_path(svg_path: str):
     """

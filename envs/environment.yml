@@ -136,7 +136,7 @@ dependencies:
       - ome-zarr==0.11.1
       - opencv-python-headless==4.8.1.78
       - outcome==1.2.0
-      - packaging==23.1
+      - packaging==24.0
       - pandas==2.3.1
       - param==2.2.1
       - parmed==4.3.0
@@ -205,6 +205,8 @@ dependencies:
       - statsmodels==0.14.0
       - stdlib-list==0.8.0
       - steinbock==0.16.1
+      - svgpathtools==1.7.2
+      - svgwrite==1.4.3
       - tenacity==8.2.2
       - texttable==1.6.7
       - threadpoolctl==3.1.0
@@ -223,7 +225,7 @@ dependencies:
       - uv==0.9.15
       - waitress==3.0.1
       - werkzeug==3.0.6
-      - wheel==0.38.4
+      - wheel==0.46.3
       - wrapt==1.17.2
       - wsproto==1.2.0
       - xarray==2024.10.0

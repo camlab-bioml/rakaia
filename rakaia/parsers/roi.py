@@ -132,7 +132,8 @@ class RegionThumbnail:
                 # call the additive thumbnail partial function with the corresponding extension
                 try:
                     getattr(self, self.MATCHES[file_extension])(file_path)
-                except (KeyError, ValueError): pass
+                # skip any file that generates an error i.e. a corrupted MCD
+                except (KeyError, ValueError, OSError, TypeError): pass
 
     def set_imported_files(self):
         """

@@ -37,11 +37,11 @@ from rakaia.parsers.pixel import (
     check_blend_dictionary_for_blank_bounds_by_channel,
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
-    canvas_coords_to_wsi_from_zoom, is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
+    is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.utils.cluster import cluster_assignments_from_config
-
+from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
 from rakaia.utils.pixel import (
@@ -2203,6 +2203,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('coregister_options', 'value'),
                        Output('openseadragon-container', 'hidden'),
                        Output('wsi_transform_options', 'value'),
+                       Output('tiles_updated', 'children'),
                        Input('coregister_options', 'value'),
                        State('coregister_hash', 'data'),
                        State('session_id_internal', 'data'),
@@ -2218,8 +2219,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 from rakaia.register.process import dzi_tiles_from_image_path
                 dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options)
-            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None
+                return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
+            except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2232,17 +2233,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('wsi-transformation-matrix-cache', 'data'),
         State('wsi-scaling-factor', 'value'),
         State('wsi_transform_options', 'value'),
+        State('wsi-matrix-inverse', 'value'),
         prevent_initial_call=True)
-    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform_cache, wsi_scale, transform_selection):
+    def transfer_coordinates_to_wsi(graph_layout, session_config, delim, data_select, wsi, transform_cache, wsi_scale,
+                                    transform_selection, use_inverse):
         """
         Transfer a set of coordinates to update the OSD viewport from a zoom change.
-        Currently only compatible with 10x Genomics Visium, Xenium, Visium HD
+        Compatible with spot-based assays or when an affine transformation matrix (CSV upload) is selected.
         """
         if graph_layout and wsi and data_select and session_config and canvas_zoom_used(graph_layout):
             matrix_transform = transformation_selection_in_cache(transform_cache, transform_selection)
-            eligible, upload = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
-            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if matrix_transform is None else (
-                canvas_coords_to_wsi_from_zoom(graph_layout, upload, matrix_transform, wsi_scale))
+            eligible, upload, is_spot_type = spatial_selection_can_transfer_coordinates(data_select, session_config, delim, matrix_transform)
+            if eligible and upload: return visium_coords_to_wsi_from_zoom(graph_layout, upload) if is_spot_type else (
+                WSICanvasAffineCoordTransfer(graph_layout, upload, matrix_transform).process_coordinates(wsi_scale, use_inverse))
         raise PreventUpdate
 
     @dash_app.callback(

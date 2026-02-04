@@ -16,7 +16,6 @@ from rakaia.parsers.spatial import (
     spatial_selection_can_transfer_coordinates,
     visium_coords_to_wsi_from_zoom,
     get_visium_bin_scaling,
-    canvas_coords_to_wsi_from_zoom,
     is_zarr_store,
     ZarrSDParser,
     anndata_obs_to_projection_frame, is_parent_directory_of_zarr_store, zarr_parent_parse)
@@ -88,16 +87,48 @@ def test_parse_visium_spot_mask(get_current_dir):
 
 def test_detect_spatial_can_perform_coord_transfer(get_current_dir):
     """
-    Currently, only visium spot-based can perform spatial coordinate transfer
+    Detect if an assay can perform coordinate transfer to the WSI view. Must be either:
+    - spot-based Visium assay with a WSI loaded, or
+    - any assay with an affine transformation selected
     """
     uploads = {"uploads": ['fake_file.txt', 'data.h5', 'mask.tiff',
-                           os.path.join(get_current_dir, 'visium_thalamus.h5ad')]}
-    can_transfer, file = spatial_selection_can_transfer_coordinates('visium_thalamus+++slideNA+++acq', uploads)
+                           os.path.join(get_current_dir, 'visium_thalamus.h5ad'),
+                           os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad'),
+                           os.path.join(get_current_dir, 'query.mcd')]}
+
+    # can transfer Visium
+    can_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('visium_thalamus+++slideNA+++acq', uploads)
     assert can_transfer
+    assert is_spot
     assert str(file) == str(os.path.join(get_current_dir, 'visium_thalamus.h5ad'))
-    can_transfer, file = spatial_selection_can_transfer_coordinates('fake_file+++slideNA+++acq', uploads)
-    assert not can_transfer
-    assert file is None
+
+    # cannot transfer if the data selection doesn't match an upload
+    can_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('fake_file+++slideNA+++acq', uploads)
+    assert (False, None, False) == (can_transfer, file, is_spot)
+
+    # Cannot transfer Xenium without the transformation
+    cant_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq', uploads)
+    assert (False, None, False) == (cant_transfer, file, is_spot)
+
+    # transfer Xenium with transformation
+    can_transfer, file, is_spot = spatial_selection_can_transfer_coordinates('melanoma_xenium_subset+++slideNA+++acq',
+                                                                    uploads, transformation_matrix='transform_1')
+    assert can_transfer
+    assert str(file) == os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad')
+    assert not is_spot
+
+    # IMC cannot transfer without an affine transformation selection
+    cant_transfer_mcd, file, is_spot = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
+                                                                    uploads)
+    assert (False, None, False) == (cant_transfer_mcd, file, is_spot)
+
+    # Similar to Xenium, IMC can transfer with a transformation selected
+    can_transfer_mcd, file, is_spot = spatial_selection_can_transfer_coordinates('query+++slideNA+++acq',
+                                                   uploads, transformation_matrix='transform_1')
+    assert can_transfer_mcd
+    assert str(file) == os.path.join(get_current_dir, 'query.mcd')
+    assert not is_spot
+
 
 def test_visium_spot_coords_to_wsi(get_current_dir):
     bounds = {'xaxis.range[0]': 283.4, 'xaxis.range[1]': 741.5,
@@ -125,22 +156,12 @@ def test_hd_visium_spot_coords_to_wsi(get_current_dir):
     assert y_min < y < y_max
     assert x_min < x < x_max
 
-def test_xenium_coords_to_wsi(get_current_dir):
-    bounds = {'xaxis.range[0]': 36.7, 'xaxis.range[1]': 281.0,
-              'yaxis.range[0]': 31.8, 'yaxis.range[1]': 147.1}
-    string_coords = canvas_coords_to_wsi_from_zoom(bounds,
-                                                   os.path.join(get_current_dir, 'melanoma_xenium_subset.h5ad'),
-                                                   os.path.join(get_current_dir, 'melanoma_xenium_transformation.csv'))
-    x, y, width, height = tuple([float(elem) for elem in string_coords.split(",")])
-    assert y > x
-    assert height > width
-
 def test_parse_zarr_top_level(get_current_dir):
     assert is_parent_directory_of_zarr_store(get_current_dir)
     assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'wsi/'))
     assert not is_parent_directory_of_zarr_store(os.path.join(get_current_dir, 'query.mcd'))
 
-    all_paths = zarr_parent_parse(os.path.join(get_current_dir, '/'))
+    all_paths = zarr_parent_parse(f"{get_current_dir}/")
     assert all(str(sub_path).endswith('zarr') for sub_path in all_paths)
     single_path = zarr_parent_parse(os.path.join(get_current_dir, 'subset_visium.zarr/'))
     assert len(single_path) == 1

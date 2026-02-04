@@ -310,10 +310,24 @@ def test_csv_to_anndata(get_current_dir):
 def test_gating_cell_ids(get_current_dir):
 
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
+    only_test_1 = measurements_csv[measurements_csv['sample'] == 'test_1']
+    for channel in ['156Gd_FOXA1', '157Gd_COL17', '158Gd_GATA3', '159Tb_DCN']:
+        for increment in [0.1, 0.3, 0.5, 0.7, 0.8]:
+            gating_dict = {'157Gd_COL17': {'lower_bound': increment, 'upper_bound': 1}}
+            gating_objects = GatingObjectList(gating_dict, [channel], measurements_csv, "test_1_mask")
+            cell_ids = gating_objects.get_object_list()
+            pos_cells = only_test_1[only_test_1['cell_id'].isin(cell_ids)][channel]
+            neg_cells = only_test_1[~only_test_1['cell_id'].isin(cell_ids)][channel]
+            if not np.isnan(np.mean(pos_cells)):
+                assert np.mean(pos_cells) > np.mean(neg_cells)
+            if not np.isnan(np.min(pos_cells)):
+                # make sure that the lowest positive is always higher than the highest negative
+                assert np.min(pos_cells) > np.max(neg_cells)
+
     gating_selection = ['191Ir_DNA1', '168Er_Ki67']
     gating_dict = {'191Ir_DNA1': {'lower_bound': 0.2, 'upper_bound': 0.4},
                    '168Er_Ki67': {'lower_bound': 0.5, 'upper_bound': 1}}
-    gating_objects = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1_mask")
+    gating_objects = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1")
     cell_ids = gating_objects.get_object_list()
     # test 1 has only cells up to 203, so can enforce that only one ROI was used
     assert max(cell_ids) < 203
@@ -329,6 +343,14 @@ def test_gating_cell_ids(get_current_dir):
                                          'threshold_1', as_dict=False)
     breakdown = apply_all['gating_test'].value_counts().to_dict()
     assert int(breakdown['threshold_1']) == len(all_indices)
+
+    # if we are more stringent on DNA1, assert that all the retained were in the original cell_ids
+    gating_dict = {'191Ir_DNA1': {'lower_bound': 0.4, 'upper_bound': 0.4},
+                   '168Er_Ki67': {'lower_bound': 0.5, 'upper_bound': 1}}
+    gating_objects = GatingObjectList(gating_dict, gating_selection, measurements_csv, "test_1_mask")
+    cell_ids_fewer = gating_objects.get_object_list()
+    assert len(cell_ids) > len(cell_ids_fewer)
+    assert all(elem in cell_ids for elem in cell_ids_fewer)
 
     # Apply a second category to all, then remove both gate annotations
 

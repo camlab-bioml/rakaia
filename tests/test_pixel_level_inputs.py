@@ -23,7 +23,7 @@ from rakaia.inputs.pixel import (
     highlight_blend_in_panel_table,
     canvas_zoom_used)
 from rakaia.parsers.pixel import create_new_blending_dict
-import dash_core_components as dcc
+from dash import dcc
 from PIL import Image
 import os
 from rakaia.utils.pixel import recolour_greyscale
