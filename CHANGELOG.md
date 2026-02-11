@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-02-11
+
+### Changed
+
+- Updated dependencies based on `cryptography`
+[vulnerability](https://github.com/advisories/GHSA-r6ph-v2qm-q3c2)
+
 ## [0.28.0] - 2026-02-03
 
 ### Added
