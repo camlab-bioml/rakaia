@@ -24,7 +24,7 @@ Tools in the rakaia application include:
 - cluster and heatmap visualization
 - dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
-- WSI coordinate alignment (currently for 10X Visium & Xenium)
+- Matched zooming and panning to aligned WSIs with a dual-spatial view
 
 Visit the [official documentation](https://camlab-bioml.github.io/rakaia-doc/) to learn more!
 

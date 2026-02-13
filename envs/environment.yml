@@ -145,7 +145,7 @@ dependencies:
       - percy==2.0.2
       - periodictable==2.0.2
       - phenograph==1.5.7
-      - pillow==10.3.0
+      - pillow==12.1.1
       - pims==0.7
       - pkgconfig==1.5.5
       - platformdirs==4.3.8
