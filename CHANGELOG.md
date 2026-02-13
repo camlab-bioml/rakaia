@@ -7,10 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-02-04
+## [0.29.0] - 2026-02-11
 
 ### Changed
 
+- Updated dependencies based on [`cryptography`](https://github.com/advisories/GHSA-r6ph-v2qm-q3c2) and
+[`pillow`](https://github.com/advisories/GHSA-cfh3-3jmp-rvhc) vulnerabilities
 - Ability to retain a persistent session on page refresh #151
 
 ## [0.28.0] - 2026-02-03
