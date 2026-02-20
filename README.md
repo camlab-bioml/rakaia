@@ -90,7 +90,20 @@ and is not installed through the pip installation above.
 Users should visit the [vips installation page](https://www.libvips.org/install.html) for
 instructions on installing for a specific OS.
 
-**Note**: macOS users should install `vips` using `brew` as opposed to conda.
+**Note**: For macOS users, brew is the recommended installation
+methods for vips:
+
+```commandline
+brew install vips
+```
+
+However, some users have reported problems with rakaia being able to
+detect the `vips` CLI executable through this installation method. If that is
+the case, users could try installing with `conda-forge`:
+
+```commandline
+conda install conda-forge::libvips
+```
 
 ### C++ build tools on Windows
 

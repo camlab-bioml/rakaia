@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-02-11
+## [0.29.0] - 2026-02-19
 
 ### Changed
 
 - Updated dependencies based on [`cryptography`](https://github.com/advisories/GHSA-r6ph-v2qm-q3c2) and
 [`pillow`](https://github.com/advisories/GHSA-cfh3-3jmp-rvhc) vulnerabilities
+
+### Fixed
+
+- Change user blend selection in dataset gallery to state variable
 
 ## [0.28.0] - 2026-02-03
 

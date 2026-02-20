@@ -69,7 +69,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-query-dim-min', 'value'),
                        State('dataset-query-dim-max', 'value'),
                        State('dataset-query-keyw', 'value'),
-                       Input('saved-blend-options-roi', 'value'),
+                       State('saved-blend-options-roi', 'value'),
                        State('saved-blends', 'data'),
                        Input('find-similar', 'n_clicks'),
                        State('image-prioritization-cor', 'data'),
