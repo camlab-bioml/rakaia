@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-02-19
+## [0.29.0] - 2026-02-20
+
+### Added
+
+- Input to manually set WSI zoom level
 
 ### Changed
 

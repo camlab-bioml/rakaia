@@ -12,6 +12,12 @@ function checkStatus(url) {
     return tileReturn;
     }
 
+function fractionToViewportZoom(fraction, minZoom, maxZoom) {
+        // map the zoom as a normalized fraction of the UI zoom, not proportional to magnification level
+        fraction = Math.min(Math.max(fraction, 0), 1);
+        return minZoom * Math.pow(maxZoom / minZoom, fraction);
+      };
+
 const renderOSDCanvas = (initialTileSource) => {
 const viewer = OpenSeadragon({
         id: "openseadragon-container",
@@ -64,6 +70,36 @@ function observeTilesUpdated(mutationsList, viewer) {
     });
 }
 
+function setWSIZoomLevel(viewer) {
+    const zoomValue = document.getElementById("wsi-zoom-level").value;
+        if (!Number.isNaN(zoomValue) && zoomValue >= 0 && zoomValue <= 1) {
+        let zoomLevel = null;
+        if (zoomValue == 0) {
+           viewer.viewport.goHome();
+        } else {
+
+        let tiledImage = viewer.world.getItemAt(0);
+
+        // get type of zoom
+        const zoomElement = document.getElementById("wsi-zoom-scale");
+        const checkScale = zoomElement.querySelector('input[type="checkbox"]');
+        const zoomScale = checkScale ? checkScale.checked : false;
+
+        if (zoomScale) {
+            // zooming that mimics microscopy magnification levels
+            zoomLevel = tiledImage.imageToViewportZoom(zoomValue);
+        } else {
+            // this doesn't match microscopy magnification but equal viewport increments
+            const minZoom = viewer.viewport.getHomeZoom();
+            const maxZoom = tiledImage.imageToViewportZoom(1);
+            zoomLevel = fractionToViewportZoom(zoomValue, minZoom, maxZoom);
+        }
+        viewer.viewport.zoomTo(zoomLevel);
+
+        }
+        }
+}
+
 const observer = new MutationObserver(() => {
 
     const initialTileSource = checkStatus('/static/coregister.dzi');
@@ -84,6 +120,15 @@ const observer = new MutationObserver(() => {
     document.getElementById("toggle-osd-navigator").addEventListener('click', function(e) {
     viewer.navigator.element.style.display = toggleNavigator(viewer.navigator.element.style.display)
     });
+
+    document.getElementById("wsi-zoom-scale").addEventListener("change", function(e) {
+            //console.log("Checkbox changed:", e.target.checked)
+            setWSIZoomLevel(viewer);
+    });
+
+    document.getElementById("wsi-zoom-level").addEventListener("input", function(e) {
+        setWSIZoomLevel(viewer);
+        });
 
     const coordTransfer = document.getElementById("transfer_coordinates")
     const coordChange = observeCoordChange(coordTransfer, viewer)

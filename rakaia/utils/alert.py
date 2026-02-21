@@ -165,7 +165,9 @@ class ToolTips(BaseModel):
                                        "auto-selection on WSI change.",
                       "downsample-roi-thumbnail": "Render down-sampled ROIs in the dataset gallery. Down-sampling may be faster "
                                                   "and could save browser memory at the cost of thumbnail resolution.",
-                      "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates."}
+                      "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates.",
+                      "wsi-zoom-level": "0 is fully zoomed out, while 1 is the most zoomed in. Use log scale for "
+                                        "zooming proportional to magnification, or disable for equal zoom increments."}
 
 
 class PanelMismatchError(Exception):
