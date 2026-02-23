@@ -859,6 +859,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('download-canvas-image-tiff', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('status-div', 'children'),
+                       Output('stitched_images', 'data', allow_duplicate=True),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -902,6 +903,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_alert_config', 'data'),
                        Input('cluster-label-selection', 'value'),
                        State('canvas-div-holder', 'children'),
+                       Input('stitch-image-update', 'n_clicks'),
+                       State('stitched_images', 'data'),
+                       State('stitch-image-select', 'value'),
+                       State('stitch-image-x-min', 'value'),
+                       State('stitch-image-y-min', 'value'),
+                       State('session_id_internal', 'data'),
                        prevent_initial_call=True)
     # @time_taken_callback
     def render_canvas_from_layer_mask_hover_change(rgb_layers, currently_selected,
@@ -918,7 +925,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                    cluster_frame, cluster_type,
                                                    download_canvas_tiff, custom_scale_val,
                                                    cluster_assignments_in_legend, apply_gating, gating_cell_id_list,
-                                                   delimiter, scale_color, error_config, clust_selected, canvas_holder):
+                                                   delimiter, scale_color, error_config, clust_selected, canvas_holder,
+                                                   update_stitch, cur_stitch, stitch_select, stitch_x_coord,
+                                                   stitch_y_coord, sesh_id):
 
         """
         Update the canvas from either an underlying change to the source image, or a change to the hover template
@@ -928,6 +937,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         - if the hover template is updated (it is faster to recreate the figure rather than trying to remove the
         hover template)
         """
+        # TODO: modify this callback to allow adding the current ROI to a switch
         # do not update if the trigger is a global filter and the filter is not applied
         global_not_enabled = global_filter_disabled(ctx.triggered_id, global_apply_filter)
         channel_order_same = channel_order_as_default(ctx.triggered_id, channel_order, currently_selected)
@@ -962,10 +972,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                                 dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
                     download_status = timestamp_download_child()
-                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status
+                elif ctx.triggered_id == "stitch-image-update" and (None not in (update_stitch, cur_stitch,
+                stitch_select, stitch_x_coord, stitch_y_coord) and str(stitch_select) in cur_stitch):
+                    # TODO: put logic here to add in a stitched image
+                    cur_stitch[stitch_select][stitch_y_coord:(canvas.get_image().shape[0] + int(stitch_y_coord)),
+                    stitch_x_coord:(canvas.get_image().shape[1] + int(stitch_x_coord))] = canvas.get_image()
+                    return dash.no_update, dash.no_update, dash.no_update, dash.no_update, SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
+                        use_unique_key=app_config['serverside_overwrite']),
+                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
-                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update
+                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),

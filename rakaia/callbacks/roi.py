@@ -5,9 +5,15 @@ import os
 import uuid
 import dash
 import pandas as pd
+from PIL import Image
 from dash import ALL, dcc
+from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
+import numpy as np
+import dash_bootstrap_components as dbc
+from rakaia.utils.pixel import resize_for_canvas
+
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import (
             roi_query_gallery_children,
@@ -69,7 +75,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-query-dim-min', 'value'),
                        State('dataset-query-dim-max', 'value'),
                        State('dataset-query-keyw', 'value'),
-                       Input('saved-blend-options-roi', 'value'),
+                       State('saved-blend-options-roi', 'value'),
                        State('saved-blends', 'data'),
                        Input('find-similar', 'n_clicks'),
                        State('image-prioritization-cor', 'data'),
@@ -189,3 +195,43 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         else:
             error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["quantification_missing"])
             return dash.no_update, error_config, dash.no_update, dash.no_update
+
+    @dash_app.callback(
+        Output('stitch-preview-modal', 'is_open'),
+        Output('stitch-preview-row', 'children'),
+        Input('stitch-image-preview', "n_clicks"),
+        State('stitch-image-select', 'value'),
+        State('stitched_images', 'data'),
+        prevent_initial_call=True)
+    def preview_stitched_image(preview_stitch, stitch_select, stitch_collection):
+        """
+        Open the modal to preview the currently selected stitch image
+        """
+        if preview_stitch and stitch_select and stitch_collection and str(stitch_select) in list(stitch_collection.keys()):
+            return True, [dbc.Col(dbc.Card([
+                        dbc.CardImg(src=Image.fromarray(resize_for_canvas(
+                        stitch_collection[stitch_select], 1000)).convert('RGB'),
+                        bottom=True)]), width=12)]
+        return False, dash.no_update
+
+    @dash_app.callback(
+        Output('stitched_images', 'data'),
+        Output('stitch-image-select', 'options'),
+        Input('stitch-image-create', "n_clicks"),
+        State('session_id_internal', 'data'),
+        State('stitch-image-create-width', 'value'),
+        State('stitch-image-create-height', 'value'),
+        State('stitch-image-id', 'value'),
+        State('stitched_images', 'data'),
+        prevent_initial_call=True)
+    def create_stitched_image(create_stitch, sesh_id, width, height, stitch_name, cur_stitch):
+        """
+        Create a new stitched image
+        """
+        if create_stitch and sesh_id and stitch_name and all(dim > 0 for dim in (width, height)):
+            cur_stitch = cur_stitch if cur_stitch else {}
+            cur_stitch[str(stitch_name)] = np.zeros((height, width, 3), dtype=np.uint8)
+            # TODO: create labels for the stitched images that includes dimensions
+            return SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
+                        use_unique_key=app_config['serverside_overwrite']), list(cur_stitch.keys())
+        raise PreventUpdate
