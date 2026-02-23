@@ -1037,6 +1037,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                             dbc.Modal(children=dbc.ModalBody([html.Div([
                             dbc.Row(id="stitch-preview-row"),
                             ])]), id='stitch-preview-modal', size='xl'),
+                            html.Br(),
+                            dbc.Button("Download selected stitch",
+                            id="stitch-image-download", className="me-1",
+                            size="sm", color='dark', outline=True,
+                            style={"align-items": "center", "float": "center",
+                            "justify-content": "center", "height": "50%", "margin": "7px"}),
+                            dcc.Download(id="download-stitch-image"),
                             ], style={"alignItems": "center"})
                             ], style={"margin-left": "7.5px", "margin-right": "7.5px", "margin-top": "3px"},
                             active_tab='channel-config-tab'),

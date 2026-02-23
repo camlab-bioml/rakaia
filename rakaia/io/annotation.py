@@ -20,7 +20,8 @@ from rakaia.utils.object import (
     get_min_max_values_from_zoom_box,
     get_min_max_values_from_rect_box,
     validate_mask_shape_matches_image,
-    get_objs_in_svg_boundary_by_mask_percentage)
+    get_objs_in_svg_boundary_by_mask_percentage,
+    check_download_dir)
 from rakaia.utils.pixel import get_region_dim_from_roi_dictionary, split_string_at_pattern
 from rakaia.utils.pixel import path_to_mask
 
@@ -122,11 +123,7 @@ class AnnotationMaskWriter:
 
         :return: None
         """
-        if os.path.exists(self.dest_dir) and os.access(os.path.dirname(self.dest_dir), os.R_OK) and \
-                self.auto_create_dir:
-            shutil.rmtree(os.path.dirname(self.dest_dir), ignore_errors=True)
-        if not os.path.exists(self.dest_dir):
-            os.makedirs(self.dest_dir)
+        check_download_dir(self.dest_dir, self.auto_create_dir)
 
     def add_new_category_mask(self, value):
         """

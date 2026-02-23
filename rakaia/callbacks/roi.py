@@ -31,6 +31,7 @@ from rakaia.utils.object import (
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
+from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -226,12 +227,26 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         prevent_initial_call=True)
     def create_stitched_image(create_stitch, sesh_id, width, height, stitch_name, cur_stitch):
         """
-        Create a new stitched image
+        Create a new stitched image, saved to the server side cache
         """
         if create_stitch and sesh_id and stitch_name and all(dim > 0 for dim in (width, height)):
             cur_stitch = cur_stitch if cur_stitch else {}
             cur_stitch[str(stitch_name)] = np.zeros((height, width, 3), dtype=np.uint8)
-            # TODO: create labels for the stitched images that includes dimensions
             return SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
-                        use_unique_key=app_config['serverside_overwrite']), list(cur_stitch.keys())
+                        use_unique_key=app_config['serverside_overwrite']), stitch_cache_dropdown_labels(cur_stitch)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("download-stitch-image", "data"),
+        Input("stitch-image-download", "n_clicks"),
+        State('stitched_images', 'data'),
+        State('stitch-image-select', 'value'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id))
+    def download_switch_image(download_stitch, stitch_cache, stitch_select):
+        """
+        Download a stitched image in zip format due to potential size
+        """
+        if None not in (download_stitch, stitch_cache, stitch_select) and stitch_select in stitch_cache:
+            download_stitch = os.path.join(str(download_stitch), str(uuid.uuid1()), 'downloads', 'stitch')
+            return dcc.send_file(download_stitch_image(download_stitch, stitch_cache, stitch_select))
         raise PreventUpdate

@@ -40,6 +40,7 @@ from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, v
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
+from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 from rakaia.utils.decorator import (
@@ -972,13 +973,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                                 dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
                     download_status = timestamp_download_child()
-                elif ctx.triggered_id == "stitch-image-update" and (None not in (update_stitch, cur_stitch,
-                stitch_select, stitch_x_coord, stitch_y_coord) and str(stitch_select) in cur_stitch):
-                    # TODO: put logic here to add in a stitched image
-                    cur_stitch[stitch_select][stitch_y_coord:(canvas.get_image().shape[0] + int(stitch_y_coord)),
-                    stitch_x_coord:(canvas.get_image().shape[1] + int(stitch_x_coord))] = canvas.get_image()
-                    return dash.no_update, dash.no_update, dash.no_update, dash.no_update, SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
-                        use_unique_key=app_config['serverside_overwrite']),
+                elif ctx.triggered_id == "stitch-image-update": return (dash.no_update, dash.no_update, dash.no_update, dash.no_update,
+                SessionServerside(update_stitch_cache_with_blend(cur_stitch, stitch_select, stitch_x_coord, stitch_y_coord, canvas),
+                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']))
                 return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
