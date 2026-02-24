@@ -1,4 +1,4 @@
-"""Module defining the functions for processing images for registration such as H & E
+"""Module defining the functions for processing WSI images for rendering in the osd view such as H & E
 """
 import os
 from typing import Union

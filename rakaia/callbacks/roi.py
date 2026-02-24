@@ -31,7 +31,7 @@ from rakaia.utils.object import (
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
-from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image
+from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -208,12 +208,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Open the modal to preview the currently selected stitch image
         """
-        if preview_stitch and stitch_select and stitch_collection and str(stitch_select) in list(stitch_collection.keys()):
-            return True, [dbc.Col(dbc.Card([
-                        dbc.CardImg(src=Image.fromarray(resize_for_canvas(
-                        stitch_collection[stitch_select], 1000)).convert('RGB'),
-                        bottom=True)]), width=12)]
-        return False, dash.no_update
+        return stitch_image_preview(stitch_collection, stitch_select)
 
     @dash_app.callback(
         Output('stitched_images', 'data'),

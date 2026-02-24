@@ -1,10 +1,18 @@
+"""
+Module for classes and functions related to creating stitched Whole slide Images (WSI)
+from canvas blends
+"""
+
 from typing import Union
 import shutil
 import os
 import numpy as np
 import tifffile
+from PIL import Image
+import dash_bootstrap_components as dbc
 from rakaia.components.canvas import CanvasImage
 from rakaia.utils.object import check_download_dir
+from rakaia.utils.pixel import resize_for_canvas
 
 def update_stitch_cache_with_blend(stitch_cache: Union[dict, None],
                                    stitch_selection: Union[str, None],
@@ -49,3 +57,15 @@ def download_stitch_image(dest_dir: Union[str, None]=None,
                          stitch_cache[stitch_selection].astype(np.uint8))
         shutil.make_archive(dest_dir, 'zip', dest_dir)
         return str(dest_dir + ".zip")
+
+
+def stitch_image_preview(stitch_collection: Union[dict, None]=None,
+                          stitch_selection: Union[str, None]=None):
+    """
+    Generate a thumbnail preview for a selected stitch image, displayed as a down-sampled Card. Return
+    a tuple toggling the visibility of the parent modal, and the card HTML
+    """
+    if None not in (stitch_collection, stitch_selection) and str(stitch_selection) in list(stitch_collection.keys()):
+        return True, [dbc.Col(dbc.Card([dbc.CardImg(src=Image.fromarray(resize_for_canvas(
+        stitch_collection[stitch_selection], 1000)).convert('RGB'), bottom=True)]), width=12)]
+    return False, None

@@ -1,10 +1,13 @@
 import tempfile
 import os
 import numpy as np
+import PIL
 from rakaia.stitch import (
     update_stitch_cache_with_blend,
     stitch_cache_dropdown_labels,
-    download_stitch_image)
+    download_stitch_image,
+    stitch_image_preview)
+from rakaia.stitch.mcd import MCDAcqCoordinateParser
 
 def test_stitch_cache_update(stitch_cache):
     # if you try to add an image that goes beyond the limits, leave as is
@@ -42,3 +45,23 @@ def test_stitch_download(stitch_cache):
         assert os.path.exists(file_path)
         if os.access(download_stitch, os.W_OK):
             os.remove(download_stitch)
+
+def test_stitch_image_preview(stitch_cache):
+    visible, child = stitch_image_preview(stitch_cache, 'None')
+    assert not visible
+    assert not child
+    visible, child = stitch_image_preview(stitch_cache, 'test_1')
+    assert visible
+    assert len(child) > 0
+    assert isinstance(child[0].children.children[0].src, PIL.Image.Image)
+
+
+def test_stitch_roi_from_mcd(get_current_dir):
+    session_cache = {'uploads': [os.path.join(get_current_dir, 'query.mcd')]}
+    from_mcd, path = MCDAcqCoordinateParser(session_cache, 'query+++slide1+++Xylene_5').get_mcd_status()
+    assert from_mcd
+    assert str(path) == str(os.path.join(get_current_dir, 'query.mcd'))
+    from_mcd, path = MCDAcqCoordinateParser(session_cache, None).get_mcd_status()
+    assert not from_mcd
+    from_mcd, path = MCDAcqCoordinateParser(session_cache, 'malformed_roi', '---').get_mcd_status()
+    assert path is None
