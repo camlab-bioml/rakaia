@@ -65,3 +65,10 @@ def test_stitch_roi_from_mcd(get_current_dir):
     assert not from_mcd
     from_mcd, path = MCDAcqCoordinateParser(session_cache, 'malformed_roi', '---').get_mcd_status()
     assert path is None
+
+    # TODO: need to check that these tests actually parse out correct values rather than just semantic checks
+    slide_width, slide_height = MCDAcqCoordinateParser(session_cache, 'query+++slide1+++Xylene_5').get_roi_slide_params()
+    assert all(elem > 0 for elem in (slide_width, slide_height))
+
+    x_start, y_start = MCDAcqCoordinateParser(session_cache,'query+++slide1+++Xylene_5').get_roi_coord_min()
+    assert all(elem > 0 for elem in (x_start, y_start))

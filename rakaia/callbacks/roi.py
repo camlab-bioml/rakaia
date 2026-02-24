@@ -12,6 +12,8 @@ from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 import numpy as np
 import dash_bootstrap_components as dbc
+
+from rakaia.stitch.mcd import MCDAcqCoordinateParser
 from rakaia.utils.pixel import resize_for_canvas
 
 from rakaia.parsers.roi import RegionThumbnail
@@ -244,4 +246,34 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if None not in (download_stitch, stitch_cache, stitch_select) and stitch_select in stitch_cache:
             download_stitch = os.path.join(str(download_stitch), str(uuid.uuid1()), 'downloads', 'stitch')
             return dcc.send_file(download_stitch_image(download_stitch, stitch_cache, stitch_select))
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("stitch-image-create-width", "value"),
+        Output("stitch-image-create-height", "value"),
+        Input("cur-roi-slide-parse", "n_clicks"),
+        State('data-collection', 'value'),
+        State('dataset-delimiter', 'value'),
+        State('session_config', 'data'))
+    def parse_mcd_slide_for_stitch(parse_for_slide, roi_selection, delim, session_uploads):
+        """
+        Get the desired width and height of a slide image from the current ROI, if from MCD
+        """
+        if None not in (roi_selection, delim, session_uploads):
+            return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_slide_params()
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("stitch-image-x-min", "value"),
+        Output("stitch-image-y-min", "value"),
+        Input("cur-roi-stitch-parse", "n_clicks"),
+        State('data-collection', 'value'),
+        State('dataset-delimiter', 'value'),
+        State('session_config', 'data'))
+    def parse_roi_for_global_slide_coords(parse_for_slide, roi_selection, delim, session_uploads):
+        """
+        Get the desired x and y min in the global slide coordinate system for the current ROI, if from MCD
+        """
+        if None not in (roi_selection, delim, session_uploads):
+            return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_coord_min()
         raise PreventUpdate
