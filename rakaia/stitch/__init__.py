@@ -67,5 +67,7 @@ def stitch_image_preview(stitch_collection: Union[dict, None]=None,
     """
     if None not in (stitch_collection, stitch_selection) and str(stitch_selection) in list(stitch_collection.keys()):
         return True, [dbc.Col(dbc.Card([dbc.CardImg(src=Image.fromarray(resize_for_canvas(
-        stitch_collection[stitch_selection], 1000)).convert('RGB'), bottom=True)]), width=12)]
+        stitch_collection[stitch_selection], 1000)).convert('RGB'), bottom=True,
+        style={"minHeight": "800px", "maxHeight": "800px", "width": "100%",
+            "objectFit": "contain"})]), width=12)]
     return False, None

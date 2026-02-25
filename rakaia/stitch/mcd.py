@@ -3,10 +3,13 @@ Module for parsing MCD files to retrieve relevant stitching information such as
 global slide coordinates systems, slide parameters, ROI coordinates, etc.
 """
 from typing import Union
+import numpy as np
 from pathlib import Path
 from readimc import MCDFile
 from readimc.data.slide import Slide, Acquisition
 from rakaia.utils.pixel import split_string_at_pattern
+from rakaia.stitch import update_stitch_cache_with_blend
+from rakaia.utils.object import pad_steinbock_roi_index
 
 class MCDAcqCoordinateParser:
     """
@@ -134,3 +137,44 @@ class MCDAcqCoordinateParser:
                 points_translated_y.append(self.invert_mcd_coord(int(point[1]), max_height, pixel_size))
             return int(min(points_translated_x) - min_x), min(points_translated_y)
         return None, None
+
+
+def stitch_mcd_blends_from_gallery(stitch_cache: Union[dict, None],
+                                   stitch_selection: Union[str, None],
+                                   roi_images: Union[dict, None] = None,
+                                   session_filepaths: Union[dict, list, None]=None,
+                                   delimiter: str = "+++"):
+    """
+    Add a series of existing dataset gallery tiles to the selected stitch image
+    """
+    if None not in (stitch_cache, stitch_selection, roi_images) and str(stitch_selection) in stitch_cache:
+        for roi_id, roi_arr in roi_images.items():
+            x_min, y_min = MCDAcqCoordinateParser(session_filepaths, roi_id, delimiter).get_roi_coord_min()
+            if None not in (x_min, y_min):
+                stitch_cache = update_stitch_cache_with_blend(stitch_cache, stitch_selection,
+                                x_min, y_min, roi_arr.astype(np.uint8))
+    return stitch_cache
+
+def set_gallery_mcd_rois_to_stitch(rois_in_gallery: Union[list, None]=None,
+                                 data_selection: Union[str, None]=None,
+                                 delimiter: str="+++"):
+    """
+    Set the current ROIs in the search gallery as indices for stitching. Required to recreate the existing
+    images in the gallery as the user may have created down-sampled thumbnail versions
+    """
+    roi_indices = {'names': [roi_identifier_to_steinbock_id(roi, delimiter) for roi in rois_in_gallery if
+                             (roi != data_selection and roi_identifier_to_steinbock_id(roi, delimiter))]}
+    # set the query indices to None
+    return roi_indices, None, [data_selection]
+
+def roi_identifier_to_steinbock_id(data_str: str,
+                                   delimiter: str="+++"):
+    """
+    Convert an ROI selection string to a steinbock sample ID if it meets the criteria
+    """
+    file, slide, acq = split_string_at_pattern(data_str, delimiter)
+    if str(acq) != 'acq' and acq[-1].isdigit():
+        acq_desc, acq_id = str(acq).rsplit("_", 1)
+        acq_id = pad_steinbock_roi_index(int(acq_id))
+        return f"{file}_{acq_id}"
+    return None

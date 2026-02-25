@@ -109,8 +109,8 @@ class RegionThumbnail:
         self.dim_max = self.set_dimension_max(dimension_max)
         self.keyword = self.set_query_keywords(roi_keyword)
         self.spot_size = spatial_radius
-        # if random query, allow mask toggle, otherwise always include the mask
-        self.enable_masks = enable_masks if not predefined_indices else True
+        # if random query, allow mask toggle, otherwise include the mask if both query lists and defined indices exist
+        self.enable_masks = True if (self.query_cell_id_lists and self.predefined_indices) else enable_masks
         self.use_scaling = use_scaling
         self.arr_type = arr_type if arr_type else "float"
 

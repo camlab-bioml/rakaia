@@ -8,7 +8,11 @@ from rakaia.stitch import (
     stitch_cache_dropdown_labels,
     download_stitch_image,
     stitch_image_preview)
-from rakaia.stitch.mcd import MCDAcqCoordinateParser
+from rakaia.stitch.mcd import (
+    MCDAcqCoordinateParser,
+    stitch_mcd_blends_from_gallery,
+    set_gallery_mcd_rois_to_stitch,
+    roi_identifier_to_steinbock_id)
 
 def test_stitch_cache_update(stitch_cache):
     # if you try to add an image that goes beyond the limits, leave as is
@@ -83,3 +87,35 @@ def test_stitch_roi_from_mcd(get_current_dir):
 
     with (pytest.raises(TypeError)): MCDAcqCoordinateParser(session_cache, 'query+++slide1+++Xylene_5'
                                     ).get_roi_slide_boundary_point(bound_type=sum)
+
+
+def test_roi_identifier_conversion(stitch_cache):
+    """
+    Conversion between the ROI identifier to steinbock ID is required for stitching from the gallery
+    """
+    assert roi_identifier_to_steinbock_id("query++++slide1++++first_roi_2") == "query_002"
+    assert roi_identifier_to_steinbock_id("query++++slide1++++roi_10") == "query_010"
+    assert roi_identifier_to_steinbock_id("query++++slide1++++roi_100") == "query_100"
+    assert not roi_identifier_to_steinbock_id("query++++slide1++++roi")
+
+def test_set_mcd_gallery_stitch(get_current_dir):
+    indices, query_list, exclude = set_gallery_mcd_rois_to_stitch(
+        ['query+++slide1+++PAP_1', 'query++++slide1+++Xylene_5'], None)
+    assert len(indices['names']) == 2
+    indices, query_list, exclude = set_gallery_mcd_rois_to_stitch(
+        ['query+++slide1+++acq', 'query2++++slide1+++acq'], None)
+    assert len(indices['names']) == 0 and not query_list
+
+    mcd_filepath = [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'mcd', 'test.mcd')]
+    slide_width, slide_height = MCDAcqCoordinateParser(mcd_filepath,
+                                'test+++slide1+++chr10-h54h54-Gd158_2_18').get_roi_slide_boundary_point()
+    new_stitch = {'test_stitch': np.zeros((slide_height, slide_width, 3))}
+    assert np.sum(new_stitch['test_stitch']) == 0
+    new_stitch = stitch_mcd_blends_from_gallery(new_stitch, 'test_stitch',
+                    {'for_quant+++slide1+++acq': np.ones((200, 200, 3))},
+                                                mcd_filepath)
+    assert np.sum(new_stitch['test_stitch']) == 0
+    new_stitch = stitch_mcd_blends_from_gallery(new_stitch, 'test_stitch',
+                                                {'test+++slide1+++chr10-h54h54-Gd158_2_18': np.ones((200, 200, 3))},
+                                                mcd_filepath)
+    assert np.sum(new_stitch['test_stitch']) > 0
