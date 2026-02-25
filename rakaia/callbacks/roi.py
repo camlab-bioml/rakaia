@@ -260,7 +260,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Get the desired width and height of a slide image from the current ROI, if from MCD
         """
         if None not in (roi_selection, delim, session_uploads):
-            return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_slide_params()
+            return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_slide_boundary_point()
         raise PreventUpdate
 
     @dash_app.callback(

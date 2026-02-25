@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-02-23
+## [0.29.0] - 2026-02-25
 
 ### Added
 
-- Created stitched images + add in canvas by coordinate
+- Created stitched images + add in canvas by coordinate #159
 - Input to manually set WSI zoom level
 
 ### Changed

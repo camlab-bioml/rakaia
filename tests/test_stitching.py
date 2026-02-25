@@ -2,6 +2,7 @@ import tempfile
 import os
 import numpy as np
 import PIL
+import pytest
 from rakaia.stitch import (
     update_stitch_cache_with_blend,
     stitch_cache_dropdown_labels,
@@ -57,7 +58,8 @@ def test_stitch_image_preview(stitch_cache):
 
 
 def test_stitch_roi_from_mcd(get_current_dir):
-    session_cache = {'uploads': [os.path.join(get_current_dir, 'query.mcd')]}
+    session_cache = {'uploads': [os.path.join(get_current_dir, 'query.mcd'),
+                                 os.path.join(get_current_dir, 'for_quant.tiff')]}
     from_mcd, path = MCDAcqCoordinateParser(session_cache, 'query+++slide1+++Xylene_5').get_mcd_status()
     assert from_mcd
     assert str(path) == str(os.path.join(get_current_dir, 'query.mcd'))
@@ -67,8 +69,17 @@ def test_stitch_roi_from_mcd(get_current_dir):
     assert path is None
 
     # TODO: need to check that these tests actually parse out correct values rather than just semantic checks
-    slide_width, slide_height = MCDAcqCoordinateParser(session_cache, 'query+++slide1+++Xylene_5').get_roi_slide_params()
+    slide_width, slide_height = MCDAcqCoordinateParser(session_cache, 'query+++slide1+++Xylene_5').get_roi_slide_boundary_point()
     assert all(elem > 0 for elem in (slide_width, slide_height))
 
     x_start, y_start = MCDAcqCoordinateParser(session_cache,'query+++slide1+++Xylene_5').get_roi_coord_min()
     assert all(elem > 0 for elem in (x_start, y_start))
+
+    # not MCD
+    assert MCDAcqCoordinateParser(session_cache,
+            'for_quant+++slideNA+++acq').get_roi_slide_boundary_point() == (None, None)
+    assert MCDAcqCoordinateParser(session_cache,
+            'for_quant+++slideNA+++acq').get_roi_coord_min() == (None, None)
+
+    with (pytest.raises(TypeError)): MCDAcqCoordinateParser(session_cache, 'query+++slide1+++Xylene_5'
+                                    ).get_roi_slide_boundary_point(bound_type=sum)

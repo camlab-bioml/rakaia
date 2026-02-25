@@ -74,13 +74,19 @@ class MCDAcqCoordinateParser:
                             return slide, acq
         return None, None
 
-    def get_roi_slide_params(self):
+    def get_roi_slide_boundary_point(self, trim: bool=True,
+                                     bound_type: Union[min, max]=max):
         """
-        Get the width and height for the MCD file slide backing the current ROI. IMPORTANT: this will trim
-        the width and height to the min and max coordinates of the ROIs found on the same slide in the same MCD file.
+        Get a boundary point (min or max of (x, y)) for the current slide, with or without trimming. IMPORTANT: Trimming
+        will restrict the width and height to the min and max coordinates of the ROIs found on the same slide in the same MCD file.
+
+        :param trim: Whether to trim the slide coordinates to remove dead space form the global coordinates.
+        :param bound_type: One of the built-in `min` or `max` to specify which boundary point.
 
         :return: Tuple (width, height) in pixels for the slide
         """
+        if bound_type not in (min, max):
+            raise TypeError("The `bound_type` must be either the min or max builtin function")
         if self._slide_match is not None and isinstance(self._slide_match, Slide):
             x_coords = []
             y_coords = []
@@ -88,27 +94,9 @@ class MCDAcqCoordinateParser:
                 for point in acq.roi_points_um:
                     x_coords.append(int(point[0]))
                     y_coords.append(int(point[1]))
-            return int(max(x_coords) - min(x_coords)), int(max(y_coords) - min(y_coords))
-        return None, None
-
-    def _get_mcd_slide_min_max_coords(self, type_coord: str= "max"):
-        """
-        Get the min or max width and height in pixels for the current slide, without any offsets. Requires iterating
-        over all the acquisitions on the slide to find the min anx max coordinates covered
-
-        :param type_coord: String representing the min or max coordinates to be returned
-
-        :return: Tuple (x, y) coordinate for the slide, either the min or the max.
-        """
-        if self._slide_match is not None and isinstance(self._slide_match, Slide):
-            x_coords = []
-            y_coords = []
-            for acq in self._slide_match.acquisitions:
-                for point in acq.roi_points_um:
-                    x_coords.append(int(point[0]))
-                    y_coords.append(int(point[1]))
-            return (int(max(x_coords)), int(max(y_coords))) if type_coord == "max" else \
-                    (int(min(x_coords)), int(min(y_coords)))
+            x_bound = int(bound_type(x_coords)  - min(x_coords)) if trim else int(bound_type(x_coords))
+            y_bound = int(bound_type(y_coords)  - min(y_coords)) if trim else int(bound_type(y_coords))
+            return x_bound, y_bound
         return None, None
 
     @staticmethod
@@ -138,8 +126,9 @@ class MCDAcqCoordinateParser:
             points_translated_x = []
             points_translated_y = []
             pixel_size = int(min(self._acq_match.pixel_size_x_um, self._acq_match.pixel_size_y_um))
-            max_width, max_height = self._get_mcd_slide_min_max_coords()
-            min_x, min_y = self._get_mcd_slide_min_max_coords("min")
+            # Need to get the max in the y-axis without trimming to flip properly
+            max_width, max_height = self.get_roi_slide_boundary_point(False, max)
+            min_x, min_y = self.get_roi_slide_boundary_point(False, min)
             for point in self._acq_match.roi_points_um:
                 points_translated_x.append(int(point[0]))
                 points_translated_y.append(self.invert_mcd_coord(int(point[1]), max_height, pixel_size))
