@@ -9,6 +9,7 @@ from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
 from tifffile import imwrite
 import numpy as np
+import zipfile
 import plotly.graph_objs as go
 from dash import html
 from plotly.graph_objs import XAxis, YAxis
@@ -186,9 +187,16 @@ class RegionSummary:
         """
         return self.summary_frame
 
+def image_at_limit_for_zip(image: Union[np.array, np.ndarray],
+                           zip_dim_threshold: int=7500):
+    """
+    Check if the current canvas image has sufficiently large dimension to zip
+    """
+    return image.shape[0] >= zip_dim_threshold or image.shape[1] >= zip_dim_threshold
 
 def output_current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_default="canvas",
-                                  roi_name: str=None, use_roi_name=False, delimiter: str="+++"):
+                                  roi_name: str=None, use_roi_name=False, delimiter: str="+++",
+                                  zip_dim_threshold: int=7500):
     """
     Output the current canvas image as a photometric tiff
     """
@@ -198,6 +206,12 @@ def output_current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_defau
         if not os.path.exists(dest_dir):
             os.makedirs(dest_dir)
         imwrite(dest_file, canvas_image.astype(np.uint8), photometric='rgb')
+        # check if large enough to zip
+        if image_at_limit_for_zip(canvas_image.astype(np.uint8), zip_dim_threshold):
+            dest_file_zip = str(os.path.join(dest_dir, f"{out_tiff_name}.zip"))
+            with zipfile.ZipFile(dest_file_zip, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(dest_file, arcname=os.path.basename(dest_file))
+            return dest_file_zip
         return dest_file
     return None
 

@@ -12,7 +12,8 @@ from rakaia.stitch.mcd import (
     MCDAcqCoordinateParser,
     stitch_mcd_blends_from_gallery,
     set_gallery_mcd_rois_to_stitch,
-    roi_identifier_to_steinbock_id)
+    roi_identifier_to_steinbock_id,
+    cur_roi_slide_matches_stitch)
 
 def test_stitch_cache_update(stitch_cache):
     # if you try to add an image that goes beyond the limits, leave as is
@@ -119,3 +120,9 @@ def test_set_mcd_gallery_stitch(get_current_dir):
                                                 {'test+++slide1+++chr10-h54h54-Gd158_2_18': np.ones((200, 200, 3))},
                                                 mcd_filepath)
     assert np.sum(new_stitch['test_stitch']) > 0
+
+    # when two MCD slides mismatch
+    mcd_2_w, mcd_2_h = MCDAcqCoordinateParser([os.path.join(get_current_dir, 'query.mcd')],
+                                'query+++slide1+++PAP_1').get_roi_slide_boundary_point()
+    assert not cur_roi_slide_matches_stitch(slide_height, slide_width, mcd_2_h, mcd_2_w)
+    assert not cur_roi_slide_matches_stitch(slide_height, slide_width, None, None)

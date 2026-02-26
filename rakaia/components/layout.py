@@ -1014,7 +1014,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                             dbc.Tooltip(TOOLTIPS['cur-roi-slide-parse'], target="cur-roi-slide-parse", placement='left'),
                             dbc.Button(children=html.Span([html.I(className="fa-solid fa-plus",
                             style={"display": "inline-block", "margin-right": "7.5px", "margin-top": "3px"}),
-                            html.Div("Create stitched image")], style={"display": "flex", "margin-left": "5px"}),
+                            html.Div("Create new stitched image (blank)")], style={"display": "flex", "margin-left": "5px"}),
                             id="stitch-image-create", className="mx-auto", size="sm", color=None,
                             outline=False, n_clicks=0, style={"align-items": "center", "float": "center",
                                     "justify-content": "center", "height": "50%", "margin": "10px"}),

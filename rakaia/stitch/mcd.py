@@ -138,6 +138,17 @@ class MCDAcqCoordinateParser:
             return int(min(points_translated_x) - min_x), min(points_translated_y)
         return None, None
 
+def cur_roi_slide_matches_stitch(slide_height: Union[float, int, None]=None,
+                                 slide_width: Union[float, int, None]=None,
+                                 stitch_height: Union[float, int, None]=None,
+                                 stitch_width: Union[float, int, None]=None):
+    """
+    Check that the underlying slide or a specific ROI matches the dimensions of a stitch image
+    """
+    if None not in (slide_width, slide_height, stitch_height, stitch_height):
+        return int(slide_height) == int(stitch_height) and int(slide_width) == int(stitch_width)
+    return False
+
 
 def stitch_mcd_blends_from_gallery(stitch_cache: Union[dict, None],
                                    stitch_selection: Union[str, None],
@@ -148,11 +159,14 @@ def stitch_mcd_blends_from_gallery(stitch_cache: Union[dict, None],
     Add a series of existing dataset gallery tiles to the selected stitch image
     """
     if None not in (stitch_cache, stitch_selection, roi_images) and str(stitch_selection) in stitch_cache:
+        stitch_h, stitch_w = stitch_cache[stitch_selection].shape[0], stitch_cache[stitch_selection].shape[1]
         for roi_id, roi_arr in roi_images.items():
             x_min, y_min = MCDAcqCoordinateParser(session_filepaths, roi_id, delimiter).get_roi_coord_min()
-            if None not in (x_min, y_min):
-                stitch_cache = update_stitch_cache_with_blend(stitch_cache, stitch_selection,
-                                x_min, y_min, roi_arr.astype(np.uint8))
+            roi_slide_w, roi_slide_h = MCDAcqCoordinateParser(session_filepaths, roi_id, delimiter).get_roi_slide_boundary_point()
+            # check here that the underlying ROI slide dimensions match the dimensions of the current stitch image?
+            # i.e. if the gallery contains ROIs from multiple MCDs
+            if None not in (x_min, y_min) and cur_roi_slide_matches_stitch(roi_slide_h, roi_slide_w, stitch_h, stitch_w):
+                stitch_cache = update_stitch_cache_with_blend(stitch_cache, stitch_selection, x_min, y_min, roi_arr.astype(np.uint8))
     return stitch_cache
 
 def set_gallery_mcd_rois_to_stitch(rois_in_gallery: Union[list, None]=None,

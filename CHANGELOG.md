@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-02-25
+## [0.29.0] - 2026-02-26
 
 ### Added
 
@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated dependencies based on [`cryptography`](https://github.com/advisories/GHSA-r6ph-v2qm-q3c2) and
 [`pillow`](https://github.com/advisories/GHSA-cfh3-3jmp-rvhc) vulnerabilities
+- Export canvas tiff as zip if sufficiently large
 
 ### Fixed
 
