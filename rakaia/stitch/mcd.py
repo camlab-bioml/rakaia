@@ -11,6 +11,13 @@ from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.object import pad_steinbock_roi_index
 
+def pad_min_index(coord_index: Union[int, float]):
+    """
+    Pad an index so that the value is never negative
+    """
+    return int(coord_index) if coord_index > 0 else 0
+
+
 class MCDAcqCoordinateParser:
     """
     Parses for slide parameters and/or individual ROI-level global coordinates to support image stitching for a specific ROI
@@ -47,8 +54,7 @@ class MCDAcqCoordinateParser:
         """
         if None not in (roi_filepath, session_filepaths):
             for session_file in session_filepaths:
-                if str(Path(session_file).stem == str(roi_filepath)) and (
-                        str(Path(session_file)).endswith('.mcd')):
+                if (str(Path(session_file).stem) == str(roi_filepath)) and (str(Path(session_file)).endswith('.mcd')):
                     return True, str(session_file)
         return False, None
 
@@ -95,11 +101,11 @@ class MCDAcqCoordinateParser:
             y_coords = []
             for acq in self._slide_match.acquisitions:
                 for point in acq.roi_points_um:
-                    x_coords.append(int(point[0]))
-                    y_coords.append(int(point[1]))
+                    x_coords.append(int(int(point[0]) / int(acq.pixel_size_x_um)))
+                    y_coords.append(int(int(point[1]) / int(acq.pixel_size_y_um)))
             x_bound = int(bound_type(x_coords)  - min(x_coords)) if trim else int(bound_type(x_coords))
             y_bound = int(bound_type(y_coords)  - min(y_coords)) if trim else int(bound_type(y_coords))
-            return x_bound, y_bound
+            return pad_min_index(x_bound), pad_min_index(y_bound)
         return None, None
 
     @staticmethod
@@ -115,7 +121,8 @@ class MCDAcqCoordinateParser:
 
         :return: Inverted coordinate as an integer
         """
-        return int(int(coord_max - coord) / int(pixel_size))
+        #IMP: need to apply the pixel transformation only to the current coordinate, already applied to the max
+        return pad_min_index(int(int(coord_max) - int(coord / int(pixel_size))))
 
     def get_roi_coord_min(self):
         """
@@ -128,14 +135,13 @@ class MCDAcqCoordinateParser:
         if self._slide_match and self._acq_match:
             points_translated_x = []
             points_translated_y = []
-            pixel_size = int(min(self._acq_match.pixel_size_x_um, self._acq_match.pixel_size_y_um))
             # Need to get the max in the y-axis without trimming to flip properly
             max_width, max_height = self.get_roi_slide_boundary_point(False, max)
             min_x, min_y = self.get_roi_slide_boundary_point(False, min)
             for point in self._acq_match.roi_points_um:
-                points_translated_x.append(int(point[0]))
-                points_translated_y.append(self.invert_mcd_coord(int(point[1]), max_height, pixel_size))
-            return int(min(points_translated_x) - min_x), min(points_translated_y)
+                points_translated_x.append(int(point[0]) / int(self._acq_match.pixel_size_x_um))
+                points_translated_y.append(self.invert_mcd_coord(int(point[1]), max_height, int(self._acq_match.pixel_size_y_um)))
+            return pad_min_index(int(min(points_translated_x) - min_x)), pad_min_index(min(points_translated_y))
         return None, None
 
 def cur_roi_slide_matches_stitch(slide_height: Union[float, int, None]=None,
@@ -170,12 +176,14 @@ def stitch_mcd_blends_from_gallery(stitch_cache: Union[dict, None],
     return stitch_cache
 
 def set_gallery_mcd_rois_to_stitch(rois_in_gallery: Union[list, None]=None,
-                                 data_selection: Union[str, None]=None,
-                                 delimiter: str="+++"):
+                                   data_selection: Union[str, None]=None,
+                                   delimiter: str="+++"):
     """
     Set the current ROIs in the search gallery as indices for stitching. Required to recreate the existing
     images in the gallery as the user may have created down-sampled thumbnail versions
     """
+    # TODO: should we add a check here that the ROI slide dimensions must be compatible with the
+    # current stitch? Could save creating RGB images that are not added i.e. multi slide/MCD session
     roi_indices = {'names': [roi_identifier_to_steinbock_id(roi, delimiter) for roi in rois_in_gallery if
                              (roi != data_selection and roi_identifier_to_steinbock_id(roi, delimiter))]}
     # set the query indices to None
