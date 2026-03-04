@@ -49,6 +49,13 @@ def test_parse_tiff_page_names(get_current_dir):
     uploaded_dict = FileParser([os.path.join(get_current_dir, "page_names.tiff")]).image_dict
     assert 'SMA' in uploaded_dict['metadata']['Channel Label'][0]
 
+def test_parse_ome_tiff_chan_names(get_current_dir):
+    uploaded_dict = FileParser([os.path.join(get_current_dir, "test_018.ome.tiff")]).image_dict
+    assert 'Ar' in uploaded_dict['metadata']['Channel Label'][0]
+
+    uploaded_dict = FileParser([os.path.join(get_current_dir, "no_metadata.ome.tif")]).image_dict
+    assert uploaded_dict['metadata']['Channel Name'] == uploaded_dict['metadata']['Channel Label']
+
 def test_basic_parser_fake_mcd(get_current_dir):
     with pytest.raises(ValueError):
         FileParser([os.path.join(get_current_dir, "fake_dataset.mcd")])

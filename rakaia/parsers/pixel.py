@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Union
 from functools import partial
 import os
+from xml.etree import ElementTree
+
 import dash
 import numpy as np
 from tifffile import TiffFile, TiffPage
@@ -250,6 +252,24 @@ class FileParser:
         if tiff.is_imagej and 'Labels' in tiff.imagej_metadata:
             self.channel_labels_metadata = tiff.imagej_metadata['Labels']
 
+    def check_ome_channel_labels(self, tiff: TiffFile,
+            ome_spec: str="http://www.openmicroscopy.org/Schemas/OME/2016-06"):
+        """
+        Check if the ome tiff has channel label information in the channel XML components
+
+        :param tiff: Instance of a tifffile tiff object
+        :param ome_spec: String path to the online ome schema
+
+        :return: None
+        """
+        try:
+            if tiff.ome_metadata:
+                root_ome = ElementTree.fromstring(tiff.ome_metadata)
+                channels = root_ome.findall(".//ome:Channel", {"ome": ome_spec})
+                channel_names = [ch.attrib["Name"] for ch in channels]
+                self.channel_labels_metadata = channel_names if channel_names else self.channel_labels_metadata
+        except (KeyError, TypeError, IndexError): pass
+
     @staticmethod
     def check_page_name_label(tiff_page: TiffPage, alt_name: Union[str, None]=None):
         """
@@ -275,6 +295,7 @@ class FileParser:
         """
         with TiffFile(tiff_file) as tif:
             self.check_imagej_labels(tif)
+            self.check_ome_channel_labels(tif)
             tiff_path = Path(tiff_file)
             # IMP: if the length of this tiff is not the same as the current metadata, implies that
             # the files have different channels/panels
