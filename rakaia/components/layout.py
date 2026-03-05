@@ -1020,8 +1020,9 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                     "justify-content": "center", "height": "50%", "margin": "10px"}),
                             html.Br(),
                             html.Br(),
-                            html.B("Set (x-min, y-min) for image to stitch",
-                                   style={"margin-left": "10px", "text-align": "center"}),
+                            html.B("Set (x-min, y-min) for image to stitch", style={"margin-left": "10px",
+                                    "text-align": "center"}, id='stitch-coord-min-label'),
+                            dbc.Tooltip(TOOLTIPS['stitch-coord-min'], target="stitch-coord-min-label", placement='top'),
                             html.Div([
                             dcc.Input(type="number", value=None, id='stitch-image-x-min', placeholder="",
                                       style={"width": "35%", "margin": "10px"}),

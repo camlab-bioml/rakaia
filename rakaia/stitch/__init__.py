@@ -1,6 +1,6 @@
 """
-Module for classes and functions related to creating stitched Whole slide Images (WSI)
-from canvas blends
+Module for classes and functions related to creating, modifying, and displaying
+stitched images from canvas blends and ROi gallery thumbnails
 """
 
 from typing import Union
@@ -14,13 +14,26 @@ from rakaia.components.canvas import CanvasImage
 from rakaia.utils.object import check_download_dir
 from rakaia.utils.pixel import resize_for_canvas
 
+def add_new_stitch(stitch_cache: Union[dict, None]=None,
+                   stitch_selection: Union[str, None]=None,
+                   height: Union[int, float, None]=None,
+                   width: Union[int, float, None]=None):
+    """
+    Add a new stitch image to the current cache with a specified width and height. Assumes that the
+    stitch image will be RGB to accommodate the addition of color blends at set coordinates
+    """
+    stitch_cache = stitch_cache if stitch_cache else {}
+    if None not in (stitch_selection, width, height):
+        stitch_cache[str(stitch_selection)] = np.zeros((height, width, 3), dtype=np.uint8)
+    return stitch_cache
+
 def update_stitch_cache_with_blend(stitch_cache: Union[dict, None],
                                    stitch_selection: Union[str, None],
                                    stitch_x_coord: Union[int, float, None]=None,
                                    stitch_y_coord: Union[int, float, None]=None,
                                    roi_to_add: Union[np.ndarray, CanvasImage, None]=None):
     """
-    Update a selected stitched image in the cache with an ROI blend at a specific x and y-min.
+    Update a selected stitched image in the cache with an ROI blend at a specific x and y-min (top-left coordinate).
     This adds the RGB blend in that position and returns the updated cache, then cached
     as a server side transformed data object
     """

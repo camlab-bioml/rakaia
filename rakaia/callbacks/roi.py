@@ -5,18 +5,13 @@ import os
 import uuid
 import dash
 import pandas as pd
-from PIL import Image
 from dash import ALL, dcc
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
-import numpy as np
-import dash_bootstrap_components as dbc
-
-from rakaia.stitch.mcd import MCDAcqCoordinateParser, stitch_mcd_blends_from_gallery, roi_identifier_to_steinbock_id, \
-    set_gallery_mcd_rois_to_stitch
-from rakaia.utils.pixel import resize_for_canvas
-
+from rakaia.stitch.mcd import (
+    MCDAcqCoordinateParser, stitch_mcd_blends_from_gallery,
+    set_gallery_mcd_rois_to_stitch)
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import (
             roi_query_gallery_children,
@@ -34,7 +29,7 @@ from rakaia.utils.object import (
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
-from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview
+from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview, add_new_stitch
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -243,8 +238,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Create a new stitched image, saved to the server side cache
         """
         if create_stitch and sesh_id and stitch_name and all(dim > 0 for dim in (width, height)):
-            cur_stitch = cur_stitch if cur_stitch else {}
-            cur_stitch[str(stitch_name)] = np.zeros((height, width, 3), dtype=np.uint8)
+            cur_stitch = add_new_stitch(cur_stitch, stitch_name, height, width)
             return SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
                         use_unique_key=app_config['serverside_overwrite']), stitch_cache_dropdown_labels(cur_stitch)
         raise PreventUpdate

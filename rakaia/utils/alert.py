@@ -168,8 +168,9 @@ class ToolTips(BaseModel):
                       "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates.",
                       "cur-roi-slide-parse": "If the current ROI is from an MCD file, parse to get the corresponding slide dimensions (width, height). "
                                              "Can be used to create a new stitched image corresponding to the underlying slide.",
-                      "cur-roi-stitch-parse": "If the current ROI is from an MCD file, parse to get the global slide coordinates. Can be used"
-                                              " to set the global coordinates when modifying a stitched image.",
+                      "cur-roi-stitch-parse": "If the current ROI is from an MCD file, parse to get the top-left anchor coordinate. Can be used"
+                                              " to set the position for adding the canvas blend to a stitched image.",
+                      "stitch-coord-min": "This is the top-left coordinate in the stitch to anchor the placement of a new blended image.",
                       "wsi-zoom-level": "0 is fully zoomed out, while 1 is the most zoomed in. Use log scale for "
                                         "zooming proportional to magnification, or disable for equal zoom increments."}
 

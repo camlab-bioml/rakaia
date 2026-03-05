@@ -255,7 +255,7 @@ class FileParser:
     def check_ome_channel_labels(self, tiff: TiffFile,
             ome_spec: str="http://www.openmicroscopy.org/Schemas/OME/2016-06"):
         """
-        Check if the ome tiff has channel label information in the channel XML components
+        Check if the ome tiff has a `Name` slot in the `Channel` XML component
 
         :param tiff: Instance of a tifffile tiff object
         :param ome_spec: String path to the online ome schema
