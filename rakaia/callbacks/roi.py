@@ -9,6 +9,8 @@ from dash import ALL, dcc
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
+
+from rakaia.callbacks.triggers import stitch_cache_delete
 from rakaia.stitch.mcd import (
     MCDAcqCoordinateParser, stitch_mcd_blends_from_gallery,
     set_gallery_mcd_rois_to_stitch)
@@ -29,7 +31,7 @@ from rakaia.utils.object import (
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
-from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview, add_new_stitch
+from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview, modify_stitch_cache
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -232,13 +234,17 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('stitch-image-create-height', 'value'),
         State('stitch-image-id', 'value'),
         State('stitched_images', 'data'),
+        Input('stitch-image-delete', 'n_clicks'),
+        State('stitch-image-select', 'value'),
         prevent_initial_call=True)
-    def create_stitched_image(create_stitch, sesh_id, width, height, stitch_name, cur_stitch):
+    def modify_stitched_images(create_stitch, sesh_id, width, height, stitch_name, cur_stitch, delete_stitch, stitch_select):
         """
-        Create a new stitched image, saved to the server side cache
+        Create or delete stitched images by name, saved to the server side cache
         """
-        if create_stitch and sesh_id and stitch_name and all(dim > 0 for dim in (width, height)):
-            cur_stitch = add_new_stitch(cur_stitch, stitch_name, height, width)
+        if sesh_id and stitch_name and (create_stitch or delete_stitch):
+            # set the name if the stitch is to be added or deleted
+            stitch_name = stitch_select if ctx.triggered_id == 'stitch-image-delete' else stitch_name
+            cur_stitch = modify_stitch_cache(cur_stitch, stitch_name, height, width, stitch_cache_delete(ctx.triggered_id, stitch_name))
             return SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
                         use_unique_key=app_config['serverside_overwrite']), stitch_cache_dropdown_labels(cur_stitch)
         raise PreventUpdate

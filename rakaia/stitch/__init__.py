@@ -14,16 +14,19 @@ from rakaia.components.canvas import CanvasImage
 from rakaia.utils.object import check_download_dir
 from rakaia.utils.pixel import resize_for_canvas
 
-def add_new_stitch(stitch_cache: Union[dict, None]=None,
-                   stitch_selection: Union[str, None]=None,
-                   height: Union[int, float, None]=None,
-                   width: Union[int, float, None]=None):
+def modify_stitch_cache(stitch_cache: Union[dict, None]=None,
+                        stitch_selection: Union[str, None]=None,
+                        height: Union[int, float, None]=None,
+                        width: Union[int, float, None]=None,
+                        delete_stitch: bool=False):
     """
-    Add a new stitch image to the current cache with a specified width and height. Assumes that the
+    Add or remove a stitch image to the current cache with a specified width and height. Assumes that the
     stitch image will be RGB to accommodate the addition of color blends at set coordinates
     """
+    if delete_stitch and stitch_selection is not None:
+        return {k: v for k, v in stitch_cache.items() if k != stitch_selection} if stitch_cache else {}
     stitch_cache = stitch_cache if stitch_cache else {}
-    if None not in (stitch_selection, width, height):
+    if None not in (stitch_selection, width, height) and all(dim > 0 for dim in (width, height)):
         stitch_cache[str(stitch_selection)] = np.zeros((height, width, 3), dtype=np.uint8)
     return stitch_cache
 

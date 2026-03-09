@@ -1430,11 +1430,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('image_layers', 'value'),
                        State("annotation_canvas", 'figure'),
                        prevent_initial_call=True)
-    def reset_graphs_on_empty_modification_menu(current_selection, blend, cur_canvas):
+    def reset_graphs_on_empty_modification_menu(cur_selection, blend, cur_canvas):
         """
         reset all the relevant input widgets and dropdown menus when there is no channel currently selected
         """
-        if blend is None or len(blend) == 0 and (len(current_selection) > 0 and cur_canvas):
+        if blend is None or len(blend) == 0 and (cur_selection is not None and len(cur_selection) > 0 and cur_canvas):
             cur_canvas['data'] = []
             return reset_pixel_histogram(), cur_canvas, [None, None], [], None
         raise PreventUpdate

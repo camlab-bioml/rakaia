@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-03-04
+## [0.29.0] - 2026-03-09
 
 ### Added
 
-- Created stitched images + add in canvas by coordinate #159
+- Created, edit, delete stitched images + add in canvas by coordinate #159
 - Input to manually set WSI zoom level
 - Better channel name parsing from OME
 
@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Change user blend selection in dataset gallery to state variable
+- Check for unique condition in mod menu reset
 
 ## [0.28.0] - 2026-02-03
 

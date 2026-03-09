@@ -103,3 +103,9 @@ def layout_has_modified_shape(canvas_layout: Union[dict, None]=None):
     Detect if the canvas layout has a modified shape (i.e. re-dragged)
     """
     return canvas_layout is not None and any('.path' in key for key in canvas_layout.keys())
+
+def stitch_cache_delete(triggered_id: str, stitch_selection: Union[str, None]=None):
+    """
+    Determine if the user wants to delete the current stitch from the cache
+    """
+    return triggered_id == "stitch-image-delete" and stitch_selection is not None

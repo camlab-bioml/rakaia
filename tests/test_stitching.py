@@ -4,7 +4,7 @@ import numpy as np
 import PIL
 import pytest
 from rakaia.stitch import (
-    add_new_stitch,
+    modify_stitch_cache,
     update_stitch_cache_with_blend,
     stitch_cache_dropdown_labels,
     download_stitch_image,
@@ -18,10 +18,19 @@ from rakaia.stitch.mcd import (
 
 def test_stitch_cache_update(stitch_cache):
 
-    new_stitch = add_new_stitch(None, None, 100, 100)
+    new_stitch = modify_stitch_cache(None, None, 100, 100)
     assert not new_stitch
-    new_stitch = add_new_stitch(None, "stitch_1", 100, 100)
+    new_stitch = modify_stitch_cache(None, "stitch_1", 100, 100)
     assert len(new_stitch) == 1
+
+    new_stitch = modify_stitch_cache(new_stitch, "stitch_2", 100, 100, True)
+    assert len(new_stitch) == 1
+
+    new_stitch = modify_stitch_cache(new_stitch, "stitch_1", 100, 100, True)
+    assert len(new_stitch) == 0
+
+    new_stitch = modify_stitch_cache(None, "stitch_1", 100, 100, True)
+    assert len(new_stitch) == 0
 
     # if you try to add an image that goes beyond the limits, leave as is
     stitch_cache = update_stitch_cache_with_blend(stitch_cache, 'test_2',
