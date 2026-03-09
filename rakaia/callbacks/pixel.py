@@ -938,7 +938,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         - if the hover template is updated (it is faster to recreate the figure rather than trying to remove the
         hover template)
         """
-        # TODO: modify this callback to allow adding the current ROI to a switch
         # do not update if the trigger is a global filter and the filter is not applied
         global_not_enabled = global_filter_disabled(ctx.triggered_id, global_apply_filter)
         channel_order_same = channel_order_as_default(ctx.triggered_id, channel_order, currently_selected)

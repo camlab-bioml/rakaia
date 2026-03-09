@@ -113,7 +113,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if ctx.triggered_id == "btn-download-roi-tiles" and existing_gallery:
             return (dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update,
                     dcc.send_file(gallery_export_template(os.path.join(export_roi, 'rois.html'),
-                            channel_tiles_from_gallery(existing_gallery), 3)), allow_click)
+                            channel_tiles_from_gallery(existing_gallery), 3)), allow_click, dash.no_update)
         elif (None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not quant_empty and
               not nothing_to_stitch and len(currently_selected) > 0 and not no_similarity_scores and ctx.triggered_id != "btn-download-roi-tiles"):
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
@@ -241,9 +241,9 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Create or delete stitched images by name, saved to the server side cache
         """
+        # set the name if the stitch is to be added or deleted
+        stitch_name = stitch_select if ctx.triggered_id == 'stitch-image-delete' else stitch_name
         if sesh_id and stitch_name and (create_stitch or delete_stitch):
-            # set the name if the stitch is to be added or deleted
-            stitch_name = stitch_select if ctx.triggered_id == 'stitch-image-delete' else stitch_name
             cur_stitch = modify_stitch_cache(cur_stitch, stitch_name, height, width, stitch_cache_delete(ctx.triggered_id, stitch_name))
             return SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
                         use_unique_key=app_config['serverside_overwrite']), stitch_cache_dropdown_labels(cur_stitch)
