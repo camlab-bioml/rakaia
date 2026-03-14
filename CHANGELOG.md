@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-03-09
+## [0.29.0] - 2026-03-14
 
 ### Added
 
@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Change user blend selection in dataset gallery to state variable
 - Check for unique condition in mod menu reset
+- **Index mismatch for 10x spatial mask rasterisation**
 
 ## [0.28.0] - 2026-02-03
 
