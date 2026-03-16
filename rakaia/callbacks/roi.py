@@ -6,8 +6,14 @@ import uuid
 import dash
 import pandas as pd
 from dash import ALL, dcc
+from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
+
+from rakaia.callbacks.triggers import stitch_cache_delete
+from rakaia.stitch.mcd import (
+    MCDAcqCoordinateParser, stitch_mcd_blends_from_gallery,
+    set_gallery_mcd_rois_to_stitch)
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import (
             roi_query_gallery_children,
@@ -25,6 +31,7 @@ from rakaia.utils.object import (
 from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
+from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview, modify_stitch_cache
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -45,6 +52,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('download-roi-tiles', 'data'),
                        Output('roi_gallery_allow_click', 'data'),
+                       Output('stitched_images', 'data'),
                        Input('btn-download-roi-tiles', 'n_clicks'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -69,7 +77,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('dataset-query-dim-min', 'value'),
                        State('dataset-query-dim-max', 'value'),
                        State('dataset-query-keyw', 'value'),
-                       Input('saved-blend-options-roi', 'value'),
+                       State('saved-blend-options-roi', 'value'),
                        State('saved-blends', 'data'),
                        Input('find-similar', 'n_clicks'),
                        State('image-prioritization-cor', 'data'),
@@ -78,6 +86,10 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('mask-in-gallery', 'value'),
                        State('query-min-obj', 'value'),
                        State('subsample-roi-gallery', 'value'),
+                       Input('stitch-from-roi-gallery', 'n_clicks'),
+                       State('session_id_internal', 'data'),
+                       State('stitched_images', 'data'),
+                       State('stitch-image-select', 'value'),
                        prevent_initial_call=True)
     @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads'))
     def generate_roi_images_from_query(export_roi, currently_selected, data_selection, blend_colour_dict,
@@ -86,7 +98,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                     dataset_options, query_cell_id_lists, global_apply_filter,
                                     global_filter_type, global_filter_val, global_filter_sigma, delimiter, error_config,
                                     dim_min, dim_max, keyw, saved_blend, saved_blend_dict, find_similar, image_cor, quant,
-                                    spatial_rad, enable_masks, query_min, subsample_thumbnail):
+                                    spatial_rad, enable_masks, query_min, subsample_thumbnail, stitch_roi_tiles,
+                                    sesh_id, stitch_cache, stitch_selection):
         """
         Generate the dynamic gallery of ROI queries from the query selection
         Can be activated using either the original button for a fresh query, or the button to load additional ROIs
@@ -96,12 +109,13 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
         no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
         allow_click = True
+        nothing_to_stitch = ctx.triggered_id == "stitch-from-roi-gallery" and not existing_gallery
         if ctx.triggered_id == "btn-download-roi-tiles" and existing_gallery:
             return (dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update,
                     dcc.send_file(gallery_export_template(os.path.join(export_roi, 'rois.html'),
-                            channel_tiles_from_gallery(existing_gallery), 3)), allow_click)
-        elif None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not \
-            quant_empty and len(currently_selected) > 0 and not no_similarity_scores and ctx.triggered_id != "btn-download-roi-tiles":
+                            channel_tiles_from_gallery(existing_gallery), 3)), allow_click, dash.no_update)
+        elif (None not in (currently_selected, data_selection, blend_colour_dict, session_config) and not quant_empty and
+              not nothing_to_stitch and len(currently_selected) > 0 and not no_similarity_scores and ctx.triggered_id != "btn-download-roi-tiles"):
             if ctx.triggered_id == "quantification-query-link" and execute_quant_query > 0:
                 rois_decided, rois_exclude, row_children = query_from_quantification, [], []
             elif ctx.triggered_id == "find-similar" and quant is not None and find_similar:
@@ -117,19 +131,27 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 rois_exclude, row_children, allow_click = rois_exclude, existing_gallery, False
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
+            if ctx.triggered_id == "stitch-from-roi-gallery" and existing_gallery:
+                # IMP: need to make sure that we keep the same rois that are currently in view
+                # current best way to do this is to set the current ones in the gallery to search indices (which are normally excluded)
+                rois_decided, query_cell_id_lists, rois_exclude = set_gallery_mcd_rois_to_stitch(rois_exclude, data_selection, delimiter)
             currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries), rois_exclude, rois_decided,
             mask_dict, dataset_options, query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
             delimiter, False, dim_min, dim_max, keyw, False, spatial_rad, enable_masks, True,
                     app_config['array_store_type'], query_min).get_image_dict()
+            # for stitching, once the images are remade, apply each of them to the stitch
+            if ctx.triggered_id == "stitch-from-roi-gallery" and existing_gallery: return (tuple([dash.no_update] * 8) +
+            tuple([SessionServerside(stitch_mcd_blends_from_gallery(stitch_cache, stitch_selection, images, session_config, delimiter),
+                    key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite'])]))
             new_row_children, roi_list = roi_query_gallery_children(images, subsample_thumbnail=subsample_thumbnail)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
             if ctx.triggered_id == "dataset-query-additional-load": roi_list = list(set(rois_exclude + roi_list))
             roi_list.append(data_selection)
             row_children = row_children + new_row_children if row_children else new_row_children
-            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update, dash.no_update, allow_click
+            return row_children, num_queries, {"margin-top": "15px", "display": "block"}, roi_list, "dataset-query", dash.no_update, dash.no_update, allow_click, dash.no_update
         error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["invalid_query"])
-        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update
+        return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update
 
     @dash_app.callback(
         Output('data-collection', 'value', allow_duplicate=True),
@@ -189,3 +211,85 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         else:
             error_config = add_warning_to_error_config(error_config, AlertMessage().warnings["quantification_missing"])
             return dash.no_update, error_config, dash.no_update, dash.no_update
+
+    @dash_app.callback(
+        Output('stitch-preview-modal', 'is_open'),
+        Output('stitch-preview-row', 'children'),
+        Input('stitch-image-preview', "n_clicks"),
+        State('stitch-image-select', 'value'),
+        State('stitched_images', 'data'),
+        prevent_initial_call=True)
+    def preview_stitched_image(preview_stitch, stitch_select, stitch_collection):
+        """
+        Open the modal to preview the currently selected stitch image
+        """
+        return stitch_image_preview(stitch_collection, stitch_select)
+
+    @dash_app.callback(
+        Output('stitched_images', 'data', allow_duplicate=True),
+        Output('stitch-image-select', 'options'),
+        Input('stitch-image-create', "n_clicks"),
+        State('session_id_internal', 'data'),
+        State('stitch-image-create-width', 'value'),
+        State('stitch-image-create-height', 'value'),
+        State('stitch-image-id', 'value'),
+        State('stitched_images', 'data'),
+        Input('stitch-image-delete', 'n_clicks'),
+        State('stitch-image-select', 'value'),
+        prevent_initial_call=True)
+    def modify_stitched_images(create_stitch, sesh_id, width, height, stitch_name, cur_stitch, delete_stitch, stitch_select):
+        """
+        Create or delete stitched images by name, saved to the server side cache
+        """
+        # set the name if the stitch is to be added or deleted
+        stitch_name = stitch_select if ctx.triggered_id == 'stitch-image-delete' else stitch_name
+        if sesh_id and stitch_name and (create_stitch or delete_stitch):
+            cur_stitch = modify_stitch_cache(cur_stitch, stitch_name, height, width, stitch_cache_delete(ctx.triggered_id, stitch_name))
+            return SessionServerside(cur_stitch, key=f"stitch_cache_{sesh_id}",
+                        use_unique_key=app_config['serverside_overwrite']), stitch_cache_dropdown_labels(cur_stitch)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("download-stitch-image", "data"),
+        Input("stitch-image-download", "n_clicks"),
+        State('stitched_images', 'data'),
+        State('stitch-image-select', 'value'))
+    @DownloadDirGenerator(os.path.join(tmpdirname, authentic_id))
+    def download_switch_image(download_stitch, stitch_cache, stitch_select):
+        """
+        Download a stitched image in zip format due to potential size
+        """
+        if None not in (download_stitch, stitch_cache, stitch_select) and stitch_select in stitch_cache:
+            download_stitch = os.path.join(str(download_stitch), str(uuid.uuid1()), 'downloads', 'stitch')
+            return dcc.send_file(download_stitch_image(download_stitch, stitch_cache, stitch_select))
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("stitch-image-create-width", "value"),
+        Output("stitch-image-create-height", "value"),
+        Input("cur-roi-slide-parse", "n_clicks"),
+        State('data-collection', 'value'),
+        State('dataset-delimiter', 'value'),
+        State('session_config', 'data'))
+    def parse_mcd_slide_for_stitch(parse_for_slide, roi_selection, delim, session_uploads):
+        """
+        Get the desired width and height of a slide image from the current ROI, if from MCD
+        """
+        if None not in (roi_selection, delim, session_uploads):
+            return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_slide_boundary_point()
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("stitch-image-x-min", "value"),
+        Output("stitch-image-y-min", "value"),
+        Input("cur-roi-stitch-parse", "n_clicks"),
+        State('data-collection', 'value'),
+        State('dataset-delimiter', 'value'),
+        State('session_config', 'data'))
+    def parse_roi_for_global_slide_coords(parse_for_slide, roi_selection, delim, session_uploads):
+        """
+        Get the desired x and y min in the global slide coordinate system for the current ROI, if from MCD
+        """
+        if None not in (roi_selection, delim, session_uploads):
+            return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_coord_min()
+        raise PreventUpdate

@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.29.0] - 2026-03-14
+
+### Added
+
+- Created, edit, delete stitched images + add in canvas by coordinate #159
+- Input to manually set WSI zoom level
+- Better channel name parsing from OME
+
+### Changed
+
+- Updated dependencies based on [`cryptography`](https://github.com/advisories/GHSA-r6ph-v2qm-q3c2) and
+[`pillow`](https://github.com/advisories/GHSA-cfh3-3jmp-rvhc) vulnerabilities
+- Export canvas tiff as zip if sufficiently large
+
+### Fixed
+
+- Change user blend selection in dataset gallery to state variable
+- Check for unique condition in mod menu reset
+- **Index mismatch for 10x spatial mask rasterisation**
+
 ## [0.28.0] - 2026-02-03
 
 ### Added

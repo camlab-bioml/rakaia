@@ -7,7 +7,7 @@ rakaia: Scalable spatial biology analysis in the browser
 </p>
 
 
-rakaia provides streamlined in-browser analysis of multiplexed spatial proteomics and transcriptomics.
+rakaia (pronounced *RA-KAI-YA*) provides streamlined in-browser analysis of multiplexed spatial proteomics and transcriptomics.
 The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI), and
 currently supports the following technologies:
 
@@ -24,7 +24,7 @@ Tools in the rakaia application include:
 - cluster and heatmap visualization
 - dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
-- WSI coordinate alignment (currently for 10X Visium & Xenium)
+- Matched zooming and panning to aligned WSIs with a dual-spatial view
 
 Visit the [official documentation](https://camlab-bioml.github.io/rakaia-doc/) to learn more!
 
@@ -90,7 +90,20 @@ and is not installed through the pip installation above.
 Users should visit the [vips installation page](https://www.libvips.org/install.html) for
 instructions on installing for a specific OS.
 
-**Note**: macOS users should install `vips` using `brew` as opposed to conda.
+**Note**: For macOS users, brew is the recommended installation
+methods for vips:
+
+```commandline
+brew install vips
+```
+
+However, some users have reported problems with rakaia being able to
+detect the `vips` CLI executable through this installation method. If that is
+the case, users could try installing with `conda-forge`:
+
+```commandline
+conda install conda-forge::libvips
+```
 
 ### C++ build tools on Windows
 

@@ -165,7 +165,14 @@ class ToolTips(BaseModel):
                                        "auto-selection on WSI change.",
                       "downsample-roi-thumbnail": "Render down-sampled ROIs in the dataset gallery. Down-sampling may be faster "
                                                   "and could save browser memory at the cost of thumbnail resolution.",
-                      "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates."}
+                      "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates.",
+                      "cur-roi-slide-parse": "If the current ROI is from an MCD file, parse to get the corresponding slide dimensions (width, height). "
+                                             "Can be used to create a new stitched image corresponding to the underlying slide.",
+                      "cur-roi-stitch-parse": "If the current ROI is from an MCD file, parse to get the top-left anchor coordinate. Can be used"
+                                              " to set the position for adding the canvas blend to a stitched image.",
+                      "stitch-coord-min": "This is the top-left coordinate in the stitch to anchor the placement of a new blended image.",
+                      "wsi-zoom-level": "0 is fully zoomed out, while 1 is the most zoomed in. Use log scale for "
+                                        "zooming proportional to magnification, or disable for equal zoom increments."}
 
 
 class PanelMismatchError(Exception):

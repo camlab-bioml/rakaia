@@ -177,3 +177,8 @@ def recursive_gallery_children(recursive_aliases):
         children.append({"props": {"children": [{"children": value, "className": "card-text", 'id': key},
                                     {"children": f'Add {value} to canvas', 'target': {'index': key}}]}})
     return children
+
+@pytest.fixture(scope="module")
+def stitch_cache():
+    return {'test_1': np.zeros((1000, 1000, 3)),
+                    'test_2': np.zeros((200, 400, 3))}

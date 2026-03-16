@@ -213,7 +213,8 @@ class ZarrSDParser:
                 cells["geometry"] = cells["geometry"].apply(
                     lambda geom: affinity.scale(geom, xfact=(1/scale_factor), yfact=(1/scale_factor), origin=(0, 0)))
 
-            shapes = [(geom, idx) for idx, geom in enumerate(cells.geometry)]
+            # IMP: this can cause gaps or missing cells if one cell completely engulfs another during sequential burn-in
+            shapes = [(geom, idx + 1) for idx, geom in enumerate(cells.geometry)]
 
             # Set the mask shape to be the same as the transcript bounds in rakaia
             mask = rasterize(shapes=shapes, out_shape=(int(y_max - y_min), int(x_max - x_min)),

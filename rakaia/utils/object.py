@@ -2,6 +2,8 @@
 quantification frames. Provides utilities for sub-setting and name matching
 """
 
+import os
+import shutil
 from typing import Union
 import re
 from pydantic import BaseModel
@@ -15,6 +17,14 @@ import scipy
 from rakaia.utils.pixel import (
     path_to_mask,
     split_string_at_pattern)
+
+def check_download_dir(dest_dir: Union[str, None]=None,
+                       auto_create_dir: bool=True):
+    if os.path.exists(dest_dir) and os.access(os.path.dirname(dest_dir), os.R_OK) and \
+            auto_create_dir:
+        shutil.rmtree(os.path.dirname(dest_dir), ignore_errors=True)
+    if not os.path.exists(dest_dir):
+        os.makedirs(dest_dir)
 
 class QuantificationColumns(BaseModel):
     """
