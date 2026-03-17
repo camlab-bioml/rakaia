@@ -118,7 +118,7 @@ dependencies = [
   "pymongo==4.6.3",
   "pynndescent==0.5.10",
   "pyogrio==0.11.1",
-  "pyOpenSSL==25.3.0",
+  "pyOpenSSL==26.0.0",
   "pyparsing==3.0.9",
   "PySocks==1.7.1",
   "pytest==7.3.1",

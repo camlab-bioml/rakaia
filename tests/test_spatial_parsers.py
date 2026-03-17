@@ -216,7 +216,6 @@ def test_parse_sd_visium_hd(get_current_dir):
                               os.path.join(tmpdirname, 'other_spatial')).get_files()
         files = parsed[0]
         masks = parsed[2]
-        print(files, masks)
         assert len(files['uploads']) == len(masks) == 2
         for bin_size in ['008um', '016um']:
             assert any(bin_size in file_out for file_out in files['uploads'])
