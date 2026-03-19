@@ -125,7 +125,7 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     reset_on_visium_spot_size_change,
     no_channel_for_view,
-    empty_slider_values, use_channel_autofill, layout_has_modified_shape)
+    empty_slider_values, use_channel_autofill, layout_has_modified_shape, wsi_selection)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -2222,16 +2222,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_id_internal', 'data'),
                        State('session_alert_config', 'data'),
                        State('wsi_transform_options', 'options'),
+                       Input('stitch-image-to-wsi', 'n_clicks'),
+                       State('stitched_images', 'data'),
+                       State('stitch-image-select', 'value'),
                        prevent_initial_call=False)
-    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config, transform_options):
+    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config, transform_options,
+                                 stitch_to_wsi, stitch_images, stitch_select):
         """
-        Compute dzi tiles for the osd wsi viewer when a selection is made. Additionally, attempt to
-        find a matched WSI transformation matrix from the dropdown menu based on WSI name overlap.
+        Compute dzi tiles for the osd wsi viewer when a dropdown selection is made, or a stitched image transferred.
+        Additionally, attempt to find a matched WSI transformation matrix from the dropdown menu based on WSI name overlap.
         """
-        if reg_select and cur_hash and sesh_id and reg_select in cur_hash:
+        wsi_im = stitch_images[stitch_select] if wsi_selection(ctx.triggered_id, "stitch-image-to-wsi", stitch_images, stitch_select) \
+            else (str(cur_hash[reg_select]) if wsi_selection(ctx.triggered_id, "coregister_options", cur_hash, reg_select) else None)
+        if sesh_id and wsi_im is not None:
             try:
-                from rakaia.register.process import dzi_tiles_from_image_path
-                dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
+                from rakaia.register.process import dzi_tiles_from_image
+                dzi_tiles_from_image(wsi_im, str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
+                # TODO: how does using a stitched image affect selecting auto-selecting the transformation matrix?
                 return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
             except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate
