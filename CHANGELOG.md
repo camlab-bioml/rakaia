@@ -7,11 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.30.a1] - 2026-03-19
+## [0.30.a1] - 2026-03-26
 
 ## Added
 
 - Transfer stitched image to WSI view (low-res preview remains)
+- Updated Visium HD export with masks in `examples`
+
+## Changed
+
+- Add better permission on one-directory standalone builds
+- Update `dependabot` vulnerabilities: `requests`
 
 ## [0.29.0] - 2026-03-17
 

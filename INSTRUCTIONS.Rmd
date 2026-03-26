@@ -33,10 +33,10 @@ On macOS, the executable file can be double-clicked to open.
 \
 
 **NOTE**: On macOS, it is possible that the `rakaia` executable will be
-flagged due to security reasons. If the application fails to start, users
+flagged due to security reasons. Your computer may state that the application cannot be opened,
+and/or recommends moving the file to the `Trash`. If the application fails to start, users
 should check the security settings to see if `rakaia` is flagged from an unknown developer:
-https://support.apple.com/en-gb/guide/mac-help/mh40616/mac.
-If so, users should enable the software to be installed, then try opening the file again.
+https://support.apple.com/en-gb/guide/mac-help/mh40616/mac. Under `Settings` -> `Privacy & Security` -> `Security`, the rakaia application should have the option to `Open anyway`. Users should enable this option, and the file will either re-open, or the user can re-execute the file.
 
 ## Linux
 
