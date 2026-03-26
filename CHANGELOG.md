@@ -8,7 +8,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## [0.30.a1] - 2026-03-26
-
 ## Added
 
 - Transfer stitched image to WSI view (low-res preview remains)
