@@ -861,6 +861,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('status-div', 'children'),
                        Output('stitched_images', 'data', allow_duplicate=True),
+                       Output('mask-dict', 'data', allow_duplicate=True),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -957,7 +958,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 image_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
                 custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected)
-                fig = canvas.render_canvas()
+                fig, mask_cache = canvas.render_canvas(), canvas.get_mask_cache()
                 if str(cluster_type).lower() == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask and cluster_cat:
@@ -968,17 +969,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 canvas_tiff, download_status = dash.no_update, dash.no_update
                 if ctx.triggered_id == "btn-download-canvas-tiff":
-                    fig = dash.no_update
+                    fig, download_status = dash.no_update, timestamp_download_child()
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                                 dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
-                    download_status = timestamp_download_child()
                 elif ctx.triggered_id == "stitch-image-update": return (dash.no_update, dash.no_update, dash.no_update, dash.no_update,
                 SessionServerside(update_stitch_cache_with_blend(cur_stitch, stitch_select, stitch_x_coord, stitch_y_coord, canvas),
-                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']))
-                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update
+                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']), mask_cache)
+                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update, mask_cache
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
-                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update
+                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),

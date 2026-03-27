@@ -1,6 +1,7 @@
 """Module containing the primary canvas component for blended images"""
 from typing import Union
 import math
+import dash
 import numpy as np
 import plotly.graph_objs as go
 import cv2
@@ -9,6 +10,7 @@ from PIL import Image
 from plotly.graph_objs.layout import YAxis, XAxis
 import pandas as pd
 from skimage import measure
+from rakaia.io.session import SessionServerside
 from rakaia.parsers.object import validate_coordinate_set_for_image
 from rakaia.utils.cluster import get_cluster_proj_id_column
 from rakaia.utils.object import greyscale_grid_array, convert_mask_to_object_boundary
@@ -80,6 +82,9 @@ class CanvasImage:
     :param cluster_assignment_selection: Pass a subset of cluster categories to show in the mask
     :return: None
     """
+    # for ROIs greater than this size, cache the mask boundary computation
+    MASK_BOUNDARY_CACHE_THRESHOLD = 5000
+
     def __init__(self, canvas_layers: dict, data_selection: str, currently_selected: list,
                  mask_config: dict, mask_selection: str, mask_blending_level: int,
                  overlay_grid: Union[list, bool], mask_toggle: Union[bool, str], add_mask_boundary: Union[bool, str],
@@ -92,7 +97,8 @@ class CanvasImage:
                  apply_cluster_on_mask: Union[bool, str, list]=False, cluster_assignments_dict: dict=None,
                  cluster_cat: str=None, cluster_frame: Union[pd.DataFrame, dict]=None, cluster_type: str="mask",
                  custom_scale_val: int=None, apply_gating: bool=False, gating_cell_id_list: list=None,
-                 annotation_color: str="white", cluster_assignment_selection: Union[list, None]=None):
+                 annotation_color: str="white", cluster_assignment_selection: Union[list, None]=None,
+                 session_id: Union[str, int, None]=""):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -132,6 +138,9 @@ class CanvasImage:
         self.uirevision_status = True
         self.get_previous_uirevision()
         self.cluster_selection = cluster_assignment_selection
+        self.sesh_id = session_id
+        # Set to true if the mask cache is updated with a new boundary, otherwise don't return anything new
+        self.return_mask_cache = False
 
         image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
             len(self.currently_selected) > 1 else \
@@ -139,6 +148,7 @@ class CanvasImage:
         image = apply_filter_to_array(image, self.global_apply_filter, self.global_filter_type, self.global_filter_val,
                                       self.global_filter_sigma)
         image = np.clip(image, 0, 255)
+
         self.proportion = 0.1 if self.custom_scale_val is None else \
             float(custom_scale_val / (image.shape[1] * self.pixel_ratio))
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
@@ -173,7 +183,8 @@ class CanvasImage:
         image = self.overlay_grid_on_additive_image(image)
         self.image = image
         comp_level, comp_format = self.set_px_compression_params(image)
-        self.canvas = px.imshow(Image.fromarray(image.astype(np.uint8)), binary_string=True,
+
+        self.canvas = px.imshow(image.astype(np.uint8), binary_string=True,
                                 # set to the lowest level unless the image is very large
                                 binary_compression_level=comp_level,
                                 # allow lossy jpg format if very large image
@@ -240,12 +251,16 @@ class CanvasImage:
             mask attributes (blending level, etc.)
         """
         if self.add_mask_boundary and self.mask_config[self.mask_selection]["raw"] is not None:
+            if "boundary" not in self.mask_config[self.mask_selection]:
+                self.mask_config[self.mask_selection]['boundary'] = np.array(Image.fromarray(
+                        convert_mask_to_object_boundary(self.mask_config[self.mask_selection]["raw"])).convert('RGB'))
+                # only cache the mask boundary if not present, and sufficiently large
+                self.return_mask_cache = True if any(dim >= self.MASK_BOUNDARY_CACHE_THRESHOLD
+                                                     for dim in (image.shape[0], image.shape[1])) else False
             # add the border of the mask after converting back to greyscale
-            boundary = np.array(Image.fromarray(
-                        convert_mask_to_object_boundary(
-                        self.mask_config[self.mask_selection]["raw"])).convert('RGB'))
             image = cv2.addWeighted(image.astype(np.uint8), 1,
-                                    boundary.astype(np.uint8), 1, 0)
+                                    self.mask_config[self.mask_selection]['boundary'].astype(np.uint8), 1, 0)
+
         return image
 
     def render_canvas(self) -> Union[go.Figure, dict]:
@@ -330,6 +345,15 @@ class CanvasImage:
         :return: Numpy RGB blended image array for the current canvas
         """
         return self.image
+
+    def get_mask_cache(self) -> Union[dict, SessionServerside]:
+        """
+        Get the updated mask cache, which may or may not be updated with boundaries for a selected mask
+
+        :return: Mask cache as `SessionServerside` object if updated, otherwise `dash.no_update`
+        """
+        return SessionServerside(self.mask_config, key=f"mask-dict_{self.sesh_id}", use_unique_key=True) if (
+            self.return_mask_cache) else dash.no_update
 
     def current_canvas_exists(self, hover_template_exists: bool=False) -> bool:
         """

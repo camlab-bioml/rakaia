@@ -171,7 +171,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                    persistence=config['persistence'], persistence_type='local',
                                                    style={"margin": "10px"}),
                                   daq.ToggleSwitch(label='Downsample ROI gallery thumbnails', id='subsample-roi-gallery',
-                                                   labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=False,
+                                                   labelPosition='bottom', color=DEFAULT_WIDGET_COLOUR, value=True,
                                                    persistence=config['persistence'], persistence_type='local',
                                                    style={"margin": "10px"}),
                                   dbc.Tooltip(TOOLTIPS['downsample-roi-thumbnail'], target="subsample-roi-gallery",
