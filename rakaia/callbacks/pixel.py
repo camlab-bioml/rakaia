@@ -957,7 +957,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover, show_each_channel_intensity,
                 image_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
-                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected)
+                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected, sesh_id)
                 fig, mask_cache = canvas.render_canvas(), canvas.get_mask_cache()
                 if str(cluster_type).lower() == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()

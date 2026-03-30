@@ -49,14 +49,10 @@ class TabText(BaseModel):
 class SessionServerside(Serverside):
     """
     Defines the string identification for Serverside objects depending on the session invocation.
-    `use_unique_key` should be set to True for local runs where there are no concurrent users, and the user wishes to
-    have the callbacks overwrite previous callback stores
-    For public or sessions with concurrent users (i.e. Docker), `use_unique_key` should be set to False so that
-    each callback invocation produces a unique Serverside cache
 
     :param data: The pickle-compatible data object to be stored
     :param key: The string key used to identify the pickled objects written to disk
-    :param use_unique_key: Whether to use a unique key for every invocation. Should be `True` except for shared instances.
+    :param use_unique_key: Whether to use cache overwriting for data caches of the same variable. Should almost always be set to `True`
     :return: None
     """
     def __init__(self, data, key, use_unique_key: bool=True):
