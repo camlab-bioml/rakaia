@@ -33,6 +33,7 @@ from rakaia.parsers.spatial import anndata_obs_to_projection_frame
 from rakaia.plugins import run_quantification_model
 from rakaia.utils.alert import add_warning_to_error_config, AlertMessage
 from rakaia.utils.decorator import DownloadDirGenerator
+from rakaia.utils.dge import dge_anndata
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
@@ -944,4 +945,25 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if any([elem is not None for elem in value]) and local_filepath and is_steinbock_dir(local_filepath) and sesh_id:
             return umap_coordinates_from_gallery_click(ctx.triggered_id['index'], local_filepath, OVERWRITE, sesh_id)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output('dge-table', 'data'),
+        Output('dge-table', 'columns'),
+        Output('show-dge-table', 'is_open'),
+        State('data-collection', 'value'),
+        State('session_id_internal', 'data'),
+        State('data-collection', 'options'),
+        State('dataset-delimiter', 'value'),
+        State('session_config', 'data'),
+        State('cluster-col', 'value'),
+        Input('dge-overlay-show', 'n_clicks'))
+    def load_dge_table(data_selection, sesh_id, options, delim, sesh_uploads, overlay, show_dge):
+        """
+        Load an DGE table based on a categorical overlay. Currently, works only for `Anndata`-backed ROIs
+        """
+        if show_dge and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(
+                sesh_uploads, data_selection, delim) and overlay:
+            dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), str(overlay), 25)
+            return pd.DataFrame(dge_frame).to_dict(orient="records"), [{'id': p, 'name': p, 'editable': False} for p in list(dge_frame.columns)], True
         raise PreventUpdate

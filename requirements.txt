@@ -3,7 +3,7 @@ EditorConfig==0.12.3
 Flask-Caching==2.0.2
 Flask-Cors==6.0.0
 Flask-Dance==7.0.0
-Flask-HTTPAuth==4.8.0
+Flask-HTTPAuth==4.8.1
 Flask==2.2.5
 GEOparse==2.0.4
 Jinja2==3.1.6

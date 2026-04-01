@@ -81,7 +81,7 @@ dependencies:
       - flask-caching==2.0.2
       - flask-cors==6.0.0
       - flask-dance==7.0.0
-      - flask-httpauth==4.8.0
+      - flask-httpauth==4.8.1
       - fonttools==4.61.0
       - freeport==0.1.15
       - frozenlist==1.7.0
