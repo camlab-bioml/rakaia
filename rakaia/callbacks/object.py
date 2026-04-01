@@ -18,6 +18,7 @@ from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import (
     set_roi_identifier_from_length,
     ZOOM_KEYS)
+from rakaia.io.display import set_table_columns
 from rakaia.io.gallery import umap_gallery_children, umap_pipeline_tiles
 from rakaia.parsers.object import (
     RestyleDataParser,
@@ -957,13 +958,15 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('dataset-delimiter', 'value'),
         State('session_config', 'data'),
         State('cluster-col', 'value'),
-        Input('dge-overlay-show', 'n_clicks'))
-    def load_dge_table(data_selection, sesh_id, options, delim, sesh_uploads, overlay, show_dge):
+        Input('dge-overlay-show', 'n_clicks'),
+        State('imported-cluster-frame', 'data'))
+    def load_dge_table(data_selection, sesh_id, options, delim, sesh_uploads, overlay, show_dge, clust_dict):
         """
         Load an DGE table based on a categorical overlay. Currently, works only for `Anndata`-backed ROIs
         """
         if show_dge and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(
-                sesh_uploads, data_selection, delim) and overlay:
-            dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), str(overlay), 25)
-            return pd.DataFrame(dge_frame).to_dict(orient="records"), [{'id': p, 'name': p, 'editable': False} for p in list(dge_frame.columns)], True
+                sesh_uploads, data_selection, delim) and overlay and data_selection in clust_dict:
+            cat_col = pd.Series(clust_dict[data_selection][overlay]) if overlay in clust_dict[data_selection] else None
+            dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), cat_col, 25)
+            return pd.DataFrame(dge_frame).to_dict(orient="records"), set_table_columns(dge_frame), True
         raise PreventUpdate

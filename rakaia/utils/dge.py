@@ -6,9 +6,11 @@ from typing import Union
 import pandas as pd
 import anndata as ad
 import scanpy as sc
+import uuid
+
 
 def dge_anndata(adata: Union[None, str, ad.AnnData],
-                grouping: Union[None, str]=None,
+                grouping: Union[None, str, list, pd.Series]=None,
                 num_genes_show: int=50,
                 gene_ranking_method: Union[str, None]="wilcoxon",
                 min_group_size: int=2):
@@ -17,8 +19,12 @@ def dge_anndata(adata: Union[None, str, ad.AnnData],
     present in the `adata.obs`
     """
     adata = ad.read_h5ad(adata) if isinstance(adata, str) else adata
+    # IMP: this only works if the overlay has the same length as the expression i.e. not missing any objects
+    if type(grouping) in (list, pd.Series) and not (adata is None) and len(grouping) == adata.shape[0]:
+        column_name = str(uuid.uuid4())
+        adata.obs[column_name] = list(grouping)
+        grouping = column_name
     if not (adata is None) and str(grouping) in adata.obs.columns:
-
         adata.obs[grouping] = adata.obs[str(grouping)].astype(str).astype("category")
         counts = adata.obs[str(grouping)].value_counts()
         valid_groups = counts[counts > min_group_size].index

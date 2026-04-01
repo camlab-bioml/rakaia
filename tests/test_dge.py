@@ -1,4 +1,6 @@
 import os
+import pandas as pd
+import anndata as ad
 from rakaia.utils.dge import dge_anndata
 
 def test_dge_anndata(get_current_dir):
@@ -12,3 +14,9 @@ def test_dge_anndata(get_current_dir):
     assert not dge_anndata(None, 'leiden')
     assert not dge_anndata(adata, None)
     assert not dge_anndata(adata, 'not_a_column')
+
+    cols_external = pd.Series(ad.read_h5ad(adata).obs['cluster'])
+    dge_results = dge_anndata(adata, cols_external)
+    assert dge_results.shape == (50, 1)
+    # when the lengths of the overlay and Anndata don't match, return None
+    assert not dge_anndata(adata, pd.Series(['fake'] * 100))

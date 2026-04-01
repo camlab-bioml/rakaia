@@ -364,7 +364,7 @@ def annotation_preview_table(annotation_dict: dict=None, roi_selection: str=None
             return annotation_list, columns
     return [], []
 
-def timestamp_download_child(download_type: str="Canvas (tiff)"):
+def timestamp_download_child(download_type: Union[str, None]="Canvas (tiff)"):
     """
     Generate an HTML compatible alert when a session download is completed
     with a download type passed as a string, and the current timestamp
@@ -372,3 +372,10 @@ def timestamp_download_child(download_type: str="Canvas (tiff)"):
     if download_type:
         return html.H6(f'{download_type} downloaded: {datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")}')
     return []
+
+def set_table_columns(table: Union[pd.DataFrame, dict, list, None]=None):
+    """
+    Set the `dash.DataTable` table columns
+    """
+    return [{'id': p, 'name': p, 'editable': False} for p in list(pd.DataFrame(table).columns)] if \
+        table is not None else None
