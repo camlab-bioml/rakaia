@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import anndata as ad
+import pytest
 from rakaia.utils.dge import dge_anndata
 
 def test_dge_anndata(get_current_dir):
@@ -20,3 +21,6 @@ def test_dge_anndata(get_current_dir):
     assert dge_results.shape == (50, 1)
     # when the lengths of the overlay and Anndata don't match, return None
     assert not dge_anndata(adata, pd.Series(['fake'] * 100))
+
+    with pytest.raises(ValueError):
+        dge_anndata(ad.read_h5ad(adata)[:2, :], 'array_col')

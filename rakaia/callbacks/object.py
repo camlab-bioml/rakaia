@@ -952,6 +952,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('dge-table', 'data'),
         Output('dge-table', 'columns'),
         Output('show-dge-table', 'is_open'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
         State('data-collection', 'value'),
         State('session_id_internal', 'data'),
         State('data-collection', 'options'),
@@ -966,7 +967,9 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if show_dge and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(
                 sesh_uploads, data_selection, delim) and overlay and data_selection in clust_dict:
-            cat_col = pd.Series(clust_dict[data_selection][overlay]) if overlay in clust_dict[data_selection] else None
-            dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), cat_col, 25)
-            return pd.DataFrame(dge_frame).to_dict(orient="records"), set_table_columns(dge_frame), True
+            try:
+                cat_col = pd.Series(clust_dict[data_selection][overlay]) if overlay in clust_dict[data_selection] else None
+                dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), cat_col, 25)
+                return pd.DataFrame(dge_frame).to_dict(orient="records"), set_table_columns(dge_frame), True, dash.no_update
+            except Exception as e: return dash.no_update, dash.no_update, dash.no_update, add_warning_to_error_config(None, f"Error during DGE: {e}")
         raise PreventUpdate

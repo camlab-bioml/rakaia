@@ -8,7 +8,6 @@ import anndata as ad
 import scanpy as sc
 import uuid
 
-
 def dge_anndata(adata: Union[None, str, ad.AnnData],
                 grouping: Union[None, str, list, pd.Series]=None,
                 num_genes_show: int=50,
