@@ -10,10 +10,10 @@ from rakaia.callbacks.triggers import (
     empty_slider_values,
     use_channel_autofill,
     layout_has_modified_shape,
-    stitch_cache_delete)
+    stitch_cache_delete, wsi_selection)
 import numpy as np
 
-def test_triggers():
+def test_triggers(stitch_cache):
     # if the assertion is correct, do not allow the callback to occur
 
     image = np.zeros((1000, 1000))
@@ -57,6 +57,11 @@ def test_triggers():
     assert not stitch_cache_delete("wrong_id", "stitch_1")
     assert not stitch_cache_delete("stitch-image-delete", None)
     assert stitch_cache_delete("stitch-image-delete", "to_delete")
+
+    assert wsi_selection("select_wsi", "select_wsi", stitch_cache, "test_1")
+    assert not wsi_selection("select_wsi", "select_wsi", stitch_cache, None)
+    assert not wsi_selection("select_wsi", "select_wsi", None, "test_2")
+    assert not wsi_selection("select_wsi", "other_trigger", stitch_cache, "test_1")
 
 
 def test_annotation_index_triggers():

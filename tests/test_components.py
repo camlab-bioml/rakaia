@@ -1,4 +1,6 @@
 import json
+
+import dash
 import numpy as np
 from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 import plotly.graph_objs as go
@@ -73,10 +75,10 @@ def test_basic_canvas_image():
                          cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
     assert list(canvas.get_image()[44, 44]) == [6, 6, 6]
     assert isinstance(canvas, CanvasImage)
-    canvas_fig = canvas.render_canvas()
+    canvas_fig, mask_cache = canvas.render_canvas(), canvas.get_mask_cache()
     assert isinstance(canvas_fig, dict)
 
-
+    assert isinstance(mask_cache, dash._callback.NoUpdate)
     # overlay_grid = [' overlay grid']
     add_cell_id_hover = [' Show mask ID on hover']
     show_each_channel_intensity = [" Show channel intensities on hover"]
@@ -198,6 +200,23 @@ def test_basic_canvas_image():
                            use_gating, gating_cell_id_list)
     canvas_fig_9 = canvas_9.render_canvas()
     assert isinstance(canvas_fig_9, dict)
+
+    canvas_layers = {"roi_1": {"channel_1": np.full((6000, 6000, 3), 1),
+                               "channel_2": np.full((6000, 6000, 3), 2)}}
+    currently_selected = ["channel_1", "channel_2"]
+    data_selection = "roi_1"
+    mask_config = {"roi_1": {"raw": np.full((6000, 6000), 255).astype(np.uint32)}}
+
+    canvas_mask_cache = CanvasImage(canvas_layers, data_selection, currently_selected,
+                         mask_config, mask_selection, mask_blending_level,
+                         overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
+                         legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
+                         show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
+                         global_filter_val, global_filter_sigma, apply_cluster_on_mask, cluster_assignments_dict,
+                         "cluster",
+                         cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
+    mask_cache = canvas_mask_cache.get_mask_cache()
+    assert 'boundary' in mask_cache.value['roi_1']
 
 def test_canvas_layout_editor(get_current_dir):
     image = np.full((600, 600, 3), 255).astype(np.uint8)

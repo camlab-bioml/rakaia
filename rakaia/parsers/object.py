@@ -13,7 +13,6 @@ from dash.exceptions import PreventUpdate
 from sklearn.decomposition import PCA
 from tifffile import TiffFile
 import numpy as np
-from PIL import Image
 import anndata
 from sklearn.preprocessing import StandardScaler
 import scanpy as sc

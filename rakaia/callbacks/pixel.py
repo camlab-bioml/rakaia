@@ -125,7 +125,7 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     reset_on_visium_spot_size_change,
     no_channel_for_view,
-    empty_slider_values, use_channel_autofill, layout_has_modified_shape)
+    empty_slider_values, use_channel_autofill, layout_has_modified_shape, wsi_selection)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -861,6 +861,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('status-div', 'children'),
                        Output('stitched_images', 'data', allow_duplicate=True),
+                       Output('mask-dict', 'data', allow_duplicate=True),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -956,8 +957,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover, show_each_channel_intensity,
                 image_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
-                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected)
-                fig = canvas.render_canvas()
+                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected, sesh_id)
+                fig, mask_cache = canvas.render_canvas(), canvas.get_mask_cache()
                 if str(cluster_type).lower() == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask and cluster_cat:
@@ -968,17 +969,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 canvas_tiff, download_status = dash.no_update, dash.no_update
                 if ctx.triggered_id == "btn-download-canvas-tiff":
-                    fig = dash.no_update
+                    fig, download_status = dash.no_update, timestamp_download_child()
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                                 dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
-                    download_status = timestamp_download_child()
                 elif ctx.triggered_id == "stitch-image-update": return (dash.no_update, dash.no_update, dash.no_update, dash.no_update,
                 SessionServerside(update_stitch_cache_with_blend(cur_stitch, stitch_select, stitch_x_coord, stitch_y_coord, canvas),
-                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']))
-                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update
+                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']), mask_cache)
+                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update, mask_cache
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
-                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update
+                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
@@ -2222,16 +2222,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_id_internal', 'data'),
                        State('session_alert_config', 'data'),
                        State('wsi_transform_options', 'options'),
+                       Input('stitch-image-to-wsi', 'n_clicks'),
+                       State('stitched_images', 'data'),
+                       State('stitch-image-select', 'value'),
                        prevent_initial_call=False)
-    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config, transform_options):
+    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config, transform_options,
+                                 stitch_to_wsi, stitch_images, stitch_select):
         """
-        Compute dzi tiles for the osd wsi viewer when a selection is made. Additionally, attempt to
-        find a matched WSI transformation matrix from the dropdown menu based on WSI name overlap.
+        Compute dzi tiles for the osd wsi viewer when a dropdown selection is made, or a stitched image transferred.
+        Additionally, attempt to find a matched WSI transformation matrix from the dropdown menu based on WSI name overlap.
         """
-        if reg_select and cur_hash and sesh_id and reg_select in cur_hash:
+        wsi_im = stitch_images[stitch_select] if wsi_selection(ctx.triggered_id, "stitch-image-to-wsi", stitch_images, stitch_select) \
+            else (str(cur_hash[reg_select]) if wsi_selection(ctx.triggered_id, "coregister_options", cur_hash, reg_select) else None)
+        if sesh_id and wsi_im is not None:
             try:
-                from rakaia.register.process import dzi_tiles_from_image_path
-                dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
+                from rakaia.register.process import dzi_tiles_from_image
+                dzi_tiles_from_image(wsi_im, str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
+                # TODO: how does using a stitched image affect selecting auto-selecting the transformation matrix?
                 return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
             except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate

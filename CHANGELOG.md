@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.0] - 2026-03-30
+
+## Added
+
+- Transfer stitched image to WSI view (low-res preview remains)
+- Updated Visium HD export with masks in `examples`
+
+## Changed
+
+- Add better permission on one-directory standalone builds
+- Update `dependabot` vulnerabilities: `requests`, `crytography`
+- Cache mask boundaries when first created for ROIs that are sufficiently large
+- Set dataset gallery down-sampling default to `True`
+
 ## [0.29.0] - 2026-03-17
 
 ### Added

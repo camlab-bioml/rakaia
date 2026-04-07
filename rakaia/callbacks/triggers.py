@@ -109,3 +109,11 @@ def stitch_cache_delete(triggered_id: str, stitch_selection: Union[str, None]=No
     Determine if the user wants to delete the current stitch from the cache
     """
     return triggered_id == "stitch-image-delete" and stitch_selection is not None
+
+def wsi_selection(triggered_id: str, target_id: str, image_cache: Union[dict, None]=None,
+                  image_selection: Union[str, None]=None):
+    """
+    Detect which trigger was used to render a WSI, and check that the image selection is in the cache
+    """
+    return str(triggered_id) == str(target_id) and None not in \
+        (image_cache, image_selection) and str(image_selection) in image_cache
