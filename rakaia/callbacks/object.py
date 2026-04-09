@@ -13,7 +13,8 @@ from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
-from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap, umap_coordinates_from_gallery_click, is_steinbock_dir
+from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap, umap_coordinates_from_gallery_click, is_steinbock_dir, \
+    channel_in_dropdown
 from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import (
     set_roi_identifier_from_length,
@@ -965,6 +966,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Load an DGE table based on a categorical overlay. Currently, works only for `Anndata`-backed ROIs
         """
+        # TODO: should this operation be cache memoized?
         if show_dge and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(
                 sesh_uploads, data_selection, delim) and overlay and data_selection in clust_dict:
             try:
@@ -972,4 +974,19 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), cat_col, 25)
                 return pd.DataFrame(dge_frame).to_dict(orient="records"), set_table_columns(dge_frame), True, dash.no_update
             except Exception as e: return dash.no_update, dash.no_update, dash.no_update, add_warning_to_error_config(None, f"Error during DGE: {e}")
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output('image_layers', 'value', allow_duplicate=True),
+        Input('dge-to-canvas', 'n_clicks'),
+        State('dge-table', 'active_cell'),
+        State('dge-table', 'data'),
+        State('image_layers', 'options'),
+        State('image_layers', 'value'))
+    def dge_marker_to_canvas(add_dge, active_cell, dge_table, layer_options, cur_blend):
+        """
+        Add the currently selected marker in the DGE table (active cell) to the canvas, if it is not already included
+        """
+        if None not in (active_cell, dge_table, layer_options) and add_dge and all(elem in active_cell for elem in ['row', 'column_id']):
+            return channel_in_dropdown(str(dge_table[int(active_cell['row'])][active_cell['column_id']]), layer_options, cur_blend)
         raise PreventUpdate

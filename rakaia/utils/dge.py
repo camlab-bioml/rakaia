@@ -19,6 +19,7 @@ def dge_anndata(adata: Union[None, str, ad.AnnData],
     """
     adata = ad.read_h5ad(adata) if isinstance(adata, str) else adata
     # IMP: this only works if the overlay has the same length as the expression i.e. not missing any objects
+    # TODO: should this trigger an exception warning if they mismatch?
     if type(grouping) in (list, pd.Series) and not (adata is None) and len(grouping) == adata.shape[0]:
         column_name = str(uuid.uuid4())
         adata.obs[column_name] = list(grouping)

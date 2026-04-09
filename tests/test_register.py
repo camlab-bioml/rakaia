@@ -87,8 +87,6 @@ def test_generate_dzi_tiles(get_current_dir):
         assert not os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
 
         ## from array ##
-
-        # run a second time with the same naming, but different image
         dzi_tiles_from_image(np.ones((2001, 2001, 3)), download_dir)
         tree = ET.parse(os.path.join(download_dir, 'coregister.dzi'))
         root = tree.getroot()

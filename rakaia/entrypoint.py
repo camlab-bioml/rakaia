@@ -8,8 +8,6 @@ import os
 from flask import Flask, render_template
 from flask_caching import Cache
 from flask_cors import CORS
-# from flask_httpauth import HTTPBasicAuth
-# from werkzeug.security import generate_password_hash, check_password_hash
 
 def init_app(cli_config):
     """Initialize the parent Flask app that will wrap the Dash server.
@@ -38,24 +36,11 @@ def init_app(cli_config):
     })
     cache.init_app(app)
 
-    # auth = HTTPBasicAuth()
-    #
-    # users = {
-    #     "rakaia_user": generate_password_hash("rakaia-1")
-    # }
-
     app.config["APPLICATION_ROOT"] = "/"
 
     # set the steinbock mask dtype environment variable before the module is read
     # https://github.com/BodenmillerGroup/steinbock/issues/131
     os.environ["STEINBOCK_MASK_DTYPE"] = "uint32"
-
-    # @auth.verify_password
-    # def verify_password(username, password):
-    #     if username in users and \
-    #             check_password_hash(users.get(username), password):
-    #         return username
-    #     return None
 
     @app.route('/')
     # @auth.login_required
@@ -66,8 +51,7 @@ def init_app(cli_config):
             title='rakaia',
             description='Scalable spatial biology analysis in the browser',
             template='home-template',
-            body="This is a homepage served with Flask."
-        )
+            body="This is a homepage served with Flask.")
 
     @app.route('/help/')
     # @auth.login_required

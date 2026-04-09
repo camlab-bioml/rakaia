@@ -173,8 +173,9 @@ class ToolTips(BaseModel):
                       "stitch-coord-min": "This is the top-left coordinate in the stitch to anchor the placement of a new blended image.",
                       "wsi-zoom-level": "0 is fully zoomed out, while 1 is the most zoomed in. Use log scale for "
                                         "zooming proportional to magnification, or disable for equal zoom increments.",
-                      "dge": "Perform differential expression analysis on the current ROI to get the top 25 "
-                             "gene markers per overlay category. Currently works only on ROIs from an Anndata store."}
+                      "dge": "Show differential expression analysis on the current ROI with the top 25 "
+                             "markers per category in the current overlay. Works only on ROIs from an Anndata or zarr store.",
+                      "dge-show": "Note: only a single marker is added at a time (the cell with a red outline)."}
 
 
 class PanelMismatchError(Exception):

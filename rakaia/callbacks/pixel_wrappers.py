@@ -8,6 +8,7 @@ import os
 from dash import html
 import plotly.graph_objs as go
 import pandas as pd
+from dash.exceptions import PreventUpdate
 from natsort import natsorted, ns
 
 from rakaia.io.session import SessionServerside
@@ -296,3 +297,15 @@ def disable_gallery_by_roi(datasets: Union[list, str, None]=None):
     Toggle if the channel gallery should be searchable by ROI depending on how many datasets are currently imported
     """
     return False if (datasets and isinstance(datasets, list) and len(datasets) > 1) else True
+
+def channel_in_dropdown(channel_name: Union[str, None]=None, channel_options: Union[dict, list, None]=None,
+                        current_blend: Union[dict, list, None]=None):
+    """
+    Check that a channel string value is in the dropdown menu, and not in the current selection. Suitable for checking before adding
+    a channel from the gallery or DGE table
+    """
+    current_blend = [] if not current_blend else current_blend
+    if isinstance(channel_options, list) and channel_name in [i["value"] for i in channel_options] and channel_name not in current_blend:
+        current_blend.append(channel_name)
+        return current_blend
+    raise PreventUpdate

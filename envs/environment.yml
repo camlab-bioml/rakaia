@@ -47,7 +47,7 @@ dependencies:
       - colour==0.1.5
       - contourpy==1.2.0
       - coverage==7.10.2
-      - cryptography==46.0.6
+      - cryptography==46.0.7
       - cycler==0.11.0
       - cython==0.29.35
       - dash==2.18.2
