@@ -36,6 +36,14 @@ rakaia.utils.decorator module
    :undoc-members:
    :show-inheritance:
 
+rakaia.utils.dge module
+-----------------------
+
+.. automodule:: rakaia.utils.dge
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
 rakaia.utils.filter module
 --------------------------
 

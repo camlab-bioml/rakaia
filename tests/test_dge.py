@@ -1,0 +1,26 @@
+import os
+import pandas as pd
+import anndata as ad
+import pytest
+from rakaia.utils.dge import dge_anndata
+
+def test_dge_anndata(get_current_dir):
+    adata = os.path.join(get_current_dir, 'visium_thalamus.h5ad')
+    dge_results = dge_anndata(adata, 'cluster')
+    assert not (dge_results is None)
+    assert dge_results.shape == (50, 1)
+    dge_results = dge_anndata(adata, 'array_col')
+    assert int(dge_results.shape[0]) == 50
+    assert int(dge_results.shape[1]) > 1
+    assert not dge_anndata(None, 'leiden')
+    assert not dge_anndata(adata, None)
+    assert not dge_anndata(adata, 'not_a_column')
+
+    cols_external = pd.Series(ad.read_h5ad(adata).obs['cluster'])
+    dge_results = dge_anndata(adata, cols_external)
+    assert dge_results.shape == (50, 1)
+    # when the lengths of the overlay and Anndata don't match, return None
+    assert not dge_anndata(adata, pd.Series(['fake'] * 100))
+
+    with pytest.raises(ValueError):
+        dge_anndata(ad.read_h5ad(adata)[:2, :], 'array_col')

@@ -92,7 +92,7 @@ from rakaia.inputs.loaders import (
     set_viewer_tab, toggle_canvas_to_wsi_tab)
 from rakaia.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
     mask_options_from_json, bounds_text, AnnotationList, no_json_db_updates, is_steinbock_dir, \
-    parse_steinbock_dir, disable_gallery_by_roi
+    parse_steinbock_dir, disable_gallery_by_roi, channel_in_dropdown
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -2075,13 +2075,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Add a channel from the channel thumbnail gallery with component pattern matching.
         Ensure that the gallery tab is active for a switch to occur.
         """
-        if not all([elem is None for elem in value]) and None not in (layer_options, current_blend, aliases) and \
-                active_tab == 'gallery-tab':
-            index_from = ctx.triggered_id["index"]
-            if index_from in [i["value"] for i in layer_options] and index_from not in current_blend:
-                current_blend.append(index_from)
-                return current_blend, "pixel-analysis"
-            raise PreventUpdate
+        if not all([elem is None for elem in value]) and None not in (layer_options, current_blend, aliases) and active_tab == 'gallery-tab':
+            return channel_in_dropdown(str(ctx.triggered_id["index"]), layer_options, current_blend), "pixel-analysis"
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2238,7 +2233,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             try:
                 from rakaia.register.process import dzi_tiles_from_image
                 dzi_tiles_from_image(wsi_im, str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                # TODO: how does using a stitched image affect selecting auto-selecting the transformation matrix?
                 return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
             except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate

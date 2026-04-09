@@ -13,11 +13,13 @@ from dash_extensions.enrich import Output, Input, State
 from dash import ctx
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
-from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap, umap_coordinates_from_gallery_click, is_steinbock_dir
+from rakaia.callbacks.pixel_wrappers import parse_steinbock_umap, umap_coordinates_from_gallery_click, is_steinbock_dir, \
+    channel_in_dropdown
 from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import (
     set_roi_identifier_from_length,
     ZOOM_KEYS)
+from rakaia.io.display import set_table_columns
 from rakaia.io.gallery import umap_gallery_children, umap_pipeline_tiles
 from rakaia.parsers.object import (
     RestyleDataParser,
@@ -33,6 +35,7 @@ from rakaia.parsers.spatial import anndata_obs_to_projection_frame
 from rakaia.plugins import run_quantification_model
 from rakaia.utils.alert import add_warning_to_error_config, AlertMessage
 from rakaia.utils.decorator import DownloadDirGenerator
+from rakaia.utils.dge import dge_anndata
 from rakaia.utils.object import (
     populate_quantification_frame_column_from_umap_subsetting,
     send_alert_on_incompatible_mask,
@@ -944,4 +947,46 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if any([elem is not None for elem in value]) and local_filepath and is_steinbock_dir(local_filepath) and sesh_id:
             return umap_coordinates_from_gallery_click(ctx.triggered_id['index'], local_filepath, OVERWRITE, sesh_id)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output('dge-table', 'data'),
+        Output('dge-table', 'columns'),
+        Output('show-dge-table', 'is_open'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
+        State('data-collection', 'value'),
+        State('session_id_internal', 'data'),
+        State('data-collection', 'options'),
+        State('dataset-delimiter', 'value'),
+        State('session_config', 'data'),
+        State('cluster-col', 'value'),
+        Input('dge-overlay-show', 'n_clicks'),
+        State('imported-cluster-frame', 'data'))
+    def load_dge_table(data_selection, sesh_id, options, delim, sesh_uploads, overlay, show_dge, clust_dict):
+        """
+        Load an DGE table based on a categorical overlay. Currently, works only for `Anndata`-backed ROIs
+        """
+        # TODO: should this operation be cache memoized?
+        if show_dge and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(
+                sesh_uploads, data_selection, delim) and overlay and data_selection in clust_dict:
+            try:
+                cat_col = pd.Series(clust_dict[data_selection][overlay]) if overlay in clust_dict[data_selection] else None
+                dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), cat_col, 25)
+                return pd.DataFrame(dge_frame).to_dict(orient="records"), set_table_columns(dge_frame), True, dash.no_update
+            except Exception as e: return dash.no_update, dash.no_update, dash.no_update, add_warning_to_error_config(None, f"Error during DGE: {e}")
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output('image_layers', 'value', allow_duplicate=True),
+        Input('dge-to-canvas', 'n_clicks'),
+        State('dge-table', 'active_cell'),
+        State('dge-table', 'data'),
+        State('image_layers', 'options'),
+        State('image_layers', 'value'))
+    def dge_marker_to_canvas(add_dge, active_cell, dge_table, layer_options, cur_blend):
+        """
+        Add the currently selected marker in the DGE table (active cell) to the canvas, if it is not already included
+        """
+        if None not in (active_cell, dge_table, layer_options) and add_dge and all(elem in active_cell for elem in ['row', 'column_id']):
+            return channel_in_dropdown(str(dge_table[int(active_cell['row'])][active_cell['column_id']]), layer_options, cur_blend)
         raise PreventUpdate

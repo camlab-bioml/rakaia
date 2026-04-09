@@ -86,6 +86,22 @@ def test_generate_dzi_tiles(get_current_dir):
 
         assert not os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
 
+        ## from array ##
+        dzi_tiles_from_image(np.ones((2001, 2001, 3)), download_dir)
+        tree = ET.parse(os.path.join(download_dir, 'coregister.dzi'))
+        root = tree.getroot()
+        namespace = root.tag.split('}')[0].strip('{')
+        ns_map = {'dz': namespace}
+        size_element = root.find('dz:Size', ns_map)
+        width = int(size_element.get('Width'))
+        height = int(size_element.get('Height'))
+        assert width == height == 2001
+        assert os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
+        if os.access(download_dir, os.W_OK):
+            shutil.rmtree(download_dir)
+        assert not os.path.isdir(download_dir)
+
+
 def test_transform_name_in_cache():
     assert not transformation_selection_in_cache(None, None)
     assert not transformation_selection_in_cache(None ,"transform_1")
