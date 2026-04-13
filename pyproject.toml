@@ -165,7 +165,7 @@ dependencies = [
   "urllib3==2.6.3",
   "urllib3-secure-extra==0.1.0",
   "URLObject==2.4.3",
-  "uv==0.9.15",
+  "uv==0.11.6",
   "waitress==3.0.1",
   "Werkzeug==3.0.6",
   "wheel==0.46.3",

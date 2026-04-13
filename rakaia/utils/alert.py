@@ -175,7 +175,8 @@ class ToolTips(BaseModel):
                                         "zooming proportional to magnification, or disable for equal zoom increments.",
                       "dge": "Show differential expression analysis on the current ROI with the top 25 "
                              "markers per category in the current overlay. Works only on ROIs from an Anndata or zarr store.",
-                      "dge-show": "Note: only a single marker is added at a time (the cell with a red outline)."}
+                      "dge-show": "Note: only a single marker is added at a time (the cell with a red outline).",
+                      "dge-rank": "Markers are ordered by a Wilcoxon rank-sum test (group vs. all others)."}
 
 
 class PanelMismatchError(Exception):

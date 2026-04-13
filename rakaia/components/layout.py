@@ -1597,7 +1597,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 html.Br(),
                                 dbc.Modal(children=dbc.ModalBody([
                                 html.Div([
-                                html.B("Differential gene expression for overlay"),
+                                html.B("Differential gene expression for overlay", style={"margin-top": "7.5px"}),
                                 dbc.Button("Add selected marker to canvas", id="dge-to-canvas",
                                 style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px',
                                        'float': "right", 'margin-left': '10px'}),
@@ -1608,6 +1608,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 dash_table.DataTable(id='dge-table', sort_action="none", filter_action="none",
                                 columns=[], data=None, editable=False, style_table={
                                 "max-width": "inherit", "overflowX": "auto"}),
+                                html.H6(TOOLTIPS['dge-rank']),
                                 ]), id="show-dge-table", size='xl'),
                                 dbc.Collapse(html.Div([
                                 html.Br(),
