@@ -1605,9 +1605,10 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 style={"display": "flex", "justifyContent": "center"}, placement='right'),
                                 ], style={"display": "flex", "justify-content": "space-evenly", "width": "75%"}),
                                 html.Br(),
-                                dash_table.DataTable(id='dge-table', sort_action="none", filter_action="none",
-                                columns=[], data=None, editable=False, style_table={
-                                "max-width": "inherit", "overflowX": "auto"}),
+                                wrap_child_in_loading(dash_table.DataTable(id='dge-table', sort_action="none",
+                                filter_action="none", columns=[], data=None, editable=False, style_table={
+                                "max-width": "inherit", "overflowX": "auto"}), wrap=config['use_loading'], fullscreen=False),
+                                html.Br(),
                                 html.H6(TOOLTIPS['dge-rank']),
                                 ]), id="show-dge-table", size='xl'),
                                 dbc.Collapse(html.Div([
@@ -2099,6 +2100,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id='coregister_hash'),
         dcc.Store(id='session_id_internal', data=None, storage_type="session"),
         dcc.Store(id='canvas-shapes-upload'),
+        dcc.Store(id='dge-computed', data=False),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),

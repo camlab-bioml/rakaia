@@ -666,6 +666,15 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return [], [], [], []
 
     @dash_app.callback(
+        Output('dge-computed', 'data', allow_duplicate=True),
+        Input('cluster-col', 'value'))
+    def reset_dge_cache(clust_select):
+        """
+        Reset the DGE cache when a new overlay category is selected, or switched. Forces DGE table to re-compute on open
+        """
+        return False if clust_select else dash.no_update
+
+    @dash_app.callback(
         Output('cluster-label-selection', 'value', allow_duplicate=True),
         Input('toggle-clust-selection', 'value'),
         State('cluster-label-selection', 'options'))
@@ -950,10 +959,21 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         raise PreventUpdate
 
     @dash_app.callback(
+        Output("show-dge-table", "is_open"),
+        Input('dge-overlay-show', 'n_clicks'),
+        [State("show-dge-table", "is_open")])
+    def toggle_show_dge_modal(n, is_open):
+        """
+        Toggle open the DGE modal
+        """
+        return not is_open if n else is_open
+
+    @dash_app.callback(
         Output('dge-table', 'data'),
         Output('dge-table', 'columns'),
-        Output('show-dge-table', 'is_open'),
         Output('session_alert_config', 'data', allow_duplicate=True),
+        Output('dge-computed', 'data'),
+        Output("show-dge-table", "is_open", allow_duplicate=True),
         State('data-collection', 'value'),
         State('session_id_internal', 'data'),
         State('data-collection', 'options'),
@@ -961,19 +981,19 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('session_config', 'data'),
         State('cluster-col', 'value'),
         Input('dge-overlay-show', 'n_clicks'),
-        State('imported-cluster-frame', 'data'))
-    def load_dge_table(data_selection, sesh_id, options, delim, sesh_uploads, overlay, show_dge, clust_dict):
+        State('imported-cluster-frame', 'data'),
+        State('dge-computed', 'data'))
+    def load_dge_table(data_selection, sesh_id, options, delim, sesh_uploads, overlay, show_dge, clust_dict, dge_computed):
         """
         Load an DGE table based on a categorical overlay. Currently, works only for `Anndata`-backed ROIs
         """
-        # TODO: should this operation be cache memoized?
         if show_dge and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(
-                sesh_uploads, data_selection, delim) and overlay and data_selection in clust_dict:
+                sesh_uploads, data_selection, delim) and overlay and data_selection in clust_dict and not dge_computed:
             try:
                 cat_col = pd.Series(clust_dict[data_selection][overlay]) if overlay in clust_dict[data_selection] else None
                 dge_frame = dge_anndata(roi_from_anndata_file(sesh_uploads, data_selection, delim), cat_col, 25)
-                return pd.DataFrame(dge_frame).to_dict(orient="records"), set_table_columns(dge_frame), True, dash.no_update
-            except Exception as e: return dash.no_update, dash.no_update, dash.no_update, add_warning_to_error_config(None, f"Error during DGE: {e}")
+                return pd.DataFrame(dge_frame).to_dict(orient="records"), set_table_columns(dge_frame), dash.no_update, True, dash.no_update
+            except Exception as e: return dash.no_update, dash.no_update, add_warning_to_error_config(None, f"Error during DGE: {e}"), False, False
         raise PreventUpdate
 
     @dash_app.callback(
