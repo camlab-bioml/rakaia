@@ -985,7 +985,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('dge-computed', 'data'))
     def load_dge_table(data_selection, sesh_id, options, delim, sesh_uploads, overlay, show_dge, clust_dict, dge_computed):
         """
-        Load an DGE table based on a categorical overlay. Currently, works only for `Anndata`-backed ROIs
+        Load an DGE table based on a categorical overlay. Currently, works only for ROIs derived from Anndata or zarr
         """
         if show_dge and sesh_id and options and delim and data_selection and sesh_uploads and roi_from_anndata_file(
                 sesh_uploads, data_selection, delim) and overlay and data_selection in clust_dict and not dge_computed:

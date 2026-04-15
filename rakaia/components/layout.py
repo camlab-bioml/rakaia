@@ -1597,7 +1597,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 html.Br(),
                                 dbc.Modal(children=dbc.ModalBody([
                                 html.Div([
-                                html.B("Differential gene expression for overlay", style={"margin-top": "7.5px"}),
+                                html.B("Differential gene expression table for overlay", style={"margin-top": "7.5px"}),
                                 dbc.Button("Add selected marker to canvas", id="dge-to-canvas",
                                 style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px',
                                        'float': "right", 'margin-left': '10px'}),
