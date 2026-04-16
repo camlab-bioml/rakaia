@@ -7,7 +7,6 @@ from typing import Union
 from functools import partial
 import os
 from xml.etree import ElementTree
-
 import dash
 import numpy as np
 from tifffile import TiffFile, TiffPage

@@ -1593,10 +1593,32 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 columns=[], data=None, editable=False, filter_action='native',
                                 style_table={"max-width": "inherit", "overflowX": "auto"})]),
                                 id="show-clust-dist-table", size='l'),
+                                html.Br(),
+                                html.Br(),
+                                dbc.Modal(children=dbc.ModalBody([
+                                html.Div([
+                                html.B("Differential gene expression table for overlay", style={"margin-top": "7.5px"}),
+                                dbc.Button("Add selected marker to canvas", id="dge-to-canvas",
+                                style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px',
+                                       'float': "right", 'margin-left': '10px'}),
+                                dbc.Tooltip(TOOLTIPS['dge-show'], target="dge-to-canvas",
+                                style={"display": "flex", "justifyContent": "center"}, placement='right'),
+                                ], style={"display": "flex", "justify-content": "space-evenly", "width": "75%"}),
+                                html.Br(),
+                                wrap_child_in_loading(dash_table.DataTable(id='dge-table', sort_action="none",
+                                filter_action="none", columns=[], data=None, editable=False, style_table={
+                                "max-width": "inherit", "overflowX": "auto"}), wrap=config['use_loading'], fullscreen=False),
+                                html.Br(),
+                                html.H6(TOOLTIPS['dge-rank']),
+                                ]), id="show-dge-table", size='xl'),
                                 dbc.Collapse(html.Div([
                                 html.Br(),
                                 html.H6(children=[], id="cluster-assignments")]),
                                              is_open=False, id='cluster-label-collapse'),
+                                dbc.Button("Differential gene expression for overlay", id="dge-overlay-show",
+                                    style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
+                                dbc.Tooltip(TOOLTIPS['dge'], target="dge-overlay-show",
+                                    style={"display": "flex", "justifyContent": "center"}, placement='left'),
                                 dbc.Modal(id="quantification-roi-modal", children=dbc.ModalBody([
                                 html.Div([dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute",
                                            style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
@@ -2078,6 +2100,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id='coregister_hash'),
         dcc.Store(id='session_id_internal', data=None, storage_type="session"),
         dcc.Store(id='canvas-shapes-upload'),
+        dcc.Store(id='dge-computed', data=False),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),

@@ -47,7 +47,7 @@ dependencies:
       - colour==0.1.5
       - contourpy==1.2.0
       - coverage==7.10.2
-      - cryptography==46.0.6
+      - cryptography==46.0.7
       - cycler==0.11.0
       - cython==0.29.35
       - dash==2.18.2
@@ -81,7 +81,7 @@ dependencies:
       - flask-caching==2.0.2
       - flask-cors==6.0.0
       - flask-dance==7.0.0
-      - flask-httpauth==4.8.0
+      - flask-httpauth==4.8.1
       - fonttools==4.61.0
       - freeport==0.1.15
       - frozenlist==1.7.0
@@ -145,12 +145,12 @@ dependencies:
       - percy==2.0.2
       - periodictable==2.0.2
       - phenograph==1.5.7
-      - pillow==12.1.1
+      - pillow==12.2.0
       - pims==0.7
       - pkgconfig==1.5.5
       - platformdirs==4.3.8
       - plotly==6.0.0
-      - pluggy==1.0.0
+      - pluggy==1.5.0
       - pooch==1.8.2
       - propcache==0.3.2
       - psutil==5.9.5
@@ -168,7 +168,7 @@ dependencies:
       - pyparsing==3.0.9
       - pyproj==3.7.1
       - pysocks==1.7.1
-      - pytest==7.3.1
+      - pytest==9.0.3
       - pytest-cov==4.0.0
       - python-dateutil==2.8.2
       - pytz==2023.3
@@ -222,7 +222,7 @@ dependencies:
       - urllib3==2.6.3
       - urllib3-secure-extra==0.1.0
       - urlobject==2.4.3
-      - uv==0.9.15
+      - uv==0.11.6
       - waitress==3.0.1
       - werkzeug==3.0.6
       - wheel==0.46.3

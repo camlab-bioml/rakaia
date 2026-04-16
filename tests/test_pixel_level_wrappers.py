@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import dash
 import anndata as ad
+import pytest
+
 from rakaia.callbacks.pixel_wrappers import (
     parse_global_filter_values_from_json,
     parse_local_path_imports,
@@ -15,7 +17,8 @@ from rakaia.callbacks.pixel_wrappers import (
     umap_coordinates_from_gallery_click,
     parse_steinbock_scaling,
     disable_gallery_by_roi,
-    check_for_old_filter_label)
+    check_for_old_filter_label,
+    channel_in_dropdown)
 from rakaia.io.session import SessionServerside
 
 def test_parse_steinbock_dir(get_current_dir):
@@ -175,3 +178,13 @@ def test_correct_old_filter_label():
     assert check_for_old_filter_label([' Apply/refresh filter']) == [' Apply filter']
     assert check_for_old_filter_label([' Apply/refresh filter', ' Apply/refresh filter']) == [' Apply filter']
     assert check_for_old_filter_label([]) == []
+
+
+def test_channel_in_dropdown():
+    channels = [{'label': 'chan_1', 'value': 'channel_1'}, {'label': 'chan_2', 'value': 'channel_2'},
+                {'label': 'chan_3', 'value': 'channel_3'}]
+    assert channel_in_dropdown('channel_2', channels, None) == ['channel_2']
+    assert channel_in_dropdown('channel_1', channels, ['channel_2']) == ['channel_2', 'channel_1']
+    with pytest.raises(dash.exceptions.PreventUpdate):
+        channel_in_dropdown('channel_2', None, None)
+        channel_in_dropdown('channel_2', channels, ['channel_2'])

@@ -7,7 +7,7 @@ from rakaia.io.display import (
     preset_options_preview_text,
     annotation_preview_table,
     timestamp_download_child,
-    empty_region_table)
+    empty_region_table, set_table_columns)
 from rakaia.utils.region import FreeFormRegion
 import numpy as np
 import pandas as pd
@@ -362,3 +362,11 @@ def test_timestamp_downloads():
     assert timestamp.children
     assert right_now[0:10] in str(timestamp.children)
     assert not timestamp_download_child(None)
+
+def test_table_cols():
+    table = pd.DataFrame(data={'col_1': ['val_1'] * 10,
+                         'col_2': ['val_2'] * 10})
+    assert len(set_table_columns(table)) == 2
+    assert not set_table_columns(None)
+    assert not set_table_columns([])
+    assert not set_table_columns({})
