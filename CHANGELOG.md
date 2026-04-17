@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - DGE table will now re-compute on both ROI and overlay change
+- Make the ROI switch coordinates (for placement) blank on ROI switch
 
 ## [0.30.0] - 2026-04-15
 
