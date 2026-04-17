@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-04-17
+
+### Fixed
+
+- DGE table will now re-compute on both ROI and overlay change
+
 ## [0.30.0] - 2026-04-15
 
 ## Added
