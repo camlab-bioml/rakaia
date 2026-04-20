@@ -283,13 +283,15 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("stitch-image-x-min", "value"),
         Output("stitch-image-y-min", "value"),
         Input("cur-roi-stitch-parse", "n_clicks"),
-        State('data-collection', 'value'),
+        Input('data-collection', 'value'),
         State('dataset-delimiter', 'value'),
         State('session_config', 'data'))
     def parse_roi_for_global_slide_coords(parse_for_slide, roi_selection, delim, session_uploads):
         """
         Get the desired x and y min in the global slide coordinate system for the current ROI, if from MCD
         """
+        # if the ROI is switched, by default make the coordinates blank
+        if ctx.triggered_id == "data-collection": return None, None
         if None not in (roi_selection, delim, session_uploads):
             return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_coord_min()
         raise PreventUpdate
