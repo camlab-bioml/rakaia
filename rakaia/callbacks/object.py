@@ -667,12 +667,13 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output('dge-computed', 'data', allow_duplicate=True),
-        Input('cluster-col', 'value'))
-    def reset_dge_cache(clust_select):
+        Input('cluster-col', 'value'),
+        Input('data-collection', 'value'))
+    def reset_dge_cache(clust_select, data_select):
         """
         Reset the DGE cache when a new overlay category is selected, or switched. Forces DGE table to re-compute on open
         """
-        return False if clust_select else dash.no_update
+        return False if (clust_select or data_select) else dash.no_update
 
     @dash_app.callback(
         Output('cluster-label-selection', 'value', allow_duplicate=True),
