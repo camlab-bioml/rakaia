@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.31.0] - 2026-04-17
+## [0.31.a1] - 2026-04-20
+
+### Changed
+
+- Update `dependabot` vulnerabilities: `lxml`
+
+## [0.30.1] - 2026-04-20
 
 ### Fixed
 
