@@ -117,3 +117,17 @@ def wsi_selection(triggered_id: str, target_id: str, image_cache: Union[dict, No
     """
     return str(triggered_id) == str(target_id) and None not in \
         (image_cache, image_selection) and str(image_selection) in image_cache
+
+def reset_image_blend_cache(triggered_id: str):
+    """
+    Detect which trigger is used to recreate the canvas image, and see if the trigger needs to recompute the image blend
+    """
+    return str(triggered_id) in ['canvas-layers', 'channel-intensity-hover', 'global-filter-type',
+                            "global-kernel-val-filter", "global-sigma-val-filter"]
+
+def reset_mask_fill_cache(triggered_id: str):
+    """
+    Detect which trigger is used to recreate the mask fill overlay, and see if the trigger needs to recompute the mask fill
+    """
+    return str(triggered_id) in ['mask-options', 'mask-blending-slider', 'toggle-cluster-annotations', 'cluster-colour-assignments-dict',
+                            'cluster-col', 'cluster-annotation-type', 'apply-gating', 'gating-cell-list', 'cluster-label-selection']

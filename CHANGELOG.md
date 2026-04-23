@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Update `dependabot` vulnerabilities: `lxml`
+- Use image blend and mask fill cache to cache layers
 
 ## [0.30.1] - 2026-04-20
 

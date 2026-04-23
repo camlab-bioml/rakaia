@@ -2103,6 +2103,9 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id='dge-computed', data=False),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
+        # set a cache for the blended image and mask fill
+        dcc.Store(id='image-blend-cache'),
+        dcc.Store(id='mask-fill-cache'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

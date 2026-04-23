@@ -80,6 +80,9 @@ class CanvasImage:
     :param gating_cell_id_list: Use a list of mask objects to gate the mask
     :param annotation_color: Specify the color of the scalebar. Options are "white" (default) or "black"
     :param cluster_assignment_selection: Pass a subset of cluster categories to show in the mask
+    :param session_id: Optional string session ID used for caching mask or image blend arrays
+    :param image_blend_cache: Optional cached array for the current blended channel image
+    :param mask_fill_cache: Optional cached array for the current mask fill
     :return: None
     """
     # for ROIs greater than this size, cache the mask boundary computation
@@ -98,7 +101,8 @@ class CanvasImage:
                  cluster_cat: str=None, cluster_frame: Union[pd.DataFrame, dict]=None, cluster_type: str="mask",
                  custom_scale_val: int=None, apply_gating: bool=False, gating_cell_id_list: list=None,
                  annotation_color: str="white", cluster_assignment_selection: Union[list, None]=None,
-                 session_id: Union[str, int, None]=""):
+                 session_id: Union[str, int, None]="", image_blend_cache: Union[dict, SessionServerside, None, np.ndarray]=None,
+                 mask_fill_cache: Union[dict, SessionServerside, None, np.ndarray]=None):
         self.canvas_layers = canvas_layers
         self.data_selection = data_selection
         self.currently_selected = currently_selected
@@ -141,50 +145,56 @@ class CanvasImage:
         self.sesh_id = session_id
         # Set to true if the mask cache is updated with a new boundary, otherwise don't return anything new
         self.return_mask_cache = False
-
-        image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
-            len(self.currently_selected) > 1 else \
-            self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
-        image = apply_filter_to_array(image, self.global_apply_filter, self.global_filter_type, self.global_filter_val,
-                                      self.global_filter_sigma)
-        image = np.clip(image, 0, 255)
+        self.image = image_blend_cache
+        self.mask_fill = mask_fill_cache
+        # by default, do not return the caches unless recomputed
+        self.image_blend_cache, self.mask_fill_cache = dash.no_update, dash.no_update
+        if self.image is None:
+            self.image = get_additive_image(self.canvas_layers[self.data_selection], self.currently_selected) if \
+                len(self.currently_selected) > 1 else \
+                self.canvas_layers[self.data_selection][self.currently_selected[0]].astype(np.float32)
+            self.image = apply_filter_to_array(self.image, self.global_apply_filter, self.global_filter_type,
+                                          self.global_filter_val,
+                                          self.global_filter_sigma)
+            self.image = np.clip(self.image, 0, 255)
+            self.image_blend_cache = SessionServerside(self.image, key=f"image_blend_cache_{self.sesh_id}", use_unique_key=True)
 
         self.proportion = 0.1 if self.custom_scale_val is None else \
-            float(custom_scale_val / (image.shape[1] * self.pixel_ratio))
+            float(custom_scale_val / (self.image.shape[1] * self.pixel_ratio))
         if self.mask_toggle and None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
-            if image.shape[0] == self.mask_config[self.mask_selection]["raw"].shape[0] and \
-                    image.shape[1] == self.mask_config[self.mask_selection]["raw"].shape[1]:
+            if self.image.shape[0] == self.mask_config[self.mask_selection]["raw"].shape[0] and \
+                    self.image.shape[1] == self.mask_config[self.mask_selection]["raw"].shape[1]:
                 mask_level = float(self.mask_blending_level / 100) if self.mask_blending_level is not None else 1
-                mask_array = np.array(Image.fromarray(self.mask_config[
-                                    self.mask_selection]["raw"]).convert('RGB')).astype(np.uint8)
-                if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict,
-                        self.cluster_frame, self.cluster_cat) and \
-                        self.data_selection in self.cluster_assignments_dict.keys() and \
-                        self.cluster_cat in self.cluster_assignments_dict[self.data_selection] and self.cluster_type == 'mask':
-                    annot_mask = mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
-                                                               self.cluster_frame[self.data_selection],
-                                                               self.cluster_assignments_dict[self.data_selection][self.cluster_cat],
-                                                               use_gating_subset=self.apply_gating,
-                                                               gating_subset_list=self.gating_cell_id_list,
-                                                               obj_id_col=get_cluster_proj_id_column(self.cluster_frame[self.data_selection]),
-                                                               cluster_option_subset=cluster_assignment_selection,
-                                                               cluster_col=self.cluster_cat)
-                    annot_mask = annot_mask if annot_mask is not None else \
-                        np.where(mask_array > 0, 255, 0)
-                    image = cv2.addWeighted(image.astype(np.uint8), 1, annot_mask.astype(np.uint8), mask_level, 0)
-                else:
-                    # set the mask blending level based on the slider, by default use an equal blend
-                    mask = mask_array
-                    mask = self.apply_gating_to_canvas_mask_image(mask)
-                    mask = np.where(mask > 0, 255, 0)
-                    image = cv2.addWeighted(image.astype(np.uint8), 1, mask.astype(np.uint8), mask_level, 0)
-                image = self.overlay_mask_outline_on_mask_image(image)
+                if self.mask_fill is None:
+                    self.mask_fill = np.array(Image.fromarray(self.mask_config[self.mask_selection]["raw"]).convert('RGB')).astype(np.uint8)
+                    if self.apply_cluster_on_mask and None not in (self.cluster_assignments_dict, self.cluster_frame,
+                            self.cluster_cat) and self.data_selection in self.cluster_assignments_dict.keys() and \
+                            self.cluster_cat in self.cluster_assignments_dict[self.data_selection] and self.cluster_type == 'mask':
 
-        image = self.overlay_grid_on_additive_image(image)
-        self.image = image
-        comp_level, comp_format = self.set_px_compression_params(image)
+                        annot_mask = mask_with_cluster_annotations(self.mask_config[self.mask_selection]["raw"],
+                                                                   self.cluster_frame[self.data_selection],
+                                                                   self.cluster_assignments_dict[self.data_selection][
+                                                                       self.cluster_cat],
+                                                                   use_gating_subset=self.apply_gating,
+                                                                   gating_subset_list=self.gating_cell_id_list,
+                                                                   obj_id_col=get_cluster_proj_id_column(
+                                                                       self.cluster_frame[self.data_selection]),
+                                                                   cluster_option_subset=cluster_assignment_selection,
+                                                                   cluster_col=self.cluster_cat)
+                        self.mask_fill = annot_mask if annot_mask is not None else np.where(self.mask_fill > 0, 255, 0)
+                    else:
+                        # set the mask blending level based on the slider, by default use an equal blend
+                        self.mask_fill = self.apply_gating_to_canvas_mask_image(self.mask_fill)
+                        self.mask_fill = np.where(self.mask_fill > 0, 255, 0)
+                    self.mask_fill_cache = SessionServerside(self.mask_fill, key=f"mask_fill_cache_{self.sesh_id}", use_unique_key=True)
+                self.image = self.overlay_mask_outline_on_mask_image(self.image)
+            self.image = cv2.addWeighted(self.image.astype(np.uint8), 1, self.mask_fill.astype(np.uint8), mask_level, 0)
 
-        self.canvas = px.imshow(image.astype(np.uint8), binary_string=True,
+        # IMP: do not consider the grid as part of any cache as it is put on last over everything
+        self.image = self.overlay_grid_on_additive_image(self.image)
+        comp_level, comp_format = self.set_px_compression_params(self.image)
+
+        self.canvas = px.imshow(self.image.astype(np.uint8), binary_string=True,
                                 # set to the lowest level unless the image is very large
                                 binary_compression_level=comp_level,
                                 # allow lossy jpg format if very large image
@@ -354,6 +364,22 @@ class CanvasImage:
         """
         return SessionServerside(self.mask_config, key=f"mask-dict_{self.sesh_id}", use_unique_key=True) if (
             self.return_mask_cache) else dash.no_update
+
+    def get_image_blend_cache(self):
+        """
+        Get the updated image blend cache, which may or may not be updated with the current merged channel blend
+
+        :return: Image blend array as `SessionServerside` object if updated, otherwise `dash.no_update`
+        """
+        return self.image_blend_cache
+
+    def get_mask_fill_cache(self):
+        """
+        Get the updated mask fill cache, which may or may not be updated with the current mask fill overlay
+
+        :return: Mask fill array as `SessionServerside` object if updated, otherwise `dash.no_update`
+        """
+        return self.mask_fill_cache
 
     def current_canvas_exists(self, hover_template_exists: bool=False) -> bool:
         """

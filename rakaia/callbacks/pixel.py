@@ -125,7 +125,8 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     reset_on_visium_spot_size_change,
     no_channel_for_view,
-    empty_slider_values, use_channel_autofill, layout_has_modified_shape, wsi_selection)
+    empty_slider_values, use_channel_autofill, layout_has_modified_shape, wsi_selection, reset_image_blend_cache,
+    reset_mask_fill_cache)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -802,7 +803,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Input('data-collection', 'value'),
         Output('canvas-layers', 'data', allow_duplicate=True),
-        Output('allow_autofill_col', 'data'))
+        Output('allow_autofill_col', 'data'),
+        Output('image-blend-cache', 'data'),
+        Output('mask-fill-cache', 'data'))
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
@@ -810,7 +813,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         If caching is enabled, then the blended arrays that form the image will be retained for quicker
         toggling
         """
-        return {data_selection: {}} if data_selection else None, False
+        return {data_selection: {}} if data_selection else None, False, None, None
 
     @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
                        Input('preset-options', 'value'),
@@ -862,6 +865,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('status-div', 'children'),
                        Output('stitched_images', 'data', allow_duplicate=True),
                        Output('mask-dict', 'data', allow_duplicate=True),
+                       # TODO: add output for image blend and mask cache here
+                       Output('image-blend-cache', 'data', allow_duplicate=True),
+                       Output('mask-fill-cache', 'data', allow_duplicate=True),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -911,6 +917,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('stitch-image-x-min', 'value'),
                        State('stitch-image-y-min', 'value'),
                        State('session_id_internal', 'data'),
+                       State('image-blend-cache', 'data'),
+                       State('mask-fill-cache', 'data'),
                        prevent_initial_call=True)
     # @time_taken_callback
     def render_canvas_from_layer_mask_hover_change(rgb_layers, currently_selected,
@@ -929,7 +937,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                    cluster_assignments_in_legend, apply_gating, gating_cell_id_list,
                                                    delimiter, scale_color, error_config, clust_selected, canvas_holder,
                                                    update_stitch, cur_stitch, stitch_select, stitch_x_coord,
-                                                   stitch_y_coord, sesh_id):
+                                                   stitch_y_coord, sesh_id, blend_cache, mask_fill_cache):
 
         """
         Update the canvas from either an underlying change to the source image, or a change to the hover template
@@ -951,14 +959,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
+            # TODO: check the resetting of the caches depending on the trigger (which layer needs to be re-computed)
+            blend_cache = None if reset_image_blend_cache(ctx.triggered_id) else blend_cache
+            mask_fill_cache = None if reset_mask_fill_cache(ctx.triggered_id) else mask_fill_cache
             try:
                 canvas = CanvasImage(rgb_layers, data_selection, currently_selected, mask_config, mask_selection,
                 mask_blending_level, overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover, show_each_channel_intensity,
                 image_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
-                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected, sesh_id)
-                fig, mask_cache = canvas.render_canvas(), canvas.get_mask_cache()
+                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected, sesh_id, blend_cache, mask_fill_cache)
+                fig, boundary_cache, blend_cache, mask_fill_cache = canvas.render_canvas(), canvas.get_mask_cache(), canvas.get_image_blend_cache(), canvas.get_mask_fill_cache()
                 if str(cluster_type).lower() == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask and cluster_cat:
@@ -974,11 +985,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                 dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
                 elif ctx.triggered_id == "stitch-image-update": return (dash.no_update, dash.no_update, dash.no_update, dash.no_update,
                 SessionServerside(update_stitch_cache_with_blend(cur_stitch, stitch_select, stitch_x_coord, stitch_y_coord, canvas),
-                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']), mask_cache)
-                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update, mask_cache
+                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']), boundary_cache, blend_cache, mask_fill_cache)
+                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update, boundary_cache, blend_cache, mask_fill_cache
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
-                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update
+                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),

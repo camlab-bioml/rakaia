@@ -10,7 +10,9 @@ from rakaia.callbacks.triggers import (
     empty_slider_values,
     use_channel_autofill,
     layout_has_modified_shape,
-    stitch_cache_delete, wsi_selection)
+    stitch_cache_delete, wsi_selection,
+    reset_mask_fill_cache,
+    reset_image_blend_cache)
 import numpy as np
 
 def test_triggers(stitch_cache):
@@ -62,6 +64,11 @@ def test_triggers(stitch_cache):
     assert not wsi_selection("select_wsi", "select_wsi", stitch_cache, None)
     assert not wsi_selection("select_wsi", "select_wsi", None, "test_2")
     assert not wsi_selection("select_wsi", "other_trigger", stitch_cache, "test_1")
+
+    assert reset_image_blend_cache('canvas-layers')
+    assert not reset_image_blend_cache('mask-options')
+    assert reset_mask_fill_cache('mask-options')
+    assert not reset_mask_fill_cache('canvas-layers')
 
 
 def test_annotation_index_triggers():
