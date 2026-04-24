@@ -122,8 +122,7 @@ def reset_image_blend_cache(triggered_id: str):
     """
     Detect which trigger is used to recreate the canvas image, and see if the trigger needs to recompute the image blend
     """
-    return str(triggered_id) in ['canvas-layers', 'channel-intensity-hover', 'global-filter-type',
-                            "global-kernel-val-filter", "global-sigma-val-filter"]
+    return str(triggered_id) in ['canvas-layers', 'bool-apply-global-filter', 'global-filter-type', "global-kernel-val-filter", "global-sigma-val-filter"]
 
 def reset_mask_fill_cache(triggered_id: str):
     """
