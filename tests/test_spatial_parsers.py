@@ -27,9 +27,10 @@ from rakaia.parsers.object import visium_mask
 
 def test_identify_h5ad_in_uploads(get_current_dir):
     uploads = {"uploads": [os.path.join(get_current_dir, "for_recolour.tiff"),
-                           os.path.join(get_current_dir, "visium_thalamus.h5ad")]}
-    h5ad_found = parse_files_for_lazy_loading(uploads, "visium_thalamus+++slideNA+++acq")
-    assert h5ad_found == os.path.join(get_current_dir, "visium_thalamus.h5ad")
+                           os.path.join(get_current_dir, "visium_thalamus_11.h5ad"),
+                           os.path.join(get_current_dir, "visium_thalamus_1.h5ad")]}
+    h5ad_found = parse_files_for_lazy_loading(uploads, "visium_thalamus_1+++slideNA+++acq")
+    assert h5ad_found == os.path.join(get_current_dir, "visium_thalamus_1.h5ad")
     assert parse_files_for_lazy_loading(uploads, "other_visium+++slideNA+++acq") is None
     assert parse_files_for_lazy_loading([], "visium_thalamus+++slideNA+++acq") is None
 

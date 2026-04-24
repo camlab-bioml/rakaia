@@ -77,3 +77,6 @@ def test_roi_from_anndata():
     uploads = {"uploads": ['not_anndata.txt', 'not_anndata.mcd', 'from_anndata.h5ad']}
     assert roi_from_anndata_file(uploads, "from_anndata+++slideNA+++acq")
     assert not roi_from_anndata_file(uploads, "not_anndata+++slideNA+++acq")
+
+    uploads = {"uploads": ['anndata_10.h5ad', 'anndata_1.h5ad']}
+    assert roi_from_anndata_file(uploads, "anndata_1+++slideNA+++acq") == 'anndata_1.h5ad'
