@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.30.2] - 2026-04-24
 
+### Added
+
+- CosMX preprocessing markdown notebook in `examples` #168
+
 ### Fixed
 
 - Proper parsing of lazy-load files with unique partial name overlap (i.e. `fov_1`, `fov_11`) #166

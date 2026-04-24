@@ -12,7 +12,7 @@ The rakaia viewer is capable of rapid, interactive analysis of large regions of 
 currently supports the following technologies:
 
 - Multiplexed imaging such as imaging mass cytometry (IMC), immunofluorescence (IF), and immunohistochemistry (IHC)
-- Spatial transcriptomics (ST) such as 10X Visium (V1, V2, HD), Xenium, and others
+- Spatial transcriptomics (ST) such as 10X Visium (V1, V2, HD), Xenium, [CosMx](examples/cosmx_preprocessing.Rmd), and others
 - Whole slide images (WSI) such as H&E
 
 Tools in the rakaia application include:
