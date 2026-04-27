@@ -3,6 +3,7 @@ importing, selections, etc.
 """
 
 import os
+from pathlib import Path
 from typing import Union
 import time
 import shutil
@@ -75,6 +76,6 @@ def roi_from_anndata_file(uploads: Union[list, dict], data_selection: str, delim
     uploads = uploads['uploads'] if isinstance(uploads, dict) and 'uploads' in uploads else uploads
     exp, slide, acq = split_string_at_pattern(data_selection, delimiter)
     for upload in uploads:
-        if exp in upload and upload.endswith('.h5ad'):
+        if str(exp)== str(Path(upload).stem) and upload.endswith('.h5ad'):
             return upload
     return None

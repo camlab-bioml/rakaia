@@ -1,0 +1,158 @@
+---
+title: "CosMX pre-processing"
+output: pdf_document
+---
+
+# CosMX preprocessing
+
+The following vignette demonstrates one method of pre-processing CosMX data for compatibility with Rakaia. It processes the data set found here: https://zenodo.org/records/14330691, which has been stored as a `Seurat` object, and generates a `SpatialFeatureExperiment` class that is then split into 45 FOVs, each of which is exported as its own Anndata object. This makes browsing the whole-slide mosaic possible in Rakaia using the multi-ROI functionality.
+
+## Libraries and Import
+
+```{r setup, warning=F, info=F, message=FALSE}
+library(Voyager)
+library(SFEData)
+library(Seurat)
+library(SingleCellExperiment)
+library(zellkonverter)
+library(anndata)
+library(SpatialFeatureExperiment)
+library(reticulate)
+library(sf)
+library(terra)
+library(stringr)
+library(S4Vectors)
+
+ad <- import("anndata")
+sp <- import("scipy.sparse")
+np <- import("numpy")
+
+# This sets the micron resolution per pixel: 1 matches the cell polygon rasterization
+res <- 1
+
+# set the working directory
+data_dir <- "/home/admin/rakaia/cosmx/"
+```
+
+## Data Import
+
+using the data set link above: https://zenodo.org/records/14330691, the rds file should be downloaded into the `data_dir` location specified by the user. We will then import the data as a `Seurat` object, and export just one of the two slides in the object:
+
+```{r data, warning=F, info=F, message=FALSE}
+sfe <- readRDS(paste(data_dir, "CosMx_BCC_Yerly_2024.rds", sep=""))
+
+sfe <- UpdateSeuratObject(sfe)
+
+slide_id <- "Run6057.Patient1"
+
+seu_slide <- subset(
+  sfe,
+  cells = Cells(sfe[[slide_id]]))
+```
+
+## Spatial coordinates
+
+**IMPORTANT**: Some CosMX assays such as this one have spatial coordinates that are not centered on the top-left coordinate of the assay; this produces negative spatial coordinates. These are not compatible with the Rakaia viewer, so the coordinates are translated so that the min is 0. Additionally, we will filter so that any cells with `NA` coordinates are removed:
+
+```{r coords, warning=F, info=F, message=FALSE}
+# get the spatial coordinates
+coords <- Embeddings(seu_slide, "XY")
+coords <- coords[colnames(seu_slide), ]
+
+# keep only cells with valid locations
+valid <- complete.cases(coords)
+coords <- coords[valid, ]
+
+seu_slide <- seu_slide[, valid]
+
+# IMP: keep the shift for the polygons BEFORE changing the spatial coordinates
+shift <- c(min(coords[,1]), min(coords[,2]))
+
+# shift so min = 0
+coords[,1] <- coords[,1] - min(coords[,1])
+coords[,2] <- coords[,2] - min(coords[,2])
+```
+
+## SpatialFeatureExperiment
+
+We will then create a `SpatialFeatureExperiment`, which behaves like a `SingleCellExperiment` class that is easy to subset by FOV:
+
+```{r sfe, warning=F, info=F, message=FALSE}
+sfe <- SpatialFeatureExperiment(
+  assays = list(counts = GetAssayData(seu_slide, "Nanostring", layer = "counts")),
+  spatialCoords = coords)
+
+colData(sfe) <- DataFrame(seu_slide@meta.data)
+```
+
+## Translating cell polygons
+
+We also need to extract and translate the cell segmentation polygons to match the translated spatial coordinates. We then add these polygons as a geometry in the sfe, so that each FOV can get a single cell segmentation mask
+
+```{r polygons, warning=F, info=F, message=FALSE}
+slide_fov <- seu_slide[[Images(seu_slide)[1]]]
+
+seg_sf <- sf::st_as_sf(slide_fov@boundaries$segmentation)
+
+geom_shifted <- st_geometry(seg_sf) - shift
+
+seg_sf <- sf::st_as_sf(geom_shifted)
+rownames(seg_sf) <- colnames(sfe)
+
+colGeometry(sfe, type = "cellSeg") <- seg_sf
+```
+
+## Exporting individual FOV expression and segmentation masks
+
+Lastly, we will iterate on each FOV, and output the cell expression as its own Anndata object. We will also output a matched single cell segmentation mask in TIFF format, which is rasterised from the polygons above. Importantly, we must flip the y-axis of the spatial coordinates, as the y origin is the opposite in these data compared to rakaia, where the (0,0) origin is the top left, not the bottom left.
+
+```{r export, warning=F, info=F, message=FALSE}
+for (fov in unique(sfe$fov)) {
+
+  subset <- sfe[,sfe$fov == fov]
+  coords_mat <- as.matrix(spatialCoords(subset))
+
+  fov_identifier <- ifelse(nchar(as.character(fov)) == 1, paste("0", fov, sep=""), fov)
+
+  # IMP: flip the y coordinates to match the mask and rakaia origin (top left is (0,0))
+  coords_flipped <- coords_mat
+  coords_flipped[,2] <- max(coords_mat[,2]) - (coords_mat[,2] - min(coords_mat[,2]))
+
+  storage.mode(coords_flipped) <- "integer"
+
+  stopifnot(all(rownames(coords_flipped) == colnames(subset)))
+
+  counts <- t(assay(subset, "counts"))
+  X <- r_to_py(counts)
+  X <- X$tocsr()
+
+  adata <- ad$AnnData(X = X)
+
+  adata$obs_names <- rownames(counts)
+  adata$var_names <- colnames(counts)
+
+  adata$obsm[["spatial"]] <- r_to_py(coords_flipped)
+
+  write_h5ad(adata, paste(data_dir, slide_id, "_", fov_identifier, ".h5ad", sep=""))
+
+  sf_polys <- st_as_sf(colGeometries(subset)$cellSeg)
+
+  r <- rast(
+    xmin = as.integer(min(coords_mat[,1])),
+    xmax = as.integer(max(coords_mat[,1])),
+    ymin = as.integer(min(coords_mat[,2])),
+    ymax = as.integer(max(coords_mat[,2])),
+    resolution = res)
+
+  sf_polys$value <- seq_len(nrow(sf_polys))
+
+  rasterized <- rasterize(
+    vect(sf_polys),
+    r,
+    field = "value",
+    background = 0)
+
+  writeRaster(rasterized, paste(data_dir, slide_id, "_",
+             fov_identifier, "_mask.tiff", sep=""), overwrite=TRUE)
+}
+```

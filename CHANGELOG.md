@@ -7,12 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.30.2] - 2026-04-24
+
+### Added
+
+- CosMX preprocessing markdown notebook in `examples` #168
+
+### Fixed
+
+- Proper parsing of lazy-load files with unique partial name overlap (i.e. `fov_1`, `fov_11`) #166
+
+### Changed
+
+- Update `dependabot` vulnerabilities: `lxml`
+
 ## [0.30.1] - 2026-04-20
 
 ### Fixed
 
 - DGE table will now re-compute on both ROI and overlay change
-- Make the ROI stitch coordinates (for placement) blank on ROI switch
+- Make the ROI switch coordinates (for placement) blank on ROI switch
 
 ## [0.30.0] - 2026-04-15
 

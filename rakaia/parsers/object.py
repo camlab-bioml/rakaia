@@ -516,13 +516,12 @@ def match_mask_to_roi_name_components(data_selection: str, mask_options: Union[l
     Parse the current mask selection and attempt to match it to an experiment or ROI name in the list of imported
     ROIs/datasets.
     """
-    mask_return = None
     exp, slide, acq = split_string_at_pattern(data_selection, pattern=delimiter)
     if mask_options is not None and exp in mask_options:
-        mask_return = exp
+        return exp
     elif mask_options is not None and acq in mask_options:
-        mask_return = acq
-    return mask_return
+        return acq
+    return None
 
 
 def match_mask_name_to_quantification_sheet_roi(mask_selection: str, cell_id_list: Union[list, None],

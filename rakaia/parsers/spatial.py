@@ -575,7 +575,7 @@ def spatial_selection_can_transfer_coordinates(data_selection: str,
         is_spot_type_assay = (upload.endswith('h5ad') and
                 (visium_has_scaling_factors(ad.read_h5ad(upload)) or
                  visium_has_bin_scaling(ad.read_h5ad(upload))))
-        if (exp in upload and (is_spot_type_assay or
+        if (str(exp)== str(Path(upload).stem) and (is_spot_type_assay or
                  transformation_matrix is not None)):
             return True, upload, is_spot_type_assay
     return False, None, False
