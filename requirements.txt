@@ -74,7 +74,7 @@ kiwisolver==1.4.4
 lazy_loader==0.4
 leidenalg==0.10.2
 llvmlite==0.42.0
-lxml==5.1.0
+lxml==6.1.0
 matplotlib==3.9.0
 mongomock==4.1.2
 more-itertools==9.1.0
