@@ -181,3 +181,5 @@ dmypy.json
 *.xml
 
 INSTRUCTIONS.pdf
+
+examples/*.pdf

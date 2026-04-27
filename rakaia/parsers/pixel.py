@@ -576,8 +576,7 @@ def image_dict_from_lazy_load(dataset_selection: str, session_config: dict,
     """
     # IMP: the copy of the dictionary must be made in case lazy loading isn't required, and all of the data
     # is already contained in the dictionary
-    split = split_string_at_pattern(dataset_selection, pattern=delimiter)
-    basename, slide, acq_name = split[0], split[1], split[2]
+    basename, slide, acq_name = split_string_at_pattern(dataset_selection, pattern=delimiter)
     # get the index of the file from the experiment number in the event that there are multiple uploads
     file_path = None
     for files_uploaded in session_config['uploads']:

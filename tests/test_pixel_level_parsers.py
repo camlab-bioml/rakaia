@@ -42,7 +42,8 @@ def test_basic_parser_tiff_to_dict(get_current_dir):
                    array_store_type="fake")
 
 def test_parse_tiff_imagej(get_current_dir):
-    uploaded_dict = FileParser([os.path.join(get_current_dir, "imagej_metadata.tiff")]).image_dict
+    uploaded_dict = FileParser([os.path.join(get_current_dir, "imagej_metadata_2.tiff"),
+    os.path.join(get_current_dir, "imagej_metadata.tiff")]).image_dict
     assert 'SMA' in uploaded_dict['metadata']['Channel Label'][0]
 
 def test_parse_tiff_page_names(get_current_dir):
@@ -61,7 +62,8 @@ def test_basic_parser_fake_mcd(get_current_dir):
         FileParser([os.path.join(get_current_dir, "fake_dataset.mcd")])
 
 def test_basic_parser_from_mcd(get_current_dir):
-    parser = FileParser([os.path.join(get_current_dir, "query.mcd")])
+    parser = FileParser([os.path.join(get_current_dir, "query_2.mcd"),
+                         os.path.join(get_current_dir, "query.mcd")])
     uploaded_dict = parser.image_dict
     assert 'query+++slide1+++Xylene_5' in uploaded_dict.keys()
     assert 'metadata' in uploaded_dict.keys()
