@@ -628,6 +628,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return current_blend_dict, SessionServerside(rgb_layers, key=f"layer_dict_{sesh_id}",
                         use_unique_key=OVERWRITE), param_dict, channel_modify, uploaded_return, True
             except (TypeError, KeyError, IndexError): raise PreventUpdate
+        # TODO: should we allow resetting of the image cache layers when spatial radius is changed without anything in the current canvas?
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
 
     @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
