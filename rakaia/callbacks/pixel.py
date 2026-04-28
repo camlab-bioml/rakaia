@@ -960,7 +960,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
-            # TODO: check the resetting of the caches depending on the trigger (which layer needs to be re-computed)
             blend_cache = None if reset_image_blend_cache(ctx.triggered_id) else blend_cache
             mask_fill_cache = None if reset_mask_fill_cache(ctx.triggered_id) else mask_fill_cache
             try:
