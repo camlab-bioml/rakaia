@@ -265,12 +265,13 @@ class CanvasImage:
             mask attributes (blending level, etc.)
         """
         if self.add_mask_boundary and self.mask_config[self.mask_selection]["raw"] is not None:
-            if "boundary" not in self.mask_config[self.mask_selection]:
+            # don't cache boundary if gating is used (recreate)
+            if "boundary" not in self.mask_config[self.mask_selection] or self.apply_gating:
                 self.mask_config[self.mask_selection]['boundary'] = np.array(Image.fromarray(
                         convert_mask_to_object_boundary(self.mask_config[self.mask_selection]["raw"])).convert('RGB'))
-                # only cache the mask boundary if not present, and sufficiently large
+                # only cache the mask boundary if not present, and sufficiently large without gating
                 self.return_mask_cache = True if any(dim >= self.MASK_BOUNDARY_CACHE_THRESHOLD
-                                                     for dim in (image.shape[0], image.shape[1])) else False
+                    for dim in (image.shape[0], image.shape[1])) and not self.apply_gating else False
             # add the border of the mask after converting back to greyscale
             image = cv2.addWeighted(image.astype(np.uint8), 1,
                                     self.mask_config[self.mask_selection]['boundary'].astype(np.uint8), 1, 0)
