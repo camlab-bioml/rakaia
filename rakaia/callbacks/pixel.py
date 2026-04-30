@@ -961,7 +961,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
             blend_cache = None if reset_image_blend_cache(ctx.triggered_id) else blend_cache
-            mask_fill_cache = None if reset_mask_fill_cache(ctx.triggered_id) else mask_fill_cache
+            # always reset on gating as both the fill and boundary need to be recomputed
+            mask_fill_cache = None if reset_mask_fill_cache(ctx.triggered_id) or apply_gating else mask_fill_cache
             try:
                 canvas = CanvasImage(rgb_layers, data_selection, currently_selected, mask_config, mask_selection,
                 mask_blending_level, overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
