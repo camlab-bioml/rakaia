@@ -177,7 +177,9 @@ class ToolTips(BaseModel):
                              "markers per category in the current overlay. Works only on ROIs from an Anndata or zarr store.",
                       "dge-show": "NOTE: only a single marker is added at a time (the cell with a red outline).",
                       "dge-rank": "NOTE: The DGE table will be rendered for an Anndata or zarr ROI when a categorical overlay is applied."
-                                  " DGE markers are ordered by a Wilcoxon rank-sum test (group vs. all others)."}
+                                  " DGE markers are ordered by a Wilcoxon rank-sum test (group vs. all others).",
+                      "tooltip": "WARNING: modifying the canvas blend can become much slower with this feature enabled. "
+                                 "Highly recommended to turn off before exporting the canvas to HTML."}
 
 
 class PanelMismatchError(Exception):

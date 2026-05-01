@@ -2,13 +2,14 @@ import json
 
 import dash
 import numpy as np
-from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 import plotly.graph_objs as go
 import plotly.express as px
 import pandas as pd
 import os
 from PIL import Image
 from rakaia.inputs.pixel import set_annotation_layout
+from rakaia.io.session import SessionServerside
+from rakaia.components.canvas import CanvasImage, CanvasLayout, reset_graph_with_malformed_template
 
 def test_basic_canvas_image():
 
@@ -58,6 +59,9 @@ def test_basic_canvas_image():
     canvas_fig = canvas.render_canvas()
     assert isinstance(canvas_fig, dict)
 
+    mask_fill_cache = canvas.get_mask_fill_cache()
+    assert isinstance(mask_fill_cache, SessionServerside)
+
     use_gating = False
     gating_cell_id_list = []
 
@@ -72,13 +76,19 @@ def test_basic_canvas_image():
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                          global_filter_val, global_filter_sigma, apply_cluster_on_mask,
                          cluster_assignments_dict, "cluster",
-                         cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
+                         cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list,
+                         mask_fill_cache=mask_fill_cache.value)
     assert list(canvas.get_image()[44, 44]) == [6, 6, 6]
     assert isinstance(canvas, CanvasImage)
     canvas_fig, mask_cache = canvas.render_canvas(), canvas.get_mask_cache()
     assert isinstance(canvas_fig, dict)
 
     assert isinstance(mask_cache, dash._callback.NoUpdate)
+    assert isinstance(canvas.get_mask_fill_cache(), dash._callback.NoUpdate)
+
+    image_cache = canvas.get_image_blend_cache()
+    assert isinstance(image_cache, SessionServerside)
+
     # overlay_grid = [' overlay grid']
     add_cell_id_hover = [' Show mask ID on hover']
     show_each_channel_intensity = [" Show channel intensities on hover"]
@@ -89,11 +99,14 @@ def test_basic_canvas_image():
                          legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover,
                          show_each_channel_intensity, raw_data_dict, aliases, global_apply_filter, global_filter_type,
                  global_filter_val, global_filter_sigma, apply_cluster_on_mask,
-                           cluster_assignments_dict, "cluster",
-                           cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
+                cluster_assignments_dict, "cluster",
+                cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list,
+                image_blend_cache=image_cache.value)
     assert isinstance(canvas_2, CanvasImage)
     canvas_fig = canvas_2.render_canvas()
     assert isinstance(canvas_fig, dict)
+
+    assert isinstance(canvas_2.get_image_blend_cache(), dash._callback.NoUpdate)
 
     cur_graph = px.imshow(canvas.get_image())
     # overlay_grid = [' overlay grid']
@@ -110,7 +123,6 @@ def test_basic_canvas_image():
                            cluster_frame, cluster_type, custom_scale_val, use_gating, gating_cell_id_list)
     canvas_fig_3 = canvas_3.render_canvas()
     assert isinstance(canvas_fig_3, dict)
-
 
     cur_graph = {'data': {'customdata': np.full((100, 100), 10)}, 'layout': {'uirevision': True}}
     canvas_4 = CanvasImage(canvas_layers, data_selection, currently_selected,

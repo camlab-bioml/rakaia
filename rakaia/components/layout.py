@@ -1131,13 +1131,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                              persistence=config['persistence'],
                                                              persistence_type='local')
                                                   ], style={"display": "flex"}),
-                                        html.Div(
-                                            [html.Abbr(dcc.Checklist(options=[' Show channel intensities on hover'],
+
+                                        html.Div([dcc.Checklist(options=[' Show channel intensities on hover'],
                                                                      value=[], id="channel-intensity-hover",
                                                                      style={"width": "100%",
                                                                             "accent-color": DEFAULT_WIDGET_COLOUR}),
-                                                       title="WARNING: speed is significantly compromised with this feature, "
-                                                             "particularly for large images.")], style={"display": "flex"}),
+                                        dbc.Tooltip(TOOLTIPS['tooltip'], target="channel-intensity-hover", placement='bottom')],
+                                                style={"display": "flex"}),
                                         html.Br(),
                                         html.H6("Adjust legend/scale size"),
                                         dcc.Slider(4, 30, 1, value=16,
@@ -1201,7 +1201,8 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                                  "accent-color": DEFAULT_WIDGET_COLOUR},
                                             labelStyle={'display': 'flex', 'alignItems': 'center', "gap": "4px",
                                                         'lineHeight': '1.2', 'whiteSpace': 'normal'},
-                                                        persistence=config['persistence'], persistence_type='local')],
+                                                        persistence=config['persistence'], persistence_type='local'),
+                                            dbc.Tooltip(TOOLTIPS['tooltip'], target="add-cell-id-mask-hover", placement='top')],
                                                            style={"display": "flex", "width": "90%"}),
                                                   html.Br(),
                                                   dbc.Button("Generate spatial mask", id="make-spatial-mask",
@@ -2103,6 +2104,9 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         dcc.Store(id='dge-computed', data=False),
         # just used as a target store to keep the load screen working on data processing
         wrap_child_in_loading(dcc.Store(id='roi-loaded'), wrap=config['use_loading']),
+        # set a cache for the blended image and mask fill
+        dcc.Store(id='image-blend-cache'),
+        dcc.Store(id='mask-fill-cache'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

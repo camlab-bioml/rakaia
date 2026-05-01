@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.0] - 2026-04-28
+
+### Changed
+
+- Use image blend and mask fill cache to cache layers for faster blending
+- More informative tooltips for hover template options for performance #169
+- Add `.obs` export for CosMX preprocessing example
+
+### Fixed
+
+- Mask boundary recompute on gating to match gate selection #171
+
 ## [0.30.2] - 2026-04-24
 
 ### Added
