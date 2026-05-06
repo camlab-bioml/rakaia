@@ -54,7 +54,7 @@ def main(sysargs=sys.argv[1:]):
             # converting a list of polygons to a multipolygon can cause loss of internal/nested shapes
             img = rasterio.features.rasterize([poly], out_shape=out_shape)
             # check to see if the annotation is in the list of holes. if so, set pixels in the output mask to 0
-            if 'name' in annotation and annotation['name'] in list_of_hole_types:
+            if annotation and isinstance(annotation, dict) and 'name' in annotation and annotation['name'] in list_of_hole_types:
                 merged_mask = np.where(img > 0, 0, merged_mask)
             else:
                 # if the annotation is kept as an object, check the conditions
