@@ -26,10 +26,8 @@ def no_canvas_mask(triggered_id: str, mask_selection: Union[str, None]=None,
     but no mask has been imported
     """
     # Case 1: there is no mask available on mask param changes
-    # Case 2: a mask is being selected, but applying the mask is not enabled
     return (triggered_id in ["mask-options", "mask-blending-slider", "add-mask-boundary",
-        "add-cell-id-mask-hover", "apply-mask"] and not mask_selection and not apply_mask) or \
-        (triggered_id == "mask-options" and not apply_mask)
+        "add-cell-id-mask-hover", "apply-mask"] and not mask_selection and not apply_mask)
 
 def global_filter_disabled(triggered_id: str, global_apply_filter: Union[list, bool]=False):
     """

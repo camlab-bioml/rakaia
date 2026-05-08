@@ -30,7 +30,8 @@ def test_triggers(stitch_cache):
     assert no_canvas_mask("mask-options", None)
     assert not no_canvas_mask("apply_mask", "mask_1")
 
-    assert no_canvas_mask("mask-options", "mask_1", False)
+    # because of mask caching, allow update if off but the mask changes
+    assert not no_canvas_mask("mask-options", "mask_1", False)
     assert not no_canvas_mask("mask-options", "mask_1", True)
 
     assert global_filter_disabled("global-kernel-val-filter", [])
