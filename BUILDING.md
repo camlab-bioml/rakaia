@@ -56,5 +56,5 @@ across machines/environments.**
 
 ## Executing
 
-Please refer to the **INSTRUCTIONS.Rmd** file for
+Please refer to the [**INSTRUCTIONS.Rmd**](./INSTRUCTIONS.Rmd) file for
 information on executing the bundles.

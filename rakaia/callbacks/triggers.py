@@ -31,7 +31,7 @@ def no_canvas_mask(triggered_id: str, mask_selection: Union[str, None]=None,
 
 def global_filter_disabled(triggered_id: str, global_apply_filter: Union[list, bool]=False):
     """
-    Assess if the callback should fired if a global filter-related input is triggered,
+    Assess if the callback should fire if a global filter-related input is triggered,
     but the toggle for the global filter is off
     """
     return triggered_id in ["global-filter-type", "global-kernel-val-filter",

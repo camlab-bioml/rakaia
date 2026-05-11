@@ -162,7 +162,7 @@ dependencies = [
   "typing_extensions==4.13.2",
   "tzdata==2023.3",
   "umap-learn==0.5.4",
-  "urllib3==2.6.3",
+  "urllib3==2.7.0",
   "urllib3-secure-extra==0.1.0",
   "URLObject==2.4.3",
   "uv==0.11.6",
