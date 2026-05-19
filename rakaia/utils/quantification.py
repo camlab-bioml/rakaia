@@ -2,12 +2,11 @@
 """
 
 from typing import Union
+import os
 import numpy as np
 import pandas as pd
+import scipy
 from dash import html
-from steinbock.measurement.intensities import (
-    IntensityAggregation,
-    measure_intensites)
 from steinbock.measurement.regionprops import measure_regionprops
 from rakaia.utils.object import validate_mask_shape_matches_image
 from rakaia.utils.pixel import split_string_at_pattern, high_low_values_from_zoom_layout
@@ -79,7 +78,12 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
                 chan_names.append(aliases[chan])
             else:
                 chan_names.append(chan)
-        channel_frame = measure_intensites(array, mask, chan_names, IntensityAggregation.MEAN).dropna()
+        object_ids = np.unique(mask[mask != 0])
+        channel_frame = {}
+        for i, channel_name in enumerate(chan_names):
+            # mean intensity per labeled object
+            channel_frame[channel_name] = scipy.ndimage.mean(
+                array[i], labels=mask, index=object_ids)
         description_name = mask_name
         sample_name = mask_name
         if dataset_options is not None:
@@ -90,12 +94,15 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
                     description_name = mask_name
                     sample_name = mask_name
 
+        channel_frame = pd.DataFrame(data=channel_frame,
+        index=pd.Index(object_ids, dtype=np.dtype(os.environ.get("STEINBOCK_MASK_DTYPE", "uint16")), name="Object"))
         channel_frame['description'] = description_name
         # channel_frame['cell_id'] = pd.Series(range(0, (int(np.max(mask)))), dtype='int64')
         channel_frame['cell_id'] = [int(i) for i in channel_frame.index]
         channel_frame['sample'] = sample_name
         props = ['area', 'centroid', 'axis_major_length', 'axis_minor_length', 'eccentricity']
         try:
+            # TODO: should re-implement without steinbock to remove dependency?
             region_props = measure_regionprops(array, mask, props)
             to_return = channel_frame.join(region_props).reset_index(drop=True)
         except TypeError: to_return = channel_frame

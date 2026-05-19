@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-05-19
+
+**NOTE: this version drops support for Python 3.10 (3.11 minimum required)**
+
+### Changed
+
+- Add support for Python 3.13
+- Re-write channel quantification to avoid using deprecated `partial`.value functions
+
+### Deprecated
+
+- Support for Python 3.10 due to updated `Anndata`
+
 ## [0.31.1] - 2026-05-11
 
 ### Fixed

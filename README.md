@@ -47,7 +47,7 @@ rakaia is built on:
 
 ## Installation
 
-**NOTE: As of rakaia 0.24.0, the required Python version(s) are 3.10+ (3.10 or 3.11 recommended).**
+**NOTE: As of rakaia 0.32.0, the required/supported Python version(s) are 3.11-3.13.**
 
 rakaia can be cloned and installed locally using access to the GitHub repository
 
