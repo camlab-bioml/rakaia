@@ -3,6 +3,7 @@ channels:
   - defaults
   - https://repo.anaconda.com/pkgs/main
   - https://repo.anaconda.com/pkgs/r
+
 dependencies:
   - bzip2=1.0.8
   - ca-certificates=2025.2.25
@@ -18,6 +19,7 @@ dependencies:
   - tk=8.6.14
   - xz=5.6.4
   - zlib=1.2.13
+
   - pip:
       - affine==2.4.0
       - aiobotocore==2.23.1
@@ -26,12 +28,12 @@ dependencies:
       - aioitertools==0.12.0
       - aiosignal==1.4.0
       - altgraph==0.17.4
-      - anndata==0.11.0
+      - anndata==0.12.16
       - asciitree==0.3.3
       - async-generator==1.10
       - attrs==23.1.0
       - beautifulsoup4==4.12.2
-      - biopython==1.85
+      - biopython==1.77
       - botocore==1.38.46
       - cachelib==0.9.0
       - certifi==2024.7.4
@@ -45,7 +47,7 @@ dependencies:
       - colorcet==3.1.0
       - colorspacious==1.1.2
       - colour==0.1.5
-      - contourpy==1.2.0
+      - contourpy==1.3.3
       - coverage==7.10.2
       - cryptography==46.0.7
       - cycler==0.11.0
@@ -68,10 +70,10 @@ dependencies:
       - dash-uploader==0.7.0a2
       - dask==2024.11.2
       - dask-expr==1.1.19
-      - dask-image==2024.5.3
+      - dask-image==2025.11.0
       - datashader==0.17.0
       - dill==0.4.0
-      - diskcache==5.6.1
+      - diskcache==5.6.3
       - dnspython==2.7.0
       - editorconfig==0.12.3
       - exceptiongroup==1.1.1
@@ -93,7 +95,7 @@ dependencies:
       - h5py==3.14.0
       - idna==3.7
       - igraph==0.11.5
-      - imagecodecs==2023.9.18
+      - imagecodecs==2025.3.30
       - imageio==2.33.0
       - imctools==2.1.8
       - importlib-metadata==6.6.0
@@ -110,130 +112,91 @@ dependencies:
       - kiwisolver==1.4.4
       - lazy-loader==0.4
       - leidenalg==0.10.2
-      - llvmlite==0.42.0
-      - locket==1.0.0
+      - llvmlite==0.44.0
       - lxml==6.1.0
-      - macholib==1.16.3
-      - markdown-it-py==3.0.0
       - markupsafe==2.1.3
       - matplotlib==3.9.0
-      - mdurl==0.1.2
       - mongomock==4.1.2
       - more-itertools==9.1.0
-      - multidict==6.6.3
-      - multipledispatch==1.0.0
       - multiprocess==0.70.14
-      - multiscale-spatial-image==2.0.2
-      - narwhals==2.0.1
       - natsort==8.4.0
-      - nest-asyncio==1.6.0
       - networkx==3.1
-      - numba==0.59.0
-      - numcodecs==0.13.1
-      - numexpr==2.8.8
-      - numpy==1.26.4
+      - numba==0.61.0
+      - numcodecs==0.15.0
+      - numexpr==2.14.1
+      - numpy==2.0.0
       - oauthlib==3.2.2
       - ome-zarr==0.11.1
-      - opencv-python-headless==4.8.1.78
-      - outcome==1.2.0
-      - packaging==24.0
+      - opencv-python-headless==4.10.0.84
+      - packaging==24.2
       - pandas==2.3.1
-      - param==2.2.1
-      - parmed==4.3.0
-      - partd==1.4.2
-      - patsy==0.5.3
+      - ParmEd==4.3.0
+      - patsy==0.5.6
       - percy==2.0.2
       - periodictable==2.0.2
       - phenograph==1.5.7
       - pillow==12.2.0
-      - pims==0.7
-      - pkgconfig==1.5.5
-      - platformdirs==4.3.8
+      - pims==0.7.0
       - plotly==6.0.0
       - pluggy==1.5.0
       - pooch==1.8.2
-      - propcache==0.3.2
       - psutil==5.9.5
-      - pyarrow==21.0.0
+      - pyarrow==24.0.0
       - pycparser==2.21
-      - pyct==0.5.0
-      - pydantic==2.5.2
-      - pygments==2.19.2
-      - pyinstaller==6.11.1
-      - pyinstaller-hooks-contrib==2025.8
+      - pydantic==2.13.1
       - pymongo==4.6.3
-      - pynndescent==0.5.10
+      - pynndescent==0.5.13
       - pyogrio==0.11.1
       - pyopenssl==26.0.0
       - pyparsing==3.0.9
-      - pyproj==3.7.1
       - pysocks==1.7.1
       - pytest==9.0.3
       - pytest-cov==4.0.0
       - python-dateutil==2.8.2
       - pytz==2023.3
       - pyvips==2.2.3
-      - pywavelets==1.5.0
-      - pyyaml==6.0.2
+      - pywavelets==1.9.0
       - rasterio==1.4.3
       - readimc==0.9.2
-      - referencing==0.36.2
       - requests==2.33.0
-      - requests-oauthlib==1.3.1
-      - retrying==1.4.2
-      - rich==14.1.0
-      - rpds-py==0.27.0
-      - s3fs==2025.7.0
-      - scanpy==1.10.4
+      - requests-oauthlib==2.0.0
+      - scanpy==1.11.5
       - scikit-image==0.25.2
       - scikit-learn==1.5.0
       - scipy==1.14.1
-      - seaborn==0.13.0
+      - seaborn==0.13.2
       - selenium==4.15.2
-      - sentinels==1.0.0
       - session-info==1.0.0
-      - setuptools==80.9.0
+      - setuptools==75.3.4
       - shapely==2.1.1
       - shortuuid==1.0.12
       - six==1.16.0
-      - slicerator==1.1.0
       - sniffio==1.3.0
       - sortedcontainers==2.4.0
       - soupsieve==2.4.1
-      - spatial-image==1.2.1
-      - spatialdata==0.4.0
-      - statsmodels==0.14.0
-      - stdlib-list==0.8.0
+      - spatialdata==0.5.0
+      - statsmodels==0.14.6
       - steinbock==0.16.1
       - svgpathtools==1.7.2
       - svgwrite==1.4.3
-      - tenacity==8.2.2
-      - texttable==1.6.7
-      - threadpoolctl==3.1.0
-      - tifffile==2023.8.12
-      - tomli==2.0.1
-      - toolz==1.0.0
+      - tifffile==2026.3.3
       - tqdm==4.66.3
       - trio==0.22.0
       - trio-websocket==0.10.2
-      - typing-extensions==4.13.2
+      - typing_extensions==4.14.1
       - tzdata==2023.3
-      - umap-learn==0.5.4
+      - umap-learn==0.5.6
       - urllib3==2.7.0
       - urllib3-secure-extra==0.1.0
-      - urlobject==2.4.3
+      - URLObject==2.4.3
       - uv==0.11.6
       - waitress==3.0.1
       - werkzeug==3.0.6
       - wheel==0.46.3
-      - wrapt==1.17.2
       - wsproto==1.2.0
-      - xarray==2024.10.0
-      - xarray-dataclasses==1.9.1
-      - xarray-schema==0.0.3
-      - xarray-spatial==0.4.0
+      - xarray==2025.1.2
+      - xarray-dataclasses==1.10.0
       - xmltodict==0.13.0
       - xtiff==0.7.9
-      - yarl==1.20.1
-      - zarr==2.18.3
+      - zarr==2.18.7
       - zipp==3.19.1
