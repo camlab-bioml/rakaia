@@ -139,7 +139,7 @@ dependencies = [
   "requests-oauthlib==2.0.0",
   "scanpy==1.11.5",
   "scikit-image==0.25.2",
-  "scikit-learn==1.5.0",
+  "scikit-learn==1.6.0",
   "scipy==1.14.1",
   "seaborn==0.13.2",
   "selenium==4.15.2",
