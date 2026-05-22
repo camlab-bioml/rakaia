@@ -1,4 +1,4 @@
-"""Module defining the functions for processing images for registration such as H & E
+"""Module defining the functions for processing WSI images for rendering in the osd view such as H&E
 """
 import os
 from typing import Union
@@ -43,16 +43,17 @@ def update_wsi_hash(cur_hash: Union[dict, None],
         return cur_hash if cur_hash else dash.no_update
     return dash.no_update
 
-def dzi_tiles_from_image_path(image_path: Union[Path, str],
-                              dest_dir: Union[Path, str],
-                              static_folder_prefix: str="coregister"):
+def dzi_tiles_from_image(image: Union[Path, str, np.ndarray],
+                         dest_dir: Union[Path, str],
+                         static_folder_prefix: str="coregister"):
     """
     Use `pyvips` to generate a series of dzi tiles that can be served to the flask static route
     Use the `static_folder_prefix` to match the dzi and tiles to `openseadragon`
     """
     import pyvips
     try:
-        image = pyvips.Image.new_from_file(image_path, access="sequential")
+        image = pyvips.Image.new_from_file(image, access="sequential") if not \
+            isinstance(image, np.ndarray) else pyvips.Image.new_from_array(image, interpretation='rgb')
         try:
             if os.path.exists(os.path.join(dest_dir, f"{static_folder_prefix}_files")):
                 shutil.rmtree(os.path.join(dest_dir, f"{static_folder_prefix}_files"))

@@ -7,13 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.29.0] - 2026-02-11
+## [0.32.a1] - 2026-05-22
+
+### Added
+- Ability to retain a persistent session on page refresh #151
+
+## [0.31.1] - 2026-05-20
+
+### Changed
+
+- Update dependency [`idna`](https://github.com/camlab-bioml/rakaia/security/dependabot/234)
+
+## [0.31.1] - 2026-05-11
+
+### Fixed
+
+- Mask option change when apply mask is off still updates cache #172
+- Better check for annotations in geojson to tiff CLI converter
+- Update dep based on dependabot: `urllib3`
+
+## [0.31.0] - 2026-04-28
+
+### Changed
+
+- Use image blend and mask fill cache to cache layers for faster blending
+- More informative tooltips for hover template options for performance #169
+- Add `.obs` export for CosMX preprocessing example
+
+### Fixed
+
+- Mask boundary recompute on gating to match gate selection #171
+
+## [0.30.2] - 2026-04-24
+
+### Added
+
+- CosMX preprocessing markdown notebook in `examples` #168
+
+### Fixed
+
+- Proper parsing of lazy-load files with unique partial name overlap (i.e. `fov_1`, `fov_11`) #166
+
+### Changed
+
+- Update `dependabot` vulnerabilities: `lxml`
+
+## [0.30.1] - 2026-04-20
+
+### Fixed
+
+- DGE table will now re-compute on both ROI and overlay change
+- Make the ROI switch coordinates (for placement) blank on ROI switch
+
+## [0.30.0] - 2026-04-15
+
+## Added
+
+- Transfer stitched image to WSI view (low-res preview remains)
+- Updated Visium HD export with masks in `examples`
+- Modal for differential gene expression for Anndata ROIs with categorical overlay
+
+## Changed
+
+- Add better permission on one-directory standalone builds
+- Update `dependabot` vulnerabilities: `requests`, `crytography`, `Flask-HTTPAuth`, `uv`
+- Cache mask boundaries when first created for ROIs that are sufficiently large
+- Set dataset gallery down-sampling default to `True`
+
+## [0.29.0] - 2026-03-17
+
+### Added
+
+- Created, edit, delete stitched images + add in canvas by coordinate #159
+- Input to manually set WSI zoom level
+- Better channel name parsing from OME
 
 ### Changed
 
 - Updated dependencies based on [`cryptography`](https://github.com/advisories/GHSA-r6ph-v2qm-q3c2) and
 [`pillow`](https://github.com/advisories/GHSA-cfh3-3jmp-rvhc) vulnerabilities
-- Ability to retain a persistent session on page refresh #151
+- Export canvas tiff as zip if sufficiently large
+
+### Fixed
+
+- Change user blend selection in dataset gallery to state variable
+- Check for unique condition in mod menu reset
+- **Index mismatch for 10x spatial mask rasterisation**
+- Spatial object id matching to handle `spatialdata/Anndata` sub-setting
 
 ## [0.28.0] - 2026-02-03
 

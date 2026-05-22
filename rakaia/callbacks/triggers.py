@@ -26,14 +26,12 @@ def no_canvas_mask(triggered_id: str, mask_selection: Union[str, None]=None,
     but no mask has been imported
     """
     # Case 1: there is no mask available on mask param changes
-    # Case 2: a mask is being selected, but applying the mask is not enabled
     return (triggered_id in ["mask-options", "mask-blending-slider", "add-mask-boundary",
-        "add-cell-id-mask-hover", "apply-mask"] and not mask_selection and not apply_mask) or \
-        (triggered_id == "mask-options" and not apply_mask)
+        "add-cell-id-mask-hover", "apply-mask"] and not mask_selection and not apply_mask)
 
 def global_filter_disabled(triggered_id: str, global_apply_filter: Union[list, bool]=False):
     """
-    Assess if the callback should fired if a global filter-related input is triggered,
+    Assess if the callback should fire if a global filter-related input is triggered,
     but the toggle for the global filter is off
     """
     return triggered_id in ["global-filter-type", "global-kernel-val-filter",
@@ -103,3 +101,30 @@ def layout_has_modified_shape(canvas_layout: Union[dict, None]=None):
     Detect if the canvas layout has a modified shape (i.e. re-dragged)
     """
     return canvas_layout is not None and any('.path' in key for key in canvas_layout.keys())
+
+def stitch_cache_delete(triggered_id: str, stitch_selection: Union[str, None]=None):
+    """
+    Determine if the user wants to delete the current stitch from the cache
+    """
+    return triggered_id == "stitch-image-delete" and stitch_selection is not None
+
+def wsi_selection(triggered_id: str, target_id: str, image_cache: Union[dict, None]=None,
+                  image_selection: Union[str, None]=None):
+    """
+    Detect which trigger was used to render a WSI, and check that the image selection is in the cache
+    """
+    return str(triggered_id) == str(target_id) and None not in \
+        (image_cache, image_selection) and str(image_selection) in image_cache
+
+def reset_image_blend_cache(triggered_id: str):
+    """
+    Detect which trigger is used to recreate the canvas image, and see if the trigger needs to recompute the image blend
+    """
+    return str(triggered_id) in ['canvas-layers', 'bool-apply-global-filter', 'global-filter-type', "global-kernel-val-filter", "global-sigma-val-filter"]
+
+def reset_mask_fill_cache(triggered_id: str):
+    """
+    Detect which trigger is used to recreate the mask fill overlay, and see if the trigger needs to recompute the mask fill
+    """
+    return str(triggered_id) in ['mask-options', 'mask-blending-slider', 'toggle-cluster-annotations', 'cluster-colour-assignments-dict',
+                            'cluster-col', 'cluster-annotation-type', 'apply-gating', 'gating-cell-list', 'cluster-label-selection']

@@ -167,7 +167,21 @@ class ToolTips(BaseModel):
                "below to initiate a new session in the current window.",
                       "downsample-roi-thumbnail": "Render down-sampled ROIs in the dataset gallery. Down-sampling may be faster "
                                                   "and could save browser memory at the cost of thumbnail resolution.",
-                      "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates."}
+                      "wsi-transform-inv": "Select this option if the matrix selected maps WSI coordinates -> canvas coordinates.",
+                      "cur-roi-slide-parse": "If the current ROI is from an MCD file, parse to get the corresponding slide dimensions (width, height). "
+                                             "Can be used to create a new stitched image corresponding to the underlying slide.",
+                      "cur-roi-stitch-parse": "If the current ROI is from an MCD file, parse to get the top-left anchor coordinate. Can be used"
+                                              " to set the position for adding the canvas blend to a stitched image.",
+                      "stitch-coord-min": "This is the top-left coordinate in the stitch to anchor the placement of a new blended image.",
+                      "wsi-zoom-level": "0 is fully zoomed out, while 1 is the most zoomed in. Use log scale for "
+                                        "zooming proportional to magnification, or disable for equal zoom increments.",
+                      "dge": "Show differential expression analysis on the current ROI with the top 25 "
+                             "markers per category in the current overlay. Works only on ROIs from an Anndata or zarr store.",
+                      "dge-show": "NOTE: only a single marker is added at a time (the cell with a red outline).",
+                      "dge-rank": "NOTE: The DGE table will be rendered for an Anndata or zarr ROI when a categorical overlay is applied."
+                                  " DGE markers are ordered by a Wilcoxon rank-sum test (group vs. all others).",
+                      "tooltip": "WARNING: modifying the canvas blend can become much slower with this feature enabled. "
+                                 "Highly recommended to turn off before exporting the canvas to HTML."}
 
 
 class PanelMismatchError(Exception):

@@ -2,6 +2,7 @@
 """
 
 import time
+from functools import wraps
 from rakaia.io.session import create_download_dir
 
 class DownloadDirGenerator:
@@ -29,15 +30,35 @@ class DownloadDirGenerator:
             return result
         return inner_create_download_dir
 
-def time_taken_callback(func, show_output: bool=True, *args, **kwargs):
+
+
+def time_taken_callback(func=None, show_output=True, *decorator_args, **decorator_kwargs):
     """
-    Will print the execution time of the callback
+    Decorator to print execution time of a callback/function.
+    Supports both:
+    @time_taken_callback
+    def f(...):
+    and
+    time_taken_callback(f, x=1, y=2)()
     """
-    def wrapper_function():
+
+    if func is None: return None
+
+    @wraps(func)
+    def wrapper_function(*args, **kwargs):
+
+        # merge decorator-time kwargs with call-time kwargs
+        merged_kwargs = {**decorator_kwargs, **kwargs}
+
         begin = time.time()
-        result = func(*args, **kwargs)
+
+        result = func(*decorator_args, *args, **merged_kwargs)
+
         end = time.time()
+
         if show_output:
-            print("Total time taken in : ", func.__name__, (end - begin))
+            print(f"Total time taken in {func.__name__}: {end - begin:.4f} sec")
+
         return result
+
     return wrapper_function

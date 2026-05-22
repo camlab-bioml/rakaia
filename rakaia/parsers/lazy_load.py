@@ -4,6 +4,7 @@ into memory
 
 import os
 from functools import partial
+from pathlib import Path
 from typing import Union
 from readimc import MCDFile
 from readimc.data.acquisition import Acquisition
@@ -31,7 +32,7 @@ def parse_files_for_lazy_loading(uploads: Union[list, dict], data_selection: str
     uploads = uploads['uploads'] if isinstance(uploads, dict) and 'uploads' in uploads else uploads
     exp, slide, acq =  split_string_at_pattern(data_selection, delimiter)
     for upload in uploads:
-        if any(upload.endswith(ext) for ext in SingleMarkerLazyLoaderExtensions.extensions) and exp in upload:
+        if any(upload.endswith(ext) for ext in SingleMarkerLazyLoaderExtensions.extensions) and str(exp)== str(Path(upload).stem):
             return upload
     return None
 

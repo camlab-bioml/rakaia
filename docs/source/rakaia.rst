@@ -17,6 +17,7 @@ Subpackages
    rakaia.plugins
    rakaia.register
    rakaia.static
+   rakaia.stitch
    rakaia.templates
    rakaia.utils
 

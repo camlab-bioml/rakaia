@@ -7,12 +7,12 @@ rakaia: Scalable spatial biology analysis in the browser
 </p>
 
 
-rakaia provides streamlined in-browser analysis of multiplexed spatial proteomics and transcriptomics.
+rakaia (pronounced *RA-KAI-YA*) provides streamlined in-browser analysis of multiplexed spatial proteomics and transcriptomics.
 The rakaia viewer is capable of rapid, interactive analysis of large regions of interest (ROI), and
 currently supports the following technologies:
 
 - Multiplexed imaging such as imaging mass cytometry (IMC), immunofluorescence (IF), and immunohistochemistry (IHC)
-- Spatial transcriptomics (ST) such as 10X Visium (V1, V2, HD), Xenium, and others
+- Spatial transcriptomics (ST) such as 10X Visium (V1, V2, HD), Xenium, [CosMx](examples/cosmx_preprocessing.Rmd), and others
 - Whole slide images (WSI) such as H&E
 
 Tools in the rakaia application include:
@@ -90,7 +90,20 @@ and is not installed through the pip installation above.
 Users should visit the [vips installation page](https://www.libvips.org/install.html) for
 instructions on installing for a specific OS.
 
-**Note**: macOS users should install `vips` using `brew` as opposed to conda.
+**Note**: For macOS users, brew is the recommended installation
+methods for vips:
+
+```commandline
+brew install vips
+```
+
+However, some users have reported problems with rakaia being able to
+detect the `vips` CLI executable through this installation method. If that is
+the case, users could try installing with `conda-forge`:
+
+```commandline
+conda install conda-forge::libvips
+```
 
 ### C++ build tools on Windows
 

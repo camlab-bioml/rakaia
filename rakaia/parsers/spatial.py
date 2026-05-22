@@ -156,18 +156,22 @@ class ZarrSDParser:
         return any(col_id in sdset.tables for col_id in ZarrSDKeys.visium_hd_tables)
 
     @staticmethod
-    def scale_visium_hd_by_bin(adata: ad.AnnData, bin_size: int):
+    def scale_visium_hd_by_bin(adata: ad.AnnData, bin_size: int,
+                               object_id_col: Union[str, None]='location_id'):
         """
         Scale the expression of a Visium HD dataset by the bin size
 
         :param adata: `Anndata` containing spatial expression profiles
         :param bin_size: Integer specifying the corresponding bin size to scale the spatial coordinates
+        :param object_id_col: Optional column to match the objects in the mask to an entry in the expression
 
         :return: Scaled `Anndata` containing spatial coordinates scaled by the bin size
         """
         adata.obsm['spatial'] = adata.obsm['spatial'] / float(bin_size)
         adata.var_names_make_unique()
         adata.uns["scaling_visium_hd"] = int(bin_size)
+        # IMP: add 1 to the location_id index so that it can match the mask iteration
+        adata.obs[object_id_col] = (adata.obs[object_id_col] + 1).astype(int)
         return adata.copy()
 
     @staticmethod
@@ -186,7 +190,8 @@ class ZarrSDParser:
                                   flip: bool=True,
                                   shape_key: str="cell_boundaries",
                                   table_key: str="table",
-                                  scale_factor: int | None=None):
+                                  scale_factor: int | None=None,
+                                  object_id_col: Union[str, None]='cell_id'):
         """
         Generate a spatial segmentation mask from a shape frame with a matching expression table
 
@@ -195,6 +200,8 @@ class ZarrSDParser:
         :param shape_key: Key for the shape in the sdata `shapes` slot. Provides the segmentation polygons.
         :param table_key: Key for the table in the sdata `tables` slot. Provides the coordinate limits for the output mask.
         :param scale_factor: Integer value for scaling the mask objects. Default is `None`
+        :param object_id_col: Optional column to match the objects in the mask to an entry in the expression
+
         :return: Numpy mask array with object (i.e. cell) boundaries and object ids of the type `np.uint32`
         """
         if shape_key in sdset.shapes and table_key in sdset.tables:
@@ -213,7 +220,12 @@ class ZarrSDParser:
                 cells["geometry"] = cells["geometry"].apply(
                     lambda geom: affinity.scale(geom, xfact=(1/scale_factor), yfact=(1/scale_factor), origin=(0, 0)))
 
-            shapes = [(geom, idx) for idx, geom in enumerate(cells.geometry)]
+            # ensure that the expression matches the object number
+            if adata and object_id_col and str(object_id_col) in adata.obs.columns:
+                cells = cells.loc[cells.index.isin(adata.obs[str(object_id_col)])]
+
+            # IMP: this can cause gaps or missing cells if one cell completely engulfs another during sequential burn-in
+            shapes = [(geom, idx + 1) for idx, geom in enumerate(cells.geometry)]
 
             # Set the mask shape to be the same as the transcript bounds in rakaia
             mask = rasterize(shapes=shapes, out_shape=(int(y_max - y_min), int(x_max - x_min)),
@@ -264,11 +276,13 @@ class ZarrSDParser:
         return found_expr
 
     def _iterate_visium_hd_bins(self, sdata: sd.SpatialData,
-                                output_masks: bool=True):
+                                output_masks: bool=True,
+                                object_id_col: str='location_id'):
         """
         Iterate through matched shape frames and expression tables y bin size for Visium HD
 
         :param sdata: `Spatialdata` object containing a Visium HD dataset
+        :param object_id_col: Optional column to match the objects in the mask to an entry in the expression
 
         :return: None
         """
@@ -277,10 +291,12 @@ class ZarrSDParser:
             # parse through the bin sizes, and see if it's in the current shape
             for bin_size in ZarrSDKeys.visium_hd_bin_sizes:
                 if bin_size in table:
-                    expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size))
+                    expr = self.scale_visium_hd_by_bin(sdata.tables[table], int(bin_size), str(object_id_col))
                     self._image_paths['uploads'].append(self.write_adata(expr, str(shape)))
                     if str(table) in str(shape) and output_masks:
-                        mask = self.spatial_segmentation_mask(sdata, True, str(shape), str(table), int(bin_size))
+                        # increment the index to match the location id for mask generation
+                        sdata.shapes[shape].index = (sdata.shapes[shape].index + 1).astype(int)
+                        mask = self.spatial_segmentation_mask(sdata, True, str(shape), str(table), int(bin_size), object_id_col)
                         if mask is not None:
                             self._mask_paths[str(shape)] = self.write_mask(mask, str(shape))
 
@@ -559,7 +575,7 @@ def spatial_selection_can_transfer_coordinates(data_selection: str,
         is_spot_type_assay = (upload.endswith('h5ad') and
                 (visium_has_scaling_factors(ad.read_h5ad(upload)) or
                  visium_has_bin_scaling(ad.read_h5ad(upload))))
-        if (exp in upload and (is_spot_type_assay or
+        if (str(exp)== str(Path(upload).stem) and (is_spot_type_assay or
                  transformation_matrix is not None)):
             return True, upload, is_spot_type_assay
     return False, None, False

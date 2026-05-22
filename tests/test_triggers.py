@@ -9,10 +9,13 @@ from rakaia.callbacks.triggers import (
     no_channel_for_view,
     empty_slider_values,
     use_channel_autofill,
-    layout_has_modified_shape)
+    layout_has_modified_shape,
+    stitch_cache_delete, wsi_selection,
+    reset_mask_fill_cache,
+    reset_image_blend_cache)
 import numpy as np
 
-def test_triggers():
+def test_triggers(stitch_cache):
     # if the assertion is correct, do not allow the callback to occur
 
     image = np.zeros((1000, 1000))
@@ -27,7 +30,8 @@ def test_triggers():
     assert no_canvas_mask("mask-options", None)
     assert not no_canvas_mask("apply_mask", "mask_1")
 
-    assert no_canvas_mask("mask-options", "mask_1", False)
+    # because of mask caching, allow update if off but the mask changes
+    assert not no_canvas_mask("mask-options", "mask_1", False)
     assert not no_canvas_mask("mask-options", "mask_1", True)
 
     assert global_filter_disabled("global-kernel-val-filter", [])
@@ -52,6 +56,20 @@ def test_triggers():
     assert not use_channel_autofill(rgb_layers, "roi_1", "channel_1", True, True)
     assert not use_channel_autofill(rgb_layers, "roi_1", "channel_2", False, True)
     assert not use_channel_autofill(rgb_layers, "roi_1", "channel_2", True, False)
+
+    assert not stitch_cache_delete("wrong_id", "stitch_1")
+    assert not stitch_cache_delete("stitch-image-delete", None)
+    assert stitch_cache_delete("stitch-image-delete", "to_delete")
+
+    assert wsi_selection("select_wsi", "select_wsi", stitch_cache, "test_1")
+    assert not wsi_selection("select_wsi", "select_wsi", stitch_cache, None)
+    assert not wsi_selection("select_wsi", "select_wsi", None, "test_2")
+    assert not wsi_selection("select_wsi", "other_trigger", stitch_cache, "test_1")
+
+    assert reset_image_blend_cache('canvas-layers')
+    assert not reset_image_blend_cache('mask-options')
+    assert reset_mask_fill_cache('mask-options')
+    assert not reset_mask_fill_cache('canvas-layers')
 
 
 def test_annotation_index_triggers():

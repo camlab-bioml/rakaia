@@ -58,8 +58,7 @@ def cli_parser():
                         dest="persistence")
     parser.add_argument('-dc', "--disable-cache-overwriting", action="store_false",
                         help="Disable cache overwriting for server side stores. By default, rakaia will overwrite `Serverside` objects\n"
-                             "on each callback invocation to save disk space. However, overwriting should be disabled for concurrent sessions\n"
-                             "that host multiple users, such as containerized or public instances.",
+                             "on each callback invocation to save disk space. Should almost always be left as `True`",
                         dest="serverside_overwrite")
     parser.add_argument('-sc', "--swatch-colors", action="store",
                         help="Set custom RGB codes for the swatches. Should be a string wrapped in quotations of the form \n"

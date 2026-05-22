@@ -7,7 +7,7 @@ from rakaia.io.display import (
     preset_options_preview_text,
     annotation_preview_table,
     timestamp_download_child,
-    empty_region_table)
+    empty_region_table, set_table_columns)
 from rakaia.utils.region import FreeFormRegion
 import numpy as np
 import pandas as pd
@@ -279,6 +279,17 @@ def test_output_canvas_tiff_to_file():
             os.remove(canvas_link)
         assert not os.path.exists(canvas_link)
 
+    # larger canvas image, calls for zip
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        file_path = os.path.join(tmpdirname, "larger_canvas.tiff")
+        assert not os.path.exists(file_path)
+        canvas_link = output_current_canvas_as_tiff(np.full((10000, 100, 3), 7), tmpdirname)
+        assert os.path.exists(canvas_link)
+        assert str(canvas_link).endswith("zip")
+        if os.access(canvas_link, os.W_OK):
+            os.remove(canvas_link)
+        assert not os.path.exists(canvas_link)
+
 def test_output_canvas_html_to_file():
     canvas_image = np.full((100, 100, 3), 7)
     fig = go.Figure(px.imshow(canvas_image)).to_dict()
@@ -351,3 +362,11 @@ def test_timestamp_downloads():
     assert timestamp.children
     assert right_now[0:10] in str(timestamp.children)
     assert not timestamp_download_child(None)
+
+def test_table_cols():
+    table = pd.DataFrame(data={'col_1': ['val_1'] * 10,
+                         'col_2': ['val_2'] * 10})
+    assert len(set_table_columns(table)) == 2
+    assert not set_table_columns(None)
+    assert not set_table_columns([])
+    assert not set_table_columns({})

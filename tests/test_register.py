@@ -8,7 +8,7 @@ import pytest
 import shutil
 import tifffile
 from rakaia.register.process import (
-    dzi_tiles_from_image_path,
+    dzi_tiles_from_image,
     update_wsi_hash,
     wsi_from_local_path,
     match_wsi_name_to_transformation_matrix,
@@ -50,8 +50,8 @@ def test_generate_dzi_tiles(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
         download_dir = os.path.join(tmpdirname, "fdsdfsdlfkdn", 'downloads')
         assert not os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
-        dzi_tiles_from_image_path(os.path.join(get_current_dir, 'for_quant.tiff'),
-                                  download_dir)
+        dzi_tiles_from_image(os.path.join(get_current_dir, 'for_quant.tiff'),
+                             download_dir)
         assert os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
         tree = ET.parse(os.path.join(download_dir, 'coregister.dzi'))
         root = tree.getroot()
@@ -66,8 +66,8 @@ def test_generate_dzi_tiles(get_current_dir):
         assert os.path.isdir(os.path.join(download_dir, 'coregister_files'))
 
         # run a second time with the same naming, but different image
-        dzi_tiles_from_image_path(os.path.join(get_current_dir, 'for_recolour.tiff'),
-                                  download_dir)
+        dzi_tiles_from_image(os.path.join(get_current_dir, 'for_recolour.tiff'),
+                             download_dir)
         tree = ET.parse(os.path.join(download_dir, 'coregister.dzi'))
         root = tree.getroot()
         namespace = root.tag.split('}')[0].strip('{')
@@ -81,10 +81,26 @@ def test_generate_dzi_tiles(get_current_dir):
             shutil.rmtree(download_dir)
         assert not os.path.isdir(download_dir)
 
-        dzi_tiles_from_image_path(os.path.join(get_current_dir, 'fake.tiff'),
-                                  download_dir)
+        dzi_tiles_from_image(os.path.join(get_current_dir, 'fake.tiff'),
+                             download_dir)
 
         assert not os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
+
+        ## from array ##
+        dzi_tiles_from_image(np.ones((2001, 2001, 3)), download_dir)
+        tree = ET.parse(os.path.join(download_dir, 'coregister.dzi'))
+        root = tree.getroot()
+        namespace = root.tag.split('}')[0].strip('{')
+        ns_map = {'dz': namespace}
+        size_element = root.find('dz:Size', ns_map)
+        width = int(size_element.get('Width'))
+        height = int(size_element.get('Height'))
+        assert width == height == 2001
+        assert os.path.isfile(os.path.join(download_dir, 'coregister.dzi'))
+        if os.access(download_dir, os.W_OK):
+            shutil.rmtree(download_dir)
+        assert not os.path.isdir(download_dir)
+
 
 def test_transform_name_in_cache():
     assert not transformation_selection_in_cache(None, None)

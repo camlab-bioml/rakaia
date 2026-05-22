@@ -1,3 +1,7 @@
+"""
+Module defining functions and classes for transferring coordinates between the multiplexed
+canvas and the WSI OSD view.
+"""
 from typing import Union
 import anndata as ad
 import numpy as np

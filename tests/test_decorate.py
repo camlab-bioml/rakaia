@@ -15,6 +15,11 @@ def test_time_taken(capfd):
     captured = capfd.readouterr()
     assert 'Total time taken' in captured.out
 
+    out = time_taken_callback()
+    assert out is None
+    captured = capfd.readouterr()
+    assert 'Total time taken' not in captured.out
+
 def test_time_taken_empty(capfd):
 
     def add(x, y):

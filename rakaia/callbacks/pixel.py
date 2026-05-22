@@ -40,6 +40,7 @@ from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, v
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
+from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 from rakaia.utils.decorator import (
@@ -94,7 +95,7 @@ from rakaia.inputs.loaders import (
     set_viewer_tab, toggle_canvas_to_wsi_tab)
 from rakaia.callbacks.pixel_wrappers import parse_global_filter_values_from_json, parse_local_path_imports, \
     mask_options_from_json, bounds_text, AnnotationList, no_json_db_updates, is_steinbock_dir, \
-    parse_steinbock_dir, disable_gallery_by_roi
+    parse_steinbock_dir, disable_gallery_by_roi, channel_in_dropdown
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -127,7 +128,8 @@ from rakaia.callbacks.triggers import (
     channel_already_added,
     reset_on_visium_spot_size_change,
     no_channel_for_view,
-    empty_slider_values, use_channel_autofill, layout_has_modified_shape)
+    empty_slider_values, use_channel_autofill, layout_has_modified_shape, wsi_selection, reset_image_blend_cache,
+    reset_mask_fill_cache)
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -181,6 +183,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('data-collection', 'options', allow_duplicate=True),
         Output('image_layers', 'options', allow_duplicate=True),
         Output('wsi_transform_options', 'options', allow_duplicate=True),
+        # TODO: stitch options not being persisted properly
+        Output('stitch-image-select', 'options', allow_duplicate=True),
         Output('data-collection', 'value', allow_duplicate=True),
         Output('image_layers', 'value', allow_duplicate=True),
         Output('dataset-preview-table', 'data', allow_duplicate=True),
@@ -200,6 +204,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('alias-dict', 'data', allow_duplicate=True),
         Output('image-gallery-row', 'children', allow_duplicate=True),
         Output('imc-panel-editable', 'data', allow_duplicate=True),
+        Output('stitched_images', 'data', allow_duplicate=True),
+        Output('image-blend-cache', 'data', allow_duplicate=True),
+        Output('mask-fill-cache', 'data', allow_duplicate=True),
         Output('quantification-heatmap-full', 'figure', allow_duplicate=True),
         # TODO: need to also clear the WSI dropdown menus here
         prevent_initial_call=False)
@@ -207,7 +214,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Clear the current persistent session and start a new one
         """
-        if trigger_new_session: return ([], [], []) + tuple([None] * 19) + ({'data': []},)
+        if trigger_new_session: return ([], [], [], []) + tuple([None] * 22) + ({'data': []},)
         raise PreventUpdate
 
 
@@ -686,6 +693,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return current_blend_dict, SessionServerside(rgb_layers, key=f"layer_dict_{sesh_id}",
                         use_unique_key=OVERWRITE), param_dict, channel_modify, uploaded_return, True
             except (TypeError, KeyError, IndexError): raise PreventUpdate
+        # TODO: should we allow resetting of the image cache layers when spatial radius is changed without anything in the current canvas?
         return dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, True
 
     @dash_app.callback(Output("annotation-color-picker", 'value', allow_duplicate=True),
@@ -861,7 +869,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Input('data-collection', 'value'),
         Output('canvas-layers', 'data', allow_duplicate=True),
-        Output('allow_autofill_col', 'data'))
+        Output('allow_autofill_col', 'data'),
+        Output('image-blend-cache', 'data'),
+        Output('mask-fill-cache', 'data'))
     def reset_canvas_layers_on_new_dataset(data_selection):
         """
         Reset the canvas layers dictionary containing the cached images for the current canvas in order to
@@ -869,7 +879,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         If caching is enabled, then the blended arrays that form the image will be retained for quicker
         toggling
         """
-        return {data_selection: {}} if data_selection else None, False
+        return {data_selection: {}} if data_selection else None, False, None, None
 
     @dash_app.callback(Output('blending_colours', 'data', allow_duplicate=True),
                        Input('preset-options', 'value'),
@@ -919,6 +929,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Output('download-canvas-image-tiff', 'data'),
                        Output('session_alert_config', 'data', allow_duplicate=True),
                        Output('status-div', 'children'),
+                       Output('stitched_images', 'data', allow_duplicate=True),
+                       Output('mask-dict', 'data', allow_duplicate=True),
+                       Output('image-blend-cache', 'data', allow_duplicate=True),
+                       Output('mask-fill-cache', 'data', allow_duplicate=True),
                        Input('canvas-layers', 'data'),
                        State('image_layers', 'value'),
                        State('data-collection', 'value'),
@@ -962,6 +976,14 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_alert_config', 'data'),
                        Input('cluster-label-selection', 'value'),
                        State('canvas-div-holder', 'children'),
+                       Input('stitch-image-update', 'n_clicks'),
+                       State('stitched_images', 'data'),
+                       State('stitch-image-select', 'value'),
+                       State('stitch-image-x-min', 'value'),
+                       State('stitch-image-y-min', 'value'),
+                       State('session_id_internal', 'data'),
+                       State('image-blend-cache', 'data'),
+                       State('mask-fill-cache', 'data'),
                        prevent_initial_call=True)
     # @time_taken_callback
     def render_canvas_from_layer_mask_hover_change(rgb_layers, currently_selected,
@@ -978,7 +1000,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                    cluster_frame, cluster_type,
                                                    download_canvas_tiff, custom_scale_val,
                                                    cluster_assignments_in_legend, apply_gating, gating_cell_id_list,
-                                                   delimiter, scale_color, error_config, clust_selected, canvas_holder):
+                                                   delimiter, scale_color, error_config, clust_selected, canvas_holder,
+                                                   update_stitch, cur_stitch, stitch_select, stitch_x_coord,
+                                                   stitch_y_coord, sesh_id, blend_cache, mask_fill_cache):
 
         """
         Update the canvas from either an underlying change to the source image, or a change to the hover template
@@ -1000,14 +1024,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             cur_graph = strip_invalid_shapes_from_graph_layout(cur_graph)
             legend_text = canvas_legend_text(blend_colour_dict, channel_order, aliases, str(legend_orientation).lower(),
             cluster_assignments_in_legend, cluster_assignments_dict, data_selection, clust_selected, cluster_cat)
+            blend_cache = None if reset_image_blend_cache(ctx.triggered_id) else blend_cache
+            # always reset on gating as both the fill and boundary need to be recomputed
+            mask_fill_cache = None if reset_mask_fill_cache(ctx.triggered_id) or apply_gating else mask_fill_cache
             try:
                 canvas = CanvasImage(rgb_layers, data_selection, currently_selected, mask_config, mask_selection,
                 mask_blending_level, overlay_grid, mask_toggle, add_mask_boundary, invert_annot, cur_graph, pixel_ratio,
                 legend_text, toggle_scalebar, legend_size, toggle_legend, add_cell_id_hover, show_each_channel_intensity,
                 image_dict, aliases, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
                 apply_cluster_on_mask, cluster_assignments_dict, cluster_cat, cluster_frame, cluster_type,
-                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected)
-                fig = canvas.render_canvas()
+                custom_scale_val, apply_gating, gating_cell_id_list, str(scale_color).lower(), clust_selected, sesh_id, blend_cache, mask_fill_cache)
+                fig, boundary_cache, blend_cache, mask_fill_cache = canvas.render_canvas(), canvas.get_mask_cache(), canvas.get_image_blend_cache(), canvas.get_mask_fill_cache()
                 if str(cluster_type).lower() == 'mask' or not apply_cluster_on_mask:
                     fig = CanvasLayout(fig).remove_cluster_annotation_shapes()
                 elif apply_cluster_on_mask and cluster_cat:
@@ -1018,14 +1045,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 dest_path = os.path.join(tmpdirname, authentic_id, str(uuid.uuid1()), 'downloads')
                 canvas_tiff, download_status = dash.no_update, dash.no_update
                 if ctx.triggered_id == "btn-download-canvas-tiff":
-                    fig = dash.no_update
+                    fig, download_status = dash.no_update, timestamp_download_child()
                     canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
                                 dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
-                    download_status = timestamp_download_child()
-                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status
+                elif ctx.triggered_id == "stitch-image-update": return (dash.no_update, dash.no_update, dash.no_update, dash.no_update,
+                SessionServerside(update_stitch_cache_with_blend(cur_stitch, stitch_select, stitch_x_coord, stitch_y_coord, canvas),
+                                  key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']), boundary_cache, blend_cache, mask_fill_cache)
+                return (fig.to_dict() if isinstance(fig, go.Figure) else fig), canvas_tiff, dash.no_update, download_status, dash.no_update, boundary_cache, blend_cache, mask_fill_cache
             except Exception as e:
                 error_config = add_warning_to_error_config(error_config, str(e))
-                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update
+                return reset_graph_with_malformed_template(cur_graph), dash.no_update, error_config, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update
         raise PreventUpdate
 
     @dash_app.callback(Output('annotation_canvas', 'figure', allow_duplicate=True),
@@ -1476,11 +1505,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        Input('image_layers', 'value'),
                        State("annotation_canvas", 'figure'),
                        prevent_initial_call=True)
-    def reset_graphs_on_empty_modification_menu(current_selection, blend, cur_canvas):
+    def reset_graphs_on_empty_modification_menu(cur_selection, blend, cur_canvas):
         """
         reset all the relevant input widgets and dropdown menus when there is no channel currently selected
         """
-        if blend is None or len(blend) == 0 and (len(current_selection) > 0 and cur_canvas):
+        if blend is None or len(blend) == 0 and (cur_selection is not None and len(cur_selection) > 0 and cur_canvas):
             cur_canvas['data'] = []
             return reset_pixel_histogram(), cur_canvas, [None, None], [], None
         raise PreventUpdate
@@ -2122,13 +2151,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Add a channel from the channel thumbnail gallery with component pattern matching.
         Ensure that the gallery tab is active for a switch to occur.
         """
-        if not all([elem is None for elem in value]) and None not in (layer_options, current_blend, aliases) and \
-                active_tab == 'gallery-tab':
-            index_from = ctx.triggered_id["index"]
-            if index_from in [i["value"] for i in layer_options] and index_from not in current_blend:
-                current_blend.append(index_from)
-                return current_blend, "pixel-analysis"
-            raise PreventUpdate
+        if not all([elem is None for elem in value]) and None not in (layer_options, current_blend, aliases) and active_tab == 'gallery-tab':
+            return channel_in_dropdown(str(ctx.triggered_id["index"]), layer_options, current_blend), "pixel-analysis"
         raise PreventUpdate
 
     @dash_app.callback(
@@ -2269,16 +2293,22 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                        State('session_id_internal', 'data'),
                        State('session_alert_config', 'data'),
                        State('wsi_transform_options', 'options'),
+                       Input('stitch-image-to-wsi', 'n_clicks'),
+                       State('stitched_images', 'data'),
+                       State('stitch-image-select', 'value'),
                        prevent_initial_call=False)
-    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config, transform_options):
+    def compute_coregister_tiles(reg_select, cur_hash, sesh_id, error_config, transform_options,
+                                 stitch_to_wsi, stitch_images, stitch_select):
         """
-        Compute dzi tiles for the osd wsi viewer when a selection is made. Additionally, attempt to
-        find a matched WSI transformation matrix from the dropdown menu based on WSI name overlap.
+        Compute dzi tiles for the osd wsi viewer when a dropdown selection is made, or a stitched image transferred.
+        Additionally, attempt to find a matched WSI transformation matrix from the dropdown menu based on WSI name overlap.
         """
-        if reg_select and cur_hash and sesh_id and reg_select in cur_hash:
+        wsi_im = stitch_images[stitch_select] if wsi_selection(ctx.triggered_id, "stitch-image-to-wsi", stitch_images, stitch_select) \
+            else (str(cur_hash[reg_select]) if wsi_selection(ctx.triggered_id, "coregister_options", cur_hash, reg_select) else None)
+        if sesh_id and wsi_im is not None:
             try:
-                from rakaia.register.process import dzi_tiles_from_image_path
-                dzi_tiles_from_image_path(str(cur_hash[reg_select]), str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
+                from rakaia.register.process import dzi_tiles_from_image
+                dzi_tiles_from_image(wsi_im, str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
                 return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
             except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate
