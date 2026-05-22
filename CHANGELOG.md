@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.31.a1] - 2026-05-22
+
+### Added
+
+- Stitching for CosMX Anndata ROIs with set `uns` identifiers
+
 ## [0.31.1] - 2026-05-20
 
 ### Changed

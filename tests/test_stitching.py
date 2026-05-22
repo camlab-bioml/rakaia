@@ -15,6 +15,10 @@ from rakaia.stitch.mcd import (
     set_gallery_mcd_rois_to_stitch,
     roi_identifier_to_steinbock_id,
     cur_roi_slide_matches_stitch)
+from rakaia.stitch.cosmx import (
+    cosmx_has_global_slide_coords,
+    cosmx_global_slide_boundaries,
+    cosmx_local_fov_position)
 
 def test_stitch_cache_update(stitch_cache):
 
@@ -142,3 +146,14 @@ def test_set_mcd_gallery_stitch(get_current_dir):
                                 'query+++slide1+++PAP_1').get_roi_slide_boundary_point()
     assert not cur_roi_slide_matches_stitch(slide_height, slide_width, mcd_2_h, mcd_2_w)
     assert not cur_roi_slide_matches_stitch(slide_height, slide_width, None, None)
+
+def test_parse_stitch_cosmx(get_current_dir):
+    cosmx = os.path.join(get_current_dir, 'cosmx_HeNSCLC_fov_01.h5ad')
+    not_cosmx = os.path.join(get_current_dir, 'visium_thalamus.h5ad')
+    assert cosmx_has_global_slide_coords(cosmx)
+    slide_width, slide_height = cosmx_global_slide_boundaries(cosmx)
+    assert all(elem > 20000 for elem in (slide_width, slide_height))
+    x_pos, y_pos = cosmx_local_fov_position(cosmx)
+    assert all(elem >= 0 for elem in (x_pos, y_pos))
+    assert not cosmx_has_global_slide_coords(not_cosmx)
+    assert cosmx_local_fov_position(not_cosmx) == cosmx_global_slide_boundaries(not_cosmx) == (None, None)

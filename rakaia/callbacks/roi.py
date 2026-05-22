@@ -11,6 +11,7 @@ from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 
 from rakaia.callbacks.triggers import stitch_cache_delete
+from rakaia.stitch.cosmx import cosmx_global_slide_boundaries, cosmx_local_fov_position
 from rakaia.stitch.mcd import (
     MCDAcqCoordinateParser, stitch_mcd_blends_from_gallery,
     set_gallery_mcd_rois_to_stitch)
@@ -32,6 +33,7 @@ from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
 from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview, modify_stitch_cache
+from rakaia.utils.session import roi_from_anndata_file
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -132,6 +134,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
             if ctx.triggered_id == "stitch-from-roi-gallery" and existing_gallery:
+                # TODO: modify logic here to allow stitching from the CosMX Anndata ROIs
                 # IMP: need to make sure that we keep the same rois that are currently in view
                 # current best way to do this is to set the current ones in the gallery to search indices (which are normally excluded)
                 rois_decided, query_cell_id_lists, rois_exclude = set_gallery_mcd_rois_to_stitch(rois_exclude, data_selection, delimiter)
@@ -271,11 +274,13 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('data-collection', 'value'),
         State('dataset-delimiter', 'value'),
         State('session_config', 'data'))
-    def parse_mcd_slide_for_stitch(parse_for_slide, roi_selection, delim, session_uploads):
+    def parse_roi_slide_for_stitch(parse_for_slide, roi_selection, delim, session_uploads):
         """
-        Get the desired width and height of a slide image from the current ROI, if from MCD
+        Get the desired width and height of a slide image from the current ROI, if from MCD or CosMX Anndata
         """
         if None not in (roi_selection, delim, session_uploads):
+            if roi_from_anndata_file(session_uploads, roi_selection, delim):
+                return cosmx_global_slide_boundaries(roi_from_anndata_file(session_uploads, roi_selection, delim))
             return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_slide_boundary_point()
         raise PreventUpdate
 
@@ -293,5 +298,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # if the ROI is switched, by default make the coordinates blank
         if ctx.triggered_id == "data-collection": return None, None
         if None not in (roi_selection, delim, session_uploads):
+            if roi_from_anndata_file(session_uploads, roi_selection, delim):
+                return cosmx_local_fov_position(roi_from_anndata_file(session_uploads, roi_selection, delim))
             return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_coord_min()
         raise PreventUpdate
