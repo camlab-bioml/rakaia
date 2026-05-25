@@ -5,7 +5,7 @@ import os
 import uuid
 import dash
 import pandas as pd
-from dash import ALL, dcc
+from dash import ALL, dcc, html
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
@@ -302,3 +302,18 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return cosmx_local_fov_position(roi_from_anndata_file(session_uploads, roi_selection, delim))
             return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_coord_min()
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("stitch-size-alert-modal", "is_open"),
+        Output("stitch-size-information", "children"),
+        Input('stitch-image-create-width', 'value'),
+        Input('stitch-image-create-height', 'value'),
+        State('toggle-session-messages', 'value'),
+        prevent_initial_call=True)
+    def check_for_large_stitch_dimensions(stitch_width, stitch_height, show_messages):
+        """
+        Check if any of the input stitch dimensions are large enough to warrant an alert (any dimension > 50000 pixels)
+        """
+        if show_messages and None not in (stitch_height, stitch_width) and any(int(dim) > 50000 for dim in (stitch_height, stitch_width)):
+            return True, [html.H6("Message: \n"), html.H6(AlertMessage().warnings["large-stitch-dim"])]
+        return False, None

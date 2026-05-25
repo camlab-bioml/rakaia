@@ -149,6 +149,9 @@ def test_set_mcd_gallery_stitch(get_current_dir):
     assert not cur_roi_slide_matches_stitch(slide_height, slide_width, mcd_2_h, mcd_2_w)
     assert not cur_roi_slide_matches_stitch(slide_height, slide_width, None, None)
 
+    assert all(elem is None for elem in ROIGalleryStitchParser(new_stitch,'test_stitch', ['test+++slide1+++chr10-h54h54-Gd158_2_18'],
+[os.path.join(get_current_dir, 'for_quant.tiff')]).get_gallery_identifiers())
+
 def test_cosmx_gallery_stitch(get_current_dir):
     cosmx = os.path.join(get_current_dir, 'cosmx_HeNSCLC_fov_01.h5ad')
     slide_width, slide_height = cosmx_global_slide_boundaries(cosmx)
