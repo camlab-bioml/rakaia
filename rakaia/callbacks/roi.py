@@ -12,9 +12,9 @@ from dash import ctx
 
 from rakaia.callbacks.triggers import stitch_cache_delete
 from rakaia.stitch.cosmx import cosmx_global_slide_boundaries, cosmx_local_fov_position
+from rakaia.stitch.gallery import ROIGalleryStitchParser
 from rakaia.stitch.mcd import (
-    MCDAcqCoordinateParser, stitch_mcd_blends_from_gallery,
-    set_gallery_mcd_rois_to_stitch)
+    MCDAcqCoordinateParser)
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import (
             roi_query_gallery_children,
@@ -110,7 +110,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # do not execute query if triggered from the quantification tab and no sample indices exist
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
         no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
-        allow_click = True
+        allow_click, gallery_parser = True, None
         nothing_to_stitch = ctx.triggered_id == "stitch-from-roi-gallery" and not existing_gallery
         if ctx.triggered_id == "btn-download-roi-tiles" and existing_gallery:
             return (dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update,
@@ -134,10 +134,10 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             elif ctx.triggered_id in ["execute-dataset-query", "saved-blend-options-roi"] and execute_query > 0:
                 rois_exclude, row_children = [data_selection], []
             if ctx.triggered_id == "stitch-from-roi-gallery" and existing_gallery:
-                # TODO: modify logic here to allow stitching from the CosMX Anndata ROIs
                 # IMP: need to make sure that we keep the same rois that are currently in view
                 # current best way to do this is to set the current ones in the gallery to search indices (which are normally excluded)
-                rois_decided, query_cell_id_lists, rois_exclude = set_gallery_mcd_rois_to_stitch(rois_exclude, data_selection, delimiter)
+                gallery_parser = ROIGalleryStitchParser(stitch_cache, stitch_selection, rois_exclude, session_config, data_selection, delimiter)
+                rois_decided, query_cell_id_lists, rois_exclude = gallery_parser.get_gallery_identifiers()
             currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries), rois_exclude, rois_decided,
             mask_dict, dataset_options, query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
@@ -145,7 +145,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     app_config['array_store_type'], query_min).get_image_dict()
             # for stitching, once the images are remade, apply each of them to the stitch
             if ctx.triggered_id == "stitch-from-roi-gallery" and existing_gallery: return (tuple([dash.no_update] * 8) +
-            tuple([SessionServerside(stitch_mcd_blends_from_gallery(stitch_cache, stitch_selection, images, session_config, delimiter),
+            tuple([SessionServerside(gallery_parser.update_stitch_from_gallery_thumbnails(images),
                     key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite'])]))
             new_row_children, roi_list = roi_query_gallery_children(images, subsample_thumbnail=subsample_thumbnail)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh

@@ -3,12 +3,10 @@ Module for parsing MCD files to retrieve relevant stitching information such as
 global slide coordinates systems, slide parameters, ROI coordinates, etc.
 """
 from typing import Union
-import numpy as np
 from pathlib import Path
 from readimc import MCDFile
 from readimc.data.slide import Slide, Acquisition
 from rakaia.utils.pixel import split_string_at_pattern
-from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.object import pad_steinbock_roi_index
 
 def pad_min_index(coord_index: Union[int, float]):
@@ -143,51 +141,6 @@ class MCDAcqCoordinateParser:
                 points_translated_y.append(self.invert_mcd_coord(int(point[1]), max_height, int(self._acq_match.pixel_size_y_um)))
             return pad_min_index(int(min(points_translated_x) - min_x)), pad_min_index(min(points_translated_y))
         return None, None
-
-def cur_roi_slide_matches_stitch(slide_height: Union[float, int, None]=None,
-                                 slide_width: Union[float, int, None]=None,
-                                 stitch_height: Union[float, int, None]=None,
-                                 stitch_width: Union[float, int, None]=None):
-    """
-    Check that the underlying slide or a specific ROI matches the dimensions of a stitch image
-    """
-    if None not in (slide_width, slide_height, stitch_height, stitch_height):
-        return int(slide_height) == int(stitch_height) and int(slide_width) == int(stitch_width)
-    return False
-
-
-def stitch_mcd_blends_from_gallery(stitch_cache: Union[dict, None],
-                                   stitch_selection: Union[str, None],
-                                   roi_images: Union[dict, None] = None,
-                                   session_filepaths: Union[dict, list, None]=None,
-                                   delimiter: str = "+++"):
-    """
-    Add a series of existing dataset gallery tiles to the selected stitch image
-    """
-    if None not in (stitch_cache, stitch_selection, roi_images) and str(stitch_selection) in stitch_cache:
-        stitch_h, stitch_w = stitch_cache[stitch_selection].shape[0], stitch_cache[stitch_selection].shape[1]
-        for roi_id, roi_arr in roi_images.items():
-            x_min, y_min = MCDAcqCoordinateParser(session_filepaths, roi_id, delimiter).get_roi_coord_min()
-            roi_slide_w, roi_slide_h = MCDAcqCoordinateParser(session_filepaths, roi_id, delimiter).get_roi_slide_boundary_point()
-            # check here that the underlying ROI slide dimensions match the dimensions of the current stitch image?
-            # i.e. if the gallery contains ROIs from multiple MCDs
-            if None not in (x_min, y_min) and cur_roi_slide_matches_stitch(roi_slide_h, roi_slide_w, stitch_h, stitch_w):
-                stitch_cache = update_stitch_cache_with_blend(stitch_cache, stitch_selection, x_min, y_min, roi_arr.astype(np.uint8))
-    return stitch_cache
-
-def set_gallery_mcd_rois_to_stitch(rois_in_gallery: Union[list, None]=None,
-                                   data_selection: Union[str, None]=None,
-                                   delimiter: str="+++"):
-    """
-    Set the current ROIs in the search gallery as indices for stitching. Required to recreate the existing
-    images in the gallery as the user may have created down-sampled thumbnail versions
-    """
-    # TODO: should we add a check here that the ROI slide dimensions must be compatible with the
-    # current stitch? Could save creating RGB images that are not added i.e. multi slide/MCD session
-    roi_indices = {'names': [roi_identifier_to_steinbock_id(roi, delimiter) for roi in rois_in_gallery if
-                             (roi != data_selection and roi_identifier_to_steinbock_id(roi, delimiter))]}
-    # set the query indices to None
-    return roi_indices, None, [data_selection]
 
 def roi_identifier_to_steinbock_id(data_str: str,
                                    delimiter: str="+++"):

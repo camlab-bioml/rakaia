@@ -139,10 +139,9 @@ for (fov in unique(sfe$fov)) {
 
   adata$obs <- data.frame(colData(subset)) |> select(c(celltype, homotypic))
 
-  # Add the global slide coordinates for stitching
   adata$uns$cosmx_global_max <- list(
-    x = as.numeric(max(coords[,1])),
-    y = as.numeric(max(coords[,2])))
+    x = as.numeric(max(coords_flipped[,1])),
+    y = as.numeric(max(coords_flipped[,2])))
 
   write_h5ad(adata, paste(data_dir, slide_id, "_", fov_identifier, ".h5ad", sep=""))
 
