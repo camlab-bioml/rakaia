@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.31.a1] - 2026-05-25
+## [0.32.0] - 2026-05-26
 
 ### Added
 
 - Stitching for CosMX Anndata ROIs with set `uns` identifiers
 - Warning modal if user supplies stitch image dimensions >50000 pixels
+
+### Changed
+
+- Output quantification CSV as zip with timestamp notification
 
 ## [0.31.1] - 2026-05-20
 

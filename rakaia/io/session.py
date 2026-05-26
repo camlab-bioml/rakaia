@@ -4,6 +4,7 @@ such as hover text, tab text, themes, download directory, etc.
 
 import os
 import json
+import zipfile
 from typing import Union
 import h5py
 from pydantic import BaseModel
@@ -244,3 +245,18 @@ def sort_channel_dropdown(channel_list: Union[dict, None]=None, sort_channels: b
         return channels_return
     except AttributeError:
         return channel_list
+
+def quant_frame_to_zip(quant_frame: Union[dict, pd.DataFrame, None]=None, dest_dir: str=None):
+    """
+    Output the current quantification dataframe as a zipped CSV
+    """
+    if quant_frame is not None:
+        dest_file = str(os.path.join(dest_dir, "measurements.csv"))
+        if not os.path.exists(dest_dir):
+            os.makedirs(dest_dir)
+        pd.DataFrame(quant_frame).to_csv(dest_file, index=False)
+        dest_file_zip = str(os.path.join(dest_dir, "measurements.zip"))
+        with zipfile.ZipFile(dest_file_zip, "w", compression=zipfile.ZIP_DEFLATED) as zipf:
+            zipf.write(dest_file, arcname=os.path.basename(dest_file))
+        return dest_file_zip
+    return None
