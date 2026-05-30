@@ -222,7 +222,7 @@ dependencies:
       - urllib3==2.7.0
       - urllib3-secure-extra==0.1.0
       - urlobject==2.4.3
-      - uv==0.11.6
+      - uv==0.11.17
       - waitress==3.0.1
       - werkzeug==3.0.6
       - wheel==0.46.3

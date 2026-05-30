@@ -203,7 +203,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                         html.Div([html.B("Custom spatial marker radius", style={"margin-right": "20px"},
                                 id="spatial-rad-label"),
                                 dbc.Tooltip(TOOLTIPS['spatial-rad'], target="spatial-rad-label"),
-                                  dcc.Input(id='spatial-spot-rad', type='number', value=4, debounce=True,
+                                  dcc.Input(id='spatial-spot-rad', type='number', value=6, debounce=True,
                                             style={"width": "20%", "height": "50%"},
                                             persistence=config['persistence'], persistence_type='local'),
                                   ], style={"display": "flex"}),
