@@ -8,13 +8,7 @@ from readimc import MCDFile
 from readimc.data.slide import Slide, Acquisition
 from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.utils.object import pad_steinbock_roi_index
-
-def pad_min_index(coord_index: Union[int, float]):
-    """
-    Pad an index so that the value is never negative
-    """
-    return int(coord_index) if coord_index > 0 else 0
-
+from rakaia.stitch import pad_min_index
 
 class MCDAcqCoordinateParser:
     """

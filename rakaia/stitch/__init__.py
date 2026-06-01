@@ -98,3 +98,9 @@ def cur_roi_slide_matches_stitch(slide_height: Union[float, int, None]=None,
     if None not in (slide_width, slide_height, stitch_height, stitch_height):
         return int(slide_height) == int(stitch_height) and int(slide_width) == int(stitch_width)
     return False
+
+def pad_min_index(coord_index: Union[int, float]):
+    """
+    Pad an index so that the value is never negative
+    """
+    return int(coord_index) if coord_index > 0 else 0
