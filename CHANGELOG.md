@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.32.0] - 2026-06-01
+
+### Added
+
+- Stitching for CosMX Anndata ROIs with set `uns` identifiers
+- Warning modal if user supplies stitch image dimensions >50000 pixels
+
+### Changed
+
+- Output quantification CSV as zip with timestamp notification
+- Update dependency [`uv`](https://github.com/camlab-bioml/rakaia/security/dependabot/236)
+- Increase default spatial radius size to 6
+
+## [0.31.1] - 2026-05-20
+
+### Changed
+
+- Update dependency [`idna`](https://github.com/camlab-bioml/rakaia/security/dependabot/234)
+
 ## [0.31.1] - 2026-05-11
 
 ### Fixed

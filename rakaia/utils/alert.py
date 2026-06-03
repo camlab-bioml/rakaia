@@ -97,7 +97,9 @@ class AlertMessage(BaseModel):
                                          "\n - UMAP pngs and CSV coordinates exist in the export -> umap sub-directory",
                       "libvips_missing": "Error: libvips was not found on your system, and is required to view WSIs. "
                                          "Please ensure that libvips is installed for your specific OS from: "
-                                         "https://www.libvips.org/install.html"}
+                                         "https://www.libvips.org/install.html",
+                      "large-stitch-dim": "Warning: At least one of the stitch image dimensions (width and/or height) is large (>50000 pixels). "
+                                        "Creating this stitch could cause performance lag and high memory usage."}
 
 
 class ToolTips(BaseModel):

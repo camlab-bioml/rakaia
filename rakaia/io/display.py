@@ -194,11 +194,11 @@ def image_at_limit_for_zip(image: Union[np.array, np.ndarray],
     """
     return image.shape[0] >= zip_dim_threshold or image.shape[1] >= zip_dim_threshold
 
-def output_current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_default="canvas",
-                                  roi_name: str=None, use_roi_name=False, delimiter: str="+++",
-                                  zip_dim_threshold: int=7500):
+def current_canvas_as_tiff(canvas_image, dest_dir: str=None, output_default="canvas",
+                           roi_name: str=None, use_roi_name=False, delimiter: str="+++",
+                           zip_dim_threshold: int=7500):
     """
-    Output the current canvas image as a photometric tiff
+    Output the current canvas image as a photometric RGB tiff
     """
     if canvas_image is not None:
         out_tiff_name = set_roi_identifier_from_length(roi_name, delimiter=delimiter) if use_roi_name else output_default

@@ -87,3 +87,20 @@ def stitch_image_preview(stitch_collection: Union[dict, None]=None,
         style={"minHeight": "800px", "maxHeight": "800px", "width": "100%",
             "objectFit": "contain"})]), width=12)]
     return False, None
+
+def cur_roi_slide_matches_stitch(slide_height: Union[float, int, None]=None,
+                                 slide_width: Union[float, int, None]=None,
+                                 stitch_height: Union[float, int, None]=None,
+                                 stitch_width: Union[float, int, None]=None):
+    """
+    Check that the underlying slide or a specific ROI matches the dimensions of a stitch image
+    """
+    if None not in (slide_width, slide_height, stitch_height, stitch_height):
+        return int(slide_height) == int(stitch_height) and int(slide_width) == int(stitch_width)
+    return False
+
+def pad_min_index(coord_index: Union[int, float]):
+    """
+    Pad an index so that the value is never negative
+    """
+    return int(coord_index) if coord_index > 0 else 0

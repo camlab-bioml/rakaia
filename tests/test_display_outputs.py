@@ -1,7 +1,7 @@
 import os.path
 from rakaia.io.display import (
     RegionSummary,
-    output_current_canvas_as_tiff,
+    current_canvas_as_tiff,
     output_current_canvas_as_html,
     FullScreenCanvas,
     preset_options_preview_text,
@@ -272,7 +272,7 @@ def test_output_canvas_tiff_to_file():
     with tempfile.TemporaryDirectory() as tmpdirname:
         file_path = os.path.join(tmpdirname, "canvas.tiff")
         assert not os.path.exists(file_path)
-        canvas_link = output_current_canvas_as_tiff(canvas_image, tmpdirname)
+        canvas_link = current_canvas_as_tiff(canvas_image, tmpdirname)
         assert os.path.exists(file_path)
         assert str(file_path) == str(canvas_link)
         if os.access(canvas_link, os.W_OK):
@@ -283,7 +283,7 @@ def test_output_canvas_tiff_to_file():
     with tempfile.TemporaryDirectory() as tmpdirname:
         file_path = os.path.join(tmpdirname, "larger_canvas.tiff")
         assert not os.path.exists(file_path)
-        canvas_link = output_current_canvas_as_tiff(np.full((10000, 100, 3), 7), tmpdirname)
+        canvas_link = current_canvas_as_tiff(np.full((10000, 100, 3), 7), tmpdirname)
         assert os.path.exists(canvas_link)
         assert str(canvas_link).endswith("zip")
         if os.access(canvas_link, os.W_OK):

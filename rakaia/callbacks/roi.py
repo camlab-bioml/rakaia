@@ -5,15 +5,16 @@ import os
 import uuid
 import dash
 import pandas as pd
-from dash import ALL, dcc
+from dash import ALL, dcc, html
 from dash.exceptions import PreventUpdate
 from dash_extensions.enrich import Output, State, Input
 from dash import ctx
 
 from rakaia.callbacks.triggers import stitch_cache_delete
+from rakaia.stitch.cosmx import cosmx_global_slide_boundaries, cosmx_local_fov_position
+from rakaia.stitch.gallery import ROIGalleryStitchParser
 from rakaia.stitch.mcd import (
-    MCDAcqCoordinateParser, stitch_mcd_blends_from_gallery,
-    set_gallery_mcd_rois_to_stitch)
+    MCDAcqCoordinateParser)
 from rakaia.parsers.roi import RegionThumbnail
 from rakaia.io.gallery import (
             roi_query_gallery_children,
@@ -32,6 +33,7 @@ from rakaia.utils.alert import AlertMessage, add_warning_to_error_config
 from rakaia.io.session import SessionServerside
 from rakaia.utils.roi import override_roi_gallery_blend_list
 from rakaia.stitch import stitch_cache_dropdown_labels, download_stitch_image, stitch_image_preview, modify_stitch_cache
+from rakaia.utils.session import roi_from_anndata_file
 
 
 def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
@@ -108,7 +110,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # do not execute query if triggered from the quantification tab and no sample indices exist
         quant_empty = ctx.triggered_id == "quantification-query-link" and query_from_quantification is None
         no_similarity_scores = ctx.triggered_id == "find-similar" and pd.DataFrame(image_cor).empty
-        allow_click = True
+        allow_click, gallery_parser = True, None
         nothing_to_stitch = ctx.triggered_id == "stitch-from-roi-gallery" and not existing_gallery
         if ctx.triggered_id == "btn-download-roi-tiles" and existing_gallery:
             return (dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update, dash.no_update,
@@ -134,7 +136,8 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if ctx.triggered_id == "stitch-from-roi-gallery" and existing_gallery:
                 # IMP: need to make sure that we keep the same rois that are currently in view
                 # current best way to do this is to set the current ones in the gallery to search indices (which are normally excluded)
-                rois_decided, query_cell_id_lists, rois_exclude = set_gallery_mcd_rois_to_stitch(rois_exclude, data_selection, delimiter)
+                gallery_parser = ROIGalleryStitchParser(stitch_cache, stitch_selection, rois_exclude, session_config, data_selection, delimiter)
+                rois_decided, query_cell_id_lists, rois_exclude = gallery_parser.get_gallery_identifiers()
             currently_selected = override_roi_gallery_blend_list(currently_selected, saved_blend_dict, saved_blend)
             images = RegionThumbnail(session_config, blend_colour_dict, currently_selected, int(num_queries), rois_exclude, rois_decided,
             mask_dict, dataset_options, query_cell_id_lists, global_apply_filter, global_filter_type, global_filter_val, global_filter_sigma,
@@ -142,7 +145,7 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                     app_config['array_store_type'], query_min).get_image_dict()
             # for stitching, once the images are remade, apply each of them to the stitch
             if ctx.triggered_id == "stitch-from-roi-gallery" and existing_gallery: return (tuple([dash.no_update] * 8) +
-            tuple([SessionServerside(stitch_mcd_blends_from_gallery(stitch_cache, stitch_selection, images, session_config, delimiter),
+            tuple([SessionServerside(gallery_parser.update_stitch_from_gallery_thumbnails(images),
                     key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite'])]))
             new_row_children, roi_list = roi_query_gallery_children(images, subsample_thumbnail=subsample_thumbnail)
             # if the query is being extended, append to the existing gallery for exclusion. Otherwise, start fresh
@@ -271,11 +274,13 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('data-collection', 'value'),
         State('dataset-delimiter', 'value'),
         State('session_config', 'data'))
-    def parse_mcd_slide_for_stitch(parse_for_slide, roi_selection, delim, session_uploads):
+    def parse_roi_slide_for_stitch(parse_for_slide, roi_selection, delim, session_uploads):
         """
-        Get the desired width and height of a slide image from the current ROI, if from MCD
+        Get the desired width and height of a slide image from the current ROI, if from MCD or CosMX Anndata
         """
         if None not in (roi_selection, delim, session_uploads):
+            if roi_from_anndata_file(session_uploads, roi_selection, delim):
+                return cosmx_global_slide_boundaries(roi_from_anndata_file(session_uploads, roi_selection, delim))
             return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_slide_boundary_point()
         raise PreventUpdate
 
@@ -293,5 +298,22 @@ def init_roi_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         # if the ROI is switched, by default make the coordinates blank
         if ctx.triggered_id == "data-collection": return None, None
         if None not in (roi_selection, delim, session_uploads):
+            if roi_from_anndata_file(session_uploads, roi_selection, delim):
+                return cosmx_local_fov_position(roi_from_anndata_file(session_uploads, roi_selection, delim))
             return MCDAcqCoordinateParser(session_uploads, roi_selection, delim).get_roi_coord_min()
         raise PreventUpdate
+
+    @dash_app.callback(
+        Output("stitch-size-alert-modal", "is_open"),
+        Output("stitch-size-information", "children"),
+        Input('stitch-image-create-width', 'value'),
+        Input('stitch-image-create-height', 'value'),
+        State('toggle-session-messages', 'value'),
+        prevent_initial_call=True)
+    def check_for_large_stitch_dimensions(stitch_width, stitch_height, show_messages):
+        """
+        Check if any of the input stitch dimensions are large enough to warrant an alert (any dimension > 50000 pixels)
+        """
+        if show_messages and None not in (stitch_height, stitch_width) and any(int(dim) > 50000 for dim in (stitch_height, stitch_width)):
+            return True, [html.H6("Message: \n"), html.H6(AlertMessage().warnings["large-stitch-dim"])]
+        return False, None
