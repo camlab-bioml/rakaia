@@ -107,6 +107,8 @@ colGeometry(sfe, type = "cellSeg") <- seg_sf
 
 Lastly, we will iterate on each FOV, and output the cell expression as its own Anndata object. We will also output a matched single cell segmentation mask in TIFF format, which is rasterised from the polygons above. Importantly, we must flip the y-axis of the spatial coordinates, as the y origin is the opposite in these data compared to rakaia, where the (0,0) origin is the top left, not the bottom left.
 
+Each CosMX Anndata object will also have the global slide coordinates stashed in the `uns` slot with designated key identifiers; these values can be used to perform [stitching of the CosMX FOVs](https://rakaia.io/docs/stitch) into a single mosaic. To enable this, the `uns` slot must have a `cosmx_global_max` key with a dictionary value that has both `x` and `y` keys, denoting the maximum slide height and width respectively for all FOVs:
+
 ```{r export, warning=F, info=F, message=FALSE}
 for (fov in unique(sfe$fov)) {
 
@@ -135,6 +137,10 @@ for (fov in unique(sfe$fov)) {
   adata$obsm[["spatial"]] <- r_to_py(coords_flipped)
 
   adata$obs <- data.frame(colData(subset)) |> select(c(celltype, homotypic))
+
+  adata$uns$cosmx_global_max <- list(
+    x = as.numeric(max(coords[,1])),
+    y = as.numeric(max(coords[,2])))
 
   write_h5ad(adata, paste(data_dir, slide_id, "_", fov_identifier, ".h5ad", sep=""))
 
