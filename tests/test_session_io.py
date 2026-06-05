@@ -3,6 +3,8 @@ import os
 import json
 import numpy as np
 import dash
+import pandas as pd
+
 from rakaia.io.session import (
     write_blend_config_to_json,
     write_session_data_to_h5py,
@@ -12,7 +14,8 @@ from rakaia.io.session import (
     TabText,
     all_roi_match,
     panel_match,
-    sort_channel_dropdown)
+    sort_channel_dropdown,
+    quant_frame_to_zip)
 from rakaia.io.annotation import (
     write_canvas_shapes_to_json,
     is_valid_shapes_upload)
@@ -181,3 +184,17 @@ def test_write_canvas_shapes_to_json(get_current_dir):
         assert os.path.isfile(out_shapes)
         if os.access(out_shapes, os.W_OK):
             os.remove(out_shapes)
+
+def test_quant_frame_out_zip(get_current_dir):
+    measurements = pd.read_csv(os.path.join(get_current_dir, 'measurements_for_query.csv'))
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        download_dir = os.path.join(tmpdirname, "fdsdfsdlfkdn", 'downloads')
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
+        out_quant_zip = quant_frame_to_zip(measurements, download_dir)
+        assert os.path.isfile(out_quant_zip)
+        assert os.path.isfile(os.path.join(download_dir, 'measurements.csv'))
+        if os.access(out_quant_zip, os.W_OK):
+            os.remove(out_quant_zip)
+            os.remove(os.path.join(download_dir, 'measurements.csv'))
+        assert quant_frame_to_zip(None, download_dir) is None

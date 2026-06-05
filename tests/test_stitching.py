@@ -8,13 +8,16 @@ from rakaia.stitch import (
     update_stitch_cache_with_blend,
     stitch_cache_dropdown_labels,
     download_stitch_image,
-    stitch_image_preview)
+    stitch_image_preview,
+    cur_roi_slide_matches_stitch)
 from rakaia.stitch.mcd import (
     MCDAcqCoordinateParser,
-    stitch_mcd_blends_from_gallery,
-    set_gallery_mcd_rois_to_stitch,
-    roi_identifier_to_steinbock_id,
-    cur_roi_slide_matches_stitch)
+    roi_identifier_to_steinbock_id)
+from rakaia.stitch.cosmx import (
+    cosmx_has_global_slide_coords,
+    cosmx_global_slide_boundaries,
+    cosmx_local_fov_position)
+from rakaia.stitch.gallery import ROIGalleryStitchParser
 
 def test_stitch_cache_update(stitch_cache):
 
@@ -116,29 +119,68 @@ def test_roi_identifier_conversion(stitch_cache):
     assert not roi_identifier_to_steinbock_id("query++++slide1++++roi")
 
 def test_set_mcd_gallery_stitch(get_current_dir):
-    indices, query_list, exclude = set_gallery_mcd_rois_to_stitch(
-        ['query+++slide1+++PAP_1', 'query++++slide1+++Xylene_5'], None)
+    upload_path = {'uploads': [os.path.join(get_current_dir, 'query.mcd'),
+                                 os.path.join(get_current_dir, 'for_quant.tiff')]}
+    slide_height, slide_width = MCDAcqCoordinateParser(upload_path, 'query+++slide1+++Xylene_5').get_roi_slide_boundary_point()
+    new_stitch = {'test_stitch': np.zeros((slide_height, slide_width, 3))}
+    gallery_parser = ROIGalleryStitchParser(new_stitch,'test_stitch', ['query+++slide1+++PAP_1', 'query++++slide1+++Xylene_5'],
+                        upload_path, None)
+    indices, query_list, exclude = gallery_parser.get_gallery_identifiers()
     assert len(indices['names']) == 2
-    indices, query_list, exclude = set_gallery_mcd_rois_to_stitch(
-        ['query+++slide1+++acq', 'query2++++slide1+++acq'], None)
+
+    indices, query_list, exclude = ROIGalleryStitchParser({'test_stitch': np.zeros((slide_height, slide_width, 3))},
+                                            'test_stitch', ['query+++slide1+++acq', 'query2++++slide1+++acq'],
+                                            upload_path, None).get_gallery_identifiers()
     assert len(indices['names']) == 0 and not query_list
 
+    assert np.sum(new_stitch['test_stitch']) == 0
     mcd_filepath = [os.path.join(get_current_dir, 'steinbock', 'test_mcd', 'mcd', 'test.mcd')]
     slide_width, slide_height = MCDAcqCoordinateParser(mcd_filepath,
-                                'test+++slide1+++chr10-h54h54-Gd158_2_18').get_roi_slide_boundary_point()
+                                                       'test+++slide1+++chr10-h54h54-Gd158_2_18').get_roi_slide_boundary_point()
     new_stitch = {'test_stitch': np.zeros((slide_height, slide_width, 3))}
-    assert np.sum(new_stitch['test_stitch']) == 0
-    new_stitch = stitch_mcd_blends_from_gallery(new_stitch, 'test_stitch',
-                    {'for_quant+++slide1+++acq': np.ones((200, 200, 3))},
-                                                mcd_filepath)
-    assert np.sum(new_stitch['test_stitch']) == 0
-    new_stitch = stitch_mcd_blends_from_gallery(new_stitch, 'test_stitch',
-                                                {'test+++slide1+++chr10-h54h54-Gd158_2_18': np.ones((200, 200, 3))},
-                                                mcd_filepath)
-    assert np.sum(new_stitch['test_stitch']) > 0
-
-    # when two MCD slides mismatch
+    gallery_parser = ROIGalleryStitchParser(new_stitch,'test_stitch', ['test+++slide1+++chr10-h54h54-Gd158_2_18'],
+                                            {'uploads': mcd_filepath})
+    updated_stitch = gallery_parser.update_stitch_from_gallery_thumbnails({'for_quant+++slide1+++acq': np.ones((200, 200, 3))})
+    assert np.sum(updated_stitch['test_stitch']) == 0
+    updated_stitch = gallery_parser.update_stitch_from_gallery_thumbnails({'test+++slide1+++chr10-h54h54-Gd158_2_18': np.ones((200, 200, 3))})
+    assert np.sum(updated_stitch['test_stitch']) > 0
     mcd_2_w, mcd_2_h = MCDAcqCoordinateParser([os.path.join(get_current_dir, 'query.mcd')],
                                 'query+++slide1+++PAP_1').get_roi_slide_boundary_point()
     assert not cur_roi_slide_matches_stitch(slide_height, slide_width, mcd_2_h, mcd_2_w)
     assert not cur_roi_slide_matches_stitch(slide_height, slide_width, None, None)
+
+    assert all(elem is None for elem in ROIGalleryStitchParser(new_stitch,'test_stitch', ['test+++slide1+++chr10-h54h54-Gd158_2_18'],
+[os.path.join(get_current_dir, 'for_quant.tiff')]).get_gallery_identifiers())
+
+def test_cosmx_gallery_stitch(get_current_dir):
+    cosmx = os.path.join(get_current_dir, 'cosmx_HeNSCLC_fov_01.h5ad')
+    slide_width, slide_height = cosmx_global_slide_boundaries(cosmx)
+    new_stitch = {'test_stitch': np.zeros((slide_height, slide_width, 3))}
+
+    gallery_parser = ROIGalleryStitchParser(new_stitch,'test_stitch', ['cosmx_HeNSCLC_fov_01+++slideNA+++acq'],
+                                            {'uploads': [cosmx]})
+    indices, query_list, exclude = gallery_parser.get_gallery_identifiers()
+    assert len(indices['names']) == 1
+
+    indices, query_list, exclude = ROIGalleryStitchParser({'test_stitch': np.zeros((slide_height, slide_width, 3))},
+                                                          'test_stitch',
+                                                          ['query+++slide1+++acq', 'query2++++slide1+++acq'],
+                                                          {'uploads': [cosmx]}, None).get_gallery_identifiers()
+    assert len(indices['names']) == 0 and not query_list
+    updated_stitch = gallery_parser.update_stitch_from_gallery_thumbnails(
+        {'for_quant+++slide1+++acq': np.ones((200, 200, 3))})
+    assert np.sum(updated_stitch['test_stitch']) == 0
+    updated_stitch = gallery_parser.update_stitch_from_gallery_thumbnails(
+        {'cosmx_HeNSCLC_fov_01+++slideNA+++acq': np.ones((200, 200, 3))})
+    assert np.sum(updated_stitch['test_stitch']) > 0
+
+def test_parse_stitch_cosmx(get_current_dir):
+    cosmx = os.path.join(get_current_dir, 'cosmx_HeNSCLC_fov_01.h5ad')
+    not_cosmx = os.path.join(get_current_dir, 'visium_thalamus.h5ad')
+    assert cosmx_has_global_slide_coords(cosmx)
+    slide_width, slide_height = cosmx_global_slide_boundaries(cosmx)
+    assert all(elem > 20000 for elem in (slide_width, slide_height))
+    x_pos, y_pos = cosmx_local_fov_position(cosmx)
+    assert all(elem >= 0 for elem in (x_pos, y_pos))
+    assert not cosmx_has_global_slide_coords(not_cosmx)
+    assert cosmx_local_fov_position(not_cosmx) == cosmx_global_slide_boundaries(not_cosmx) == (None, None)

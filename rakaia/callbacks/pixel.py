@@ -78,7 +78,7 @@ from rakaia.components.canvas import (
     reset_graph_with_malformed_template)
 from rakaia.io.display import (
     RegionSummary,
-    output_current_canvas_as_tiff,
+    current_canvas_as_tiff,
     output_current_canvas_as_html,
     FullScreenCanvas,
     preset_options_preview_text,
@@ -1046,8 +1046,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 canvas_tiff, download_status = dash.no_update, dash.no_update
                 if ctx.triggered_id == "btn-download-canvas-tiff":
                     fig, download_status = dash.no_update, timestamp_download_child()
-                    canvas_tiff = dcc.send_file(output_current_canvas_as_tiff(canvas_image=canvas.get_image(),
-                                dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
+                    canvas_tiff = dcc.send_file(current_canvas_as_tiff(canvas_image=canvas.get_image(),
+                                                                       dest_dir=str(dest_path), use_roi_name=True, roi_name=data_selection, delimiter=delimiter))
                 elif ctx.triggered_id == "stitch-image-update": return (dash.no_update, dash.no_update, dash.no_update, dash.no_update,
                 SessionServerside(update_stitch_cache_with_blend(cur_stitch, stitch_select, stitch_x_coord, stitch_y_coord, canvas),
                                   key=f"stitch_cache_{sesh_id}", use_unique_key=app_config['serverside_overwrite']), boundary_cache, blend_cache, mask_fill_cache)

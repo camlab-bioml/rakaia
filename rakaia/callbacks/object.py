@@ -19,7 +19,7 @@ from rakaia.callbacks.triggers import set_annotation_indices_to_remove
 from rakaia.inputs.pixel import (
     set_roi_identifier_from_length,
     ZOOM_KEYS)
-from rakaia.io.display import set_table_columns
+from rakaia.io.display import set_table_columns, timestamp_download_child
 from rakaia.io.gallery import umap_gallery_children, umap_pipeline_tiles
 from rakaia.parsers.object import (
     RestyleDataParser,
@@ -60,7 +60,7 @@ from rakaia.inputs.loaders import adjust_option_height_from_list_length
 from rakaia.utils.pixel import split_string_at_pattern
 from rakaia.io.readers import DashUploaderFileReader
 from rakaia.utils.roi import dict_of_roi_cell_ids
-from rakaia.io.session import SessionServerside
+from rakaia.io.session import SessionServerside, quant_frame_to_zip
 from rakaia.utils.session import non_truthy_to_prevent_update, roi_from_anndata_file
 from rakaia.utils.cluster import (
     assign_colours_to_cluster_annotations,
@@ -390,12 +390,16 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output("download-edited-annotations", "data"),
+        Output('status-div', 'children', allow_duplicate=True),
         Input("btn-download-annotations", "n_clicks"),
         Input("quantification-dict", "data"))
     def download_quantification_with_annotations(n_clicks, datatable_contents):
-        if n_clicks is not None and n_clicks > 0 and datatable_contents is not None and \
-                ctx.triggered_id == "btn-download-annotations":
-            return dcc.send_data_frame(pd.DataFrame(datatable_contents).to_csv, "measurements.csv", index=False)
+        """
+        Download the quantification CSV as a zip
+        """
+        if None not in (n_clicks, datatable_contents) and ctx.triggered_id == "btn-download-annotations":
+            return dcc.send_file(quant_frame_to_zip(datatable_contents, str(os.path.join(tmpdirname, authentic_id,
+                str(uuid.uuid1()), 'downloads')))), timestamp_download_child("Quantification (zip)")
         raise PreventUpdate
 
     @dash_app.callback(
