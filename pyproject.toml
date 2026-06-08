@@ -112,7 +112,7 @@ dependencies = [
   "pluggy==1.5.0",
   "pooch==1.8.2",
   "psutil==5.9.5",
-  "pyarrow==21.0.0",
+  "pyarrow==24.0.0",
   "pycparser==2.21",
   "pydantic==2.5.2",
   "pymongo==4.6.3",

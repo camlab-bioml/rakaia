@@ -154,7 +154,7 @@ dependencies:
       - pooch==1.8.2
       - propcache==0.3.2
       - psutil==5.9.5
-      - pyarrow==21.0.0
+      - pyarrow==24.0.0
       - pycparser==2.21
       - pyct==0.5.0
       - pydantic==2.5.2

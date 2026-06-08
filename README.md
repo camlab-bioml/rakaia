@@ -123,7 +123,7 @@ errors from source:
 
 ```commandline
 parmed==4.3.0
-pyarrow==21.0.0
+pyarrow==24.0.0
 pyogrio==0.11.1
 pyvips==2.2.3
 ```
