@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.a1] - 2026-06-03
+## [0.33.a1] - 2026-06-10
 
 **NOTE: this version drops support for Python 3.10 (3.11 minimum required)**
 
@@ -18,7 +18,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Deprecated
 
-- Support for Python 3.10 due to updated `Anndata`
+## [0.32.1] - 2026-06-09
+
+### Fixed
+
+- Hover-tip info for stitch now includes CosMX
+- Update from dependabot: `pyarrow`, `flask-cors`
+
+### Removed
+
+- `diskcache` dependency
 
 ## [0.32.0] - 2026-06-01
 

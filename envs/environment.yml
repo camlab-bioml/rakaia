@@ -73,7 +73,6 @@ dependencies:
       - dask-image==2025.11.0
       - datashader==0.17.0
       - dill==0.4.0
-      - diskcache==5.6.3
       - dnspython==2.7.0
       - editorconfig==0.12.3
       - exceptiongroup==1.1.1
@@ -81,7 +80,7 @@ dependencies:
       - fcswrite==0.6.2
       - flask==2.2.5
       - flask-caching==2.0.2
-      - flask-cors==6.0.0
+      - flask-cors==6.0.3
       - flask-dance==7.0.0
       - flask-httpauth==4.8.1
       - fonttools==4.61.0
@@ -195,7 +194,7 @@ dependencies:
       - wheel==0.46.3
       - wsproto==1.2.0
       - xarray==2025.1.2
-      - xarray-dataclasses==1.10.0
+      - xarray-dataclass==3.0.0
       - xmltodict==0.13.0
       - xtiff==0.7.9
       - zarr==2.18.7
