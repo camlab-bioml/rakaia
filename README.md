@@ -47,7 +47,7 @@ rakaia is built on:
 
 ## Installation
 
-**NOTE: As of rakaia 0.24.0, the required Python version(s) are 3.10+ (3.10 or 3.11 recommended).**
+**NOTE: As of rakaia 0.24.0, the required Python version(s) are 3.10, 3.11, or 3.12.**
 
 rakaia can be cloned and installed locally using access to the GitHub repository
 
@@ -123,7 +123,7 @@ errors from source:
 
 ```commandline
 parmed==4.3.0
-pyarrow==21.0.0
+pyarrow==24.0.0
 pyogrio==0.11.1
 pyvips==2.2.3
 ```
