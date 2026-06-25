@@ -16,9 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Add support for Python 3.13
 - Re-write channel quantification to avoid using deprecated `partial`.value functions
 
-### Deprecated
-
-## [0.32.1] - 2026-06-09
+## [0.32.1] - 2026-06-24
 
 ### Fixed
 
@@ -27,7 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- `diskcache` dependency
+- `diskcache` and `imctools` dependencies
 
 ## [0.32.0] - 2026-06-01
 
