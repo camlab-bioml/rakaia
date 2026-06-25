@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.32.1] - 2026-06-09
+## [0.32.1] - 2026-06-24
 
 ### Fixed
 
@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- `diskcache` dependency
+- `diskcache` and `imctools` dependencies
 
 ## [0.32.0] - 2026-06-01
 

@@ -61,7 +61,6 @@ idna==3.15
 igraph==0.11.5
 imagecodecs==2023.9.18
 imageio==2.33.0
-imctools==2.1.8
 importlib-metadata==6.6.0
 importlib-resources==5.12.0
 iniconfig==2.0.0
@@ -97,7 +96,7 @@ pluggy==1.5.0
 pooch==1.8.2
 psutil==5.9.5
 pyOpenSSL==26.0.0
-pyarrow==24.0.0
+pyarrow==23.0.1
 pycparser==2.21
 pydantic==2.5.2
 pymongo==4.6.3
