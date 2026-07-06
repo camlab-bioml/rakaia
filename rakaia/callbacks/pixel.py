@@ -2328,3 +2328,26 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             graph_w_shapes = CanvasLayout(cur_canvas).add_shapes_from_json(shape_upload)
             return graph_w_shapes, CanvasLayout(graph_w_shapes).get_layout()
         raise PreventUpdate
+
+    # get the inner text for the wsi bounds on click and keep as a server side Dash store
+    dash_app.clientside_callback(
+        """
+        function(n_clicks) {
+            if (!n_clicks) return window.dash_clientside.no_update;
+
+            const el = document.getElementById("osd-viewport-coord");
+            return el ? el.innerText : "";
+        }
+        """,
+        Output("wsi-bounds", "data"),
+        Input("osd-bounds-extract", "n_clicks"))
+
+    # # Can use the server side callback to get the bounds from the client
+    # @dash_app.callback(
+    #     Output('canvas-shapes-upload', 'data', allow_duplicate=True),
+    #     Input("wsi-bounds", "data"))
+    # def get_osd_patch_coords(osd_bounds):
+    #     """
+    #     Example callback to use the wsi coordinate bounds from a store i.e. create patch embedding
+    #     """
+    #     raise PreventUpdate

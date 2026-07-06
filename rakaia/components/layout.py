@@ -692,6 +692,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             placement="right"),
                                             html.Br(),
                                             html.Br(),
+                                            html.Div(id="osd-viewport-coord", children=[]),
+                                            html.Br(),
+                                             # TODO: example trigger to get the osd bounds inner text to a dash store for server side extraction
+                                            # dbc.Button("Process OSD bounds", id='osd-bounds-extract',
+                                            # style={"align": "center", "background-color": DEFAULT_WIDGET_COLOUR,
+                                            #     "float": "center"}, n_clicks=0),
+                                            # html.Br(),
                                             wrap_child_in_loading(dcc.Store(id='coregister-transfer', data=False),
                                                                         wrap=config['use_loading'], fullscreen=False),
                                                   dcc.Store(id='coregister-finished', data=False)], width=2),
@@ -2109,6 +2116,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         # set a cache for the blended image and mask fill
         dcc.Store(id='image-blend-cache'),
         dcc.Store(id='mask-fill-cache'),
+        dcc.Store(id='wsi-bounds'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

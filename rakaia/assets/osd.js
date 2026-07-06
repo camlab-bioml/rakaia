@@ -117,6 +117,25 @@ const observer = new MutationObserver(() => {
       el.style = 'display:none;';
     });
 
+    viewer.addHandler('animation', function() {
+
+    const viewport = viewer.viewport;
+
+    // IMP: this does not take into account rotation, the coordinates stay in the original orientation space
+    // Helps to map the bounding boxes back to the original image, potentially for patch extraction
+    const viewportBounds = viewport.getBounds();
+
+    const imageBounds = viewport.viewportToImageRectangle(viewportBounds);
+
+    const minX = imageBounds.x;
+    const minY = imageBounds.y;
+    const maxX = imageBounds.x + imageBounds.width;
+    const maxY = imageBounds.y + imageBounds.height;
+
+    const boundsString = `X: (${minX.toFixed(0)}, ${maxX.toFixed(0)}),\nY: (${minY.toFixed(0)}, ${maxY.toFixed(0)})`;
+    document.getElementById("osd-viewport-coord").innerText = boundsString;
+    });
+
     document.getElementById("toggle-osd-navigator").addEventListener('click', function(e) {
     viewer.navigator.element.style.display = toggleNavigator(viewer.navigator.element.style.display)
     });
