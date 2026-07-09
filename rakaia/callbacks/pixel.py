@@ -1,12 +1,14 @@
 """Application callbacks associated with pixel-level operations (blended images)"""
-
+import io
 import os.path
+import re
 import uuid
 from pathlib import Path
 import json
 import dash.exceptions
 import dash_uploader as du
 import flask
+import requests
 from dash import ctx, ALL
 from dash_extensions.enrich import Output, Input, State, html
 from dash import dcc
@@ -40,6 +42,7 @@ from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, v
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
+from rakaia.register.query import wsi_crop, serialize_crop
 from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
@@ -2340,14 +2343,38 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         }
         """,
         Output("wsi-bounds", "data"),
-        Input("osd-bounds-extract", "n_clicks"))
+        Input("osd-query-modal-open", "n_clicks"))
 
-    # # Can use the server side callback to get the bounds from the client
-    # @dash_app.callback(
-    #     Output('canvas-shapes-upload', 'data', allow_duplicate=True),
-    #     Input("wsi-bounds", "data"))
-    # def get_osd_patch_coords(osd_bounds):
-    #     """
-    #     Example callback to use the wsi coordinate bounds from a store i.e. create patch embedding
-    #     """
-    #     raise PreventUpdate
+    @dash_app.callback(
+        Output("osd-query-modal", "is_open"),
+        Input('osd-query-modal-open', 'n_clicks'),
+        [State("osd-query-modal", "is_open")])
+    def toggle_wsi_local_modal(n, is_open):
+        """
+        Open the modal for sending queries for the current WSI patch to hist2query
+        """
+        return not is_open if n else is_open
+
+    @dash_app.callback(
+        Output('hist2query-results', 'data'),
+        Input("osd-query-run", "n_clicks"),
+        State('wsi-bounds', 'data'),
+        State('hist2query-host', 'value'),
+        State('hist2query-port', 'value'),
+        State('coregister_options', 'value'),
+        State('coregister_hash', 'data'))
+    def get_osd_patch_coords(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash):
+        """
+        Example callback to use the WSI coordinate bounds from a store i.e. create patch embedding
+        """
+        try:
+            # TODO: possible cause of no data left on file server side error: if the patch is too big, no data sent
+            if None not in (hist_host, hist_port, reg_select, cur_hash) and run_query and reg_select in cur_hash and \
+                    list(map(int, re.findall(r"-?\d+", osd_bounds))):
+                # Use the list mapping to split the bounds preview into the integers
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, 224, 2)
+                response = requests.post(f"http://{hist_host}:{hist_port}/search", data=serialize_crop(crop), timeout=300)
+                response.raise_for_status()
+                return response.json()
+            raise PreventUpdate
+        except requests.exceptions.HTTPError: raise PreventUpdate
