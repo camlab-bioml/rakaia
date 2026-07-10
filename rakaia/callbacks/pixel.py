@@ -1,5 +1,4 @@
 """Application callbacks associated with pixel-level operations (blended images)"""
-import io
 import os.path
 import re
 import uuid
@@ -2337,10 +2336,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         function(n_clicks) {
             if (!n_clicks) return window.dash_clientside.no_update;
-
             const el = document.getElementById("osd-viewport-coord");
-            return el ? el.innerText : "";
-        }
+            return el ? el.innerText : "";};
         """,
         Output("wsi-bounds", "data"),
         Input("osd-query-modal-open", "n_clicks"))
@@ -2362,19 +2359,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('hist2query-host', 'value'),
         State('hist2query-port', 'value'),
         State('coregister_options', 'value'),
-        State('coregister_hash', 'data'))
-    def get_osd_patch_coords(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash):
+        State('coregister_hash', 'data'),
+        State('hist2query-k', 'value'),
+        State('hist2query-url', 'value'))
+    def query_wsi_patch_w_hist2query(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, use_url):
         """
-        Example callback to use the WSI coordinate bounds from a store i.e. create patch embedding
+        Query a WSI patch (based on zoom) to hist2query and display results in a table
         """
         try:
-            # TODO: possible cause of no data left on file server side error: if the patch is too big, no data sent
             if None not in (hist_host, hist_port, reg_select, cur_hash) and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 # Use the list mapping to split the bounds preview into the integers
-                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, 224, 2)
-                response = requests.post(f"http://{hist_host}:{hist_port}/search", data=serialize_crop(crop), timeout=300)
-                response.raise_for_status()
-                return response.json()
-            raise PreventUpdate
-        except requests.exceptions.HTTPError: raise PreventUpdate
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * 3))
+                if crop is not None:
+                    response = requests.post(f"http://{hist_host}:{hist_port}/search",
+                    files={"patch": ("patch.npy", serialize_crop(crop))}, data={"k": k_search, "url": use_url}, timeout=300)
+                    response.raise_for_status()
+                    return response.json()
+                return None
+            return None
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return None

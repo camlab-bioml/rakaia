@@ -1,5 +1,5 @@
 """
-Module related to functions and classes for processing WSI patches and enabling queries
+Module related to functions and classes for processing WSI patches and enabling API queries
 """
 import io
 from typing import Union
@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
-def wsi_crop(image: Union[Path, str, np.ndarray],
+def wsi_crop(image: Union[Path, str, np.ndarray, None],
              bounds: Union[list, None]=None,
              return_sampled: bool=True,
              patch_out_size: int=224):
@@ -23,11 +23,11 @@ def wsi_crop(image: Union[Path, str, np.ndarray],
             isinstance(image, np.ndarray) else pyvips.Image.new_from_array(image, interpretation='rgb')
         crop = crop.crop(x0, y0, x1 - x0, y1 - y0).numpy().astype(np.uint8)
         # drop alpha channel if present, often from svs
-        if crop.shape[2] == 4: crop = crop[:, :, :3]
+        if (len(crop.shape) == 3) and crop.shape[2] == 4: crop = crop[:, :, :3]
         # TODO: how should the aspect ratio be handled? Here we make a square subsample patch
         return np.array(Image.fromarray(crop).resize((patch_out_size, patch_out_size),
              resample=Image.Resampling.LANCZOS)) if (return_sampled and patch_out_size) else crop
-    except pyvips.Error: pass
+    except (pyvips.Error, TypeError, KeyError): pass
     return None
 
 def serialize_crop(crop: Union[np.array, np.ndarray, None]=None):

@@ -132,6 +132,21 @@ const observer = new MutationObserver(() => {
     const maxX = imageBounds.x + imageBounds.width;
     const maxY = imageBounds.y + imageBounds.height;
 
+    const tiledImage = viewer.world.getItemAt(0);
+    const imageSize = tiledImage.getContentSize();
+
+    // check if the bounds are outside of the slide dimensions, do not allow query if so
+    const outsideSlide =
+    minX < 0 ||
+    minY < 0 ||
+    maxX > imageSize.x ||
+    maxY > imageSize.y;
+
+    const wsiModalOpen = document.getElementById("osd-query-modal-open");
+
+    if (wsiModalOpen) {
+    wsiModalOpen.disabled = outsideSlide};
+
     const boundsString = `X: (${minX.toFixed(0)}, ${maxX.toFixed(0)}),\nY: (${minY.toFixed(0)}, ${maxY.toFixed(0)})`;
     document.getElementById("osd-viewport-coord").innerText = boundsString;
     });
