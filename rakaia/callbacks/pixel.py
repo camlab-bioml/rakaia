@@ -41,7 +41,7 @@ from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, v
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
-from rakaia.register.query import wsi_crop, serialize_crop
+from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings
 from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
@@ -2353,7 +2353,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return not is_open if n else is_open
 
     @dash_app.callback(
-        Output('hist2query-results', 'data'),
+        Output('hist2query-results', 'rowData'),
+        Output('hist2query-results', 'columnDefs'),
         Input("osd-query-run", "n_clicks"),
         State('wsi-bounds', 'data'),
         State('hist2query-host', 'value'),
@@ -2361,21 +2362,17 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('coregister_options', 'value'),
         State('coregister_hash', 'data'),
         State('hist2query-k', 'value'),
-        State('hist2query-url', 'value'))
-    def query_wsi_patch_w_hist2query(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, use_url):
+        Input('hist2query-group', 'value'))
+    def query_wsi_patch_w_hist2query(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, group_cols):
         """
         Query a WSI patch (based on zoom) to hist2query and display results in a table
         """
+        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols)
         try:
             if None not in (hist_host, hist_port, reg_select, cur_hash) and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 # Use the list mapping to split the bounds preview into the integers
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * 3))
-                if crop is not None:
-                    response = requests.post(f"http://{hist_host}:{hist_port}/search",
-                    files={"patch": ("patch.npy", serialize_crop(crop))}, data={"k": k_search, "url": use_url}, timeout=300)
-                    response.raise_for_status()
-                    return response.json()
-                return None
-            return None
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return None
+                return tcga_uni_request(crop, hist_host, hist_port, k_search, True), format_col_ag_groupings(group_cols)
+            return None, format_col_ag_groupings(group_cols)
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return None, dash.no_update

@@ -14,6 +14,7 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
 from rakaia._version import __version__
+from rakaia.register.query import TCGA_UNI_COL_DEFS
 from rakaia.utils.alert import DataImportTour, ToolTips
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
@@ -703,18 +704,18 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.B("Query current WSI patch using hist2query", style = {"margin": "10px"}),
                                             html.Div([
                                             dcc.Input(type="text", placeholder="Set host for hist2query", value="localhost",
-                                            style={"width": "40%", "margin": "5px"}, id='hist2query-host',
+                                            style={"width": "20%", "margin": "5px"}, id='hist2query-host',
                                                       persistence=config['persistence'], persistence_type='local'),
                                             dcc.Input(type="number", placeholder="Set port for hist2query",
-                                            value=6000, style={"width": "40%", "margin": "5px"}, id='hist2query-port',
+                                            value=6000, style={"width": "15%", "margin": "5px"}, id='hist2query-port',
                                                       persistence=config['persistence'], persistence_type='local'),
                                             ], style={"display": "flex"}),
                                             html.Div([
                                             html.H6('k result size', style={"margin": "10px"}),
                                             dcc.Input(type="number", placeholder="k size",
-                                            value=10, style={"width": "25%", "margin": "10px", "height": "25%"},
+                                            value=10, style={"width": "10%", "margin": "10px", "height": "25%"},
                                             id='hist2query-k', persistence=config['persistence'], persistence_type='local'),
-                                            daq.ToggleSwitch(label='GDC slide URL', id='hist2query-url',
+                                            daq.ToggleSwitch(label='Group results by project/slide', id='hist2query-group',
                                             labelPosition='bottom', value=True, color=DEFAULT_WIDGET_COLOUR, style={"width": "30%",
                                              "margin": "10px"}),
                                             ], style={"display": "flex"}),
@@ -724,13 +725,17 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Br(),
                                             html.B("Query results", style = {"margin": "10px"}),
                                             html.Br(),
-                                            dcc.Loading(
-                                            dash_table.DataTable(id='hist2query-results',
-                                            columns=[{'id': p, 'name': p, "presentation": "markdown"} for p in ['project', 'slide', 'url', 'similarity']],
-                                            data=None, style_table={"max-width": "inherit", "overflowX": "auto",
-                                            "width": "95%"}, markdown_options={"link_target": "_blank"}), type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR),
+                                            dcc.Loading(dag.AgGrid(id="hist2query-results", columnSize="autoSize",
+                                            columnDefs=TCGA_UNI_COL_DEFS,
+                                            rowData=[], defaultColDef={"sortable": True, "filter": True, "resizable": True},
+                                            enableEnterpriseModules=True,
+                                            dashGridOptions={"autoGroupColumnDef": {"cellRenderer": "agGroupCellRenderer",
+                                            "headerName": "Project / Slide", "cellRendererParams": { "suppressCount": False,
+                                            "innerRenderer": "GroupLinkRenderer", "suppressDoubleClickExpand": True},
+                                            "onRowGroupOpened": "resizeGroupColumn"}}),
+                                            type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR),
                                             ]),
-                                            id="osd-query-modal", size='l'),
+                                            id="osd-query-modal", size='xl'),
                                             wrap_child_in_loading(dcc.Store(id='coregister-transfer', data=False),
                                                                         wrap=config['use_loading'], fullscreen=False),
                                                   dcc.Store(id='coregister-finished', data=False)], width=2),

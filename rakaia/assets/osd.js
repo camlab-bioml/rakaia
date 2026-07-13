@@ -180,6 +180,52 @@ const observer = new MutationObserver(() => {
     childList: true
     });
 
+    let dagFunc = window.dashAgGridComponentFunctions =
+    window.dashAgGridComponentFunctions || {};
+
+    dagFunc.resizeGroupColumn = function(params) {
+    params.api.autoSizeColumn("ag-Grid-AutoColumn");
+    };
+
+    dagFunc.LinkRenderer = function(props) {
+    return React.createElement(
+        "a",
+        {
+            href: props.value,
+            target: "_blank",
+            rel: "noopener noreferrer"
+        },
+        "Open Slide in GDC Portal"
+    );
+    };
+
+    dagFunc.GroupLinkRenderer = function(props) {
+
+    const value = props.value;
+
+    if (props.node.group && props.node.level === 1) {
+
+        const url = props.node.allLeafChildren[0]?.data?.url;
+
+        if (url) {
+            return React.createElement(
+                "a",
+                {
+                    href: url,
+                    target: "_blank",
+                    rel: "noopener noreferrer",
+                    onClick: (e) => {
+                        e.stopPropagation();
+                    }
+                },
+                value
+            );
+        }
+    }
+
+    return value;
+};
+
 });
 
 observer.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });

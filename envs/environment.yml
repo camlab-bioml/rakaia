@@ -197,7 +197,7 @@ dependencies:
       - slicerator==1.1.0
       - sniffio==1.3.0
       - sortedcontainers==2.4.0
-      - soupsieve==2.4.1
+      - soupsieve==2.8.4
       - spatial-image==1.2.1
       - spatialdata==0.4.0
       - statsmodels==0.14.0

@@ -2,10 +2,16 @@
 Module related to functions and classes for processing WSI patches and enabling API queries
 """
 import io
+import copy
 from typing import Union
 from pathlib import Path
+import requests
 import numpy as np
 from PIL import Image
+
+# define the default column definitions for the TCGA UNI search results shown in dash ag grid
+TCGA_UNI_COL_DEFS = [{"field": "project", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
+                    {"field": "url", "cellRenderer": "LinkRenderer"}, {"field": "similarity"}]
 
 def wsi_crop(image: Union[Path, str, np.ndarray, None],
              bounds: Union[list, None]=None,
@@ -39,3 +45,30 @@ def serialize_crop(crop: Union[np.array, np.ndarray, None]=None):
         np.savez_compressed(buffer, data=np.stack(crop))
         return buffer.getvalue()
     return None
+
+def tcga_uni_request(crop: Union[np.ndarray, np.array, None]=None,
+                            api_host: str="localhost",
+                            api_port: int=6000,
+                            k_search: int=10,
+                            return_url: bool=True):
+    """
+    Format the TCGA UNI POST request to send to hist2query
+    """
+    if crop is not None:
+        response = requests.post(f"http://{api_host}:{api_port}/search",
+                                 files={"patch": ("patch.npy", serialize_crop(crop.astype(np.uint8)))},
+                                 data={"k": k_search, "url": return_url}, timeout=300)
+        response.raise_for_status()
+        return response.json()
+    return None
+
+def format_col_ag_groupings(use_grouping: bool=True):
+    """
+    format the col groupings
+    """
+    new_col_defs = copy.deepcopy(TCGA_UNI_COL_DEFS)
+    for col in new_col_defs:
+        if "rowGroup" in col:
+            col["rowGroup"] = use_grouping
+            col["hide"] = use_grouping
+    return new_col_defs
