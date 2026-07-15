@@ -1,4 +1,5 @@
 """Application callbacks associated with pixel-level operations (blended images)"""
+import math
 import os.path
 import re
 import uuid
@@ -2362,17 +2363,18 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('coregister_options', 'value'),
         State('coregister_hash', 'data'),
         State('hist2query-k', 'value'),
-        Input('hist2query-group', 'value'))
-    def query_wsi_patch_w_hist2query(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, group_cols):
+        Input('hist2query-group', 'value'),
+        State('hist2query-tile-number', 'value'))
+    def query_wsi_patch_w_hist2query(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, group_cols, tile_number):
         """
         Query a WSI patch (based on zoom) to hist2query and display results in a table
         """
         if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols)
         try:
-            if None not in (hist_host, hist_port, reg_select, cur_hash) and run_query and reg_select in cur_hash and \
+            if None not in (hist_host, hist_port, reg_select, cur_hash, tile_number, k_search) and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 # Use the list mapping to split the bounds preview into the integers
-                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * 3))
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * int(math.sqrt(tile_number))))
                 return tcga_uni_request(crop, hist_host, hist_port, k_search, True), format_col_ag_groupings(group_cols)
             return None, format_col_ag_groupings(group_cols)
         except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return None, dash.no_update

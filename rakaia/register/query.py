@@ -11,6 +11,7 @@ from PIL import Image
 
 # define the default column definitions for the TCGA UNI search results shown in dash ag grid
 TCGA_UNI_COL_DEFS = [{"field": "project", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
+                    {"field": "x"}, {"field": "y"},
                     {"field": "url", "cellRenderer": "LinkRenderer"}, {"field": "similarity"}]
 
 def wsi_crop(image: Union[Path, str, np.ndarray, None],
@@ -50,12 +51,13 @@ def tcga_uni_request(crop: Union[np.ndarray, np.array, None]=None,
                             api_host: str="localhost",
                             api_port: int=6000,
                             k_search: int=10,
-                            return_url: bool=True):
+                            return_url: bool=True,
+                            endpoint: str="search"):
     """
     Format the TCGA UNI POST request to send to hist2query
     """
     if crop is not None:
-        response = requests.post(f"http://{api_host}:{api_port}/search",
+        response = requests.post(f"http://{api_host}:{api_port}/{endpoint}",
                                  files={"patch": ("patch.npy", serialize_crop(crop.astype(np.uint8)))},
                                  data={"k": k_search, "url": return_url}, timeout=300)
         response.raise_for_status()
