@@ -158,7 +158,7 @@ class CanvasImage:
             self.image = np.clip(self.image, 0, 255)
             self.image_blend_cache = SessionServerside(self.image, key=f"image_blend_cache_{self.sesh_id}", use_unique_key=True)
 
-        self.proportion = 0.1 if self.custom_scale_val is None else \
+        self.proportion = float(0.1 / int(self.pixel_ratio)) if self.custom_scale_val is None else \
             float(custom_scale_val / (self.image.shape[1] * self.pixel_ratio))
 
         if None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
