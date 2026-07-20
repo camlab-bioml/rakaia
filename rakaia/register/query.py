@@ -5,6 +5,8 @@ import io
 import copy
 from typing import Union
 from pathlib import Path
+
+import pandas as pd
 import requests
 import numpy as np
 from PIL import Image
@@ -47,21 +49,35 @@ def serialize_crop(crop: Union[np.array, np.ndarray, None]=None):
         return buffer.getvalue()
     return None
 
+def tcga_resp_to_table(resp: Union[dict, None]=None):
+    """
+    Format the TCGA UNI POST response into a table (record-oriented) for viewing
+    """
+    if resp is not None and all(elem in resp.keys() for elem in ('hits', 'url')):
+        hits_frame = pd.DataFrame(resp['hits'])
+        hits_frame['url'] = "NA"
+        if resp['url'] and isinstance(resp['url'], dict):
+            hits_frame['url'] = hits_frame['slide'].map(resp['url'])
+        return hits_frame.to_dict(orient="records")
+    return None
+
 def tcga_uni_request(crop: Union[np.ndarray, np.array, None]=None,
                             api_host: str="localhost",
                             api_port: int=6000,
                             k_search: int=10,
                             return_url: bool=True,
-                            endpoint: str="search"):
+                            endpoint: str="search",
+                            return_processed: bool=True):
     """
     Format the TCGA UNI POST request to send to hist2query
     """
     if crop is not None:
+        # TODO: format to accept direct URL links in addition to combination of host and port
         response = requests.post(f"http://{api_host}:{api_port}/{endpoint}",
                                  files={"patch": ("patch.npy", serialize_crop(crop.astype(np.uint8)))},
                                  data={"k": k_search, "url": return_url}, timeout=300)
         response.raise_for_status()
-        return response.json()
+        return tcga_resp_to_table(response.json()) if return_processed else response.json()
     return None
 
 def format_col_ag_groupings(use_grouping: bool=True):

@@ -1070,7 +1070,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                                                    legend_orientation, custom_scale_val, cluster_assignments_in_legend,
                                                    cluster_assignments_dict, cluster_cat, scalebar_col, clust_selected, cur_dim):
         """
-        re-render the canvas if the user requests to remove the annotations (scalebar and legend) or
+        Re-render the canvas if the user requests to remove the annotations (scalebar and legend) or
         updates the scalebar length with a custom value
         """
         # do not trigger update if the channel order is maintained

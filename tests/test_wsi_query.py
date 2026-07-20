@@ -7,7 +7,7 @@ from rakaia.register.query import (
     serialize_crop,
     tcga_uni_request,
     TCGA_UNI_COL_DEFS,
-    format_col_ag_groupings)
+    format_col_ag_groupings, tcga_resp_to_table)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -36,9 +36,10 @@ def test_toggle_tcga_col_defs():
 
 @patch("rakaia.register.query.requests.post")
 def test_tcga_post(mock_post):
-    expected = [
-        {"slide": "TCGA-01", "score": 0.5, "url": "url-1"},
-        {"slide": "TCGA-02", "score": 0.35, "url": "url-2"}]
+    expected = {'hits': [
+        {"slide": "TCGA-01", "score": 0.5},
+        {"slide": "TCGA-02", "score": 0.35}],
+    'url': {"TCGA-01": 'url_1', "TCGA-02": 'url_2'}}
 
     mock_response = Mock()
     mock_response.raise_for_status.return_value = None
@@ -47,8 +48,12 @@ def test_tcga_post(mock_post):
 
     crop = np.zeros((224, 224, 3), dtype=np.uint8)
 
+    assert tcga_resp_to_table(None) is None
+    assert tcga_resp_to_table({'fake': None}) is None
+
     result = tcga_uni_request(crop)
-    assert result == expected
+    assert len(result) == 2
+    assert all(elem['url'] != "NA" for elem in result)
     mock_post.assert_called_once()
 
     assert tcga_uni_request(None) is None
