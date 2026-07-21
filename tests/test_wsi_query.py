@@ -7,7 +7,9 @@ from rakaia.register.query import (
     serialize_crop,
     tcga_uni_request,
     TCGA_UNI_COL_DEFS,
-    format_col_ag_groupings, tcga_resp_to_table)
+    format_col_ag_groupings,
+    tcga_resp_to_table,
+    hist2query_pie_chart)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -58,3 +60,15 @@ def test_tcga_post(mock_post):
 
     assert tcga_uni_request(None) is None
     mock_post.assert_called_once()
+
+def test_hist2query_results_chart():
+    hits = [
+        {"tissue": "kidney", "slide": "TCGA-01", "score": 0.5},
+        {"tissue": "kidney", "slide": "TCGA-02", "score": 0.35},
+        {"tissue": "breast", "slide": "TCGA-03", "score": 0.7},
+        {"tissue": "breast", "slide": "TCGA-04", "score": 0.6}]
+    dist_tissue = hist2query_pie_chart(hits)
+    assert 'Tissue Type' in dist_tissue['data'][0]['hovertemplate']
+    assert 'kidney' in dist_tissue['data'][0]['labels']
+    assert dist_tissue['data'][0]['type'] == 'pie'
+    assert hist2query_pie_chart(None) is None

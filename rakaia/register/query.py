@@ -5,14 +5,16 @@ import io
 import copy
 from typing import Union
 from pathlib import Path
-
+import textwrap
 import pandas as pd
 import requests
 import numpy as np
 from PIL import Image
+import plotly.express as px
+import plotly.graph_objs as go
 
 # define the default column definitions for the TCGA UNI search results shown in dash ag grid
-TCGA_UNI_COL_DEFS = [{"field": "project", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
+TCGA_UNI_COL_DEFS = [{"field": "tissue", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
                     {"field": "x"}, {"field": "y"},
                     {"field": "url", "cellRenderer": "LinkRenderer"}, {"field": "similarity"}]
 
@@ -90,3 +92,26 @@ def format_col_ag_groupings(use_grouping: bool=True):
             col["rowGroup"] = use_grouping
             col["hide"] = use_grouping
     return new_col_defs
+
+
+def hist2query_pie_chart(query_results: Union[list, dict, None],
+                    category: str="tissue"):
+    """
+    Generate a pie chart of the hist2query results by tissue or project
+    """
+    if None not in (query_results, category):
+        query_results_plot = pd.DataFrame(query_results)
+        grouping_col = category if category in query_results_plot.columns else "project"
+        query_results_plot[grouping_col] = query_results_plot[grouping_col].apply(
+            lambda x: "<br>".join(textwrap.wrap(x, width=25)))
+        fig = go.Figure(px.pie(query_results_plot[grouping_col]
+                               .value_counts(dropna=False)
+                               .rename_axis("Tissue Type")
+                               .reset_index(name="Count"),
+                               names="Tissue Type",
+                               values="Count",
+                               title=f"Query {str(grouping_col)} distribution"))
+        fig.update_layout(autosize=True, margin=dict(l=0, r=50, t=50, b=0),
+                          legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1))
+        return fig.to_dict()
+    return None

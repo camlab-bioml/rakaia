@@ -42,7 +42,8 @@ from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, v
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
-from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings
+from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
+    hist2query_pie_chart
 from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
@@ -2356,6 +2357,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output('hist2query-results', 'rowData'),
         Output('hist2query-results', 'columnDefs'),
+        Output('hist2query-pie', 'figure'),
         Input("osd-query-run", "n_clicks"),
         State('wsi-bounds', 'data'),
         State('hist2query-host', 'value'),
@@ -2369,12 +2371,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Query a WSI patch (based on zoom) to hist2query and display results in a table
         """
-        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols)
+        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update
         try:
             if None not in (hist_host, hist_port, reg_select, cur_hash, tile_number, k_search) and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 # Use the list mapping to split the bounds preview into the integers
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * int(math.sqrt(tile_number))))
-                return tcga_uni_request(crop, hist_host, hist_port, k_search, True), format_col_ag_groupings(group_cols)
-            return None, format_col_ag_groupings(group_cols)
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return None, dash.no_update
+                results = tcga_uni_request(crop, hist_host, hist_port, k_search, True)
+                return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results)
+            return None, format_col_ag_groupings(group_cols), None
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return None, dash.no_update, None
