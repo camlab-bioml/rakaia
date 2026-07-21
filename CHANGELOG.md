@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.32.2] - 2026-07-16
+
+### Changed
+
+- Update from dependabot: `soupsieve`
+
+### Fixed
+
+- Scalebar proportion on canvas change when using non-default pixel ratio #181
+
 ## [0.32.1] - 2026-06-24
 
 ### Fixed
