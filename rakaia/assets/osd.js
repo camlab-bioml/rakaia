@@ -40,6 +40,13 @@ function renderTiles(viewer) {
     //viewer = renderOSDCanvas(initialTileSource);
     const newTileSource = checkStatus(newPath);
     viewer.open(newTileSource);
+
+    // hide the button to open the query modal until an image is rendered
+    const queryModalOpen = document.getElementById("osd-query-modal-open");
+    if (queryModalOpen.style.display === "none") {
+    queryModalOpen.style.display = "block";
+    } else {
+    queryModalOpen.style.display = "none";};
     }
 
 function observeCoordChange(mutationsList, viewer) {

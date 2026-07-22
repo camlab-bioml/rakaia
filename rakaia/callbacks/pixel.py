@@ -2373,11 +2373,12 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update
         try:
-            if None not in (hist_host, hist_port, reg_select, cur_hash, tile_number, k_search) and run_query and reg_select in cur_hash and \
+            if None not in (hist_host, hist_port, reg_select, cur_hash, tile_number, k_search, osd_bounds) and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 # Use the list mapping to split the bounds preview into the integers
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * int(math.sqrt(tile_number))))
                 results = tcga_uni_request(crop, hist_host, hist_port, k_search, True)
                 return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results)
-            return None, format_col_ag_groupings(group_cols), None
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return None, dash.no_update, None
+            # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
+            return [], [], go.Figure(layout={"template": None})
+        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return [], [], go.Figure(layout={"template": None})

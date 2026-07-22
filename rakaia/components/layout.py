@@ -697,7 +697,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Br(),
                                             dbc.Button("Query WSI", id='osd-query-modal-open',
                                             style={"align": "center", "background-color": DEFAULT_WIDGET_COLOUR,
-                                                "float": "center"}, n_clicks=0),
+                                                "float": "center", "display": "none"}, n_clicks=0),
                                             html.Br(),
                                             html.Br(),
                                             dbc.Modal(children=dbc.ModalBody([
