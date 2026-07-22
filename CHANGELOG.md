@@ -7,11 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.32.2] - 2026-07-21
+## [0.32.2] - 2026-07-22
 
 ### Changed
 
-- Update from dependabot: `soupsieve`, `Pillow`
+- Update from dependabot: `soupsieve`, `Pillow`, `setuptools`
 
 ### Fixed
 
