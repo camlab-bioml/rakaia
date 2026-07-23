@@ -26,6 +26,8 @@ class WSICanvasAffineCoordTransfer:
                     (isinstance(spatial_anndata, str) and str(spatial_anndata).endswith('.h5ad'))) else None
         self.transform = np.array(pd.read_csv(transformation_matrix, header=None)) if not (
             isinstance(transformation_matrix, np.ndarray)) else transformation_matrix
+        self.transform = (np.vstack(np.vstack([self.transform, [0, 0, 1]])) if (
+                                self.transform.shape[0] < 3) else self.transform)[:3, :3]
 
     def process_coordinates(self, scaling_factor: float=0.21,
                             use_inverse: Union[bool, str, None]=True):
