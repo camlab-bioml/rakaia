@@ -9,6 +9,7 @@ import dash.exceptions
 import dash_uploader as du
 import flask
 import requests
+import requests.exceptions as rex
 from dash import ctx, ALL
 from dash_extensions.enrich import Output, Input, State, html
 from dash import dcc
@@ -2245,11 +2246,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         wsi_im = stitch_images[stitch_select] if wsi_selection(ctx.triggered_id, "stitch-image-to-wsi", stitch_images, stitch_select) \
             else (str(cur_hash[reg_select]) if wsi_selection(ctx.triggered_id, "coregister_options", cur_hash, reg_select) else None)
+        # if using a stitch image in WSI, reset the dropdown to empty so that hist2query cannot be run (requires crop extraction from file)
+        wsi_select = None if ctx.triggered_id == "stitch-image-to-wsi" else dash.no_update
         if sesh_id and wsi_im is not None:
             try:
                 from rakaia.register.process import dzi_tiles_from_image
                 dzi_tiles_from_image(wsi_im, str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
+                return True, dash.no_update, wsi_select, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
             except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate
 
@@ -2373,7 +2376,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update
         try:
-            if None not in (hist_host, hist_port, reg_select, cur_hash, tile_number, k_search, osd_bounds) and run_query and reg_select in cur_hash and \
+            if None not in (reg_select, cur_hash, tile_number, k_search, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 # Use the list mapping to split the bounds preview into the integers
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * int(math.sqrt(tile_number))))
@@ -2381,4 +2384,4 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results)
             # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
             return [], [], go.Figure(layout={"template": None})
-        except (requests.exceptions.HTTPError, requests.exceptions.ConnectionError): return [], [], go.Figure(layout={"template": None})
+        except (rex.HTTPError, rex.ConnectionError, rex.InvalidURL): return [], [], go.Figure(layout={"template": None})

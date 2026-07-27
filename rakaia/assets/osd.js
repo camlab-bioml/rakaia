@@ -42,11 +42,14 @@ function renderTiles(viewer) {
     viewer.open(newTileSource);
 
     // hide the button to open the query modal until an image is rendered
+    viewer.addHandler('tile-loaded', function (event) {
     const queryModalOpen = document.getElementById("osd-query-modal-open");
-    if (queryModalOpen.style.display === "none") {
-    queryModalOpen.style.display = "block";
+    if (event.tile) {
+        queryModalOpen.style.display = "block";
     } else {
-    queryModalOpen.style.display = "none";};
+        queryModalOpen.style.display = "none";
+    }
+    });
     }
 
 function observeCoordChange(mutationsList, viewer) {

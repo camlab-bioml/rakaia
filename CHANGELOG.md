@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-07-21
+## [0.33.0] - 2026-07-27
 
 ### Added
 
@@ -15,11 +15,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
 - Show viewport coordinates for WSI canvas on change
 
-## [0.32.2] - 2026-07-21
+## [0.32.2] - 2026-07-23
 
 ### Changed
 
 - Update from dependabot: `soupsieve`, `Pillow`
+- Allow two-row affine transform matrix upload (add `vstack`)
 
 ### Fixed
 

@@ -28,3 +28,13 @@ def test_non_visium_coord_transfer(get_current_dir):
     assert float(y) == float(bounds['yaxis.range[0]'])
     assert int(width) == int(float(bounds['xaxis.range[1]']) - float(bounds['xaxis.range[0]']))
     assert int(height) == int(float(bounds['yaxis.range[1]']) - float(bounds['yaxis.range[0]']))
+
+    string_coords_two_rows = (WSICanvasAffineCoordTransfer(bounds,
+                                                  os.path.join(get_current_dir, 'query.mcd'),
+                                                  no_transform[:2]).process_coordinates(scaling_factor=1))
+    x, y, width, height = tuple([float(elem) for elem in string_coords_two_rows.split(",")])
+
+    assert float(x) == float(bounds['xaxis.range[0]'])
+    assert float(y) == float(bounds['yaxis.range[0]'])
+    assert int(width) == int(float(bounds['xaxis.range[1]']) - float(bounds['xaxis.range[0]']))
+    assert int(height) == int(float(bounds['yaxis.range[1]']) - float(bounds['yaxis.range[0]']))

@@ -63,6 +63,14 @@ def tcga_resp_to_table(resp: Union[dict, None]=None):
         return hits_frame.to_dict(orient="records")
     return None
 
+def set_query_host(api_host: str="localhost",
+                   api_port: int=6000):
+    """
+    Set the host and port for hist2query. Accepts localhost + port or a URL
+    """
+    if str(api_host).startswith("http") or str(api_host).startswith("https"): return api_host
+    return f"http://{api_host}:{api_port}"
+
 def tcga_uni_request(crop: Union[np.ndarray, np.array, None]=None,
                             api_host: str="localhost",
                             api_port: int=6000,
@@ -75,8 +83,8 @@ def tcga_uni_request(crop: Union[np.ndarray, np.array, None]=None,
     """
     if crop is not None:
         # TODO: format to accept direct URL links in addition to combination of host and port
-        response = requests.post(f"http://{api_host}:{api_port}/{endpoint}",
-                                 files={"patch": ("patch.npy", serialize_crop(crop.astype(np.uint8)))},
+        response = requests.post(f"{set_query_host(api_host, api_port)}/{endpoint}",
+                                 files={"patch": ("patch.npz", serialize_crop(crop.astype(np.uint8)))},
                                  data={"k": k_search, "url": return_url}, timeout=300)
         response.raise_for_status()
         return tcga_resp_to_table(response.json()) if return_processed else response.json()

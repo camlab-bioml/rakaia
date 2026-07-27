@@ -182,8 +182,10 @@ class ToolTips(BaseModel):
                                   " DGE markers are ordered by a Wilcoxon rank-sum test (group vs. all others).",
                       "intensity-hover": "WARNING: modifying the canvas blend can become much slower with this feature enabled. "
                                  "Highly recommended to turn off before exporting the canvas to HTML.",
-                      "wsi-query-tile-number": "Increasing the tile number may give better patch query matches, "
-                                               "but requests may be slower."}
+                      "wsi-query-tile-number": "Increasing the tile number may give better patch query similarity results, "
+                                               "but requests may be slower.",
+                      "wsi-query-host": "Specify a host for hist2query. If using localhost or a local IP address, provide a host port. "
+                                        "Otherwise, provide a host URL and leave the port empty."}
 
 
 class PanelMismatchError(Exception):

@@ -695,11 +695,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Br(),
                                             html.Div(id="osd-viewport-coord", children=[]),
                                             html.Br(),
-                                            dbc.Button("Query WSI", id='osd-query-modal-open',
-                                            style={"align": "center", "background-color": DEFAULT_WIDGET_COLOUR,
-                                                "float": "center", "display": "none"}, n_clicks=0),
-                                            html.Br(),
-                                            html.Br(),
                                             dbc.Modal(children=dbc.ModalBody([
                                             html.Div([
                                             html.Div([
@@ -707,13 +702,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.B("Query current WSI patch using hist2query", style={"margin": "10px"}),
                                             html.Div([
                                             dcc.Input(type="text", placeholder="Set host for hist2query",
-                                            value="localhost", style={"width": "50%", "margin": "10px"},
+                                            value="localhost", style={"width": "75%", "margin": "10px"},
                                             id="hist2query-host", persistence=config['persistence'], persistence_type='local'),
                                             dcc.Input(type="number", placeholder="Set port for hist2query",
-                                            value=6000, style={"width": "30%", "margin": "12.5px"},
+                                            value=7000, style={"width": "30%", "margin": "12.5px", "height": "105%"},
                                             id="hist2query-port", persistence=config['persistence'], persistence_type='local'),
                                             ], style={"display": "flex"}),
-
+                                            dbc.Tooltip(TOOLTIPS['wsi-query-host'], target="hist2query-host", placement='left'),
                                             html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
                                             dcc.Input(type="number", placeholder="k size",
                                             min=1, max=10000, value=50,
@@ -724,7 +719,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             style={"width": "70%", "margin": "10px"}),
                                             html.H6('Tile number', style={"margin": "10px"}, id="wsi-tile-number-label"),
                                             dcc.Dropdown(id='hist2query-tile-number',
-                                            options=[1, 4, 9, 16, 25], value=9,
+                                            options=[1, 4, 9, 16, 25, 36], value=16,
                                             persistence=config['persistence'], persistence_type='local',
                                             style={"width": "75%", "margin": "5px"}),
                                             html.Br(),
@@ -759,9 +754,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR),
                                             ]),
                                             id="osd-query-modal", size='xl'),
-                                            wrap_child_in_loading(dcc.Store(id='coregister-transfer', data=False),
-                                                                        wrap=config['use_loading'], fullscreen=False),
-                                                  dcc.Store(id='coregister-finished', data=False)], width=2),
+                                            wrap_child_in_loading(
+                                            html.Div([
+                                            dbc.Button("Query WSI", id='osd-query-modal-open', style={"align": "center",
+                                            "background-color": DEFAULT_WIDGET_COLOUR, "float": "center", "display": "none"}, n_clicks=0),
+                                            dcc.Store(id='coregister-transfer', data=False)]),
+                                                wrap=config['use_loading'], fullscreen=False),
+                                            dcc.Store(id='coregister-finished', data=False)], width=2),
                                          dbc.Modal(children=dbc.ModalBody(
                                              [dcc.Input(type="text", placeholder="Read WSI directly from local filepath",
                                                         style={"width": "100%"}, id='wsi-local-filepath'),
