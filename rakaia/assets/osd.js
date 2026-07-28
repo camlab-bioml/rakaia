@@ -10,7 +10,7 @@ function checkStatus(url) {
     let response = fetch(url, { method: 'HEAD' });
     let tileReturn = [400, 404, 500, null].includes(response.status) ? null: url
     return tileReturn;
-    }
+    };
 
 function fractionToViewportZoom(fraction, minZoom, maxZoom) {
         // map the zoom as a normalized fraction of the UI zoom, not proportional to magnification level
@@ -116,9 +116,46 @@ const observer = new MutationObserver(() => {
     const viewer = renderOSDCanvas(initialTileSource);
     observer.disconnect();
 
+    const anno = AnnotoriousOSD.createOSDAnnotator(viewer, {
+    drawingEnabled: false,
+    style: {fill: "#ff0000",
+        fillOpacity: 0.5}
+    });
+
+    const enablePolygon = document.querySelector("#osd-polygon input");
+    enablePolygon.addEventListener("change", (event) => {
+    if (event.target.checked) {
+        anno.setDrawingTool("polygon");
+        anno.setDrawingEnabled(true);
+        viewer.setMouseNavEnabled(false);
+        viewer.gestureSettingsMouse.clickToZoom = false;
+        viewer.gestureSettingsMouse.dblClickToZoom = false;
+    } else {
+        anno.setDrawingEnabled(false);
+        viewer.setMouseNavEnabled(true);
+        viewer.gestureSettingsMouse.clickToZoom = true;
+        viewer.gestureSettingsMouse.dblClickToZoom = true;
+    }
+    });
+
+    let selectedAnnotation = null;
+
+    anno.on('clickAnnotation', (annotation) => {
+    selectedAnnotation = annotation;
+    });
+
+    document.addEventListener('keydown', (event) => {
+    if ((event.key === "Delete") && selectedAnnotation) {
+        event.preventDefault();
+        anno.removeAnnotation(selectedAnnotation.id);
+        selectedAnnotation = null;
+    }
+    });
+
     document.getElementById("update-coregister").addEventListener('click', function(e) {
     renderTiles(viewer);
     });
+
     if (performance.navigation.type == performance.navigation.TYPE_RELOAD) {
         viewer.open(null);}
 
@@ -166,7 +203,6 @@ const observer = new MutationObserver(() => {
     });
 
     document.getElementById("wsi-zoom-scale").addEventListener("change", function(e) {
-            //console.log("Checkbox changed:", e.target.checked)
             setWSIZoomLevel(viewer);
     });
 
@@ -235,6 +271,33 @@ const observer = new MutationObserver(() => {
 
     return value;
 };
+
+    const downloadWSIAnnotObserver = new MutationObserver(() => {
+
+    document.getElementById("btn-download-wsi-annot").addEventListener('click', function(e) {
+
+    const annotations = anno.getAnnotations();
+
+    const json = JSON.stringify(annotations, null, 2);
+
+    const blob = new Blob([json], { type: "application/json" });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = "wsi_annotations.json";
+    document.body.appendChild(a);
+
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    });
+
+});
+
+downloadWSIAnnotObserver.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });
 
 });
 

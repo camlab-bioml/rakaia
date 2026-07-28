@@ -2,6 +2,10 @@
   --widget: #0f4d92;
 }
 
+#osd-polygon input[type="checkbox"] {
+    accent-color: #0f4d92;
+}
+
 .gallery-row {
     position: absolute !important;
     top: 0;
