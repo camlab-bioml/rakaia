@@ -18,6 +18,38 @@ function fractionToViewportZoom(fraction, minZoom, maxZoom) {
         return minZoom * Math.pow(maxZoom / minZoom, fraction);
       };
 
+function osdAnnotDownload(buttonId, annots, filename) {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+
+    if (button.dataset.listenerAttached === "true") return;
+
+    button.addEventListener("click", function () {
+
+    const annotations = annots.getAnnotations();
+
+    if (Array.isArray(annotations) && annotations.length === 0) return;
+
+    const json = JSON.stringify(annotations, null, 2);
+
+    const blob = new Blob([json], { type: "application/json" });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    button.dataset.listenerAttached = "true";
+}
+
 const renderOSDCanvas = (initialTileSource) => {
 const viewer = OpenSeadragon({
         id: "openseadragon-container",
@@ -272,32 +304,12 @@ const observer = new MutationObserver(() => {
     return value;
 };
 
-    const downloadWSIAnnotObserver = new MutationObserver(() => {
-
-    document.getElementById("btn-download-wsi-annot").addEventListener('click', function(e) {
-
-    const annotations = anno.getAnnotations();
-
-    const json = JSON.stringify(annotations, null, 2);
-
-    const blob = new Blob([json], { type: "application/json" });
-
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    a.download = "wsi_annotations.json";
-    document.body.appendChild(a);
-
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-
-    });
-
+const osd_download_observer = new MutationObserver(() => {
+    osdAnnotDownload("btn-download-wsi-annot", anno, "wsi_annotations.json");
+    // download_observer.disconnect();
 });
 
-downloadWSIAnnotObserver.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });
+osd_download_observer.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });
 
 });
 
