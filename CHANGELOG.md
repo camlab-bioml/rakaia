@@ -7,13 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-07-27
+
+## [0.33.0] - 2026-08-05
 
 ### Added
 
 - Prototype: query WSI zoomed patches on [TCGA UNI](https://huggingface.co/datasets/W8Yi/tcga-wsi-uni2h-features)
 embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
 - Show viewport coordinates for WSI canvas on change
+
+
+## [0.32.3] - 2026-08-05
+
+### Changed
+
+- Update from dependabot: `cryptography`
 
 ## [0.32.2] - 2026-07-23
 

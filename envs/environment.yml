@@ -47,7 +47,7 @@ dependencies:
       - colour==0.1.5
       - contourpy==1.2.0
       - coverage==7.10.2
-      - cryptography==46.0.7
+      - cryptography==50.0.0
       - cycler==0.11.0
       - cython==0.29.35
       - dash==2.18.2
@@ -162,7 +162,7 @@ dependencies:
       - pymongo==4.6.3
       - pynndescent==0.5.10
       - pyogrio==0.11.1
-      - pyopenssl==26.0.0
+      - pyopenssl==26.4.0
       - pyparsing==3.0.9
       - pyproj==3.7.1
       - pysocks==1.7.1
