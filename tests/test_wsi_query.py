@@ -9,7 +9,7 @@ from rakaia.register.query import (
     TCGA_UNI_COL_DEFS,
     format_col_ag_groupings,
     tcga_resp_to_table,
-    hist2query_pie_chart)
+    hist2query_pie_chart, prism2_chat_request)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -57,6 +57,23 @@ def test_tcga_post(mock_post):
     assert len(result) == 2
     assert all(elem['url'] != "NA" for elem in result)
     mock_post.assert_called_once()
+
+    assert tcga_uni_request(None) is None
+    mock_post.assert_called_once()
+
+@patch("rakaia.register.query.requests.post")
+def test_prism2_chat_post(mock_post):
+    expected = {'response': ['This is cancerous tissue.']}
+
+    mock_response = Mock()
+    mock_response.raise_for_status.return_value = None
+    mock_response.json.return_value = expected
+    mock_post.return_value = mock_response
+
+    crop = np.zeros((224, 224, 3), dtype=np.uint8)
+
+    result = prism2_chat_request(crop)
+    assert str(result) == 'This is cancerous tissue.'
 
     assert tcga_uni_request(None) is None
     mock_post.assert_called_once()

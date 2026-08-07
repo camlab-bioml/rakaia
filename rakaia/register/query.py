@@ -36,6 +36,7 @@ def wsi_crop(image: Union[Path, str, np.ndarray, None],
         # drop alpha channel if present, often from svs
         if (len(crop.shape) == 3) and crop.shape[2] == 4: crop = crop[:, :, :3]
         # TODO: how should the aspect ratio be handled? Here we make a square subsample patch
+        # square subsampled patches appear to work well for UNI2, but may not for Prism2
         return np.array(Image.fromarray(crop).resize((patch_out_size, patch_out_size),
              resample=Image.Resampling.LANCZOS)) if (return_sampled and patch_out_size) else crop
     except (pyvips.Error, TypeError, KeyError): pass
@@ -82,12 +83,25 @@ def tcga_uni_request(crop: Union[np.ndarray, np.array, None]=None,
     Format the TCGA UNI POST request to send to hist2query
     """
     if crop is not None:
-        # TODO: format to accept direct URL links in addition to combination of host and port
         response = requests.post(f"{set_query_host(api_host, api_port)}/{endpoint}",
                                  files={"patch": ("patch.npz", serialize_crop(crop.astype(np.uint8)))},
                                  data={"k": k_search, "url": return_url}, timeout=300)
         response.raise_for_status()
         return tcga_resp_to_table(response.json()) if return_processed else response.json()
+    return None
+
+def prism2_chat_request(crop: Union[np.ndarray, np.array, None]=None,
+                            api_host: str="localhost",
+                            api_port: int=6000,
+                            endpoint: str="chat",
+                            question: str="What type of tissue is this?"):
+    if crop is not None:
+        response = requests.post(f"{set_query_host(api_host, api_port)}/{endpoint}",
+                                 files={"patch": ("patch.npz", serialize_crop(crop.astype(np.uint8)))},
+                                 data={"question": question}, timeout=300)
+        response.raise_for_status()
+        resp = response.json()
+        return resp['response'][0] if isinstance(resp['response'], list) else str(resp['response'])
     return None
 
 def format_col_ag_groupings(use_grouping: bool=True):

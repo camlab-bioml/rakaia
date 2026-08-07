@@ -703,19 +703,27 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Div(id="osd-viewport-coord", children=[]),
                                             html.Br(),
                                             dbc.Modal(children=dbc.ModalBody([
-                                            html.Div([
-                                            html.Div([
-                                            html.Div([
-                                            html.B("Query current WSI patch using hist2query", style={"margin": "10px"}),
-                                            html.Div([
-                                            dcc.Input(type="text", placeholder="Set host for hist2query",
-                                            value="localhost", style={"width": "75%", "margin": "10px"},
-                                            id="hist2query-host", persistence=config['persistence'], persistence_type='local'),
+                                            html.B("Set host and/or port for hist2query", style={"margin": "10px"}),
+                                            html.Div([dcc.Input(type="text", placeholder="Set host for hist2query",
+                                                              value="localhost",
+                                                              style={"width": "40%", "margin": "10px"},
+                                                              id="hist2query-host", persistence=config['persistence'],
+                                                              persistence_type='local'),
                                             dcc.Input(type="number", placeholder="Set port for hist2query",
-                                            value=7000, style={"width": "30%", "margin": "12.5px", "height": "105%"},
-                                            id="hist2query-port", persistence=config['persistence'], persistence_type='local'),
-                                            ], style={"display": "flex"}),
-                                            dbc.Tooltip(TOOLTIPS['wsi-query-host'], target="hist2query-host", placement='left'),
+                                                              value=7000, style={"width": "10%", "margin": "12.5px",
+                                                                                 "height": "105%"},
+                                                              id="hist2query-port", persistence=config['persistence'],
+                                                              persistence_type='local'),
+                                                ], style={"display": "flex"}),
+                                                dbc.Tooltip(TOOLTIPS['wsi-query-host'], target="hist2query-host",
+                                                            placement='left'),
+                                            dbc.Tabs([
+                                            dbc.Tab(label='TCGA UNI2', label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
+                                            html.Div([
+                                            html.Div([
+                                            html.Div([
+                                            html.Br(),
+                                            html.B("Find similar patches in TCGA with UNI2", style={"margin": "10px", "margin-top": "17px"}),
                                             html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
                                             dcc.Input(type="number", placeholder="k size",
                                             min=1, max=10000, value=50,
@@ -730,7 +738,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             persistence=config['persistence'], persistence_type='local',
                                             style={"width": "75%", "margin": "5px"}),
                                             html.Br(),
-                                            ], style={"display": "flex", "flexDirection": "row"}),
+                                            ], style={"display": "flex", "flexDirection": "row", "margin-top": "10px"}),
                                             ], style={"width": "50%"}),
                                             html.Div([dcc.Loading(
                                             dcc.Graph(id='hist2query-pie', figure={'layout': dict(
@@ -759,6 +767,20 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             "innerRenderer": "GroupLinkRenderer", "suppressDoubleClickExpand": True},
                                             "onRowGroupOpened": "resizeGroupColumn"}}),
                                             type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR),
+                                            ]),
+                                            dbc.Tab(label='Prism2 chat', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                            children=[
+                                            html.Div([
+                                            html.Br(),
+                                            html.B("Ask prism2 about the current WSI patch.",
+                                                       style={"margin": "10px", "margin-top": "17px"}),
+                                            wrap_child_in_loading(html.Div(id='prism2-chat-results', className="mt-3"), fullscreen=False),
+                                            html.Br(),
+                                            dcc.Input(id="prism2-query-question", className="form-control",
+                                            placeholder="Ask Prism2 about this slide...", debounce=True)
+                                            ]),
+                                            ]),
+                                            ])
                                             ]),
                                             id="osd-query-modal", size='xl'),
                                             wrap_child_in_loading(

@@ -44,7 +44,7 @@ from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, v
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
-    hist2query_pie_chart
+    hist2query_pie_chart, prism2_chat_request
 from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
@@ -2370,9 +2370,9 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('hist2query-k', 'value'),
         Input('hist2query-group', 'value'),
         State('hist2query-tile-number', 'value'))
-    def query_wsi_patch_w_hist2query(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, group_cols, tile_number):
+    def hist2query_tcga_uni2_similarity(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, group_cols, tile_number):
         """
-        Query a WSI patch (based on zoom) to hist2query and display results in a table
+        Query a WSI patch (based on zoom) to hist2query TCGA UNI2 similarity
         """
         if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update
         try:
@@ -2385,3 +2385,26 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
             return [], [], go.Figure(layout={"template": None})
         except (rex.HTTPError, rex.ConnectionError, rex.InvalidURL): return [], [], go.Figure(layout={"template": None})
+
+    @dash_app.callback(
+        Output('prism2-chat-results', 'children'),
+        Input("prism2-query-question", "n_submit"),
+        State("prism2-query-question", "value"),
+        State('wsi-bounds', 'data'),
+        State('hist2query-host', 'value'),
+        State('hist2query-port', 'value'),
+        State('coregister_options', 'value'),
+        State('coregister_hash', 'data'),
+        State('hist2query-tile-number', 'value'))
+    def hist2query_prism2_chat(run_query, question, osd_bounds, hist_host, hist_port, reg_select, cur_hash, tile_number):
+        """
+        Query a WSI patch (based on zoom) to hist2query Prism2 chat
+        """
+        try:
+            if None not in (reg_select, cur_hash, tile_number, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
+                    list(map(int, re.findall(r"-?\d+", osd_bounds))):
+                                                                # TODO: should higher resolution images be passed for prism2?
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), False, (224 * int(math.sqrt(tile_number))))
+                return prism2_chat_request(crop, hist_host, hist_port, "chat", str(question))
+            return None
+        except (rex.HTTPError, rex.ConnectionError, rex.InvalidURL): return None
