@@ -1,7 +1,13 @@
 import os
+from http.client import HTTPException
+
 import numpy as np
 import io
 from unittest.mock import Mock, patch
+
+import pytest
+import requests
+
 from rakaia.register.query import (
     wsi_crop,
     serialize_crop,
@@ -77,6 +83,29 @@ def test_prism2_chat_post(mock_post):
 
     assert tcga_uni_request(None) is None
     mock_post.assert_called_once()
+
+@patch("rakaia.register.query.requests.post")
+def test_prism2_chat_post_exception(mock_post):
+
+    mock_response = Mock()
+    mock_response.status_code = 503
+    mock_response.raise_for_status.side_effect = requests.exceptions.HTTPError(
+        "503 Service Unavailable")
+
+    error = requests.exceptions.HTTPError("503 Service Unavailable")
+    error.response = mock_response
+
+    mock_response.raise_for_status.side_effect = error
+    mock_post.return_value = mock_response
+
+    crop = np.zeros((224, 224, 3), dtype=np.uint8)
+
+    with pytest.raises(HTTPException):
+        prism2_chat_request(crop)
+
+    assert prism2_chat_request(None) is None
+    mock_post.assert_called_once()
+
 
 def test_hist2query_results_chart():
     hits = [

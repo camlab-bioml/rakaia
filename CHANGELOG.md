@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-08-07
+## [0.33.0] - 2026-08-10
 
 ### Added
 
@@ -16,7 +16,6 @@ embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
 - Prototype: query WSI zoomed patches with [`Prism2`](https://huggingface.co/paige-ai/Prism2) chat
 - Show viewport coordinates for WSI canvas on change
 - Draw polygons on the WSI canvas
-
 
 ## [0.32.3] - 2026-08-05
 

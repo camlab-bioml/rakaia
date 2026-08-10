@@ -714,15 +714,21 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                                  "height": "105%"},
                                                               id="hist2query-port", persistence=config['persistence'],
                                                               persistence_type='local'),
-                                                ], style={"display": "flex"}),
-                                                dbc.Tooltip(TOOLTIPS['wsi-query-host'], target="hist2query-host",
-                                                            placement='left'),
+                                            html.H6('Tile number', style={"margin": "15px"}, id="wsi-tile-number-label"),
+                                            dcc.Dropdown(id='hist2query-tile-number',
+                                            options=[1, 4, 9, 16, 25, 36, 59, 64], value=25, persistence=config['persistence'],
+                                            persistence_type='local', style={"width": "30%", "margin": "5px"}),
+                                            dbc.Tooltip(TOOLTIPS['wsi-query-tile-number'], target="wsi-tile-number-label", placement='top')],
+                                            style={"display": "flex"}),
+                                            dbc.Tooltip(TOOLTIPS['wsi-query-host'], target="hist2query-host", placement='left'),
                                             dbc.Tabs([
                                             dbc.Tab(label='TCGA UNI2', label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
                                             html.Div([
                                             html.Div([
                                             html.Div([
                                             html.Br(),
+                                            dcc.Markdown("**Note**: Please accept the [UNI2](https://huggingface.co/MahmoodLab/UNI2-h) "
+                                            "terms of use before using this feature.", link_target="_blank", style={"margin": "10px"}),
                                             html.B("Find similar patches in TCGA with UNI2", style={"margin": "10px", "margin-top": "17px"}),
                                             html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
                                             dcc.Input(type="number", placeholder="k size",
@@ -732,22 +738,16 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             daq.ToggleSwitch(label='Group by slide', id='hist2query-group',
                                             labelPosition='bottom', value=True, color=DEFAULT_WIDGET_COLOUR,
                                             style={"width": "70%", "margin": "10px"}),
-                                            html.H6('Tile number', style={"margin": "10px"}, id="wsi-tile-number-label"),
-                                            dcc.Dropdown(id='hist2query-tile-number',
-                                            options=[1, 4, 9, 16, 25, 36], value=16,
-                                            persistence=config['persistence'], persistence_type='local',
-                                            style={"width": "75%", "margin": "5px"}),
                                             html.Br(),
                                             ], style={"display": "flex", "flexDirection": "row", "margin-top": "10px"}),
-                                            ], style={"width": "50%"}),
+                                            ], style={"width": "55%"}),
                                             html.Div([dcc.Loading(
                                             dcc.Graph(id='hist2query-pie', figure={'layout': dict(
                                             xaxis_showgrid=False, yaxis_showgrid=False, margin=dict(l=0, r=0, b=0, t=30, pad=0))},
                                                 style={"height": "400px", "width": "100%"}),
                                             type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR)],
-                                            style={"width": "50%"})],
+                                            style={"width": "45%"})],
                                             style={"display": "flex", "width": "100%", "alignItems": "flex-start"}),
-                                            dbc.Tooltip(TOOLTIPS['wsi-query-tile-number'], target="wsi-tile-number-label",placement='top'),
                                             ], style={"display": "flex"}),
                                                 dbc.Button("Send query", id='osd-query-run',
                                                            style={"align": "center", "display": "inline-block",
@@ -772,9 +772,13 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             children=[
                                             html.Div([
                                             html.Br(),
-                                            html.B("Ask prism2 about the current WSI patch.",
+                                            dcc.Markdown("**Note**: Please accept the [Virchow2](https://huggingface.co/paige-ai/Virchow2) and "
+                                            "[Prism2](https://huggingface.co/paige-ai/Prism2) terms of use before using this feature.",
+                                                         link_target="_blank", style={"margin": "10px"}),
+                                            html.B("Ask Prism2 about the current WSI patch.",
                                                        style={"margin": "10px", "margin-top": "17px"}),
-                                            wrap_child_in_loading(html.Div(id='prism2-chat-results', className="mt-3"), fullscreen=False),
+                                            wrap_child_in_loading(html.Div(id='prism2-chat-results',
+                                            className="mt-3", style={"margin": "10px"}), fullscreen=False),
                                             html.Br(),
                                             dcc.Input(id="prism2-query-question", className="form-control",
                                             placeholder="Ask Prism2 about this slide...", debounce=True)

@@ -3,6 +3,7 @@ import math
 import os.path
 import re
 import uuid
+from http.client import HTTPException
 from pathlib import Path
 import json
 import dash.exceptions
@@ -2361,6 +2362,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('hist2query-results', 'rowData'),
         Output('hist2query-results', 'columnDefs'),
         Output('hist2query-pie', 'figure'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
         Input("osd-query-run", "n_clicks"),
         State('wsi-bounds', 'data'),
         State('hist2query-host', 'value'),
@@ -2374,20 +2376,23 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Query a WSI patch (based on zoom) to hist2query TCGA UNI2 similarity
         """
-        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update
+        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update, dash.no_update
         try:
-            if None not in (reg_select, cur_hash, tile_number, k_search, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
+            if None not in (reg_select, cur_hash, k_search, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 # Use the list mapping to split the bounds preview into the integers
-                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), True, (224 * int(math.sqrt(tile_number))))
+                # if the tile number is not specified, use the full res image
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), (tile_number is not None),
+                                (224 * int(math.sqrt(tile_number if tile_number is not None else 0))))
                 results = tcga_uni_request(crop, hist_host, hist_port, k_search, True)
-                return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results)
+                return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results), dash.no_update
             # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
-            return [], [], go.Figure(layout={"template": None})
-        except (rex.HTTPError, rex.ConnectionError, rex.InvalidURL): return [], [], go.Figure(layout={"template": None})
+            return [], [], go.Figure(layout={"template": None}), dash.no_update
+        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return [], [], go.Figure(layout={"template": None}), {'error': str(e)}
 
     @dash_app.callback(
         Output('prism2-chat-results', 'children'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
         Input("prism2-query-question", "n_submit"),
         State("prism2-query-question", "value"),
         State('wsi-bounds', 'data'),
@@ -2401,10 +2406,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Query a WSI patch (based on zoom) to hist2query Prism2 chat
         """
         try:
-            if None not in (reg_select, cur_hash, tile_number, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
+            if None not in (reg_select, cur_hash, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
-                                                                # TODO: should higher resolution images be passed for prism2?
-                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), False, (224 * int(math.sqrt(tile_number))))
-                return prism2_chat_request(crop, hist_host, hist_port, "chat", str(question))
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))),
+                        (tile_number is not None), (224 * int(math.sqrt(tile_number if tile_number is not None else 0))))
+                return prism2_chat_request(crop, hist_host, hist_port, "chat", str(question)), dash.no_update
             return None
-        except (rex.HTTPError, rex.ConnectionError, rex.InvalidURL): return None
+        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return None, {'error': str(e)}
