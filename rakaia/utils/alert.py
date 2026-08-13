@@ -5,7 +5,8 @@ and session messages
 import pathlib
 from typing import Union
 from pydantic import BaseModel
-from dash import dcc
+from dash import dcc, html
+
 
 class DataImportTour(BaseModel):
     """
@@ -187,6 +188,19 @@ class ToolTips(BaseModel):
                       "wsi-query-host": "Specify a host for hist2query. If using localhost or a local IP address, provide a host port. "
                                         "Otherwise, provide a host URL and leave the port empty."}
 
+HF_MODEL_LINKS = {"UNI2": "https://huggingface.co/MahmoodLab/UNI2-h",
+                  "Prism2": "https://huggingface.co/paige-ai/Prism2"}
+
+def hf_model_agreement(model_name: str="UNI2"):
+    """
+    Define an HTML checklist Span for ussr to agree to hf model terms of use with hist2query
+    """
+    if model_name not in HF_MODEL_LINKS:
+        return html.Span([f"Error: model name not one of {list(HF_MODEL_LINKS.keys())}"])
+    return html.Span([" I attest to having a registered Hugging Face account and agreeing to the ",
+            html.A(f"{model_name} terms of use.", href=f"{HF_MODEL_LINKS[model_name]}", target="_blank"),
+            " I agree to use this feature strictly for academic, non-commercial, and non-diagnostic purposes "
+            "in accordance with the model license and terms. I understand that Rakaia does not verify individual user access status."])
 
 class PanelMismatchError(Exception):
     """

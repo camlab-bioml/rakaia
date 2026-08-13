@@ -15,7 +15,7 @@ import dash_bootstrap_components as dbc
 import dash_tour_component
 from rakaia._version import __version__
 from rakaia.register.query import TCGA_UNI_COL_DEFS
-from rakaia.utils.alert import DataImportTour, ToolTips
+from rakaia.utils.alert import DataImportTour, ToolTips, hf_model_agreement
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
     render_default_annotation_canvas,
@@ -684,7 +684,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.H6("Go to zoom level", style={"textAlign": "float"}),
                                             dcc.Input(type="number", value=None, min=0, max=1, step=0.05, debounce=True,
                                             style={"width": "50%"}, id='wsi-zoom-level'),
-                                            dcc.Checklist(options=['log zoom scale'], id='wsi-zoom-scale',
+                                            dcc.Checklist(options=[' log zoom scale'], id='wsi-zoom-scale',
                                             style={"width": "100%", "accent-color": DEFAULT_WIDGET_COLOUR, "margin-bottom": "5px"}),
                                             dbc.Tooltip(TOOLTIPS['wsi-zoom-level'], target="wsi-zoom-level",
                                                          placement="right"),
@@ -716,7 +716,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                               persistence_type='local'),
                                             html.H6('Tile number', style={"margin": "15px"}, id="wsi-tile-number-label"),
                                             dcc.Dropdown(id='hist2query-tile-number',
-                                            options=[1, 4, 9, 16, 25, 36, 59, 64], value=25, persistence=config['persistence'],
+                                            options=[1, 4, 9, 16, 25, 36, 49, 64], value=25, persistence=config['persistence'],
                                             persistence_type='local', style={"width": "30%", "margin": "5px"}),
                                             dbc.Tooltip(TOOLTIPS['wsi-query-tile-number'], target="wsi-tile-number-label", placement='top')],
                                             style={"display": "flex"}),
@@ -727,8 +727,10 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Div([
                                             html.Div([
                                             html.Br(),
-                                            dcc.Markdown("**Note**: Please accept the [UNI2](https://huggingface.co/MahmoodLab/UNI2-h) "
-                                            "terms of use before using this feature.", link_target="_blank", style={"margin": "10px"}),
+                                            dcc.Checklist(options=[{"label": hf_model_agreement("UNI2"), "value": "uni2_terms"}],
+                                                              id="uni2-terms", className="hf-checklist", style={"margin": "10px"},
+                                            persistence=config['persistence'],persistence_type='local'),
+                                            html.Br(),
                                             html.B("Find similar patches in TCGA with UNI2", style={"margin": "10px", "margin-top": "17px"}),
                                             html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
                                             dcc.Input(type="number", placeholder="k size",
@@ -749,7 +751,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             style={"width": "45%"})],
                                             style={"display": "flex", "width": "100%", "alignItems": "flex-start"}),
                                             ], style={"display": "flex"}),
-                                                dbc.Button("Send query", id='osd-query-run',
+                                            dbc.Button("Send query", id='osd-query-run', disabled=True,
                                                            style={"align": "center", "display": "inline-block",
                                                                   "background-color": DEFAULT_WIDGET_COLOUR,
                                                                   "float": "center",
@@ -772,16 +774,17 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             children=[
                                             html.Div([
                                             html.Br(),
-                                            dcc.Markdown("**Note**: Please accept the [Virchow2](https://huggingface.co/paige-ai/Virchow2) and "
-                                            "[Prism2](https://huggingface.co/paige-ai/Prism2) terms of use before using this feature.",
-                                                         link_target="_blank", style={"margin": "10px"}),
+                                            dcc.Checklist(options=[{"label": hf_model_agreement("Prism2"), "value": "prism2_terms"}],
+                                            id="prism2-terms", className="hf-checklist", style={"margin": "10px"},
+                                            persistence=config['persistence'],persistence_type='local'),
+                                            html.Br(),
                                             html.B("Ask Prism2 about the current WSI patch.",
                                                        style={"margin": "10px", "margin-top": "17px"}),
                                             wrap_child_in_loading(html.Div(id='prism2-chat-results',
                                             className="mt-3", style={"margin": "10px"}), fullscreen=False),
                                             html.Br(),
                                             dcc.Input(id="prism2-query-question", className="form-control",
-                                            placeholder="Ask Prism2 about this slide...", debounce=True)
+                                            placeholder="Ask Prism2 about this slide...", debounce=True, disabled=True)
                                             ]),
                                             ]),
                                             ])

@@ -6,6 +6,16 @@
     accent-color: #0f4d92;
 }
 
+.hf-checklist label {
+    display: inline-flex;
+    align-items: flex-start;
+    gap: 5px;
+}
+
+.hf-checklist label span {
+    margin: 0;
+}
+
 .gallery-row {
     position: absolute !important;
     top: 0;

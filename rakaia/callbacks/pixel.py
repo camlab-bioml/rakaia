@@ -9,7 +9,6 @@ import json
 import dash.exceptions
 import dash_uploader as du
 import flask
-import requests
 import requests.exceptions as rex
 from dash import ctx, ALL
 from dash_extensions.enrich import Output, Input, State, html
@@ -2357,6 +2356,27 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Open the modal for sending queries for the current WSI patch to hist2query
         """
         return not is_open if n else is_open
+
+    @dash_app.callback(
+        Output("osd-query-run", "disabled"),
+        Input('uni2-terms', 'value'),
+        prevent_initial_call=False)
+    def enable_uni2_hist2query_queries(acknowledge):
+        """
+        Enable queries to be executed once the model acknowledgment has been accepted
+        """
+        return False if acknowledge else True
+
+    @dash_app.callback(
+        Output("prism2-query-question", "disabled"),
+        Input('prism2-terms', 'value'),
+        prevent_initial_call=False)
+    def enable_prism2_hist2query_queries(acknowledge):
+        """
+        Enable queries to be executed once the model acknowledgment has been accepted
+        """
+        return False if acknowledge else True
+
 
     @dash_app.callback(
         Output('hist2query-results', 'rowData'),

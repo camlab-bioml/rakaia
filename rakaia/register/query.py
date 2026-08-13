@@ -109,7 +109,8 @@ def prism2_chat_request(crop: Union[np.ndarray, np.array, None]=None,
     if crop is not None:
         response = requests.post(f"{set_query_host(api_host, api_port)}/{endpoint}",
                                  files={"patch": ("patch.npz", serialize_crop(crop.astype(np.uint8)))},
-                                 data={"question": question}, timeout=300)
+                                 data={"question": question, "raw_scores_binary": False,
+                                       "max_token_response": 100}, timeout=300)
         resp = handle_request_error(response)
         return resp['response'][0] if isinstance(resp['response'], list) else str(resp['response'])
     return None
