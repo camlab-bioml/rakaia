@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Update from dependabot: `cryptography`
+- Add frozen `affine` to dependencies
 
 ## [0.32.2] - 2026-07-23
 
