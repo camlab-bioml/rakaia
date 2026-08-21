@@ -41,6 +41,7 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
+from rakaia.register.gdc_viewer_template import build_viewer_html
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
@@ -2433,3 +2434,16 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 return prism2_chat_request(crop, hist_host, hist_port, "chat", str(question)), dash.no_update
             return None
         except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return None, {'error': str(e)}
+
+    @dash_app.callback(
+        Output("gdc-slide-viewer-iframe", "srcDoc"),
+        Output('gdc-slide-osd-viewer', 'is_open'),
+        Input("hist2query-results", "cellRendererData"))
+    def gdc_slide_viewer_per_patch(cell):
+        """
+        View the GDC TCGA slide with the select patch overlaid
+        """
+        if cell:
+            row = cell["value"]
+            return build_viewer_html(file_id=str(row["url"].split("files/")[-1]), x=row["x"], y=row["y"], n=2500), True
+        return None, False

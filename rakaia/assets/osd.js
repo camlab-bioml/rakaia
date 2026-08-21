@@ -258,40 +258,47 @@ const observer = new MutationObserver(() => {
     childList: true
     });
 
-    let dagFunc = window.dashAgGridComponentFunctions =
+let dagcomponentfuncs = window.dashAgGridComponentFunctions =
     window.dashAgGridComponentFunctions || {};
 
-    dagFunc.resizeGroupColumn = function(params) {
-    params.api.autoSizeColumn("ag-Grid-AutoColumn");
-    };
-
-    dagFunc.LinkRenderer = function(props) {
+dagcomponentfuncs.OpenSlideButton = function (props) {
+    if (props.node.group) return null; // group rows have no single x/y/slide_id to open
+    function onClick() {
+        props.setData(props.data);
+    }
     return React.createElement(
-        "a",
+        'button',
+        { onClick: onClick, className: props.className || 'open-slide-btn' },
+        props.value || 'Open'
+    );
+};
+
+dagcomponentfuncs.LinkRenderer = function (props) {
+    if (props.node.group) return null; // nothing to link to on aggregated group rows
+    return React.createElement(
+        'a',
         {
             href: props.value,
-            target: "_blank",
-            rel: "noopener noreferrer"
+            target: '_blank',
+            rel: 'noopener noreferrer'
         },
-        "Open Slide in GDC Portal"
+        'Open Slide in GDC Portal'
     );
-    };
+};
 
-    dagFunc.GroupLinkRenderer = function(props) {
-
+dagcomponentfuncs.GroupLinkRenderer = function (props) {
     const value = props.value;
 
     if (props.node.group && props.node.level === 1) {
-
         const url = props.node.allLeafChildren[0]?.data?.url;
 
         if (url) {
             return React.createElement(
-                "a",
+                'a',
                 {
                     href: url,
-                    target: "_blank",
-                    rel: "noopener noreferrer",
+                    target: '_blank',
+                    rel: 'noopener noreferrer',
                     onClick: (e) => {
                         e.stopPropagation();
                     }
@@ -302,6 +309,12 @@ const observer = new MutationObserver(() => {
     }
 
     return value;
+};
+
+let dagfuncs = window.dashAgGridFunctions = window.dashAgGridFunctions || {};
+
+dagfuncs.resizeGroupColumn = function (params) {
+    params.api.autoSizeColumn('ag-Grid-AutoColumn');
 };
 
 const osd_download_observer = new MutationObserver(() => {

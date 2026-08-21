@@ -689,7 +689,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             dbc.Tooltip(TOOLTIPS['wsi-zoom-level'], target="wsi-zoom-level",
                                                          placement="right"),
                                             dcc.Checklist(id='osd-polygon', options=[' Draw polygons'],
-                                            value=[], style={"width": "100%", "margin-top": "5px"}),
+                                            value=[], style={"width": "100%", "margin-top": "5px", "accent-color": DEFAULT_WIDGET_COLOUR}),
                                             html.Br(),
                                             html.H6("Scaling factor (μm/pixel)", style={"margin-top": "10px"}),
                                             dcc.Input(type="number", value=0.2125,
@@ -728,7 +728,8 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Div([
                                             html.Br(),
                                             dcc.Checklist(options=[{"label": hf_model_agreement("UNI2"), "value": "uni2_terms"}],
-                                                              id="uni2-terms", className="hf-checklist", style={"margin": "10px"},
+                                                              id="uni2-terms", className="hf-checklist",
+                                            style={"margin": "10px", "accent-color": DEFAULT_WIDGET_COLOUR},
                                             persistence=config['persistence'],persistence_type='local'),
                                             html.Br(),
                                             html.B("Find similar patches in TCGA with UNI2", style={"margin": "10px", "margin-top": "17px"}),
@@ -775,7 +776,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Div([
                                             html.Br(),
                                             dcc.Checklist(options=[{"label": hf_model_agreement("Prism2"), "value": "prism2_terms"}],
-                                            id="prism2-terms", className="hf-checklist", style={"margin": "10px"},
+                                            id="prism2-terms", className="hf-checklist", style={"margin": "10px", "accent-color": DEFAULT_WIDGET_COLOUR},
                                             persistence=config['persistence'],persistence_type='local'),
                                             html.Br(),
                                             html.B("Ask Prism2 about the current WSI patch.",
@@ -790,6 +791,12 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             ])
                                             ]),
                                             id="osd-query-modal", size='xl'),
+                                             dbc.Modal(children=dbc.ModalBody(
+                                                 [html.Iframe(
+                                                id="gdc-slide-viewer-iframe", srcDoc="",
+                                                style={"width": "100%", "height": "80vh", "border": "none"},
+                                                sandbox="allow-scripts allow-same-origin"),
+                                                 ]), id='gdc-slide-osd-viewer', size='xl'),
                                             wrap_child_in_loading(
                                             html.Div([
                                             dbc.Button("Query WSI", id='osd-query-modal-open', style={"align": "center",

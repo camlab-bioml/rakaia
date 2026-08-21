@@ -17,7 +17,11 @@ import plotly.graph_objs as go
 # Default column definitions for the TCGA UNI search results shown in dash ag grid
 TCGA_UNI_COL_DEFS = [{"field": "tissue", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
                     {"field": "x"}, {"field": "y"},
-                    {"field": "url", "cellRenderer": "LinkRenderer"}, {"field": "similarity"}]
+                    {"field": "url", "cellRenderer": "LinkRenderer"}, {"field": "similarity"},
+                    {"field": "open", "headerName": "Open patch in slide viewer", "cellRenderer": "OpenSlideButton",
+                    "cellRendererParams": {"className": "open-slide-btn"},
+                    # static label shown on every button in this column
+                    "valueGetter": {"function": "'Open'"}, "sortable": False, "filter": False}]
 
 def wsi_crop(image: Union[Path, str, np.ndarray, None],
              bounds: Union[list, None]=None,

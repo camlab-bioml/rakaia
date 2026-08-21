@@ -22,6 +22,7 @@ embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
 ### Changed
 
 - Update from dependabot: `cryptography`
+- Add frozen `affine` to dependencies
 
 ## [0.32.2] - 2026-07-23
 
