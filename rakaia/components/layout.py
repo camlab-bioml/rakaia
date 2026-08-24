@@ -14,7 +14,7 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
 from rakaia._version import __version__
-from rakaia.register.query import TCGA_UNI_COL_DEFS
+from rakaia.register.query import TCGA_UNI_COL_DEFS, tile_dimension_labels
 from rakaia.utils.alert import DataImportTour, ToolTips, hf_model_agreement
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
@@ -716,7 +716,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                               persistence_type='local'),
                                             html.H6('Tile number', style={"margin": "15px"}, id="wsi-tile-number-label"),
                                             dcc.Dropdown(id='hist2query-tile-number',
-                                            options=[1, 4, 9, 16, 25, 36, 49, 64], value=25, persistence=config['persistence'],
+                                            options=tile_dimension_labels(), value=5, persistence=config['persistence'],
                                             persistence_type='local', style={"width": "30%", "margin": "5px"}),
                                             dbc.Tooltip(TOOLTIPS['wsi-query-tile-number'], target="wsi-tile-number-label", placement='top')],
                                             style={"display": "flex"}),
@@ -791,18 +791,18 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             ])
                                             ]),
                                             id="osd-query-modal", size='xl'),
-                                             dbc.Modal(children=dbc.ModalBody(
-                                                 [html.Iframe(
-                                                id="gdc-slide-viewer-iframe", srcDoc="",
-                                                style={"width": "100%", "height": "80vh", "border": "none"},
-                                                sandbox="allow-scripts allow-same-origin"),
-                                                 ]), id='gdc-slide-osd-viewer', size='xl'),
+                                            dbc.Modal(children=[dbc.ModalHeader(dbc.ModalTitle("View select patch in GDC slide"), close_button=True),
+                                            dbc.ModalBody([html.Span(["Note: highlighted patch is larger than the embedding patch to "
+                                                               "highlight additional tissue context."], style={"margin-bottom": "15px"}),
+                                            html.Br(),
+                                            html.Iframe(id="gdc-slide-viewer-iframe", srcDoc="", style={"width": "100%",
+                                            "height": "80vh", "border": "none", "margin-top": "15px"}, sandbox="allow-scripts allow-same-origin"),
+                                            ])], id='gdc-slide-osd-viewer', size='xl'),
                                             wrap_child_in_loading(
                                             html.Div([
                                             dbc.Button("Query WSI", id='osd-query-modal-open', style={"align": "center",
                                             "background-color": DEFAULT_WIDGET_COLOUR, "float": "center", "display": "none"}, n_clicks=0),
-                                            dcc.Store(id='coregister-transfer', data=False)]),
-                                                wrap=config['use_loading'], fullscreen=False),
+                                            dcc.Store(id='coregister-transfer', data=False)]), wrap=config['use_loading'], fullscreen=False),
                                             dcc.Store(id='coregister-finished', data=False)], width=2),
                                          dbc.Modal(children=dbc.ModalBody(
                                              [dcc.Input(type="text", placeholder="Read WSI directly from local filepath",

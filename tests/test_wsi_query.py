@@ -1,13 +1,10 @@
 import os
 from http.client import HTTPException
-
 import numpy as np
 import io
 from unittest.mock import Mock, patch
-
 import pytest
 import requests
-
 from rakaia.register.query import (
     wsi_crop,
     serialize_crop,
@@ -15,7 +12,10 @@ from rakaia.register.query import (
     TCGA_UNI_COL_DEFS,
     format_col_ag_groupings,
     tcga_resp_to_table,
-    hist2query_pie_chart, prism2_chat_request)
+    hist2query_pie_chart,
+    prism2_chat_request,
+    gdc_slide_iframe,
+    tile_dimension_labels)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -106,6 +106,11 @@ def test_prism2_chat_post_exception(mock_post):
     assert prism2_chat_request(None) is None
     mock_post.assert_called_once()
 
+def test_set_tile_dim_labels():
+    options = tile_dimension_labels()
+    assert len(options) == 10
+    assert options[0]['value'] == 1
+    assert options[-1]['value'] == 10
 
 def test_hist2query_results_chart():
     hits = [
@@ -118,3 +123,9 @@ def test_hist2query_results_chart():
     assert 'kidney' in dist_tissue['data'][0]['labels']
     assert dist_tissue['data'][0]['type'] == 'pie'
     assert hist2query_pie_chart(None) is None
+
+
+def test_gdc_slide_iframe():
+    gdc_html_template = gdc_slide_iframe("new_slide", 1000, 1000, 2000)
+    assert gdc_html_template.startswith("<!DOCTYPE html>")
+    assert 'const FILE_ID = "new_slide";' in gdc_html_template

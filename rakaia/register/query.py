@@ -3,6 +3,7 @@ Module related to functions and classes for processing WSI patches and enabling 
 """
 import io
 import copy
+from pathlib import Path
 from http.client import HTTPException
 from typing import Union
 from pathlib import Path
@@ -130,6 +131,11 @@ def format_col_ag_groupings(use_grouping: bool=True):
             col["hide"] = use_grouping
     return new_col_defs
 
+def tile_dimension_labels(max_dim: int=10):
+    """
+    Set the `dcc.Dropdown` options and labels for the hist2query tile number downsample
+    """
+    return [{"label": f"{val}x{val}", "value": val} for val in range(1, int(max_dim + 1))]
 
 def hist2query_pie_chart(query_results: Union[list, dict, None],
                     category: str="tissue"):
@@ -152,3 +158,16 @@ def hist2query_pie_chart(query_results: Union[list, dict, None],
                           legend=dict(orientation="v", yanchor="middle", y=0.5, xanchor="left", x=1))
         return fig.to_dict()
     return None
+
+_GDC_SlIDE_TEMPLATE = (Path(__file__).parent / "../templates" / "gdc.html").read_text()
+
+def gdc_slide_iframe(file_id: str, x: float, y: float, n: float = 1250) -> str:
+    """
+    Generate a GDC slide OSD viewer for a specific GDC-hosted slide with a patch highlighted by coordinates
+    and a bounding box. Compatible with hist2query patch results
+    """
+    return (_GDC_SlIDE_TEMPLATE
+        .replace("__FILE_ID__", str(file_id))
+        .replace("__X__", repr(float(x)))
+        .replace("__Y__", repr(float(y)))
+        .replace("__N__", repr(float(n))))

@@ -183,7 +183,7 @@ class ToolTips(BaseModel):
                                   " DGE markers are ordered by a Wilcoxon rank-sum test (group vs. all others).",
                       "intensity-hover": "WARNING: modifying the canvas blend can become much slower with this feature enabled. "
                                  "Highly recommended to turn off before exporting the canvas to HTML.",
-                      "wsi-query-tile-number": "Increasing the tile number may give better query similarity or chat results, "
+                      "wsi-query-tile-number": "Set the number of 224-pixel tiles for the query image. Increasing the tile number may give better query similarity or chat results, "
                                                "but requests may be slower. If left blank, the full-resolution image is used (NOT recommended for large patches).",
                       "wsi-query-host": "Specify a host for hist2query. If using localhost or a local IP address, provide a host port. "
                                         "Otherwise, provide a host URL and leave the port empty."}
@@ -198,7 +198,7 @@ def hf_model_agreement(model_name: str="UNI2"):
     if model_name not in HF_MODEL_LINKS:
         return html.Span([f"Error: model name not one of {list(HF_MODEL_LINKS.keys())}"])
     return html.Span([" I attest to having a registered Hugging Face account and agreeing to the ",
-            html.A(f"{model_name} terms of use.", href=f"{HF_MODEL_LINKS[model_name]}", target="_blank"),
+            html.A(f"{model_name} terms of use.", href=f"{HF_MODEL_LINKS[model_name]}", target="_blank", style={"color": "#0f4d92"}),
             " I agree to use this feature strictly for academic, non-commercial, and non-diagnostic purposes "
             "in accordance with the model license and terms. I understand that Rakaia does not verify individual user access status."])
 

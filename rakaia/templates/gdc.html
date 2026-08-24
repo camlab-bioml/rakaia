@@ -1,8 +1,4 @@
-"""
-Contains the classes and functions for rendering a GDC OSD template for a TCGA slide
-"""
-
-_OSD_GDC_TEMPLATE = """<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -67,11 +63,11 @@ _OSD_GDC_TEMPLATE = """<!DOCTYPE html>
 <script>
 const TILE_BASE = "https://portal.gdc.cancer.gov/auth/api/v0/tile";
 
-// Values supplied by the Dash callback (baked in server-side).
 const FILE_ID = "__FILE_ID__";
 const BOX_X = __X__;
 const BOX_Y = __Y__;
-const BOX_N = __N__;
+const BOX_PADDING = __N__;
+const PATCH_SIZE = 250;
 
 class GDCTileSource extends OpenSeadragon.TileSource {
   constructor(fileId, metadata) {
@@ -123,17 +119,35 @@ function setStatus(msg, isError) {
   statusEl.className = isError ? "error" : "";
 }
 
-function drawBox(x, y, n) {
+function drawBox(x, y, patchSize, padding) {
   const tiledImage = viewer.world.getItemAt(0);
   if (!tiledImage) return;
-  const rect = tiledImage.imageToViewportRectangle(x - n / 2, y - n / 2, n, n);
+
+  const boxSize = patchSize + 2 * padding;
+  const boxX = x - padding;
+  const boxY = y - padding;
+
+  const boxRect = tiledImage.imageToViewportRectangle(boxX, boxY, boxSize, boxSize);
   const el = document.createElement("div");
   el.className = "bbox-overlay";
-  viewer.addOverlay({ element: el, location: rect });
-  viewer.viewport.fitBounds(rect, true);
+  viewer.addOverlay({ element: el, location: boxRect });
+
+  const viewMargin = boxSize * 0.15;
+  const viewRect = tiledImage.imageToViewportRectangle(
+    boxX - viewMargin,
+    boxY - viewMargin,
+    boxSize + 2 * viewMargin,
+    boxSize + 2 * viewMargin
+  );
+
+  const applyFit = () => viewer.viewport.fitBounds(viewRect, true);
+  applyFit();
+  requestAnimationFrame(() => requestAnimationFrame(applyFit));
+  setTimeout(applyFit, 150);
+  setTimeout(applyFit, 500);
 }
 
-async function loadSlide(fileId, x, y, n) {
+async function loadSlide(fileId, x, y, patchSize, padding) {
   setStatus(`Fetching metadata for ${fileId}…`, false);
   try {
     let metaResp;
@@ -154,12 +168,13 @@ async function loadSlide(fileId, x, y, n) {
 
     const tileSource = new GDCTileSource(fileId, metadata);
     viewer.open(tileSource);
-    viewer.addOnceHandler("open", () => drawBox(x, y, n));
+    viewer.addOnceHandler("open", () => drawBox(x, y, patchSize, padding));
 
     metaEl.textContent =
       `width=${metadata.Width}  height=${metadata.Height}  ` +
       `tileSize=${metadata.TileSize}  overlap=${metadata.Overlap}  ` +
-      `maxLevel=${tileSource.maxLevel}  box=(${x}, ${y}) n=${n}`;
+      `maxLevel=${tileSource.maxLevel}  patch top-left=(${x}, ${y}) ` +
+      `patchSize=${patchSize} padding=${padding} boxSize=${patchSize + 2 * padding}`;
     setStatus(`Loaded ${fileId}`, false);
   } catch (err) {
     console.error(err);
@@ -167,21 +182,7 @@ async function loadSlide(fileId, x, y, n) {
   }
 }
 
-loadSlide(FILE_ID, BOX_X, BOX_Y, BOX_N);
+loadSlide(FILE_ID, BOX_X, BOX_Y, PATCH_SIZE, BOX_PADDING);
 </script>
 </body>
 </html>
-"""
-
-
-def build_viewer_html(file_id: str, x: float, y: float, n: float = 2500) -> str:
-    """
-    Build the standalone HTML/JS for the GDC OpenSeadragon viewer, with a
-    fixed n x n bounding box drawn and centered on (x, y).
-    """
-    return (
-        _OSD_GDC_TEMPLATE
-        .replace("__FILE_ID__", str(file_id))
-        .replace("__X__", repr(float(x)))
-        .replace("__Y__", repr(float(y)))
-        .replace("__N__", repr(float(n))))

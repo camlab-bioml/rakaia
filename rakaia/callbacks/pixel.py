@@ -41,7 +41,7 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
-from rakaia.register.gdc_viewer_template import build_viewer_html
+from rakaia.register.query import gdc_slide_iframe
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
@@ -2404,7 +2404,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 # Use the list mapping to split the bounds preview into the integers
                 # if the tile number is not specified, use the full res image
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), (tile_number is not None),
-                                (224 * int(math.sqrt(tile_number if tile_number is not None else 0))))
+                                (224 * int(tile_number if tile_number is not None else 0)))
                 results = tcga_uni_request(crop, hist_host, hist_port, k_search, True)
                 return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results), dash.no_update
             # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
@@ -2430,7 +2430,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             if None not in (reg_select, cur_hash, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))),
-                        (tile_number is not None), (224 * int(math.sqrt(tile_number if tile_number is not None else 0))))
+                        (tile_number is not None), (224 * int(tile_number if tile_number is not None else 0)))
                 return prism2_chat_request(crop, hist_host, hist_port, "chat", str(question)), dash.no_update
             return None
         except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return None, {'error': str(e)}
@@ -2445,5 +2445,5 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if cell:
             row = cell["value"]
-            return build_viewer_html(file_id=str(row["url"].split("files/")[-1]), x=row["x"], y=row["y"], n=2500), True
+            return gdc_slide_iframe(file_id=str(row["url"].split("files/")[-1]), x=row["x"], y=row["y"], n=1000), True
         return None, False
