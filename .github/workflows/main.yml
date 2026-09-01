@@ -23,7 +23,31 @@ jobs:
         run: sudo apt-get -y update && sudo apt-get install -y libgl1-mesa-dev libvips-dev build-essential cmake
       - name: Install libvips if using Windows
         if: runner.os == 'Windows'
-        run: choco install vips -y
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+            $headers = @{ Authorization = "Bearer $env:GITHUB_TOKEN" }
+            $release = Invoke-RestMethod -Uri "https://api.github.com/repos/libvips/build-win64-mxe/releases/latest" -Headers $headers
+
+            # Match the 64-bit "all" dev zip regardless of w64/x64 naming, and avoid arm64/static variants
+            $asset = $release.assets | Where-Object {
+              $_.name -match '^vips-dev-(w64|x64)-all-[\d.]+\.zip$'
+            } | Select-Object -First 1
+
+            if (-not $asset) {
+              Write-Error "Could not find a matching vips-dev-*-all-*.zip asset in latest release $($release.tag_name)"
+              exit 1
+            }
+
+            Write-Host "Downloading $($asset.name) from $($release.tag_name)"
+            Invoke-WebRequest -Uri $asset.browser_download_url -OutFile vips.zip
+            Expand-Archive vips.zip -DestinationPath C:\vips
+
+            $binPath = Get-ChildItem -Path C:\vips -Directory | Select-Object -First 1
+            $fullBinPath = Join-Path $binPath.FullName "bin"
+            echo $fullBinPath | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
       - name: Install libvips uf using macOS
         if: runner.os == 'macOS'
         run: brew install vips
