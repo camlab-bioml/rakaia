@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-08-13
+## [0.33.0] - 2026-09-01
 
 ### Added
 
@@ -23,6 +23,7 @@ embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
 
 - Update from dependabot: `cryptography`
 - Add frozen `affine` to dependencies
+- Explicit installation of `libvips` in Actions (OS-specific)
 
 ## [0.32.2] - 2026-07-23
 
