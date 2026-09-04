@@ -29,7 +29,7 @@ def wsi_crop(image: Union[Path, str, np.ndarray, None],
              return_sampled: bool=True,
              patch_out_size: int=224):
     """
-    Generate a crop of a WSI image processed through pyvips. Assumes tha the bounds array is in the
+    Generate a crop of a WSI image processed through pyvips. Assumes that the bounds array is in the
     format `[x0, x1, y0, y1]`.
     If `return_subsample` is used, specify the size (i.e. 224 works for UNI patch embeddings)
     """
@@ -161,12 +161,13 @@ def hist2query_pie_chart(query_results: Union[list, dict, None],
 
 _GDC_SlIDE_TEMPLATE = (Path(__file__).parent / "../templates" / "gdc.html").read_text()
 
-def gdc_slide_iframe(file_id: str, x: float, y: float, n: float = 1250) -> str:
+def gdc_slide_iframe(url: str, file_id: str, x: float, y: float, n: float = 1250) -> str:
     """
     Generate a GDC slide OSD viewer for a specific GDC-hosted slide with a patch highlighted by coordinates
     and a bounding box. Compatible with hist2query patch results
     """
     return (_GDC_SlIDE_TEMPLATE
+        .replace("__URL__", str(url))
         .replace("__FILE_ID__", str(file_id))
         .replace("__X__", repr(float(x)))
         .replace("__Y__", repr(float(y)))

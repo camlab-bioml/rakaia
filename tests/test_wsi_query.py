@@ -126,6 +126,7 @@ def test_hist2query_results_chart():
 
 
 def test_gdc_slide_iframe():
-    gdc_html_template = gdc_slide_iframe("new_slide", 1000, 1000, 2000)
+    gdc_html_template = gdc_slide_iframe("new_slide", "new_slide", 1000, 1000, 2000)
     assert gdc_html_template.startswith("<!DOCTYPE html>")
     assert 'const FILE_ID = "new_slide";' in gdc_html_template
+    assert 'const URL = "new_slide";' in gdc_html_template

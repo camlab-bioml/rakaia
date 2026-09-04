@@ -796,7 +796,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                "highlight additional tissue context."], style={"margin-bottom": "15px"}),
                                             html.Br(),
                                             html.Iframe(id="gdc-slide-viewer-iframe", srcDoc="", style={"width": "100%",
-                                            "height": "80vh", "border": "none", "margin-top": "15px"}, sandbox="allow-scripts allow-same-origin"),
+                                            "height": "80vh", "border": "none", "margin-top": "15px"}, sandbox="allow-scripts allow-same-origin allow-popups"),
                                             ])], id='gdc-slide-osd-viewer', size='xl'),
                                             wrap_child_in_loading(
                                             html.Div([

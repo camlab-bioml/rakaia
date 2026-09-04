@@ -55,6 +55,12 @@
 </head>
 <body>
 <div id="app">
+  <div style="background-color: white; margin-bottom: 15px;">
+  <div>
+    <a target="_blank" rel="noopener" href=__URL__> View slide/patient metadata in the GDC portal</a>
+  </div>
+    <br>
+  </div>
   <div id="statusBar">Loading slide __FILE_ID__…</div>
   <div id="viewer"></div>
   <div id="meta"></div>
@@ -63,6 +69,7 @@
 <script>
 const TILE_BASE = "https://portal.gdc.cancer.gov/auth/api/v0/tile";
 
+const URL = "__URL__";
 const FILE_ID = "__FILE_ID__";
 const BOX_X = __X__;
 const BOX_Y = __Y__;

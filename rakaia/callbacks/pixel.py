@@ -2378,7 +2378,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         return False if acknowledge else True
 
-
     @dash_app.callback(
         Output('hist2query-results', 'rowData'),
         Output('hist2query-results', 'columnDefs'),
@@ -2445,5 +2444,5 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if cell:
             row = cell["value"]
-            return gdc_slide_iframe(file_id=str(row["url"].split("files/")[-1]), x=row["x"], y=row["y"], n=1000), True
+            return gdc_slide_iframe(url = str(row["url"]), file_id=str(row["url"].split("files/")[-1]), x=row["x"], y=row["y"], n=1000), True
         return None, False
