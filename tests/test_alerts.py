@@ -2,7 +2,8 @@ from rakaia.utils.alert import (
     AlertMessage, file_import_message,
     DataImportTour,
     ToolTips,
-    add_warning_to_error_config)
+    add_warning_to_error_config,
+    hf_model_agreement)
 import os
 
 def test_basic_alerts():
@@ -37,3 +38,9 @@ def test_parse_add_error_config():
     warning_2 = add_warning_to_error_config(warning, "another warning")
     assert warning_2 == {'error': 'another warning'}
     assert add_warning_to_error_config(warning_2, None) == {'error': ''}
+
+def test_hf_model_agreement_span():
+    agreement_uni2 = hf_model_agreement()
+    assert 'UNI2' in agreement_uni2.children[1].children
+    no_agreement = hf_model_agreement("other_model")
+    assert 'Error' in no_agreement.children[0]

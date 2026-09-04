@@ -7,12 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-09-01
+
+### Added
+
+- Prototype: query WSI zoomed patches on [TCGA UNI](https://huggingface.co/datasets/W8Yi/tcga-wsi-uni2h-features)
+embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
+- Prototype: query WSI zoomed patches with [`Prism2`](https://huggingface.co/paige-ai/Prism2) chat
+- Show viewport coordinates for WSI canvas on change
+- Draw polygons on the WSI canvas
+
 ## [0.32.3] - 2026-08-05
 
 ### Changed
 
 - Update from dependabot: `cryptography`
 - Add frozen `affine` to dependencies
+- Explicit installation of `libvips` in Actions (OS-specific)
 
 ## [0.32.2] - 2026-07-23
 

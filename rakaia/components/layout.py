@@ -14,7 +14,8 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
 from rakaia._version import __version__
-from rakaia.utils.alert import DataImportTour, ToolTips
+from rakaia.register.query import TCGA_UNI_COL_DEFS, tile_dimension_labels
+from rakaia.utils.alert import DataImportTour, ToolTips, hf_model_agreement
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
     render_default_annotation_canvas,
@@ -598,7 +599,12 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                   style={"display": "flex"}),
                                                id="btn-download-umap-projection", className="mx-auto",
                                                color=None, n_clicks=0, style={"margin-top": "10px"}),
-                                    dcc.Download(id="download-umap-projection")
+                                    dcc.Download(id="download-umap-projection"),
+                                    dbc.Button(children=html.Span([html.I(className="fa-solid fa-download",
+                                    style={"display": "inline-block", "margin-right": "7.5px",
+                                    "margin-top": "3px"}), html.Div("WSI canvas annotations (JSON)")],
+                                    style={"display": "flex"}), id="btn-download-wsi-annot", className="mx-auto",
+                                    color=None, n_clicks=0, style={"margin-top": "10px"}),
                                 ], style={"border":"1px black solid", "display": "inline-block",
                                                         "width": "auto", "padding": "7.5px"}),
                                 html.Br(),
@@ -678,10 +684,12 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.H6("Go to zoom level", style={"textAlign": "float"}),
                                             dcc.Input(type="number", value=None, min=0, max=1, step=0.05, debounce=True,
                                             style={"width": "50%"}, id='wsi-zoom-level'),
-                                            dcc.Checklist(options=['log zoom scale'], id='wsi-zoom-scale',
-                                            style={"width": "100%", "accent-color": DEFAULT_WIDGET_COLOUR}),
+                                            dcc.Checklist(options=[' log zoom scale'], id='wsi-zoom-scale',
+                                            style={"width": "100%", "accent-color": DEFAULT_WIDGET_COLOUR, "margin-bottom": "5px"}),
                                             dbc.Tooltip(TOOLTIPS['wsi-zoom-level'], target="wsi-zoom-level",
                                                          placement="right"),
+                                            dcc.Checklist(id='osd-polygon', options=[' Draw polygons'],
+                                            value=[], style={"width": "100%", "margin-top": "5px", "accent-color": DEFAULT_WIDGET_COLOUR}),
                                             html.Br(),
                                             html.H6("Scaling factor (μm/pixel)", style={"margin-top": "10px"}),
                                             dcc.Input(type="number", value=0.2125,
@@ -692,9 +700,110 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             placement="right"),
                                             html.Br(),
                                             html.Br(),
-                                            wrap_child_in_loading(dcc.Store(id='coregister-transfer', data=False),
-                                                                        wrap=config['use_loading'], fullscreen=False),
-                                                  dcc.Store(id='coregister-finished', data=False)], width=2),
+                                            html.Div(id="osd-viewport-coord", children=[]),
+                                            html.Br(),
+                                            dbc.Modal(children=dbc.ModalBody([
+                                            html.B("Set host and/or port for hist2query", style={"margin": "10px"}),
+                                            html.Div([dcc.Input(type="text", placeholder="Set host for hist2query",
+                                                              value="localhost",
+                                                              style={"width": "40%", "margin": "10px"},
+                                                              id="hist2query-host", persistence=config['persistence'],
+                                                              persistence_type='local'),
+                                            dcc.Input(type="number", placeholder="Set port for hist2query",
+                                                              value=7000, style={"width": "10%", "margin": "12.5px",
+                                                                                 "height": "105%"},
+                                                              id="hist2query-port", persistence=config['persistence'],
+                                                              persistence_type='local'),
+                                            html.H6('Tile number', style={"margin": "15px"}, id="wsi-tile-number-label"),
+                                            dcc.Dropdown(id='hist2query-tile-number',
+                                            options=tile_dimension_labels(), value=5, persistence=config['persistence'],
+                                            persistence_type='local', style={"width": "30%", "margin": "5px"}),
+                                            dbc.Tooltip(TOOLTIPS['wsi-query-tile-number'], target="wsi-tile-number-label", placement='top')],
+                                            style={"display": "flex"}),
+                                            dbc.Tooltip(TOOLTIPS['wsi-query-host'], target="hist2query-host", placement='left'),
+                                            dbc.Tabs([
+                                            dbc.Tab(label='TCGA UNI2', label_style={"color": DEFAULT_WIDGET_COLOUR}, children=[
+                                            html.Div([
+                                            html.Div([
+                                            html.Div([
+                                            html.Br(),
+                                            dcc.Checklist(options=[{"label": hf_model_agreement("UNI2"), "value": "uni2_terms"}],
+                                                              id="uni2-terms", className="hf-checklist",
+                                            style={"margin": "10px", "accent-color": DEFAULT_WIDGET_COLOUR},
+                                            persistence=config['persistence'],persistence_type='local'),
+                                            html.Br(),
+                                            html.B("Find similar patches in TCGA with UNI2", style={"margin": "10px", "margin-top": "17px"}),
+                                            html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
+                                            dcc.Input(type="number", placeholder="k size",
+                                            min=1, max=10000, value=50,
+                                            style={"width": "60%", "height": "10%", "margin": "7.5px"},
+                                            id='hist2query-k', persistence=config['persistence'], persistence_type='local'),
+                                            daq.ToggleSwitch(label='Group by slide', id='hist2query-group',
+                                            labelPosition='bottom', value=True, color=DEFAULT_WIDGET_COLOUR,
+                                            style={"width": "70%", "margin": "10px"}),
+                                            html.Br(),
+                                            ], style={"display": "flex", "flexDirection": "row", "margin-top": "10px"}),
+                                            ], style={"width": "55%"}),
+                                            html.Div([dcc.Loading(
+                                            dcc.Graph(id='hist2query-pie', figure={'layout': dict(
+                                            xaxis_showgrid=False, yaxis_showgrid=False, margin=dict(l=0, r=0, b=0, t=30, pad=0))},
+                                                style={"height": "400px", "width": "100%"}),
+                                            type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR)],
+                                            style={"width": "45%"})],
+                                            style={"display": "flex", "width": "100%", "alignItems": "flex-start"}),
+                                            ], style={"display": "flex"}),
+                                            dbc.Button("Send query", id='osd-query-run', disabled=True,
+                                                           style={"align": "center", "display": "inline-block",
+                                                                  "background-color": DEFAULT_WIDGET_COLOUR,
+                                                                  "float": "center",
+                                                                  "margin-bottom": "10px", "margin-top": "-25px", "flexBasis": "100%"},
+                                                           n_clicks=0),
+                                            html.Br(),
+                                            html.B("Query results", style = {"margin": "10px"}),
+                                            html.Br(),
+                                            dcc.Loading(dag.AgGrid(id="hist2query-results", columnSize="autoSize",
+                                            columnDefs=TCGA_UNI_COL_DEFS, style={"margin": "10px"},
+                                            rowData=[], defaultColDef={"sortable": True, "filter": True, "resizable": True},
+                                            enableEnterpriseModules=True,
+                                            dashGridOptions={"autoGroupColumnDef": {"cellRenderer": "agGroupCellRenderer",
+                                            "headerName": "Tissue / Slide", "cellRendererParams": { "suppressCount": False,
+                                            "innerRenderer": "GroupLinkRenderer", "suppressDoubleClickExpand": True},
+                                            "onRowGroupOpened": "resizeGroupColumn"}}),
+                                            type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR),
+                                            ]),
+                                            dbc.Tab(label='Prism2 chat', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                            children=[
+                                            html.Div([
+                                            html.Br(),
+                                            dcc.Checklist(options=[{"label": hf_model_agreement("Prism2"), "value": "prism2_terms"}],
+                                            id="prism2-terms", className="hf-checklist", style={"margin": "10px", "accent-color": DEFAULT_WIDGET_COLOUR},
+                                            persistence=config['persistence'],persistence_type='local'),
+                                            html.Br(),
+                                            html.B("Ask Prism2 about the current WSI patch.",
+                                                       style={"margin": "10px", "margin-top": "17px"}),
+                                            wrap_child_in_loading(html.Div(id='prism2-chat-results',
+                                            className="mt-3", style={"margin": "10px"}), fullscreen=False),
+                                            html.Br(),
+                                            dcc.Input(id="prism2-query-question", className="form-control",
+                                            placeholder="Ask Prism2 about this slide...", debounce=True, disabled=True)
+                                            ]),
+                                            ]),
+                                            ])
+                                            ]),
+                                            id="osd-query-modal", size='xl'),
+                                            dbc.Modal(children=[dbc.ModalHeader(dbc.ModalTitle("View select patch in GDC slide"), close_button=True),
+                                            dbc.ModalBody([html.Span(["Note: highlighted patch is larger than the embedding patch to "
+                                                               "highlight additional tissue context."], style={"margin-bottom": "15px"}),
+                                            html.Br(),
+                                            html.Iframe(id="gdc-slide-viewer-iframe", srcDoc="", style={"width": "100%",
+                                            "height": "80vh", "border": "none", "margin-top": "15px"}, sandbox="allow-scripts allow-same-origin allow-popups"),
+                                            ])], id='gdc-slide-osd-viewer', size='xl'),
+                                            wrap_child_in_loading(
+                                            html.Div([
+                                            dbc.Button("Query WSI", id='osd-query-modal-open', style={"align": "center",
+                                            "background-color": DEFAULT_WIDGET_COLOUR, "float": "center", "display": "none"}, n_clicks=0),
+                                            dcc.Store(id='coregister-transfer', data=False)]), wrap=config['use_loading'], fullscreen=False),
+                                            dcc.Store(id='coregister-finished', data=False)], width=2),
                                          dbc.Modal(children=dbc.ModalBody(
                                              [dcc.Input(type="text", placeholder="Read WSI directly from local filepath",
                                                         style={"width": "100%"}, id='wsi-local-filepath'),
@@ -1138,7 +1247,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                      value=[], id="channel-intensity-hover",
                                                                      style={"width": "100%",
                                                                             "accent-color": DEFAULT_WIDGET_COLOUR}),
-                                        dbc.Tooltip(TOOLTIPS['tooltip'], target="channel-intensity-hover", placement='bottom')],
+                                        dbc.Tooltip(TOOLTIPS['intensity-hover'], target="channel-intensity-hover", placement='bottom')],
                                                 style={"display": "flex"}),
                                         html.Br(),
                                         html.H6("Adjust legend/scale size"),
@@ -1204,7 +1313,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             labelStyle={'display': 'flex', 'alignItems': 'center', "gap": "4px",
                                                         'lineHeight': '1.2', 'whiteSpace': 'normal'},
                                                         persistence=config['persistence'], persistence_type='local'),
-                                            dbc.Tooltip(TOOLTIPS['tooltip'], target="add-cell-id-mask-hover", placement='top')],
+                                            dbc.Tooltip(TOOLTIPS['intensity-hover'], target="add-cell-id-mask-hover", placement='top')],
                                                            style={"display": "flex", "width": "90%"}),
                                                   html.Br(),
                                                   dbc.Button("Generate spatial mask", id="make-spatial-mask",
@@ -2109,6 +2218,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
         # set a cache for the blended image and mask fill
         dcc.Store(id='image-blend-cache'),
         dcc.Store(id='mask-fill-cache'),
+        dcc.Store(id='wsi-bounds'),
         dcc.Loading(dcc.Store(id="roi-query"), type="default", fullscreen=True, color=DEFAULT_WIDGET_COLOUR),
         EventListener(
             # https://developer.mozilla.org/en-US/docs/Web/API/Element/keydown_event

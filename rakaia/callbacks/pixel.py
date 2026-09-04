@@ -1,12 +1,15 @@
 """Application callbacks associated with pixel-level operations (blended images)"""
-
+import math
 import os.path
+import re
 import uuid
+from http.client import HTTPException
 from pathlib import Path
 import json
 import dash.exceptions
 import dash_uploader as du
 import flask
+import requests.exceptions as rex
 from dash import ctx, ALL
 from dash_extensions.enrich import Output, Input, State, html
 from dash import dcc
@@ -38,8 +41,11 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
+from rakaia.register.query import gdc_slide_iframe
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
+from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
+    hist2query_pie_chart, prism2_chat_request
 from rakaia.stitch import update_stitch_cache_with_blend
 from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
@@ -2241,11 +2247,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         wsi_im = stitch_images[stitch_select] if wsi_selection(ctx.triggered_id, "stitch-image-to-wsi", stitch_images, stitch_select) \
             else (str(cur_hash[reg_select]) if wsi_selection(ctx.triggered_id, "coregister_options", cur_hash, reg_select) else None)
+        # if using a stitch image in WSI, reset the dropdown to empty so that hist2query cannot be run (requires crop extraction from file)
+        wsi_select = None if ctx.triggered_id == "stitch-image-to-wsi" else dash.no_update
         if sesh_id and wsi_im is not None:
             try:
                 from rakaia.register.process import dzi_tiles_from_image
                 dzi_tiles_from_image(wsi_im, str(os.path.join(tmpdirname, authentic_id)), f"coregister_{sesh_id}")
-                return True, dash.no_update, dash.no_update, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
+                return True, dash.no_update, wsi_select, False, match_wsi_name_to_transformation_matrix(reg_select, transform_options), str(uuid.uuid4())
             except (OSError, ModuleNotFoundError): return dash.no_update, add_warning_to_error_config(error_config, ALERT.warnings["libvips_missing"]), None, True, None, dash.no_update
         raise PreventUpdate
 
@@ -2328,3 +2336,113 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             graph_w_shapes = CanvasLayout(cur_canvas).add_shapes_from_json(shape_upload)
             return graph_w_shapes, CanvasLayout(graph_w_shapes).get_layout()
         raise PreventUpdate
+
+    # get the inner text for the wsi bounds on click and keep as a server side Dash store
+    dash_app.clientside_callback(
+        """
+        function(n_clicks) {
+            if (!n_clicks) return window.dash_clientside.no_update;
+            const el = document.getElementById("osd-viewport-coord");
+            return el ? el.innerText : "";};
+        """,
+        Output("wsi-bounds", "data"),
+        Input("osd-query-modal-open", "n_clicks"))
+
+    @dash_app.callback(
+        Output("osd-query-modal", "is_open"),
+        Input('osd-query-modal-open', 'n_clicks'),
+        [State("osd-query-modal", "is_open")])
+    def toggle_wsi_local_modal(n, is_open):
+        """
+        Open the modal for sending queries for the current WSI patch to hist2query
+        """
+        return not is_open if n else is_open
+
+    @dash_app.callback(
+        Output("osd-query-run", "disabled"),
+        Input('uni2-terms', 'value'),
+        prevent_initial_call=False)
+    def enable_uni2_hist2query_queries(acknowledge):
+        """
+        Enable queries to be executed once the model acknowledgment has been accepted
+        """
+        return False if acknowledge else True
+
+    @dash_app.callback(
+        Output("prism2-query-question", "disabled"),
+        Input('prism2-terms', 'value'),
+        prevent_initial_call=False)
+    def enable_prism2_hist2query_queries(acknowledge):
+        """
+        Enable queries to be executed once the model acknowledgment has been accepted
+        """
+        return False if acknowledge else True
+
+    @dash_app.callback(
+        Output('hist2query-results', 'rowData'),
+        Output('hist2query-results', 'columnDefs'),
+        Output('hist2query-pie', 'figure'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
+        Input("osd-query-run", "n_clicks"),
+        State('wsi-bounds', 'data'),
+        State('hist2query-host', 'value'),
+        State('hist2query-port', 'value'),
+        State('coregister_options', 'value'),
+        State('coregister_hash', 'data'),
+        State('hist2query-k', 'value'),
+        Input('hist2query-group', 'value'),
+        State('hist2query-tile-number', 'value'))
+    def hist2query_tcga_uni2_similarity(run_query, osd_bounds, hist_host, hist_port, reg_select, cur_hash, k_search, group_cols, tile_number):
+        """
+        Query a WSI patch (based on zoom) to hist2query TCGA UNI2 similarity
+        """
+        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update, dash.no_update
+        try:
+            if None not in (reg_select, cur_hash, k_search, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
+                    list(map(int, re.findall(r"-?\d+", osd_bounds))):
+                # Use the list mapping to split the bounds preview into the integers
+                # if the tile number is not specified, use the full res image
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), (tile_number is not None),
+                                (224 * int(tile_number if tile_number is not None else 0)))
+                results = tcga_uni_request(crop, hist_host, hist_port, k_search, True)
+                return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results), dash.no_update
+            # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
+            return [], [], go.Figure(layout={"template": None}), dash.no_update
+        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return [], [], go.Figure(layout={"template": None}), {'error': str(e)}
+
+    @dash_app.callback(
+        Output('prism2-chat-results', 'children'),
+        Output('session_alert_config', 'data', allow_duplicate=True),
+        Input("prism2-query-question", "n_submit"),
+        State("prism2-query-question", "value"),
+        State('wsi-bounds', 'data'),
+        State('hist2query-host', 'value'),
+        State('hist2query-port', 'value'),
+        State('coregister_options', 'value'),
+        State('coregister_hash', 'data'),
+        State('hist2query-tile-number', 'value'))
+    def hist2query_prism2_chat(run_query, question, osd_bounds, hist_host, hist_port, reg_select, cur_hash, tile_number):
+        """
+        Query a WSI patch (based on zoom) to hist2query Prism2 chat
+        """
+        try:
+            if None not in (reg_select, cur_hash, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
+                    list(map(int, re.findall(r"-?\d+", osd_bounds))):
+                crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))),
+                        (tile_number is not None), (224 * int(tile_number if tile_number is not None else 0)))
+                return prism2_chat_request(crop, hist_host, hist_port, "chat", str(question)), dash.no_update
+            return None
+        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return None, {'error': str(e)}
+
+    @dash_app.callback(
+        Output("gdc-slide-viewer-iframe", "srcDoc"),
+        Output('gdc-slide-osd-viewer', 'is_open'),
+        Input("hist2query-results", "cellRendererData"))
+    def gdc_slide_viewer_per_patch(cell):
+        """
+        View the GDC TCGA slide with the select patch overlaid
+        """
+        if cell:
+            row = cell["value"]
+            return gdc_slide_iframe(url = str(row["url"]), file_id=str(row["url"].split("files/")[-1]), x=row["x"], y=row["y"], n=1000), True
+        return None, False

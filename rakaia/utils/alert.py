@@ -5,7 +5,8 @@ and session messages
 import pathlib
 from typing import Union
 from pydantic import BaseModel
-from dash import dcc
+from dash import dcc, html
+
 
 class DataImportTour(BaseModel):
     """
@@ -180,9 +181,26 @@ class ToolTips(BaseModel):
                       "dge-show": "NOTE: only a single marker is added at a time (the cell with a red outline).",
                       "dge-rank": "NOTE: The DGE table will be rendered for an Anndata or zarr ROI when a categorical overlay is applied."
                                   " DGE markers are ordered by a Wilcoxon rank-sum test (group vs. all others).",
-                      "tooltip": "WARNING: modifying the canvas blend can become much slower with this feature enabled. "
-                                 "Highly recommended to turn off before exporting the canvas to HTML."}
+                      "intensity-hover": "WARNING: modifying the canvas blend can become much slower with this feature enabled. "
+                                 "Highly recommended to turn off before exporting the canvas to HTML.",
+                      "wsi-query-tile-number": "Set the number of 224-pixel tiles for the query image. Increasing the tile number may give better query similarity or chat results, "
+                                               "but requests may be slower. If left blank, the full-resolution image is used (NOT recommended for large patches).",
+                      "wsi-query-host": "Specify a host for hist2query. If using localhost or a local IP address, provide a host port. "
+                                        "Otherwise, provide a host URL and leave the port empty."}
 
+HF_MODEL_LINKS = {"UNI2": "https://huggingface.co/MahmoodLab/UNI2-h",
+                  "Prism2": "https://huggingface.co/paige-ai/Prism2"}
+
+def hf_model_agreement(model_name: str="UNI2"):
+    """
+    Define an HTML checklist Span for ussr to agree to hf model terms of use with hist2query
+    """
+    if model_name not in HF_MODEL_LINKS:
+        return html.Span([f"Error: model name not one of {list(HF_MODEL_LINKS.keys())}"])
+    return html.Span([" I attest to having a registered Hugging Face account and agreeing to the ",
+            html.A(f"{model_name} terms of use.", href=f"{HF_MODEL_LINKS[model_name]}", target="_blank", style={"color": "#0f4d92"}),
+            " I agree to use this feature strictly for academic, non-commercial, and non-diagnostic purposes "
+            "in accordance with the model license and terms. I understand that Rakaia does not verify individual user access status."])
 
 class PanelMismatchError(Exception):
     """
