@@ -684,7 +684,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.H6("Go to zoom level", style={"textAlign": "float"}),
                                             dcc.Input(type="number", value=None, min=0, max=1, step=0.05, debounce=True,
                                             style={"width": "50%"}, id='wsi-zoom-level'),
-                                            dcc.Checklist(options=[' log zoom scale'], id='wsi-zoom-scale',
+                                            dcc.Checklist(options=[' Log zoom scale'], id='wsi-zoom-scale',
                                             style={"width": "100%", "accent-color": DEFAULT_WIDGET_COLOUR, "margin-bottom": "5px"}),
                                             dbc.Tooltip(TOOLTIPS['wsi-zoom-level'], target="wsi-zoom-level",
                                                          placement="right"),
@@ -733,9 +733,8 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             persistence=config['persistence'],persistence_type='local'),
                                             html.Br(),
                                             html.B("Find similar patches in TCGA with UNI2", style={"margin": "10px", "margin-top": "17px"}),
-                                            html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
-                                            dcc.Input(type="number", placeholder="k size",
-                                            min=1, max=10000, value=50,
+                                            dcc.Loading(html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
+                                            dcc.Input(type="number", placeholder="k size", min=1, max=10000, value=50,
                                             style={"width": "60%", "height": "10%", "margin": "7.5px"},
                                             id='hist2query-k', persistence=config['persistence'], persistence_type='local'),
                                             daq.ToggleSwitch(label='Group by slide', id='hist2query-group',
@@ -743,6 +742,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             style={"width": "70%", "margin": "10px"}),
                                             html.Br(),
                                             ], style={"display": "flex", "flexDirection": "row", "margin-top": "10px"}),
+                                            type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR),
                                             ], style={"width": "55%"}),
                                             html.Div([dcc.Loading(
                                             dcc.Graph(id='hist2query-pie', figure={'layout': dict(
