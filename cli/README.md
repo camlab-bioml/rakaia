@@ -106,3 +106,30 @@ options:
   -ht HOLE_TYPES, --hole-types HOLE_TYPES
                         A list of comma separated annotations to treat as holes (i.e. 0 in the final mask)
 ```
+
+## annotorious_json_to_tiff.py
+
+`annotorious_json_to_tiff` enables conversion of `annotorious` WSI JSON files (custom
+exported from rakaia) into a tiff mask, where objects are encoded by integer IDs. \
+**Important**: the script requires to user to set the tiff output
+dimensions, as the WSi json file does not capture this information.
+
+Example usage:
+
+```commandline
+usage: Example:
+ python annotorious_json_to_tiff.py -i annotorious.json -o output.tiff -x 1500 -y 1200
+
+Convert an annotorious WSI annotation JSON from rakaia into a greyscale tiff mask array. Requires the user to set the output dimensions of the tiff.
+
+options:
+  -i INPUT, --input INPUT
+                        Path input to an annotorious WSI JSON exported from rakaia
+  -h, --help            Show the help/options menu and exit. Does not execute the application.
+  -x WIDTH, --width WIDTH
+                        Set the width of the output tiff. Default: 1000 pixels
+  -y HEIGHT, --height HEIGHT
+                        Set the height of the output tiff. Default: 1000 pixels
+  -o OUTFILE, --outfile OUTFILE
+                        Set the output tiff file. Default is annotorious_out.tiff written to the current directory
+```
