@@ -186,7 +186,10 @@ class ToolTips(BaseModel):
                       "wsi-query-tile-number": "Set the number of 224-pixel tiles for the query image. Increasing the tile number may give better query similarity or chat results, "
                                                "but requests may be slower. If left blank, the full-resolution image is used (NOT recommended for large patches).",
                       "wsi-query-host": "Specify a host for hist2query. If using localhost or a local IP address, provide a host port. "
-                                        "Otherwise, provide a host URL and leave the port empty."}
+                                        "Otherwise, provide a host URL and leave the port empty.",
+                      "nhood-val": "Set the radius or number of neighbours for enrichment analysis. # neighbours is used for "
+                                   "data in a grid-like formation, such as Visium spot and HD; all others use spatial radius. Values between "
+                                   "5-50 are recommended. Larger values are likely to be slower."}
 
 HF_MODEL_LINKS = {"UNI2": "https://huggingface.co/MahmoodLab/UNI2-h",
                   "Prism2": "https://huggingface.co/paige-ai/Prism2"}

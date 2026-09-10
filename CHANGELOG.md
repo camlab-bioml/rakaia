@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-09-08
+## [0.33.0] - 2026-09-10
 
 ### Added
 
@@ -17,6 +17,7 @@ embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
 - Show viewport coordinates for WSI canvas on change
 - Draw polygons on the WSI canvas with `annotorious`
 - CLI script to convert `annotorious` WSI coords (JSON) to segmentation mask #186
+- Neighbourhood enrichment heatmap in modal from overlay projection
 
 ## [0.32.3] - 2026-08-05
 

@@ -1028,6 +1028,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
 
     @dash_app.callback(
         Output("nhood-enrich-heatmap", "figure"),
+        Output('session_alert_config', 'data', allow_duplicate=True),
         Input('nhood-run', 'n_clicks'),
         State('session_config', 'data'),
         State('data-collection', 'value'),
@@ -1037,14 +1038,16 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         State('imported-cluster-frame', 'data'),
         State('cluster-col', 'value'),
         State('cluster-label-selection', 'value'),
-        State('nhood-radius-size', 'value'))
+        State('nhood-radius-neighbours', 'value'))
     def run_nhood_enrichment(run_enrich, sesh_uploads, roi_select, delim, mask_dict, mask_select,
-                             cluster_frame, overlay_col, overlay_subset, nhood_rad):
+                             cluster_frame, overlay_col, overlay_subset, nhood_val):
         """
         Execute the neighbourhood enrichment to generate a heatmap
         """
         if None not in (sesh_uploads, mask_dict, mask_select, cluster_frame, overlay_col, overlay_subset) and roi_select in cluster_frame and overlay_subset:
-            objects, is_ad = (roi_from_anndata_file(sesh_uploads, roi_select, delim), True) if \
+            try:
+                objects, is_ad = (roi_from_anndata_file(sesh_uploads, roi_select, delim), True) if \
                 (roi_from_anndata_file(sesh_uploads, roi_select, delim)) else (mask_dict[mask_select]['raw'], False)
-            return nhood_enrichment_graph(objects, cluster_frame[roi_select], overlay_col, overlay_subset, nhood_rad, is_ad)
+                return nhood_enrichment_graph(objects, cluster_frame[roi_select], overlay_col, overlay_subset, nhood_val, is_ad, roi_select), dash.no_update
+            except (KeyError, ValueError, IndexError) as e: return None, add_warning_to_error_config(None, f"{type(e).__name__}: {str(e)}")
         raise PreventUpdate

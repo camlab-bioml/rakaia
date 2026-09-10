@@ -19,7 +19,7 @@ import anndata as ad
 from rakaia.parsers.object import drop_columns_from_measurements_csv
 from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
 from rakaia.utils.pixel import glasbey_palette
-from rakaia.parsers.spatial import is_spot_based_spatial
+from rakaia.parsers.spatial import is_spot_based_spatial, visium_has_bin_scaling
 
 
 class PandasFrameSummaryModes:
@@ -393,8 +393,9 @@ def nhood_enrichment_graph(objects: Union[str, np.ndarray],
                            object_labels: Union[list, pd.DataFrame, None]=None,
                            overlay_cat: Union[str, None] = None,
                            object_subset_list: Union[list, None] = None,
-                           nhood_radius: int = 100,
-                           is_anndata_roi: bool = False):
+                           nhood_radius_neighbours: int = 25,
+                           is_anndata_roi: bool = False,
+                           roi_identifier: Union[str, None]=None):
     """
     Generate a `px.imshow` heatmap of neighbourhood enrichment for the current ROI
     """
@@ -413,9 +414,10 @@ def nhood_enrichment_graph(objects: Union[str, np.ndarray],
         objects = objects[objects.obs[overlay_cat].isin(list(object_subset_list))].copy()
         objects.obs[overlay_cat] = (objects.obs[overlay_cat].cat.remove_unused_categories())
 
-    # use a grid if visium because of the grid-like structure
-    coord_type = 'grid' if is_spot_based_spatial(objects) else 'generic'
-    sq.gr.spatial_neighbors(objects, radius=nhood_radius, coord_type=coord_type)
+    # use a grid if visium spot or HD because of the grid-like structure
+    # TODO: need to figure out how to handle grid vs. generic and passing radius vs. num neighbours
+    coord_type = 'grid' if (is_spot_based_spatial(objects) or visium_has_bin_scaling(objects)) else 'generic'
+    sq.gr.spatial_neighbors(objects, radius=nhood_radius_neighbours, coord_type=coord_type, n_neighs=nhood_radius_neighbours)
 
     sq.gr.nhood_enrichment(objects, cluster_key=overlay_cat, n_perms=500)
 
@@ -429,7 +431,8 @@ def nhood_enrichment_graph(objects: Union[str, np.ndarray],
         x=object_types, y=object_types, text_auto=".2f", aspect="auto",
         color_continuous_scale="RdBu_r", color_continuous_midpoint=0)
 
-    fig.update_layout(title="Neighborhood enrichment")
+    roi_in_title = f", {roi_identifier}" if roi_identifier is not None else ""
+    fig.update_layout(title=f"Neighborhood enrichment{roi_in_title}")
     fig.update_traces(textfont={"size": 16})
 
     return fig

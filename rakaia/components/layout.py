@@ -1726,9 +1726,11 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 dbc.Modal(children=dbc.ModalBody([html.Div([
                                 html.Br(),
                                 html.Div([
-                                html.B("Set enrichment radius", style={"margin-top": "7.5px", "margin-right": "7.5px"}),
-                                dcc.Input(id='nhood-radius-size', value=100, min=1, max=10000, type="number",
-                                          style={"width": "15%", "margin-right": "7.5px"}),
+                                html.B("Set radius/# neighbours", style={"margin-top": "7.5px", "margin-right": "7.5px"}, id='nhood-val-lab'),
+                                dcc.Input(id='nhood-radius-neighbours', value=25, min=1, max=500, type="number", style={"width": "15%",
+                                "margin-right": "7.5px"}, persistence=config['persistence'], persistence_type='local'),
+                                dbc.Tooltip(TOOLTIPS['nhood-val'], target="nhood-val-lab", style={"display": "flex", "justifyContent": "center"},
+                                                placement='bottom'),
                                 dbc.Button("Run neighbourhood enrichment", id="nhood-run",
                                 style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
                                 ], style={"display": "flex", "width": "100%"}),

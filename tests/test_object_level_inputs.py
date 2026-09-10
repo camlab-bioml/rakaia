@@ -1,5 +1,7 @@
 import random
 import os
+import tempfile
+
 import dash
 import plotly.graph_objs as go
 import pandas as pd
@@ -9,7 +11,6 @@ from dash.exceptions import PreventUpdate
 from statistics import mean, median
 from tifffile import imread
 import numpy as np
-
 from rakaia.inputs.object import (
     channel_expression_plot,
     object_umap_plot,
@@ -20,6 +21,8 @@ from rakaia.inputs.object import (
     BarChartPartialModes, filter_overlay_from_heatmap_data,
     nhood_enrichment_graph)
 from rakaia.parsers.object import parse_and_validate_measurements_csv
+from rakaia.parsers.spatial import ZarrSDParser
+
 
 def test_partial_bar_chart_modes(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -224,3 +227,11 @@ def test_nhood_enrichment_plots(get_current_dir):
     from_mask = nhood_enrichment_graph(seg_mask, matching_to_mask, 'leiden', is_anndata_roi=False,
                                        object_subset_list=[1, 18])
     assert len(from_mask['data'][0]['x']) == 2
+
+    # visium HD (mask has grid-like)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        visium_hd = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr/'),
+                              os.path.join(tmpdirname, 'other_spatial')).get_files()
+        from_vis_hd = nhood_enrichment_graph(visium_hd[0]['uploads'][0], overlay_cat='array_row',
+                    object_subset_list=[563, 473, 270], nhood_radius_neighbours=5, is_anndata_roi=True)
+        assert len(from_vis_hd['data'][0]['x']) == 3
