@@ -13,9 +13,13 @@ import plotly.express as px
 from dash.exceptions import PreventUpdate
 import plotly.graph_objs as go
 import numpy as np
+import squidpy as sq
+from skimage.measure import regionprops_table
+import anndata as ad
 from rakaia.parsers.object import drop_columns_from_measurements_csv
 from rakaia.utils.object import subset_measurements_frame_from_umap_coordinates
 from rakaia.utils.pixel import glasbey_palette
+from rakaia.parsers.spatial import is_spot_based_spatial
 
 
 class PandasFrameSummaryModes:
@@ -383,3 +387,49 @@ def reset_custom_gate_slider(trigger_id: str=None):
     """
     return False if (trigger_id and trigger_id not in
             ["quantification-dict", "quantification_dict"]) else dash.no_update
+
+
+def nhood_enrichment_graph(objects: Union[str, np.ndarray],
+                           object_labels: Union[list, pd.DataFrame, None]=None,
+                           overlay_cat: Union[str, None] = None,
+                           object_subset_list: Union[list, None] = None,
+                           nhood_radius: int = 100,
+                           is_anndata_roi: bool = False):
+    """
+    Generate a `px.imshow` heatmap of neighbourhood enrichment for the current ROI
+    """
+    id_col = 'object_id' if 'object_id' in pd.DataFrame(object_labels).columns else 'cell_id'
+    objects = ad.read_h5ad(objects) if isinstance(objects, str) and is_anndata_roi else objects
+    if not is_anndata_roi and isinstance(objects, np.ndarray):
+        region_props = regionprops_table(objects, properties=("label", "centroid"))
+        objects = ad.AnnData(obs=pd.DataFrame({
+                "object_id": pd.DataFrame(object_labels)[id_col].astype(int).values,
+                    overlay_cat:  pd.DataFrame(object_labels)[overlay_cat].values}),
+        obsm={"spatial": pd.DataFrame(region_props)[["centroid-1", "centroid-0"]].values})
+
+    objects.obs[overlay_cat] = objects.obs[overlay_cat].astype(str).astype("category")
+    if object_subset_list:
+        object_subset_list = [str(i) for i in object_subset_list]
+        objects = objects[objects.obs[overlay_cat].isin(list(object_subset_list))].copy()
+        objects.obs[overlay_cat] = (objects.obs[overlay_cat].cat.remove_unused_categories())
+
+    # use a grid if visium because of the grid-like structure
+    coord_type = 'grid' if is_spot_based_spatial(objects) else 'generic'
+    sq.gr.spatial_neighbors(objects, radius=nhood_radius, coord_type=coord_type)
+
+    sq.gr.nhood_enrichment(objects, cluster_key=overlay_cat, n_perms=500)
+
+    result = objects.uns[f"{overlay_cat}_nhood_enrichment"]
+    object_types = objects.obs[overlay_cat].cat.categories
+
+    zscore_df = pd.DataFrame(result["zscore"], index=object_types, columns=object_types)
+
+    fig = px.imshow(zscore_df,
+        labels={"x": overlay_cat, "y": overlay_cat,"color": "Enrichment z-score"},
+        x=object_types, y=object_types, text_auto=".2f", aspect="auto",
+        color_continuous_scale="RdBu_r", color_continuous_midpoint=0)
+
+    fig.update_layout(title="Neighborhood enrichment")
+    fig.update_traces(textfont={"size": 16})
+
+    return fig

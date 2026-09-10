@@ -48,7 +48,7 @@ from rakaia.inputs.object import (
     object_umap_plot,
     # umap_eligible_patch,
     # patch_umap_figure,
-    reset_custom_gate_slider)
+    reset_custom_gate_slider, nhood_enrichment_graph)
 from rakaia.io.pdf import AnnotationPDFWriter
 from rakaia.io.annotation import AnnotationRegionWriter
 from rakaia.utils.pixel import get_region_dim_from_roi_dictionary
@@ -1014,4 +1014,37 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if None not in (active_cell, dge_table, layer_options) and add_dge and all(elem in active_cell for elem in ['row', 'column_id']):
             return channel_in_dropdown(str(dge_table[int(active_cell['row'])][active_cell['column_id']]), layer_options, cur_blend)
+        raise PreventUpdate
+
+    @dash_app.callback(
+        Output("show-nhood-enrichment", "is_open"),
+        Input('nhood-overlay-show', 'n_clicks'),
+        [State("show-nhood-enrichment", "is_open")])
+    def toggle_open_nhood_enrichment_modal(n, is_open):
+        """
+        Open the modal for neighbourhood enrichment
+        """
+        return not is_open if n else is_open
+
+    @dash_app.callback(
+        Output("nhood-enrich-heatmap", "figure"),
+        Input('nhood-run', 'n_clicks'),
+        State('session_config', 'data'),
+        State('data-collection', 'value'),
+        State('dataset-delimiter', 'value'),
+        State('mask-dict', 'data'),
+        State('mask-options', 'value'),
+        State('imported-cluster-frame', 'data'),
+        State('cluster-col', 'value'),
+        State('cluster-label-selection', 'value'),
+        State('nhood-radius-size', 'value'))
+    def run_nhood_enrichment(run_enrich, sesh_uploads, roi_select, delim, mask_dict, mask_select,
+                             cluster_frame, overlay_col, overlay_subset, nhood_rad):
+        """
+        Execute the neighbourhood enrichment to generate a heatmap
+        """
+        if None not in (sesh_uploads, mask_dict, mask_select, cluster_frame, overlay_col, overlay_subset) and roi_select in cluster_frame and overlay_subset:
+            objects, is_ad = (roi_from_anndata_file(sesh_uploads, roi_select, delim), True) if \
+                (roi_from_anndata_file(sesh_uploads, roi_select, delim)) else (mask_dict[mask_select]['raw'], False)
+            return nhood_enrichment_graph(objects, cluster_frame[roi_select], overlay_col, overlay_subset, nhood_rad, is_ad)
         raise PreventUpdate

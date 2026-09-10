@@ -1723,6 +1723,23 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                 html.Br(),
                                 html.H6(TOOLTIPS['dge-rank']),
                                 ]), id="show-dge-table", size='xl'),
+                                dbc.Modal(children=dbc.ModalBody([html.Div([
+                                html.Br(),
+                                html.Div([
+                                html.B("Set enrichment radius", style={"margin-top": "7.5px", "margin-right": "7.5px"}),
+                                dcc.Input(id='nhood-radius-size', value=100, min=1, max=10000, type="number",
+                                          style={"width": "15%", "margin-right": "7.5px"}),
+                                dbc.Button("Run neighbourhood enrichment", id="nhood-run",
+                                style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
+                                ], style={"display": "flex", "width": "100%"}),
+                                ], style={"display": "flex", "justify-content": "space-evenly", "width": "75%"}),
+                                html.Br(),
+                                wrap_child_in_loading(dcc.Graph(id='nhood-enrich-heatmap', figure={'layout': dict(
+                                xaxis_showgrid=False, yaxis_showgrid=False, margin=dict(l=0, r=0, b=0, t=25, pad=0))},
+                                              style={"height": "700px", "width": "100%"}),
+                                wrap=config['use_loading'], fullscreen=False),
+                                html.Br(),
+                                ]), id="show-nhood-enrichment", size='xl'),
                                 dbc.Collapse(html.Div([
                                 html.Br(),
                                 html.H6(children=[], id="cluster-assignments")]),
@@ -1731,6 +1748,9 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                     style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
                                 dbc.Tooltip(TOOLTIPS['dge'], target="dge-overlay-show",
                                     style={"display": "flex", "justifyContent": "center"}, placement='left'),
+                                html.Br(),
+                                dbc.Button("Neighbourhood enrichment for overlay", id="nhood-overlay-show",
+                                style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px', "margin-top": "30px"}),
                                 dbc.Modal(id="quantification-roi-modal", children=dbc.ModalBody([
                                 html.Div([dbc.Button("Quantify current ROI", id="quantify-cur-roi-execute",
                                            style={"background-color": DEFAULT_WIDGET_COLOUR, "margin-right": '7.5px'}),
