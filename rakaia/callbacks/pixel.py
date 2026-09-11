@@ -17,6 +17,7 @@ from dash.exceptions import PreventUpdate
 import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
+import plotly.express as px
 from natsort import natsorted, ns
 import shortuuid
 from rakaia.inputs.pixel import (
@@ -41,7 +42,7 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
-from rakaia.register.query import gdc_slide_iframe
+from rakaia.register.query import gdc_slide_iframe, hist2query_clinical_bar_plot
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
@@ -133,6 +134,7 @@ from rakaia.callbacks.triggers import (
     no_channel_for_view,
     empty_slider_values, use_channel_autofill, layout_has_modified_shape, wsi_selection, reset_image_blend_cache,
     reset_mask_fill_cache)
+from rakaia.register.query import TCGA_CLINICAL_METADATA_PATH
 
 def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     """
@@ -2448,3 +2450,15 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             row = cell["value"]
             return gdc_slide_iframe(url = str(row["url"]), file_id=str(row["url"].split("files/")[-1]), x=row["x"], y=row["y"], n=1000), True
         return None, False
+
+    @dash_app.callback(
+        Output("hist2query-clinical-barplot", "figure"),
+        Input("hist2query-results", "rowData"),
+        Input('hist2query-metadata-variables', 'value'))
+    def tcga_clinical_metadata_table(row_data, metadata_var):
+        """
+        Render a bar plot of patients ranked by patch number, coloured by the clinical variable selected
+        """
+        if row_data and metadata_var:
+            return hist2query_clinical_bar_plot(row_data, metadata_var)
+        raise PreventUpdate

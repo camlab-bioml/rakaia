@@ -161,6 +161,8 @@ def hist2query_pie_chart(query_results: Union[list, dict, None],
 
 _GDC_SlIDE_TEMPLATE = (Path(__file__).parent / "../templates" / "gdc.html").read_text()
 
+TCGA_CLINICAL_METADATA_PATH = (Path(__file__).resolve().parent / "tcga_patient_metadata.parquet")
+
 def gdc_slide_iframe(url: str, file_id: str, x: float, y: float, n: float = 1250) -> str:
     """
     Generate a GDC slide OSD viewer for a specific GDC-hosted slide with a patch highlighted by coordinates
@@ -172,3 +174,27 @@ def gdc_slide_iframe(url: str, file_id: str, x: float, y: float, n: float = 1250
         .replace("__X__", repr(float(x)))
         .replace("__Y__", repr(float(y)))
         .replace("__N__", repr(float(n))))
+
+def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
+                                 metadata_var: Union[str, None]=None,
+                                 patient_col_identifier: str="bcr_patient_barcode"):
+    """
+    A bar plot of hist2query results per patient coloured by a metadata variable.
+    Patients are ordered descending by the number of query patches
+    """
+    result_frame = pd.DataFrame(query_results)
+    clinical_meta = pd.read_parquet(TCGA_CLINICAL_METADATA_PATH)
+    result_frame[patient_col_identifier] = [str(elem).split("-01Z")[0] for elem in result_frame['slide']]
+    merged = result_frame.merge(clinical_meta, on=patient_col_identifier, how='inner')
+    patient_counts = (merged.groupby(patient_col_identifier)
+        .agg(patch_count=(patient_col_identifier, "size"),
+            **{str(metadata_var): (str(metadata_var), "first")})
+        .reset_index().sort_values("patch_count", ascending=False))
+
+    fig = px.bar(patient_counts, x=patient_col_identifier,
+        y="patch_count", color=str(metadata_var),
+        category_orders={patient_col_identifier: patient_counts[patient_col_identifier].tolist()
+        }, title=f"Patients by {str(metadata_var)}")
+
+    fig.update_layout(xaxis_title="Patient", yaxis_title="Number of result patches")
+    return fig

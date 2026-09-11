@@ -3,6 +3,8 @@ as an `html.Div`"""
 
 from typing import Union
 from pathlib import Path
+
+import pandas as pd
 from dash import dash_table
 import dash_uploader as du
 from dash_extensions import EventListener
@@ -25,6 +27,7 @@ from rakaia.utils.pixel import default_picker_swatches
 from rakaia.utils.region import RegionStatisticGroups
 from rakaia.plugins import PluginDescriptors
 from rakaia.register.process import WSI_FILE_EXTENSIONS
+from rakaia.register.query import TCGA_CLINICAL_METADATA_PATH
 
 def register_app_layout(config: dict, cache_dest: Union[str, Path]):
     """
@@ -35,6 +38,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
     DEFAULT_SWATCHES = default_picker_swatches(config)
     DEFAULT_WIDGET_COLOUR = SessionTheme().widget_colour
     TOOLTIPS = ToolTips().tooltips
+    TCGA_METADATA_COLS = list(pd.read_parquet(TCGA_CLINICAL_METADATA_PATH).columns)
 
     return html.Div([
         dash_tour_component.DashTour(accentColor=DEFAULT_WIDGET_COLOUR,
@@ -759,6 +763,11 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                                                   "margin-bottom": "10px", "margin-top": "-25px", "flexBasis": "100%"},
                                                            n_clicks=0),
                                             html.Br(),
+                                            dbc.Tabs([
+                                            dbc.Tab(label='Patch results', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                            tab_style={"marginLeft": "auto", 'line-height': '0.2vh', 'padding': '0px', 'margin': '0px'},
+                                            children=[
+                                            html.Br(),
                                             html.B("Query results", style = {"margin": "10px"}),
                                             html.Br(),
                                             dcc.Loading(dag.AgGrid(id="hist2query-results", columnSize="autoSize",
@@ -770,6 +779,18 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             "innerRenderer": "GroupLinkRenderer", "suppressDoubleClickExpand": True},
                                             "onRowGroupOpened": "resizeGroupColumn"}}),
                                             type="default", fullscreen = False, color = DEFAULT_WIDGET_COLOUR),
+                                            ]),
+                                            dbc.Tab(label='Patient/clinical info', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                            tab_style={"marginLeft": "auto", 'line-height': '0.2vh', 'padding': '0px', 'margin': '0px'},
+                                            children = [
+                                            html.Br(),
+                                            dcc.Dropdown(id='hist2query-metadata-variables', options=TCGA_METADATA_COLS,
+                                            value=None, multi=False, style={"width": "60%"}),
+                                            dcc.Loading(dcc.Graph(id='hist2query-clinical-barplot', figure={'layout': dict(
+                                            xaxis_showgrid=False, yaxis_showgrid=False, margin=dict(l=0, r=0, b=0, t=25, pad=0))},
+                                            style={"height": "500px", "width": "100%"}))
+                                            ])
+                                            ], style={"display": "flex", "justifyContent": "flex-start", "margin-top": "15px"}),
                                             ]),
                                             dbc.Tab(label='Prism2 chat', label_style={"color": DEFAULT_WIDGET_COLOUR},
                                             children=[

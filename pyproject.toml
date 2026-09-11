@@ -193,7 +193,7 @@ where = ["."]
 include = ["rakaia*"]
 
 [tool.setuptools.package-data]
-rakaia = ["*.json", "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml", "*.jpg"]
+rakaia = ["*.json", "*.html", "*.css", "*.ico", "*.js", "*.png", "*.yaml", "*.jpg", "*.parquet"]
 
 [tool.setuptools.dynamic]
 version = {attr = "rakaia._version.__version__"}
