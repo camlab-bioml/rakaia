@@ -42,7 +42,7 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
-from rakaia.register.query import gdc_slide_iframe, hist2query_clinical_bar_plot
+from rakaia.register.query import gdc_slide_iframe, hist2query_clinical_bar_plot, hist2query_tissue_list
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
@@ -2387,6 +2387,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('session_alert_config', 'data', allow_duplicate=True),
         # just use as a placeholder to trigger the dcc Loading to prevent the values from being visible during the request
         Output('hist2query-k', 'value'),
+        Output('hist2query-metadata-tissue-filter', 'options'),
         Input("osd-query-run", "n_clicks"),
         State('wsi-bounds', 'data'),
         State('hist2query-host', 'value'),
@@ -2400,7 +2401,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Query a WSI patch (based on zoom) to hist2query TCGA UNI2 similarity
         """
-        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update, dash.no_update, dash.no_update
+        if ctx.triggered_id == "hist2query-group": return dash.no_update, format_col_ag_groupings(group_cols), dash.no_update, dash.no_update, dash.no_update, dash.no_update
         try:
             if None not in (reg_select, cur_hash, k_search, osd_bounds) and hist_host and run_query and reg_select in cur_hash and \
                     list(map(int, re.findall(r"-?\d+", osd_bounds))):
@@ -2409,10 +2410,10 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))), (tile_number is not None),
                                 (224 * int(tile_number if tile_number is not None else 0)))
                 results = tcga_uni_request(crop, hist_host, hist_port, k_search, True)
-                return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results), dash.no_update, dash.no_update
+                return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results), dash.no_update, dash.no_update, hist2query_tissue_list(results)
             # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
-            return [], [], go.Figure(layout={"template": None}), dash.no_update, dash.no_update
-        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return [], [], go.Figure(layout={"template": None}), {'error': str(e)}, dash.no_update
+            return [], [], go.Figure(layout={"template": None}), dash.no_update, dash.no_update, []
+        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return [], [], go.Figure(layout={"template": None}), {'error': str(e)}, dash.no_update, []
 
     @dash_app.callback(
         Output('prism2-chat-results', 'children'),
@@ -2454,11 +2455,11 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     @dash_app.callback(
         Output("hist2query-clinical-barplot", "figure"),
         Input("hist2query-results", "rowData"),
-        Input('hist2query-metadata-variables', 'value'))
-    def tcga_clinical_metadata_table(row_data, metadata_var):
+        Input('hist2query-metadata-variables', 'value'),
+        Input('hist2query-metadata-tissue-filter', 'value'))
+    def tcga_clinical_metadata_table(row_data, metadata_var, tissue_filter):
         """
         Render a bar plot of patients ranked by patch number, coloured by the clinical variable selected
         """
-        if row_data and metadata_var:
-            return hist2query_clinical_bar_plot(row_data, metadata_var)
-        raise PreventUpdate
+        if row_data and metadata_var: return hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter)
+        return go.Figure(layout={"template": None})

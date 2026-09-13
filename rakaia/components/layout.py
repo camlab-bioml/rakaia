@@ -784,8 +784,12 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             tab_style={"marginLeft": "auto", 'line-height': '0.2vh', 'padding': '0px', 'margin': '0px'},
                                             children = [
                                             html.Br(),
+                                            html.Div([
                                             dcc.Dropdown(id='hist2query-metadata-variables', options=TCGA_METADATA_COLS,
-                                            value=None, multi=False, style={"width": "60%"}),
+                                            value=None, multi=False, style={"width": "60%"}, placeholder='TCGA patient variable'),
+                                            dcc.Dropdown(id='hist2query-metadata-tissue-filter', options=[],
+                                            value=None, multi=True, style={"width": "80%"}, placeholder='Filter patients by tissue type'),
+                                            ], style={"display": "flex"}),
                                             dcc.Loading(dcc.Graph(id='hist2query-clinical-barplot', figure={'layout': dict(
                                             xaxis_showgrid=False, yaxis_showgrid=False, margin=dict(l=0, r=0, b=0, t=25, pad=0))},
                                             style={"height": "500px", "width": "100%"}))

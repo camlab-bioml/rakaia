@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-09-10
+## [0.33.0] - 2026-09-13
 
 ### Added
 
 - Prototype: query WSI zoomed patches on [TCGA UNI](https://huggingface.co/datasets/W8Yi/tcga-wsi-uni2h-features)
-embeddings (grouped or ungrouped) with GDC portal links + patch coordinates
+embeddings (grouped or ungrouped) with GDC portal links + patch coordinates + TCGA patient metadata plots
 - Prototype: query WSI zoomed patches with [`Prism2`](https://huggingface.co/paige-ai/Prism2) chat
 - Show viewport coordinates for WSI canvas on change
 - Draw polygons on the WSI canvas with `annotorious`

@@ -137,6 +137,15 @@ def tile_dimension_labels(max_dim: int=10):
     """
     return [{"label": f"{val}x{val}", "value": val} for val in range(1, int(max_dim + 1))]
 
+def hist2query_tissue_list(query_results: Union[list, dict, None],
+                    category: str="tissue"):
+    """
+    Return a list of the tissue types in the hist2query results for the clinical metadata dropdown filter
+    """
+    if query_results is not None:
+        return list(pd.DataFrame(query_results)[category].unique())
+    return []
+
 def hist2query_pie_chart(query_results: Union[list, dict, None],
                     category: str="tissue"):
     """
@@ -177,24 +186,35 @@ def gdc_slide_iframe(url: str, file_id: str, x: float, y: float, n: float = 1250
 
 def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
                                  metadata_var: Union[str, None]=None,
+                                 subset_tissue_groups: Union[list, None]=None,
+                                 tissue_col_identifier: str="tissue",
                                  patient_col_identifier: str="bcr_patient_barcode"):
     """
     A bar plot of hist2query results per patient coloured by a metadata variable.
     Patients are ordered descending by the number of query patches
     """
-    result_frame = pd.DataFrame(query_results)
-    clinical_meta = pd.read_parquet(TCGA_CLINICAL_METADATA_PATH)
-    result_frame[patient_col_identifier] = [str(elem).split("-01Z")[0] for elem in result_frame['slide']]
-    merged = result_frame.merge(clinical_meta, on=patient_col_identifier, how='inner')
-    patient_counts = (merged.groupby(patient_col_identifier)
-        .agg(patch_count=(patient_col_identifier, "size"),
-            **{str(metadata_var): (str(metadata_var), "first")})
-        .reset_index().sort_values("patch_count", ascending=False))
+    if metadata_var is not None and query_results is not None:
+        result_frame = pd.DataFrame(query_results)
+        tot_result = len(result_frame)
+        clinical_meta = pd.read_parquet(TCGA_CLINICAL_METADATA_PATH)
+        if subset_tissue_groups is not None and (
+                isinstance(subset_tissue_groups, list) and len(subset_tissue_groups) > 0):
+            result_frame = result_frame[result_frame[tissue_col_identifier].isin(subset_tissue_groups)]
+        patches_in_view = len(result_frame)
+        result_frame[patient_col_identifier] = [str(elem).split("-01Z")[0] for elem in result_frame['slide']]
+        merged = result_frame.merge(clinical_meta, on=patient_col_identifier, how='inner')
+        merged = merged.fillna("Not provided")
+        patient_counts = (merged.groupby(patient_col_identifier)
+                          .agg(patch_count=(patient_col_identifier, "size"),
+                               **{str(metadata_var): (str(metadata_var), "first")})
+                          .reset_index().sort_values("patch_count", ascending=False))
 
-    fig = px.bar(patient_counts, x=patient_col_identifier,
-        y="patch_count", color=str(metadata_var),
-        category_orders={patient_col_identifier: patient_counts[patient_col_identifier].tolist()
-        }, title=f"Patients by {str(metadata_var)}")
+        fig = px.bar(patient_counts, x=patient_col_identifier,
+                     y="patch_count", color=str(metadata_var),
+                     category_orders={patient_col_identifier: patient_counts[patient_col_identifier].tolist()
+                                      },
+                     title=f"Patients by {str(metadata_var)}, ({len(patient_counts)} patients, {patches_in_view}/{tot_result} query patches)")
 
-    fig.update_layout(xaxis_title="Patient", yaxis_title="Number of result patches")
-    return fig
+        fig.update_layout(xaxis_title="Patient", yaxis_title="Number of result patches")
+        return fig
+    return None

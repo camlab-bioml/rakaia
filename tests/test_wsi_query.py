@@ -3,6 +3,8 @@ from http.client import HTTPException
 import numpy as np
 import io
 from unittest.mock import Mock, patch
+
+import pandas as pd
 import pytest
 import requests
 from rakaia.register.query import (
@@ -15,7 +17,9 @@ from rakaia.register.query import (
     hist2query_pie_chart,
     prism2_chat_request,
     gdc_slide_iframe,
-    tile_dimension_labels)
+    tile_dimension_labels,
+    hist2query_clinical_bar_plot,
+    hist2query_tissue_list)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -130,3 +134,38 @@ def test_gdc_slide_iframe():
     assert gdc_html_template.startswith("<!DOCTYPE html>")
     assert 'const FILE_ID = "new_slide";' in gdc_html_template
     assert 'const URL = "new_slide";' in gdc_html_template
+
+def test_tcga_metadata_barplot():
+    results = [{'project': 'TCGA-KIRC', 'tissue': 'Kidney renal clear cell carcinoma',
+                'slide': 'TCGA-T7-A92I-01Z-00-DX2.h5', 'x': 23040, 'y': 77312,
+                'similarity': 0.6102864742279053,
+                'url': 'https://portal.gdc.cancer.gov/files/5de05155-274d-4310-83bd-4f24e00af6ee'},
+               {'project': 'TCGA-KIRC', 'tissue': 'Kidney renal clear cell carcinoma', 'slide':
+                   'TCGA-T7-A92I-01Z-00-DX1.h5', 'x': 58368, 'y': 57344, 'similarity': 0.6087409853935242,
+                'url': 'https://portal.gdc.cancer.gov/files/430a1f3c-5c08-44cf-8dd1-ff1d954175a5'},
+               {'project': 'TCGA-KIRC', 'tissue': 'Kidney renal clear cell carcinoma', 'slide':
+                   'TCGA-T7-A92I-01Z-00-DX3.h5', 'x': 29440, 'y': 82944, 'similarity': 0.6076342463493347,
+                'url': 'https://portal.gdc.cancer.gov/files/3eabeeea-1f5b-4e8c-b343-200fcdd19a5b'},
+               {'project': 'TCGA-KIRC', 'tissue': 'Kidney renal clear cell carcinoma', 'slide':
+                   'TCGA-T7-A92I-01Z-00-DX1.h5', 'x': 38912, 'y': 41472, 'similarity': 0.6048403382301331,
+                'url': 'https://portal.gdc.cancer.gov/files/430a1f3c-5c08-44cf-8dd1-ff1d954175a5'},
+               {'project': 'TCGA-KIRC', 'tissue': 'Kidney renal clear cell carcinoma', 'slide':
+                   'TCGA-T7-A92I-01Z-00-DX2.h5', 'x': 25856, 'y': 80896, 'similarity': 0.6034709215164185,
+                'url': 'https://portal.gdc.cancer.gov/files/5de05155-274d-4310-83bd-4f24e00af6ee'},
+               {'project': 'TCGA-KIRP', 'tissue': 'Kidney renal papillary cell carcinoma', 'slide':
+                   'TCGA-5P-A9JY-01Z-00-DX1.h5', 'x': 57856, 'y': 129536, 'similarity': 0.6030967831611633,
+                'url': 'https://portal.gdc.cancer.gov/files/98463c73-ebcf-469b-9dad-71c1453c0386'}]
+
+    assert len(hist2query_tissue_list(results)) == 2
+    assert len(hist2query_tissue_list(None)) == 0
+
+    bar_meta = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type')
+    assert len(bar_meta['data']) == 2
+    assert '(2 patients, 6/6 query patches)' in bar_meta['layout']['title']['text']
+
+    bar_meta_sub = hist2query_clinical_bar_plot(results, 'histological_type',
+                                                subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
+    assert len(bar_meta_sub['data']) == 1
+    assert '(1 patients, 1/6 query patches)' in bar_meta_sub['layout']['title']['text']
+
+    assert hist2query_clinical_bar_plot(results, None) is None
