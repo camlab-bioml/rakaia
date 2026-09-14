@@ -2462,4 +2462,4 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Render a bar plot of patients ranked by patch number, coloured by the clinical variable selected
         """
         if row_data and metadata_var: return hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter)
-        return go.Figure(layout={"template": None})
+        return go.Figure(layout={"xaxis": {"visible": False}, "yaxis": {"visible": False}, "plot_bgcolor": "white", "paper_bgcolor": "white"})

@@ -28,9 +28,10 @@ additional_deps += collect_data_files("rasterio", include_py_files=True)
 
 all_data = additional_deps + [
     ('../rakaia/templates', 'rakaia/templates'),
+    ('../rakaia/templates/gdc.html', 'rakaia/templates'),
+    ('../rakaia/register/tcga_patient_metadata.parquet', 'rakaia/register'),
     ('../rakaia/static', 'rakaia/static'),
-    ('../rakaia/assets', 'rakaia/assets')
-]
+    ('../rakaia/assets', 'rakaia/assets')]
 
 icon_path = "../rakaia/assets/rakaia.ico"
 if not os.path.isfile(icon_path):
