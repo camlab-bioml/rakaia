@@ -19,6 +19,10 @@ embeddings (grouped or ungrouped) with GDC portal links + patch coordinates + TC
 - CLI script to convert `annotorious` WSI coords (JSON) to segmentation mask #186
 - Neighbourhood enrichment heatmap in modal from overlay projection
 
+### Changed
+
+- Call `multiprocessing` `freeze_support` for enrichment analysis (`squidpy`)
+
 ## [0.32.3] - 2026-08-05
 
 ### Changed
