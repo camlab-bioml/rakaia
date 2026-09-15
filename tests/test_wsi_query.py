@@ -3,7 +3,6 @@ from http.client import HTTPException
 import numpy as np
 import io
 from unittest.mock import Mock, patch
-
 import pandas as pd
 import pytest
 import requests
@@ -19,7 +18,7 @@ from rakaia.register.query import (
     gdc_slide_iframe,
     tile_dimension_labels,
     hist2query_clinical_bar_plot,
-    hist2query_tissue_list)
+    hist2query_tissue_list, set_tcga_metadata_options)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -136,6 +135,10 @@ def test_gdc_slide_iframe():
     assert 'const URL = "new_slide";' in gdc_html_template
 
 def test_tcga_metadata_barplot():
+
+    assert not 'bcr_patient_barcode' in set_tcga_metadata_options()
+    assert 'gender' in set_tcga_metadata_options()
+
     results = [{'project': 'TCGA-KIRC', 'tissue': 'Kidney renal clear cell carcinoma',
                 'slide': 'TCGA-T7-A92I-01Z-00-DX2.h5', 'x': 23040, 'y': 77312,
                 'similarity': 0.6102864742279053,
@@ -159,13 +162,16 @@ def test_tcga_metadata_barplot():
     assert len(hist2query_tissue_list(results)) == 2
     assert len(hist2query_tissue_list(None)) == 0
 
-    bar_meta = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type')
+    bar_meta, prop = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type')
     assert len(bar_meta['data']) == 2
     assert '(2 patients, 6/6 query patches)' in bar_meta['layout']['title']['text']
+    assert len(prop) == 2
+    assert pd.DataFrame(prop)['Proportion'].to_list() == [0.5, 0.5]
 
-    bar_meta_sub = hist2query_clinical_bar_plot(results, 'histological_type',
-                                                subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
+    bar_meta_sub, prop = hist2query_clinical_bar_plot(results, 'histological_type',
+                                             subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
     assert len(bar_meta_sub['data']) == 1
+    assert len(prop) == 1
     assert '(1 patients, 1/6 query patches)' in bar_meta_sub['layout']['title']['text']
 
-    assert hist2query_clinical_bar_plot(results, None) is None
+    assert hist2query_clinical_bar_plot(results, None) == (None, None)

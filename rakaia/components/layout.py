@@ -16,7 +16,7 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
 from rakaia._version import __version__
-from rakaia.register.query import TCGA_UNI_COL_DEFS, tile_dimension_labels
+from rakaia.register.query import TCGA_UNI_COL_DEFS, tile_dimension_labels, set_tcga_metadata_options
 from rakaia.utils.alert import DataImportTour, ToolTips, hf_model_agreement
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
@@ -38,7 +38,6 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
     DEFAULT_SWATCHES = default_picker_swatches(config)
     DEFAULT_WIDGET_COLOUR = SessionTheme().widget_colour
     TOOLTIPS = ToolTips().tooltips
-    TCGA_METADATA_COLS = list(pd.read_parquet(TCGA_CLINICAL_METADATA_PATH).columns)
 
     return html.Div([
         dash_tour_component.DashTour(accentColor=DEFAULT_WIDGET_COLOUR,
@@ -757,11 +756,8 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             style={"display": "flex", "width": "100%", "alignItems": "flex-start"}),
                                             ], style={"display": "flex"}),
                                             dbc.Button("Send query", id='osd-query-run', disabled=True,
-                                                           style={"align": "center", "display": "inline-block",
-                                                                  "background-color": DEFAULT_WIDGET_COLOUR,
-                                                                  "float": "center",
-                                                                  "margin-bottom": "10px", "margin-top": "-25px", "flexBasis": "100%"},
-                                                           n_clicks=0),
+                                            style={"align": "center", "display": "inline-block", "background-color": DEFAULT_WIDGET_COLOUR,
+                                            "float": "center", "margin-bottom": "10px", "margin-top": "-25px", "flexBasis": "100%"}, n_clicks=0),
                                             html.Br(),
                                             dbc.Tabs([
                                             dbc.Tab(label='Patch results', label_style={"color": DEFAULT_WIDGET_COLOUR},
@@ -785,11 +781,18 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             children = [
                                             html.Br(),
                                             html.Div([
-                                            dcc.Dropdown(id='hist2query-metadata-variables', options=TCGA_METADATA_COLS,
+                                            dcc.Dropdown(id='hist2query-metadata-variables', options=set_tcga_metadata_options(),
                                             value=None, multi=False, style={"width": "60%"}, placeholder='TCGA patient variable'),
                                             dcc.Dropdown(id='hist2query-metadata-tissue-filter', options=[],
                                             value=None, multi=True, style={"width": "80%"}, placeholder='Filter patients by tissue type'),
+                                            dbc.Button("Patient distribution", id='hist2query-patient-dist',
+                                            style={"width": "20%", "display": "inline-block", "background-color": DEFAULT_WIDGET_COLOUR,
+                                            "margin-bottom": "10px", "margin-right": "40px"}, n_clicks=0),
                                             ], style={"display": "flex"}),
+                                            dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='patient-dist-table',
+                                            columns=[], data=None, editable=False, filter_action='native',
+                                            style_table={"max-width": "inherit", "overflowX": "auto"})]),
+                                            id="show-patient-dist-table", size='l'),
                                             dcc.Loading(dcc.Graph(id='hist2query-clinical-barplot', figure={'layout': dict(
                                             xaxis_showgrid=False, yaxis_showgrid=False, margin=dict(l=0, r=0, b=0, t=25, pad=0))},
                                             style={"height": "500px", "width": "100%"}))

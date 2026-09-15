@@ -17,7 +17,6 @@ from dash.exceptions import PreventUpdate
 import pandas as pd
 import numpy as np
 import plotly.graph_objs as go
-import plotly.express as px
 from natsort import natsorted, ns
 import shortuuid
 from rakaia.inputs.pixel import (
@@ -73,7 +72,7 @@ from rakaia.utils.pixel import (
     high_low_values_from_zoom_layout,
     layers_exist, add_saved_blend,
     is_metadata_key)
-from rakaia.utils.quantification import limit_length_to_quantify
+from rakaia.utils.quantification import limit_length_to_quantify, DistributionTableColumns
 from rakaia.utils.session import (
     validate_session_upload_config,
     channel_dropdown_selection,
@@ -151,6 +150,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     DEFAULT_COLOURS = ["#FF0000", "#00FF00", "#0000FF", "#00FAFF", "#FF00FF", "#FFFF00", "#FFFFFF"]
     ALERT = AlertMessage()
     OVERWRITE = app_config['serverside_overwrite']
+    dist_cols = [{'id': p, 'name': p, 'editable': False} for p in DistributionTableColumns.columns]
 
     @du.callback(Output('uploads', 'data'),
                  id='upload-image')
@@ -2453,7 +2453,19 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         return None, False
 
     @dash_app.callback(
+        Output("show-patient-dist-table", "is_open"),
+        Input('hist2query-patient-dist', 'n_clicks'),
+        [State("show-patient-dist-table", "is_open")])
+    def toggle_show_patient_dist_modal(n, is_open):
+        """
+        Toggle the visibility of the modal for the hist2query metadata patient distribution
+        """
+        return not is_open if n else is_open
+
+    @dash_app.callback(
         Output("hist2query-clinical-barplot", "figure"),
+        Output('patient-dist-table', 'data'),
+        Output('patient-dist-table', 'columns'),
         Input("hist2query-results", "rowData"),
         Input('hist2query-metadata-variables', 'value'),
         Input('hist2query-metadata-tissue-filter', 'value'))
@@ -2461,5 +2473,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         Render a bar plot of patients ranked by patch number, coloured by the clinical variable selected
         """
-        if row_data and metadata_var: return hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter)
-        return go.Figure(layout={"xaxis": {"visible": False}, "yaxis": {"visible": False}, "plot_bgcolor": "white", "paper_bgcolor": "white"})
+        if row_data and metadata_var and str(metadata_var) != 'bcr_patient_barcode':
+            fig, prop = hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter)
+            return fig, prop, dist_cols
+        return go.Figure(layout={"xaxis": {"visible": False}, "yaxis": {"visible": False}, "plot_bgcolor": "white", "paper_bgcolor": "white"}), pd.DataFrame({}).to_dict(orient="records"), dist_cols

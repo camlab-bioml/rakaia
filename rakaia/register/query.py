@@ -171,6 +171,15 @@ def hist2query_pie_chart(query_results: Union[list, dict, None],
 _GDC_SlIDE_TEMPLATE = (Path(__file__).parent / "../templates" / "gdc.html").read_text()
 
 TCGA_CLINICAL_METADATA_PATH = (Path(__file__).resolve().parent / "tcga_patient_metadata.parquet")
+TCGA_DROPDOWN_COLS_IGNORE = ['bcr_patient_barcode']
+
+def set_tcga_metadata_options():
+    """
+    Set the TCGA metadata column dropdown options
+    """
+    return [elem for elem in list(pd.read_parquet(TCGA_CLINICAL_METADATA_PATH).columns) if
+            elem not in TCGA_DROPDOWN_COLS_IGNORE]
+
 
 def gdc_slide_iframe(url: str, file_id: str, x: float, y: float, n: float = 1250) -> str:
     """
@@ -209,12 +218,16 @@ def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
                                **{str(metadata_var): (str(metadata_var), "first")})
                           .reset_index().sort_values("patch_count", ascending=False))
 
+        counts = patient_counts[str(metadata_var)].value_counts()
+        proportions = patient_counts[str(metadata_var)].value_counts(normalize=True).round(3)
+        metadata_prop = (pd.concat([counts, proportions], axis=1, keys=["Counts", "Proportion"])
+            .reset_index().rename(columns={str(metadata_var): 'Value'}))
+
         fig = px.bar(patient_counts, x=patient_col_identifier,
                      y="patch_count", color=str(metadata_var),
-                     category_orders={patient_col_identifier: patient_counts[patient_col_identifier].tolist()
-                                      },
+                     category_orders={patient_col_identifier: patient_counts[patient_col_identifier].tolist()},
                      title=f"Patients by {str(metadata_var)}, ({len(patient_counts)} patients, {patches_in_view}/{tot_result} query patches)")
 
         fig.update_layout(xaxis_title="Patient", yaxis_title="Number of result patches")
-        return fig
-    return None
+        return fig, metadata_prop.to_dict(orient="records")
+    return None, None
