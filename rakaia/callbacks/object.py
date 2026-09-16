@@ -42,7 +42,7 @@ from rakaia.utils.object import (
     ROIQuantificationMatch,
     validate_mask_shape_matches_image,
     quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay,
-    umap_fig_using_zoom)
+    umap_fig_using_zoom, fully_blank_px_fig)
 from rakaia.inputs.object import (
     channel_expression_from_interactive_subsetting,
     object_umap_plot,
@@ -1049,5 +1049,5 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 objects, is_ad = (roi_from_anndata_file(sesh_uploads, roi_select, delim), True) if \
                 (roi_from_anndata_file(sesh_uploads, roi_select, delim)) else (mask_dict[mask_select]['raw'], False)
                 return nhood_enrichment_graph(objects, cluster_frame[roi_select], overlay_col, overlay_subset, nhood_val, is_ad, roi_select), dash.no_update
-            except (KeyError, ValueError, IndexError) as e: return None, add_warning_to_error_config(None, f"{type(e).__name__}: {str(e)}")
+            except (KeyError, ValueError, IndexError) as e: return fully_blank_px_fig(), add_warning_to_error_config(None, f"{type(e).__name__}: {str(e)}")
         raise PreventUpdate

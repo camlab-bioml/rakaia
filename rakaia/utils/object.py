@@ -14,6 +14,7 @@ import numpy as np
 from skimage.segmentation import find_boundaries
 import numexpr as ne
 import scipy
+import plotly.graph_objs as go
 from rakaia.utils.pixel import (
     path_to_mask,
     split_string_at_pattern)
@@ -713,3 +714,10 @@ def find_similar_images(image_cor: Union[dict, pd.DataFrame, None], current_imag
         return {"indices": similar} if identifier == "sample" else {"names": similar}
     except KeyError:
         return None
+
+def fully_blank_px_fig():
+    """
+    Return a fully blank `plotly.graph_objs` figure
+    """
+    return go.Figure(layout={"xaxis": {"visible": False}, "yaxis": {"visible": False}, "plot_bgcolor": "white",
+                      "paper_bgcolor": "white"})

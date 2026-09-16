@@ -415,7 +415,6 @@ def nhood_enrichment_graph(objects: Union[str, np.ndarray],
         objects.obs[overlay_cat] = (objects.obs[overlay_cat].cat.remove_unused_categories())
 
     # use a grid if visium spot or HD because of the grid-like structure
-    # TODO: need to figure out how to handle grid vs. generic and passing radius vs. num neighbours
     coord_type = 'grid' if (is_spot_based_spatial(objects) or visium_has_bin_scaling(objects)) else 'generic'
     sq.gr.spatial_neighbors(objects, radius=nhood_radius_neighbours, coord_type=coord_type, n_neighs=nhood_radius_neighbours)
 

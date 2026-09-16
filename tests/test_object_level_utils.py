@@ -23,7 +23,7 @@ from rakaia.utils.object import (
     compute_image_similarity_from_overlay,
     find_similar_images,
     pad_steinbock_roi_index,
-    umap_fig_using_zoom, convert_mask_to_object_boundary)
+    umap_fig_using_zoom, convert_mask_to_object_boundary, fully_blank_px_fig)
 import pandas as pd
 import os
 import numpy as np
@@ -448,3 +448,8 @@ def test_compute_image_similarity(get_current_dir):
     assert find_similar_images(cor_mat, "test_2", 3, "description") == {'names': ['test_1']}
     assert find_similar_images(None, "test_2", 3, "description") is None
     assert find_similar_images(cor_mat, "not_there", 3, "description") is None
+
+def test_blank_plotly_go_return():
+    empty_fig = fully_blank_px_fig()
+    assert not empty_fig['data']
+    assert not empty_fig['layout']['xaxis']['visible']

@@ -51,6 +51,7 @@ from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
+from rakaia.utils.object import fully_blank_px_fig
 from rakaia.utils.pixel import (
     delete_dataset_option_from_list_interactively,
     get_default_channel_upper_bound_by_percentile,
@@ -2412,8 +2413,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 results = tcga_uni_request(crop, hist_host, hist_port, k_search, True)
                 return results, format_col_ag_groupings(group_cols), hist2query_pie_chart(results), dash.no_update, dash.no_update, hist2query_tissue_list(results)
             # on error, both the ag grid rowdata and column defs must be empty and matched to avoid JS error
-            return [], [], go.Figure(layout={"template": None}), dash.no_update, dash.no_update, []
-        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return [], [], go.Figure(layout={"template": None}), {'error': str(e)}, dash.no_update, []
+            return [], [], fully_blank_px_fig(), dash.no_update, dash.no_update, []
+        except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return [], [], fully_blank_px_fig(), {'error': str(e)}, dash.no_update, []
 
     @dash_app.callback(
         Output('prism2-chat-results', 'children'),
@@ -2436,7 +2437,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
                 crop = wsi_crop(cur_hash[reg_select], list(map(int, re.findall(r"-?\d+", osd_bounds))),
                         (tile_number is not None), (224 * int(tile_number if tile_number is not None else 0)))
                 return prism2_chat_request(crop, hist_host, hist_port, "chat", str(question)), dash.no_update
-            return None
+            return None, dash.no_update
         except (HTTPException, rex.HTTPError, rex.ConnectionError, rex.InvalidURL) as e: return None, {'error': str(e)}
 
     @dash_app.callback(
@@ -2476,4 +2477,4 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if row_data and metadata_var and str(metadata_var) != 'bcr_patient_barcode':
             fig, prop = hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter)
             return fig, prop, dist_cols
-        return go.Figure(layout={"xaxis": {"visible": False}, "yaxis": {"visible": False}, "plot_bgcolor": "white", "paper_bgcolor": "white"}), pd.DataFrame({}).to_dict(orient="records"), dist_cols
+        return fully_blank_px_fig(), pd.DataFrame({}).to_dict(orient="records"), dist_cols
