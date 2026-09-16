@@ -737,7 +737,7 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             html.Br(),
                                             html.B("Find similar patches in TCGA with UNI2", style={"margin": "10px", "margin-top": "17px"}),
                                             dcc.Loading(html.Div([html.H6('k result size', style={"margin": "10px", "width": "60%"}),
-                                            dcc.Input(type="number", placeholder="k size", min=1, max=10000, value=500,
+                                            dcc.Input(type="number", placeholder="k size", min=1, max=500000, value=500,
                                             style={"width": "60%", "height": "10%", "margin": "7.5px"},
                                             id='hist2query-k', persistence=config['persistence'], persistence_type='local'),
                                             daq.ToggleSwitch(label='Group by slide', id='hist2query-group',
