@@ -26,7 +26,8 @@ def test_wsi_roi_crop(get_current_dir):
     crop = wsi_crop(wsi, bounds, False)
     assert crop.shape == (400, 300)
     crop_subsample = wsi_crop(wsi, bounds)
-    assert crop_subsample.shape == (224, 224)
+    #IMP: for Pillow resize, width is used first, but in numpy, height is reported first
+    assert crop_subsample.shape == (224, 168)
 
     assert wsi_crop(os.path.join(get_current_dir, 'query_from_text.txt'), bounds) is None
     assert wsi_crop(None, None) is None

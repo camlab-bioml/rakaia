@@ -24,6 +24,13 @@ TCGA_UNI_COL_DEFS = [{"field": "tissue", "rowGroup": True, "hide": True}, {"fiel
                     # static label shown on every button in this column
                     "valueGetter": {"function": "'Open'"}, "sortable": False, "filter": False}]
 
+def crop_aspect_ratio(x0: Union[int, float], x1: Union[int, float], y0: Union[int, float], y1: Union[int, float]):
+    """
+    Set the crop aspect ratio as the width / height
+    """
+    return float((x1 - x0) / (y1 - y0))
+
+
 def wsi_crop(image: Union[Path, str, np.ndarray, None],
              bounds: Union[list, None]=None,
              return_sampled: bool=True,
@@ -43,7 +50,7 @@ def wsi_crop(image: Union[Path, str, np.ndarray, None],
         if (len(crop.shape) == 3) and crop.shape[2] == 4: crop = crop[:, :, :3]
         # TODO: how should the aspect ratio be handled? Here we make a square subsample patch
         # square sub-sampled patches appear to work well for UNI2, but may not for Prism2
-        return np.array(Image.fromarray(crop).resize((patch_out_size, patch_out_size),
+        return np.array(Image.fromarray(crop).resize((int(patch_out_size * float(crop_aspect_ratio(x0, x1, y0, y1))), patch_out_size),
              resample=Image.Resampling.LANCZOS)) if (return_sampled and patch_out_size > 0) else crop
     except (pyvips.Error, TypeError, KeyError): pass
     return None
