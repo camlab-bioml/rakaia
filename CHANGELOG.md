@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.33.0] - 2026-09-18
+## [0.33.0] - 2026-09-20
 
 ### Added
 
@@ -24,6 +24,7 @@ embeddings (grouped or ungrouped) with GDC portal links + patch coordinates + TC
 - Explicit installation of `libvips` in Actions (OS-specific)
 - Call `multiprocessing` `freeze_support` for enrichment analysis (`squidpy`)
 - Update from dependabot: `soupsieve`
+- Use gene subset for Anndata DGE if sufficiently large i.e. Atera
 
 ## [0.32.3] - 2026-08-05
 

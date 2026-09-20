@@ -48,8 +48,6 @@ def wsi_crop(image: Union[Path, str, np.ndarray, None],
         crop = crop.crop(x0, y0, x1 - x0, y1 - y0).numpy().astype(np.uint8)
         # drop alpha channel if present, often from svs
         if (len(crop.shape) == 3) and crop.shape[2] == 4: crop = crop[:, :, :3]
-        # TODO: how should the aspect ratio be handled? Here we make a square subsample patch
-        # square sub-sampled patches appear to work well for UNI2, but may not for Prism2
         return np.array(Image.fromarray(crop).resize((int(patch_out_size * float(crop_aspect_ratio(x0, x1, y0, y1))), patch_out_size),
              resample=Image.Resampling.LANCZOS)) if (return_sampled and patch_out_size > 0) else crop
     except (pyvips.Error, TypeError, KeyError): pass

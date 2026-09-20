@@ -1,13 +1,17 @@
 import os
 import pandas as pd
 import anndata as ad
+import numpy as np
+import scipy.sparse as sp
 import pytest
 from rakaia.utils.dge import (
     dge_anndata,
-    DGEOverlayMismatchError)
+    DGEOverlayMismatchError,
+    anndata_requires_dge_subset)
 
 def test_dge_anndata(get_current_dir):
     adata = os.path.join(get_current_dir, 'visium_thalamus.h5ad')
+    assert not anndata_requires_dge_subset(adata)
     dge_results = dge_anndata(adata, 'array_col')
     assert int(dge_results.shape[0]) == 50
     assert int(dge_results.shape[1]) > 1
@@ -25,3 +29,19 @@ def test_dge_anndata(get_current_dir):
     with pytest.raises(DGEOverlayMismatchError):
         # when the overlay doesn't match the shape i.e. annotations that exclude objects
         assert not dge_anndata(adata, pd.Series(['fake'] * 100))
+
+def test_dge_large():
+
+    rng = np.random.default_rng(42)
+    X = rng.random((50000, 10000), dtype=np.float32)
+
+    adata = ad.AnnData(X=X)
+
+    adata.obs["cluster"] = rng.choice(["group_1", "group_2"], size=50000)
+
+    adata.obs_names = [f"cell_{i}" for i in range(50000)]
+    adata.var_names = [f"gene_{i}" for i in range(10000)]
+
+    assert anndata_requires_dge_subset(adata)
+    dge_table = dge_anndata(adata, 'cluster')
+    assert dge_table.shape == (50, 2)
