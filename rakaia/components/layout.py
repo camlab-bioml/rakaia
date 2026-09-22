@@ -785,6 +785,11 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             value=None, multi=False, style={"width": "60%"}, placeholder='TCGA patient variable'),
                                             dcc.Dropdown(id='hist2query-metadata-tissue-filter', options=[],
                                             value=None, multi=True, style={"width": "80%"}, placeholder='Filter patients by tissue type'),
+                                            html.Div([
+                                            html.B("Patch count filter"),
+                                            dcc.Input(id='hist2query-min-patch-filter', type='number', min=1, max=50000, debounce=True,
+                                                      value=None, style={"width": "50%"})
+                                            ], style={"margin-top": "-20px", "margin-right": "7.5px"}),
                                             dbc.Button("Patient distribution", id='hist2query-patient-dist',
                                             style={"width": "20%", "display": "inline-block", "background-color": DEFAULT_WIDGET_COLOUR,
                                             "margin-bottom": "10px", "margin-right": "40px", "align-self": "flex-start"}, n_clicks=0),

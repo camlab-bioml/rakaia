@@ -176,3 +176,10 @@ def test_tcga_metadata_barplot():
     assert '(1 patients, 1/6 query patches)' in bar_meta_sub['layout']['title']['text']
 
     assert hist2query_clinical_bar_plot(results, None) == (None, None)
+
+    bar_meta_min, prop = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type',
+                                                      min_patch_count_per_patient=10)
+
+    assert len(bar_meta_min['data']) == 0
+    assert len(prop) == 0
+    assert '(0 patients, 0/6 query patches)' in bar_meta_min['layout']['title']['text']

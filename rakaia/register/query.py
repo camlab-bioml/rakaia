@@ -201,6 +201,7 @@ def gdc_slide_iframe(url: str, file_id: str, x: float, y: float, n: float = 1250
 def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
                                  metadata_var: Union[str, None]=None,
                                  subset_tissue_groups: Union[list, None]=None,
+                                 min_patch_count_per_patient: Union[int, None]=None,
                                  tissue_col_identifier: str="tissue",
                                  patient_col_identifier: str="bcr_patient_barcode"):
     """
@@ -222,6 +223,9 @@ def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
                           .agg(patch_count=(patient_col_identifier, "size"),
                                **{str(metadata_var): (str(metadata_var), "first")})
                           .reset_index().sort_values("patch_count", ascending=False))
+        if min_patch_count_per_patient is not None:
+            patient_counts = patient_counts[patient_counts['patch_count'] >= min_patch_count_per_patient]
+            patches_in_view = int(patient_counts['patch_count'].sum())
 
         counts = patient_counts[str(metadata_var)].value_counts()
         proportions = patient_counts[str(metadata_var)].value_counts(normalize=True).round(3)

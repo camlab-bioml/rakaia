@@ -2469,12 +2469,13 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('patient-dist-table', 'columns'),
         Input("hist2query-results", "rowData"),
         Input('hist2query-metadata-variables', 'value'),
-        Input('hist2query-metadata-tissue-filter', 'value'))
-    def tcga_clinical_metadata_table(row_data, metadata_var, tissue_filter):
+        Input('hist2query-metadata-tissue-filter', 'value'),
+        Input('hist2query-min-patch-filter', 'value'))
+    def tcga_clinical_metadata_table(row_data, metadata_var, tissue_filter, min_patch):
         """
         Render a bar plot of patients ranked by patch number, coloured by the clinical variable selected
         """
         if row_data and metadata_var and str(metadata_var) != 'bcr_patient_barcode':
-            fig, prop = hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter)
+            fig, prop = hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter, min_patch)
             return fig, prop, dist_cols
         return fully_blank_px_fig(), pd.DataFrame({}).to_dict(orient="records"), dist_cols
