@@ -10,13 +10,45 @@ function checkStatus(url) {
     let response = fetch(url, { method: 'HEAD' });
     let tileReturn = [400, 404, 500, null].includes(response.status) ? null: url
     return tileReturn;
-    }
+    };
 
 function fractionToViewportZoom(fraction, minZoom, maxZoom) {
         // map the zoom as a normalized fraction of the UI zoom, not proportional to magnification level
         fraction = Math.min(Math.max(fraction, 0), 1);
         return minZoom * Math.pow(maxZoom / minZoom, fraction);
       };
+
+function osdAnnotDownload(buttonId, annots, filename) {
+    const button = document.getElementById(buttonId);
+    if (!button) return;
+
+    if (button.dataset.listenerAttached === "true") return;
+
+    button.addEventListener("click", function () {
+
+    const annotations = annots.getAnnotations();
+
+    if (Array.isArray(annotations) && annotations.length === 0) return;
+
+    const json = JSON.stringify(annotations, null, 2);
+
+    const blob = new Blob([json], { type: "application/json" });
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+
+    a.click();
+    document.body.removeChild(a);
+
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    });
+
+    button.dataset.listenerAttached = "true";
+}
 
 const renderOSDCanvas = (initialTileSource) => {
 const viewer = OpenSeadragon({
@@ -40,6 +72,16 @@ function renderTiles(viewer) {
     //viewer = renderOSDCanvas(initialTileSource);
     const newTileSource = checkStatus(newPath);
     viewer.open(newTileSource);
+
+    // hide the button to open the query modal until an image is rendered
+    viewer.addHandler('tile-loaded', function (event) {
+    const queryModalOpen = document.getElementById("osd-query-modal-open");
+    if (event.tile) {
+        queryModalOpen.style.display = "block";
+    } else {
+        queryModalOpen.style.display = "none";
+    }
+    });
     }
 
 function observeCoordChange(mutationsList, viewer) {
@@ -106,9 +148,46 @@ const observer = new MutationObserver(() => {
     const viewer = renderOSDCanvas(initialTileSource);
     observer.disconnect();
 
+    const anno = AnnotoriousOSD.createOSDAnnotator(viewer, {
+    drawingEnabled: false,
+    style: {fill: "#ff0000",
+        fillOpacity: 0.5}
+    });
+
+    const enablePolygon = document.querySelector("#osd-polygon input");
+    enablePolygon.addEventListener("change", (event) => {
+    if (event.target.checked) {
+        anno.setDrawingTool("polygon");
+        anno.setDrawingEnabled(true);
+        viewer.setMouseNavEnabled(false);
+        viewer.gestureSettingsMouse.clickToZoom = false;
+        viewer.gestureSettingsMouse.dblClickToZoom = false;
+    } else {
+        anno.setDrawingEnabled(false);
+        viewer.setMouseNavEnabled(true);
+        viewer.gestureSettingsMouse.clickToZoom = true;
+        viewer.gestureSettingsMouse.dblClickToZoom = true;
+    }
+    });
+
+    let selectedAnnotation = null;
+
+    anno.on('clickAnnotation', (annotation) => {
+    selectedAnnotation = annotation;
+    });
+
+    document.addEventListener('keydown', (event) => {
+    if ((event.key === "Delete") && selectedAnnotation) {
+        event.preventDefault();
+        anno.removeAnnotation(selectedAnnotation.id);
+        selectedAnnotation = null;
+    }
+    });
+
     document.getElementById("update-coregister").addEventListener('click', function(e) {
     renderTiles(viewer);
     });
+
     if (performance.navigation.type == performance.navigation.TYPE_RELOAD) {
         viewer.open(null);}
 
@@ -117,12 +196,45 @@ const observer = new MutationObserver(() => {
       el.style = 'display:none;';
     });
 
+    viewer.addHandler('animation', function() {
+
+    const viewport = viewer.viewport;
+
+    // IMP: this does not take into account rotation, the coordinates stay in the original orientation space
+    // Helps to map the bounding boxes back to the original image, potentially for patch extraction
+    const viewportBounds = viewport.getBounds();
+
+    const imageBounds = viewport.viewportToImageRectangle(viewportBounds);
+
+    const minX = imageBounds.x;
+    const minY = imageBounds.y;
+    const maxX = imageBounds.x + imageBounds.width;
+    const maxY = imageBounds.y + imageBounds.height;
+
+    const tiledImage = viewer.world.getItemAt(0);
+    const imageSize = tiledImage.getContentSize();
+
+    // check if the bounds are outside of the slide dimensions, do not allow query if so
+    const outsideSlide =
+    minX < 0 ||
+    minY < 0 ||
+    maxX > imageSize.x ||
+    maxY > imageSize.y;
+
+    const wsiModalOpen = document.getElementById("osd-query-modal-open");
+
+    if (wsiModalOpen) {
+    wsiModalOpen.disabled = outsideSlide};
+
+    const boundsString = `X: (${minX.toFixed(0)}, ${maxX.toFixed(0)}),\nY: (${minY.toFixed(0)}, ${maxY.toFixed(0)})`;
+    document.getElementById("osd-viewport-coord").innerText = boundsString;
+    });
+
     document.getElementById("toggle-osd-navigator").addEventListener('click', function(e) {
     viewer.navigator.element.style.display = toggleNavigator(viewer.navigator.element.style.display)
     });
 
     document.getElementById("wsi-zoom-scale").addEventListener("change", function(e) {
-            //console.log("Checkbox changed:", e.target.checked)
             setWSIZoomLevel(viewer);
     });
 
@@ -145,6 +257,72 @@ const observer = new MutationObserver(() => {
     subtree: true,
     childList: true
     });
+
+let dagcomponentfuncs = window.dashAgGridComponentFunctions =
+    window.dashAgGridComponentFunctions || {};
+
+dagcomponentfuncs.OpenSlideButton = function (props) {
+    if (props.node.group) return null; // group rows have no single x/y/slide_id to open
+    function onClick() {
+        props.setData(props.data);
+    }
+    return React.createElement(
+        'button',
+        { onClick: onClick, className: props.className || 'open-slide-btn' },
+        props.value || 'Open'
+    );
+};
+
+dagcomponentfuncs.LinkRenderer = function (props) {
+    if (props.node.group) return null; // nothing to link to on aggregated group rows
+    return React.createElement(
+        'a',
+        {
+            href: props.value,
+            target: '_blank',
+            rel: 'noopener noreferrer'
+        },
+        'Open Slide in GDC Portal'
+    );
+};
+
+dagcomponentfuncs.GroupLinkRenderer = function (props) {
+    const value = props.value;
+
+    if (props.node.group && props.node.level === 1) {
+        const url = props.node.allLeafChildren[0]?.data?.url;
+
+        if (url) {
+            return React.createElement(
+                'a',
+                {
+                    href: url,
+                    target: '_blank',
+                    rel: 'noopener noreferrer',
+                    onClick: (e) => {
+                        e.stopPropagation();
+                    }
+                },
+                value
+            );
+        }
+    }
+
+    return value;
+};
+
+let dagfuncs = window.dashAgGridFunctions = window.dashAgGridFunctions || {};
+
+dagfuncs.resizeGroupColumn = function (params) {
+    params.api.autoSizeColumn('ag-Grid-AutoColumn');
+};
+
+const osd_download_observer = new MutationObserver(() => {
+    osdAnnotDownload("btn-download-wsi-annot", anno, "wsi_annotations.json");
+    // download_observer.disconnect();
+});
+
+osd_download_observer.observe(document.getElementById("react-entry-point"), { childList: true, subtree: true });
 
 });
 

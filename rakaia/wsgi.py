@@ -6,6 +6,7 @@ import tempfile
 import argparse
 import sys
 import webbrowser
+import multiprocessing
 import os
 from threading import Timer
 from waitress import serve
@@ -87,6 +88,7 @@ def main(sysargs=sys.argv[1:]):
 
     :return: None
     """
+    multiprocessing.freeze_support()
     parser = cli_parser()
     args = parser.parse_args(sysargs)
 

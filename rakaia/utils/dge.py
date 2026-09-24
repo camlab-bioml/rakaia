@@ -13,6 +13,15 @@ class DGEOverlayMismatchError(Exception):
     Raise when DGE cannot be performed with the given overlay because its shape does not match
     """
 
+def anndata_requires_dge_subset(adata: Union[None, str, ad.AnnData],
+                                min_objs: int=50000,
+                                min_genes: int=5000):
+    """
+    Detect if an anndata store requires sub-setting before DGE based on dimensions
+    """
+    adata = ad.read_h5ad(adata) if isinstance(adata, str) else adata
+    return adata.n_obs >= min_objs and len(adata.var_names) >= min_genes
+
 def dge_anndata(adata: Union[None, str, ad.AnnData],
                 grouping: Union[None, str, list, pd.Series]=None,
                 num_genes_show: int=50,
@@ -32,6 +41,11 @@ def dge_anndata(adata: Union[None, str, ad.AnnData],
         grouping = column_name
     if not (adata is None) and str(grouping) in adata.obs.columns:
         adata.obs[grouping] = adata.obs[str(grouping)].astype(str).astype("category")
+        if anndata_requires_dge_subset(adata):
+            sc.pp.filter_genes(adata, min_cells=10)
+            sc.pp.highly_variable_genes(adata, n_top_genes=500, flavor="seurat_v3")
+            adata = adata[:, adata.var["highly_variable"]].copy()
+
         counts = adata.obs[str(grouping)].value_counts()
         valid_groups = counts[counts > min_group_size].index
         adata = adata[adata.obs[str(grouping)].isin(valid_groups)].copy()

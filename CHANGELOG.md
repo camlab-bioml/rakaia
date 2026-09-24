@@ -7,6 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.33.0] - 2026-09-20
+
+### Added
+
+- Prototype: query WSI zoomed patches on [TCGA UNI](https://huggingface.co/datasets/W8Yi/tcga-wsi-uni2h-features)
+embeddings (grouped or ungrouped) with GDC portal links + patch coordinates + TCGA patient metadata plots
+- Prototype: query WSI zoomed patches with [`Prism2`](https://huggingface.co/paige-ai/Prism2) chat
+- Show viewport coordinates for WSI canvas on change
+- Draw polygons on the WSI canvas with `annotorious`
+- CLI script to convert `annotorious` WSI coords (JSON) to segmentation mask #186
+- Neighbourhood enrichment heatmap in modal from overlay projection
+
+### Changed
+
+- Explicit installation of `libvips` in Actions (OS-specific)
+- Call `multiprocessing` `freeze_support` for enrichment analysis (`squidpy`)
+- Update from dependabot: `soupsieve`
+- Use gene subset for Anndata DGE if sufficiently large i.e. Atera
+
 ## [0.32.3] - 2026-08-05
 
 ### Changed

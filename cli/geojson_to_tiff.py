@@ -1,3 +1,8 @@
+"""
+Convert a geojson file into a greyscale tiff mask array. Requires the user to set the
+output dimensions of the tiff. Certain annotations can be ignored as holes/blank in the
+final output mask.
+"""
 import argparse
 import sys
 import numpy as np
