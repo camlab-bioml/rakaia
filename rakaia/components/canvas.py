@@ -974,8 +974,8 @@ class CanvasLayout:
                       'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
         # IMP: for yaxis, need to set the min and max in the reverse order
         fig = go.Figure(data=self.figure['data'], layout=self.figure['layout'])
-        shapes = self.figure['layout']['shapes']
-        annotations = self.figure['layout']['annotations']
+        shapes = self.figure['layout']['shapes'] if 'shapes' in self.figure['layout'] else None
+        annotations = self.figure['layout']['annotations'] if 'annotations' in self.figure['layout'] else None
         fig['layout']['shapes'] = None
         fig['layout']['annotations'] = None
         fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),

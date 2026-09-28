@@ -177,7 +177,7 @@ const observer = new MutationObserver(() => {
     });
 
     document.addEventListener('keydown', (event) => {
-    if ((event.key === "Delete") && selectedAnnotation) {
+    if ((event.key === "Delete" || event.key === "Backspace") && selectedAnnotation) {
         event.preventDefault();
         anno.removeAnnotation(selectedAnnotation.id);
         selectedAnnotation = null;
