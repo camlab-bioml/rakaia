@@ -41,7 +41,8 @@ from rakaia.parsers.pixel import (
     check_empty_missing_layer_dict, set_current_channels)
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
-from rakaia.register.query import gdc_slide_iframe, hist2query_clinical_bar_plot, hist2query_tissue_list
+from rakaia.register.query import gdc_slide_iframe, hist2query_clinical_bar_plot, hist2query_tissue_list, \
+    hist2query_patient_enrichment, ENRICHMENT_COLS
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
@@ -2467,6 +2468,8 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output("hist2query-clinical-barplot", "figure"),
         Output('patient-dist-table', 'data'),
         Output('patient-dist-table', 'columns'),
+        Output('hist2query-patient-enrichment-table', 'data'),
+        Output('hist2query-patient-enrichment-table', 'columns'),
         Input("hist2query-results", "rowData"),
         Input('hist2query-metadata-variables', 'value'),
         Input('hist2query-metadata-tissue-filter', 'value'),
@@ -2477,5 +2480,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         """
         if row_data and metadata_var and str(metadata_var) != 'bcr_patient_barcode':
             fig, prop = hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter, min_patch)
-            return fig, prop, dist_cols
-        return fully_blank_px_fig(), pd.DataFrame({}).to_dict(orient="records"), dist_cols
+            fisher_stats, fisher_cols = hist2query_patient_enrichment(prop, metadata_var, tissue_filter)
+            return fig, prop, dist_cols, fisher_stats, fisher_cols
+        return fully_blank_px_fig(), pd.DataFrame({}).to_dict(orient="records"), dist_cols, pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS

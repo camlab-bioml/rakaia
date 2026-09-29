@@ -3,7 +3,6 @@ Module related to functions and classes for processing WSI patches and enabling 
 """
 import io
 import copy
-from pathlib import Path
 from http.client import HTTPException
 from typing import Union
 from pathlib import Path
@@ -14,6 +13,45 @@ import numpy as np
 from PIL import Image
 import plotly.express as px
 import plotly.graph_objs as go
+from scipy.stats import fisher_exact
+
+# IMP: need this to map the tissue description from hist2query to the full metadata
+# projects because the description is not held there
+TCGA_DISEASE_TO_PROJ_CODE = {
+    "Adrenocortical carcinoma": "ACC",
+    "Bladder Urothelial Carcinoma": "BLCA",
+    "Breast invasive carcinoma (IDC)": "BRCA",
+    "Breast invasive carcinoma (Other)": "BRCA",
+    "Cervical squamous cell carcinoma and endocervical adenocarcinoma": "CESC",
+    "Cholangiocarcinoma": "CHOL",
+    "Colon adenocarcinoma": "COAD",
+    "Lymphoid Neoplasm Diffuse Large B-cell Lymphoma": "DLBC",
+    "Esophageal carcinoma": "ESCA",
+    "Glioblastoma multiforme": "GBM",
+    "Head and Neck squamous cell carcinoma": "HNSC",
+    "Kidney Chromophobe": "KICH",
+    "Kidney renal clear cell carcinoma": "KIRC",
+    "Kidney renal papillary cell carcinoma": "KIRP",
+    "Brain Lower Grade Glioma": "LGG",
+    "Liver hepatocellular carcinoma": "LIHC",
+    "Lung adenocarcinoma": "LUAD",
+    "Lung squamous cell carcinoma": "LUSC",
+    "Mesothelioma": "MESO",
+    "Ovarian serous cystadenocarcinoma": "OV",
+    "Pancreatic adenocarcinoma": "PAAD",
+    "Pheochromocytoma and Paraganglioma": "PCPG",
+    "Prostate adenocarcinoma": "PRAD",
+    "Rectum adenocarcinoma": "READ",
+    "Sarcoma": "SARC",
+    "Skin Cutaneous Melanoma": "SKCM",
+    "Stomach adenocarcinoma": "STAD",
+    "Testicular Germ Cell Tumors": "TGCT",
+    "Thyroid carcinoma": "THCA",
+    "Thymoma": "THYM",
+    "Uterine Corpus Endometrial Carcinoma": "UCEC",
+    "Uterine Carcinosarcoma": "UCS",
+    "Uveal Melanoma": "UVM",
+}
 
 # Default column definitions for the TCGA UNI search results shown in dash ag grid
 TCGA_UNI_COL_DEFS = [{"field": "tissue", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
@@ -212,8 +250,7 @@ def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
         result_frame = pd.DataFrame(query_results)
         tot_result = len(result_frame)
         clinical_meta = pd.read_parquet(TCGA_CLINICAL_METADATA_PATH)
-        if subset_tissue_groups is not None and (
-                isinstance(subset_tissue_groups, list) and len(subset_tissue_groups) > 0):
+        if subset_tissue_groups is not None and (isinstance(subset_tissue_groups, list) and len(subset_tissue_groups) > 0):
             result_frame = result_frame[result_frame[tissue_col_identifier].isin(subset_tissue_groups)]
         patches_in_view = len(result_frame)
         result_frame[patient_col_identifier] = [str(elem).split("-01Z")[0] for elem in result_frame['slide']]
@@ -240,3 +277,69 @@ def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
         fig.update_layout(xaxis_title="Patient", yaxis_title="Number of result patches")
         return fig, metadata_prop.to_dict(orient="records")
     return None, None
+
+# exclude these values from the patient enrichment computation
+TCGA_METADATA_VALS_EXCLUDE = ["[Discrepancy]", "[Not Available]", "Stage X", "NA", "None", "", '[Unknown]', 'Unknown']
+ENRICHMENT_COLS = [{'id': p, 'name': p, 'editable': False} for p in ['Value', 'Enrichment', 'Odds Ratio', 'P-value']]
+
+def hist2query_patient_enrichment(patient_props: Union[list, pd.DataFrame, None]=None,
+                                 metadata_var: Union[str, None]=None,
+                                 subset_tissue_groups: Union[list, None]=None,
+                                 tissue_col_identifier: str = "type",
+                                 patient_col_identifier: str = "bcr_patient_barcode"):
+    """
+    Using a hist2query patient distribution table by metadata variable,
+    compute the enrichment per category using Fisher's exact test.
+    Answers: is this particular patient metadata variable more enriched in the query
+    as opposed to the full TCGA metadata?
+    """
+    if patient_props is not None and not (isinstance(patient_props, list) and not patient_props) and metadata_var is not None:
+        clinical_meta = pd.read_parquet(TCGA_CLINICAL_METADATA_PATH)
+        if subset_tissue_groups is not None and (isinstance(subset_tissue_groups, list) and len(subset_tissue_groups) > 0):
+            clinical_meta = clinical_meta[clinical_meta[tissue_col_identifier].isin(
+            set([TCGA_DISEASE_TO_PROJ_CODE[tissue] for tissue in subset_tissue_groups]))]
+        full_counts = clinical_meta.groupby(metadata_var)[patient_col_identifier].nunique()
+        query_counts = pd.DataFrame(patient_props).set_index("Value")["Counts"]
+
+        query_counts = query_counts.reindex(full_counts.index, fill_value=0)
+
+        # TODO: should the non-descriptive columns be excluded?
+        full_counts = full_counts.drop(labels=TCGA_METADATA_VALS_EXCLUDE, errors="ignore")
+        query_counts = query_counts.drop(labels=TCGA_METADATA_VALS_EXCLUDE, errors="ignore")
+
+        results = []
+        for category in full_counts.index:
+            query_count = query_counts[category]
+            background_count = full_counts[category]
+
+            query_not_category = query_counts.sum() - query_count
+            non_query_category = background_count - query_count
+            non_query_not_category = (
+                    full_counts.sum()
+                    - query_counts.sum()
+                    - non_query_category)
+
+            table = [[query_count, query_not_category],
+                [non_query_category, non_query_not_category]]
+
+            odds_ratio, pvalue = fisher_exact(table, alternative="greater")
+
+            query_proportion = query_count / query_counts.sum()
+            background_proportion = background_count / full_counts.sum()
+
+            results.append({
+                "Value": category,
+                # "Query Count": query_count,
+                # "Background Count": background_count,
+                #"Query Proportion": query_proportion,
+                #"Background Proportion": background_proportion,
+                "Enrichment": query_proportion / background_proportion,
+                "Odds Ratio": odds_ratio,
+                "P-value": pvalue})
+
+        results = pd.DataFrame(results).round(3)
+        # IMP: compute the test statistics for all categories, but only show the ones present in the query
+        results = results[results['Value'].isin(list(pd.DataFrame(patient_props)['Value'].unique()))]
+        cols = [{'id': p, 'name': p, 'editable': False} for p in list(results.columns)]
+        return results.to_dict(orient="records"), cols
+    return pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS

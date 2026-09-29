@@ -18,7 +18,8 @@ from rakaia.register.query import (
     gdc_slide_iframe,
     tile_dimension_labels,
     hist2query_clinical_bar_plot,
-    hist2query_tissue_list, set_tcga_metadata_options)
+    hist2query_tissue_list, set_tcga_metadata_options,
+    hist2query_patient_enrichment)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -169,6 +170,10 @@ def test_tcga_metadata_barplot():
     assert len(prop) == 2
     assert pd.DataFrame(prop)['Proportion'].to_list() == [0.5, 0.5]
 
+    enrichment_stats, cols = hist2query_patient_enrichment(prop, 'histological_type')
+    assert len(enrichment_stats) == 2
+    assert 'Enrichment' in pd.DataFrame(enrichment_stats).columns
+
     bar_meta_sub, prop = hist2query_clinical_bar_plot(results, 'histological_type',
                                              subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
     assert len(bar_meta_sub['data']) == 1
@@ -183,3 +188,6 @@ def test_tcga_metadata_barplot():
     assert len(bar_meta_min['data']) == 0
     assert len(prop) == 0
     assert '(0 patients, 0/6 query patches)' in bar_meta_min['layout']['title']['text']
+
+    enrichment_stats, cols = hist2query_patient_enrichment(prop, 'histological_type')
+    assert len(enrichment_stats) == 0

@@ -796,6 +796,12 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             ], style={"display": "flex"}),
                                             dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='patient-dist-table',
                                             columns=[], data=None, editable=False, filter_action='native',
+                                            style_table={"max-width": "inherit", "overflowX": "auto"}),
+                                            html.Br(),
+                                            html.B("Metadata category enrichment scores"),
+                                            html.Br(),
+                                            dash_table.DataTable(id='hist2query-patient-enrichment-table',
+                                            columns=[], data=None, editable=False, filter_action='native',
                                             style_table={"max-width": "inherit", "overflowX": "auto"})]),
                                             id="show-patient-dist-table", size='l'),
                                             dcc.Loading(dcc.Graph(id='hist2query-clinical-barplot', figure={'layout': dict(
