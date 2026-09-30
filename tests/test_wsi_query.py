@@ -191,3 +191,14 @@ def test_tcga_metadata_barplot():
 
     enrichment_stats, cols = hist2query_patient_enrichment(prop, 'histological_type')
     assert len(enrichment_stats) == 0
+
+    bar_meta_min, prop = hist2query_clinical_bar_plot(pd.DataFrame(results), 'margin_status',
+                                                      min_patch_count_per_patient=None)
+
+    assert len(bar_meta_min['data']) == 1
+    assert len(prop) == 1
+    assert '(2 patients, 6/6 query patches)' in bar_meta_min['layout']['title']['text']
+
+    enrichment_stats, cols = hist2query_patient_enrichment(prop, 'margin_status',
+                                    subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
+    assert len(enrichment_stats) == 0

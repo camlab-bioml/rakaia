@@ -53,6 +53,17 @@ TCGA_DISEASE_TO_PROJ_CODE = {
     "Uveal Melanoma": "UVM",
 }
 
+# use these to map different project codes from tcga to cioportal
+# if not in this list, then cbioportal uses the lower case project code for a gdc study
+# i.e. https://www.cbioportal.org/study/clinicalData?id=brca_tcga_gdc
+CBIOPORTAL_TCGA_CODE_MAP = {
+    "PCPG": "mnet",
+    "LGG": "difg",
+    "MESO": "plmeso",
+    "OV": "hgsoc",
+    "SARC": "soft_tissue",
+    "TGCT": "nsgct"}
+
 # Default column definitions for the TCGA UNI search results shown in dash ag grid
 TCGA_UNI_COL_DEFS = [{"field": "tissue", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
                     {"field": "x"}, {"field": "y"},
@@ -279,7 +290,8 @@ def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
     return None, None
 
 # exclude these values from the patient enrichment computation
-TCGA_METADATA_VALS_EXCLUDE = ["[Discrepancy]", "[Not Available]", "Stage X", "NA", "None", "", '[Unknown]', 'Unknown']
+TCGA_METADATA_VALS_EXCLUDE = ["[Discrepancy]", "[Not Available]", "Stage X", "NA", "None", "",
+                              '[Unknown]', 'Unknown', '[Not Applicable]', 'GX', '[Not Evaluated]', None, 'Rx']
 ENRICHMENT_COLS = [{'id': p, 'name': p, 'editable': False} for p in ['Value', 'Enrichment', 'Odds Ratio', 'P-value']]
 
 def hist2query_patient_enrichment(patient_props: Union[list, pd.DataFrame, None]=None,
@@ -338,8 +350,10 @@ def hist2query_patient_enrichment(patient_props: Union[list, pd.DataFrame, None]
                 "P-value": pvalue})
 
         results = pd.DataFrame(results).round(3)
-        # IMP: compute the test statistics for all categories, but only show the ones present in the query
-        results = results[results['Value'].isin(list(pd.DataFrame(patient_props)['Value'].unique()))]
-        cols = [{'id': p, 'name': p, 'editable': False} for p in list(results.columns)]
-        return results.to_dict(orient="records"), cols
+        if not results.empty:
+            # IMP: compute the test statistics for all categories, but only show the ones present in the query
+            results = results[results['Value'].isin(list(pd.DataFrame(patient_props)['Value'].unique()))]
+            cols = [{'id': p, 'name': p, 'editable': False} for p in list(results.columns)]
+            return results.to_dict(orient="records"), cols
+        return pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS
     return pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS
