@@ -62,7 +62,14 @@ CBIOPORTAL_TCGA_CODE_MAP = {
     "MESO": "plmeso",
     "OV": "hgsoc",
     "SARC": "soft_tissue",
-    "TGCT": "nsgct"}
+    "TGCT": "nsgct",
+    "KICH": "chrcc",
+    "KIRC": "ccrcc",
+    "KIRP": "prcc",
+    "LIHC": "hcc",
+    "DLBC": "dlbclnos",
+    "THCA": "thpa",
+    "UVM": "um"}
 
 # Default column definitions for the TCGA UNI search results shown in dash ag grid
 TCGA_UNI_COL_DEFS = [{"field": "tissue", "rowGroup": True, "hide": True}, {"field": "slide", "rowGroup": True, "hide": True},
@@ -286,8 +293,8 @@ def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
                      title=f"Patients by {str(metadata_var)}, ({len(patient_counts)} patients, {patches_in_view}/{tot_result} query patches)")
 
         fig.update_layout(xaxis_title="Patient", yaxis_title="Number of result patches")
-        return fig, metadata_prop.to_dict(orient="records")
-    return None, None
+        return fig, metadata_prop.to_dict(orient="records"), patient_counts.to_dict(orient="records")
+    return None, None, None
 
 # exclude these values from the patient enrichment computation
 TCGA_METADATA_VALS_EXCLUDE = ["[Discrepancy]", "[Not Available]", "Stage X", "NA", "None", "",
@@ -357,3 +364,23 @@ def hist2query_patient_enrichment(patient_props: Union[list, pd.DataFrame, None]
             return results.to_dict(orient="records"), cols
         return pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS
     return pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS
+
+def cbioportal_patient_urls(patient_counts: Union[list, pd.DataFrame, None]=None,
+                            tissue_col_identifier: str = "type",
+                            patient_col_identifier: str = "bcr_patient_barcode",
+                            patch_col: str = "patch_count"):
+    """
+    Generate a data table of the cBioPortal patient URLs for the TCGA queries. Maps the TCGA patient ID
+    to a link in the matched TCGA GDC project hosted on cBioPortal
+    """
+    if patient_counts is not None and not (isinstance(patient_counts, list) and not patient_counts):
+        clinical_meta = pd.read_parquet(TCGA_CLINICAL_METADATA_PATH)
+        patient_counts = pd.DataFrame(patient_counts)[[patient_col_identifier, patch_col]].merge(
+            clinical_meta[[patient_col_identifier, tissue_col_identifier]], on=patient_col_identifier, how="left")
+        patient_counts[patient_col_identifier] = ("[" + patient_counts[patient_col_identifier] + "]" +
+                    "(https://www.cbioportal.org/patient?studyId=" + patient_counts[tissue_col_identifier].map(
+                    lambda x: CBIOPORTAL_TCGA_CODE_MAP.get(x, x.lower())) + "_tcga_gdc&caseId="
+                    + patient_counts[patient_col_identifier] + ")")
+        return patient_counts.rename(columns={patient_col_identifier: "Patient"}).drop(
+            columns=tissue_col_identifier).to_dict(orient="records")
+    return None
