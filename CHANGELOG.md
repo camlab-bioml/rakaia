@@ -7,12 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.34.0] - 2026-09-30
+## [0.34.0] - 2026-10-01
 
 ### Added
 
 - hist2query: TCGA query metadata enrichment table with Fisher testing per clinical variable value
-- hist2query: TCGA patient links to cBioPortal
+- hist2query: TCGA patient links to cBioPortal #188
+
+### Changed
+
+- Dependabot: `urllib3`
 
 ## [0.33.0] - 2026-09-25
 

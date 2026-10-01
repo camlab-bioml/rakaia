@@ -42,7 +42,7 @@ from rakaia.parsers.pixel import (
 from rakaia.parsers.spatial import spatial_selection_can_transfer_coordinates, visium_coords_to_wsi_from_zoom, \
     is_zarr_store, ZarrSDParser, zarr_parent_parse, is_parent_directory_of_zarr_store
 from rakaia.register.query import gdc_slide_iframe, hist2query_clinical_bar_plot, hist2query_tissue_list, \
-    hist2query_patient_enrichment, ENRICHMENT_COLS, cbioportal_patient_urls
+    hist2query_patient_enrichment, ENRICHMENT_COLS, cbioportal_patient_urls, CBIOPORTAL_COLS
 from rakaia.register.process import update_wsi_hash, wsi_from_local_path, match_wsi_name_to_transformation_matrix, \
     transformation_selection_in_cache
 from rakaia.register.query import wsi_crop, serialize_crop, tcga_uni_request, format_col_ag_groupings, \
@@ -52,7 +52,7 @@ from rakaia.utils.cluster import cluster_assignments_from_config
 from rakaia.register.coordinates import WSICanvasAffineCoordTransfer
 from rakaia.utils.decorator import (
     DownloadDirGenerator)
-from rakaia.utils.object import fully_blank_px_fig
+from rakaia.utils.object import fully_blank_px_fig, empty_df_dict
 from rakaia.utils.pixel import (
     delete_dataset_option_from_list_interactively,
     get_default_channel_upper_bound_by_percentile,
@@ -2471,6 +2471,7 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         Output('hist2query-patient-enrichment-table', 'data'),
         Output('hist2query-patient-enrichment-table', 'columns'),
         Output('cbioportal-patient-links', 'data'),
+        Output('cbioportal-patient-links', 'columns'),
         Input("hist2query-results", "rowData"),
         Input('hist2query-metadata-variables', 'value'),
         Input('hist2query-metadata-tissue-filter', 'value'),
@@ -2482,5 +2483,6 @@ def init_pixel_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
         if row_data and metadata_var and str(metadata_var) != 'bcr_patient_barcode':
             fig, prop, pat_counts = hist2query_clinical_bar_plot(row_data, metadata_var, tissue_filter, min_patch)
             fisher_stats, fisher_cols = hist2query_patient_enrichment(prop, metadata_var, tissue_filter)
-            return fig, prop, dist_cols, fisher_stats, fisher_cols, cbioportal_patient_urls(pat_counts)
-        return fully_blank_px_fig(), pd.DataFrame({}).to_dict(orient="records"), dist_cols, pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS, None
+            cbp_urls, cbp_cols = cbioportal_patient_urls(pat_counts, metadata_var)
+            return fig, prop, dist_cols, fisher_stats, fisher_cols, cbp_urls, cbp_cols
+        return fully_blank_px_fig(), empty_df_dict(), dist_cols, empty_df_dict(), ENRICHMENT_COLS, None, CBIOPORTAL_COLS

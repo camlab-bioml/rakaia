@@ -190,7 +190,7 @@ def test_tcga_metadata_barplot():
     assert len(prop) == 0
     assert '(0 patients, 0/6 query patches)' in bar_meta_min['layout']['title']['text']
 
-    assert cbioportal_patient_urls(counts) is None
+    assert cbioportal_patient_urls(counts) == (None, None)
 
     enrichment_stats, cols = hist2query_patient_enrichment(prop, 'histological_type')
     assert len(enrichment_stats) == 0
@@ -206,6 +206,7 @@ def test_tcga_metadata_barplot():
                                     subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
     assert len(enrichment_stats) == 0
 
-    cbp_links = cbioportal_patient_urls(counts)
+    cbp_links, cbp_cols = cbioportal_patient_urls(counts, 'margin_status')
+    assert len(cbp_cols) == 3
     for link in pd.DataFrame(cbp_links)['Patient'].to_list():
         assert "ccrcc" in str(link) if "TCGA-T7-A92I" in str(link) else "prcc"

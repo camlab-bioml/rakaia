@@ -15,6 +15,8 @@ import plotly.express as px
 import plotly.graph_objs as go
 from scipy.stats import fisher_exact
 
+from rakaia.utils.object import empty_df_dict
+
 # IMP: need this to map the tissue description from hist2query to the full metadata
 # projects because the description is not held there
 TCGA_DISEASE_TO_PROJ_CODE = {
@@ -50,8 +52,7 @@ TCGA_DISEASE_TO_PROJ_CODE = {
     "Thymoma": "THYM",
     "Uterine Corpus Endometrial Carcinoma": "UCEC",
     "Uterine Carcinosarcoma": "UCS",
-    "Uveal Melanoma": "UVM",
-}
+    "Uveal Melanoma": "UVM"}
 
 # use these to map different project codes from tcga to cioportal
 # if not in this list, then cbioportal uses the lower case project code for a gdc study
@@ -299,7 +300,11 @@ def hist2query_clinical_bar_plot(query_results: Union[list, pd.DataFrame],
 # exclude these values from the patient enrichment computation
 TCGA_METADATA_VALS_EXCLUDE = ["[Discrepancy]", "[Not Available]", "Stage X", "NA", "None", "",
                               '[Unknown]', 'Unknown', '[Not Applicable]', 'GX', '[Not Evaluated]', None, 'Rx']
+
 ENRICHMENT_COLS = [{'id': p, 'name': p, 'editable': False} for p in ['Value', 'Enrichment', 'Odds Ratio', 'P-value']]
+
+CBIOPORTAL_COLS = [{"name": "Patient", "id": "Patient", "presentation": "markdown"},
+                    {"name": "Patch Count", "id": "patch_count"}]
 
 def hist2query_patient_enrichment(patient_props: Union[list, pd.DataFrame, None]=None,
                                  metadata_var: Union[str, None]=None,
@@ -362,10 +367,11 @@ def hist2query_patient_enrichment(patient_props: Union[list, pd.DataFrame, None]
             results = results[results['Value'].isin(list(pd.DataFrame(patient_props)['Value'].unique()))]
             cols = [{'id': p, 'name': p, 'editable': False} for p in list(results.columns)]
             return results.to_dict(orient="records"), cols
-        return pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS
-    return pd.DataFrame({}).to_dict(orient="records"), ENRICHMENT_COLS
+        return empty_df_dict(), ENRICHMENT_COLS
+    return empty_df_dict(), ENRICHMENT_COLS
 
 def cbioportal_patient_urls(patient_counts: Union[list, pd.DataFrame, None]=None,
+                            metadata_var: str="type",
                             tissue_col_identifier: str = "type",
                             patient_col_identifier: str = "bcr_patient_barcode",
                             patch_col: str = "patch_count"):
@@ -375,12 +381,13 @@ def cbioportal_patient_urls(patient_counts: Union[list, pd.DataFrame, None]=None
     """
     if patient_counts is not None and not (isinstance(patient_counts, list) and not patient_counts):
         clinical_meta = pd.read_parquet(TCGA_CLINICAL_METADATA_PATH)
-        patient_counts = pd.DataFrame(patient_counts)[[patient_col_identifier, patch_col]].merge(
+        patient_counts = pd.DataFrame(patient_counts).merge(
             clinical_meta[[patient_col_identifier, tissue_col_identifier]], on=patient_col_identifier, how="left")
         patient_counts[patient_col_identifier] = ("[" + patient_counts[patient_col_identifier] + "]" +
                     "(https://www.cbioportal.org/patient?studyId=" + patient_counts[tissue_col_identifier].map(
                     lambda x: CBIOPORTAL_TCGA_CODE_MAP.get(x, x.lower())) + "_tcga_gdc&caseId="
                     + patient_counts[patient_col_identifier] + ")")
-        return patient_counts.rename(columns={patient_col_identifier: "Patient"}).drop(
-            columns=tissue_col_identifier).to_dict(orient="records")
-    return None
+        return (patient_counts.rename(columns={patient_col_identifier: "Patient"}).drop(
+            columns=tissue_col_identifier).to_dict(orient="records"),
+                (CBIOPORTAL_COLS + [{"name": metadata_var, "id": metadata_var}]))
+    return None, None
