@@ -18,7 +18,9 @@ from rakaia.register.query import (
     gdc_slide_iframe,
     tile_dimension_labels,
     hist2query_clinical_bar_plot,
-    hist2query_tissue_list, set_tcga_metadata_options)
+    hist2query_tissue_list, set_tcga_metadata_options,
+    hist2query_patient_enrichment,
+    cbioportal_patient_urls)
 
 def test_wsi_roi_crop(get_current_dir):
     wsi = os.path.join(get_current_dir, 'for_recolour.tiff')
@@ -163,23 +165,48 @@ def test_tcga_metadata_barplot():
     assert len(hist2query_tissue_list(results)) == 2
     assert len(hist2query_tissue_list(None)) == 0
 
-    bar_meta, prop = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type')
+    bar_meta, prop, counts = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type')
     assert len(bar_meta['data']) == 2
     assert '(2 patients, 6/6 query patches)' in bar_meta['layout']['title']['text']
     assert len(prop) == 2
     assert pd.DataFrame(prop)['Proportion'].to_list() == [0.5, 0.5]
 
-    bar_meta_sub, prop = hist2query_clinical_bar_plot(results, 'histological_type',
+    enrichment_stats, cols = hist2query_patient_enrichment(prop, 'histological_type')
+    assert len(enrichment_stats) == 2
+    assert 'Enrichment' in pd.DataFrame(enrichment_stats).columns
+
+    bar_meta_sub, prop, counts = hist2query_clinical_bar_plot(results, 'histological_type',
                                              subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
     assert len(bar_meta_sub['data']) == 1
     assert len(prop) == 1
     assert '(1 patients, 1/6 query patches)' in bar_meta_sub['layout']['title']['text']
 
-    assert hist2query_clinical_bar_plot(results, None) == (None, None)
+    assert hist2query_clinical_bar_plot(results, None) == (None, None, None)
 
-    bar_meta_min, prop = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type',
+    bar_meta_min, prop, counts = hist2query_clinical_bar_plot(pd.DataFrame(results), 'histological_type',
                                                       min_patch_count_per_patient=10)
 
     assert len(bar_meta_min['data']) == 0
     assert len(prop) == 0
     assert '(0 patients, 0/6 query patches)' in bar_meta_min['layout']['title']['text']
+
+    assert cbioportal_patient_urls(counts) == (None, None)
+
+    enrichment_stats, cols = hist2query_patient_enrichment(prop, 'histological_type')
+    assert len(enrichment_stats) == 0
+
+    bar_meta_min, prop, counts = hist2query_clinical_bar_plot(pd.DataFrame(results), 'margin_status',
+                                                      min_patch_count_per_patient=None)
+
+    assert len(bar_meta_min['data']) == 1
+    assert len(prop) == 1
+    assert '(2 patients, 6/6 query patches)' in bar_meta_min['layout']['title']['text']
+
+    enrichment_stats, cols = hist2query_patient_enrichment(prop, 'margin_status',
+                                    subset_tissue_groups=['Kidney renal papillary cell carcinoma'])
+    assert len(enrichment_stats) == 0
+
+    cbp_links, cbp_cols = cbioportal_patient_urls(counts, 'margin_status')
+    assert len(cbp_cols) == 3
+    for link in pd.DataFrame(cbp_links)['Patient'].to_list():
+        assert "ccrcc" in str(link) if "TCGA-T7-A92I" in str(link) else "prcc"

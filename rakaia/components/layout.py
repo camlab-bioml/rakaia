@@ -16,7 +16,7 @@ from dash import dcc, html
 import dash_bootstrap_components as dbc
 import dash_tour_component
 from rakaia._version import __version__
-from rakaia.register.query import TCGA_UNI_COL_DEFS, tile_dimension_labels, set_tcga_metadata_options
+from rakaia.register.query import TCGA_UNI_COL_DEFS, tile_dimension_labels, set_tcga_metadata_options, CBIOPORTAL_COLS
 from rakaia.utils.alert import DataImportTour, ToolTips, hf_model_agreement
 from rakaia.io.session import SessionTheme, TabText
 from rakaia.inputs.pixel import (
@@ -794,13 +794,31 @@ def register_app_layout(config: dict, cache_dest: Union[str, Path]):
                                             style={"width": "20%", "display": "inline-block", "background-color": DEFAULT_WIDGET_COLOUR,
                                             "margin-bottom": "10px", "margin-right": "40px", "align-self": "flex-start"}, n_clicks=0),
                                             ], style={"display": "flex"}),
-                                            dbc.Modal(children=dbc.ModalBody([dash_table.DataTable(id='patient-dist-table',
+                                            dbc.Modal(children=dbc.ModalBody([
+                                            html.B("Patient counts by variable", style={"margin-bottom": "12px", "margin-top": "7px"}),
+                                            html.Br(),
+                                            dash_table.DataTable(id='patient-dist-table',
+                                            columns=[], data=None, editable=False, filter_action='native',
+                                            style_table={"max-width": "inherit", "overflowX": "auto"}),
+                                            html.Br(),
+                                            html.B("Metadata category enrichment scores", style={"margin-bottom": "12px"}),
+                                            html.Br(),
+                                            html.Br(),
+                                            dash_table.DataTable(id='hist2query-patient-enrichment-table',
                                             columns=[], data=None, editable=False, filter_action='native',
                                             style_table={"max-width": "inherit", "overflowX": "auto"})]),
                                             id="show-patient-dist-table", size='l'),
                                             dcc.Loading(dcc.Graph(id='hist2query-clinical-barplot', figure={'layout': dict(
                                             xaxis_showgrid=False, yaxis_showgrid=False, margin=dict(l=0, r=0, b=0, t=25, pad=0))},
                                             style={"height": "500px", "width": "100%"}))
+                                            ]),
+                                            dbc.Tab(label='cBioPortal patient links', label_style={"color": DEFAULT_WIDGET_COLOUR},
+                                            tab_style={"marginLeft": "auto", 'line-height': '0.2vh', 'padding': '0px', 'margin': '0px'},
+                                            children=[
+                                            html.Br(),
+                                            dash_table.DataTable(id='cbioportal-patient-links', page_size=10,
+                                            columns=CBIOPORTAL_COLS, data=None, editable=False, filter_action='native',
+                                            style_table={"max-width": "50%", "overflowX": "auto", "margin": "12px"}),
                                             ])
                                             ], style={"display": "flex", "justifyContent": "flex-start", "margin-top": "15px"}),
                                             ]),
