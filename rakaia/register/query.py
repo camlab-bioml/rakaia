@@ -365,7 +365,8 @@ def hist2query_patient_enrichment(patient_props: Union[list, pd.DataFrame, None]
         if not results.empty:
             # IMP: compute the test statistics for all categories, but only show the ones present in the query
             results = results[results['Value'].isin(list(pd.DataFrame(patient_props)['Value'].unique()))]
-            results["P-value"] = multipletests(results["P-value"], method="fdr_bh")[1]
+            if not results["P-value"].empty:
+                results["P-value"] = multipletests(results["P-value"], method="fdr_bh")[1]
             cols = [{'id': p, 'name': p, 'editable': False} for p in list(results.columns)]
             return results.to_dict(orient="records"), cols
         return empty_df_dict(), ENRICHMENT_COLS
