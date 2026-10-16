@@ -23,7 +23,10 @@ from rakaia.utils.object import (
     compute_image_similarity_from_overlay,
     find_similar_images,
     pad_steinbock_roi_index,
-    umap_fig_using_zoom, convert_mask_to_object_boundary, fully_blank_px_fig)
+    umap_fig_using_zoom,
+    convert_mask_to_object_boundary,
+    fully_blank_px_fig,
+    empty_df_dict)
 import pandas as pd
 import os
 import numpy as np
@@ -453,3 +456,6 @@ def test_blank_plotly_go_return():
     empty_fig = fully_blank_px_fig()
     assert not empty_fig['data']
     assert not empty_fig['layout']['xaxis']['visible']
+
+def test_empty_df():
+    assert pd.DataFrame(empty_df_dict()).empty

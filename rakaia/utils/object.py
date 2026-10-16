@@ -721,3 +721,9 @@ def fully_blank_px_fig():
     """
     return go.Figure(layout={"xaxis": {"visible": False}, "yaxis": {"visible": False}, "plot_bgcolor": "white",
                       "paper_bgcolor": "white"})
+
+def empty_df_dict():
+    """
+    Return an empty `pandas` DataFrame in record orientation, compatible with `dash` data tables
+    """
+    return pd.DataFrame({}).to_dict(orient="records")

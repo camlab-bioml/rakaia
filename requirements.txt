@@ -147,7 +147,7 @@ typing_extensions==4.14.0
 tzdata==2023.3
 umap-learn==0.5.4
 urllib3-secure-extra==0.1.0
-urllib3==2.7.0
+urllib3==2.8.0
 uv==0.11.17
 waitress==3.0.1
 wheel==0.46.3

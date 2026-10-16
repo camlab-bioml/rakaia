@@ -42,7 +42,7 @@ from rakaia.utils.object import (
     ROIQuantificationMatch,
     validate_mask_shape_matches_image,
     quantification_distribution_table, custom_gating_id_list, compute_image_similarity_from_overlay,
-    umap_fig_using_zoom, fully_blank_px_fig)
+    umap_fig_using_zoom, fully_blank_px_fig, empty_df_dict)
 from rakaia.inputs.object import (
     channel_expression_from_interactive_subsetting,
     object_umap_plot,
@@ -481,7 +481,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
     def populate_quantification_distribution_table(umap_variable, quantification_dict, subset_cur_cat):
         if None not in (quantification_dict, umap_variable):
             return quantification_distribution_table(quantification_dict, umap_variable, subset_cur_cat), dist_cols
-        return pd.DataFrame({}).to_dict(orient="records"), dist_cols
+        return empty_df_dict(), dist_cols
 
     @dash_app.callback(
         Output("download-point-csv", "data"),
@@ -875,7 +875,7 @@ def init_object_level_callbacks(dash_app, tmpdirname, authentic_id, app_config):
             gating_object_list = gating_object_list if use_gating else None
             cluster_data = subset_cluster_frame(cluster_data, roi_selection, clust_variable, cluster_cats, gating_object_list)
             return quantification_distribution_table(cluster_data, clust_variable, None), dist_cols
-        return pd.DataFrame({}).to_dict(orient="records"), dist_cols
+        return empty_df_dict(), dist_cols
 
     @dash_app.callback(Output('image-prioritization-cor', 'data'),
                        Input('compute-image-similarity', 'n_clicks'),
