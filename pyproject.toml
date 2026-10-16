@@ -114,7 +114,7 @@ dependencies = [
   "pyarrow==23.0.1",
   "pycparser==2.21",
   "pydantic==2.5.2",
-  "pymongo==4.6.3",
+  "pymongo==4.18.2",
   "pynndescent==0.5.10",
   "pyogrio==0.11.1",
   "pyOpenSSL==26.4.0",
