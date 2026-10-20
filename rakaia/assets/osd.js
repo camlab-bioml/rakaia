@@ -76,10 +76,12 @@ function renderTiles(viewer) {
     // hide the button to open the query modal until an image is rendered
     viewer.addHandler('tile-loaded', function (event) {
     const queryModalOpen = document.getElementById("osd-query-modal-open");
+    if (queryModalOpen !== null) {
     if (event.tile) {
         queryModalOpen.style.display = "block";
     } else {
         queryModalOpen.style.display = "none";
+    }
     }
     });
     }
@@ -227,7 +229,9 @@ const observer = new MutationObserver(() => {
     wsiModalOpen.disabled = outsideSlide};
 
     const boundsString = `X: (${minX.toFixed(0)}, ${maxX.toFixed(0)}),\nY: (${minY.toFixed(0)}, ${maxY.toFixed(0)})`;
-    document.getElementById("osd-viewport-coord").innerText = boundsString;
+    if (document.getElementById("osd-viewport-coord") !== null) {
+        document.getElementById("osd-viewport-coord").innerText = boundsString;
+    }
     });
 
     document.getElementById("toggle-osd-navigator").addEventListener('click', function(e) {
