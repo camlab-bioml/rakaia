@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.34.0] - 2026-10-16
+## [0.34.0] - 2026-10-21
 
 ### Added
 
@@ -20,7 +20,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Dependabot: `urllib3`, `pymongo`
+- Dependabot: `urllib3`, `pymongo`, `certifi`
+
+### Removed
+
+- `uv` as dependency
 
 ## [0.33.0] - 2026-09-25
 
