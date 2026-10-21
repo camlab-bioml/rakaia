@@ -22,7 +22,7 @@ attrs==23.1.0
 beautifulsoup4==4.12.2
 botocore==1.38.46
 cachelib==0.9.0
-certifi==2024.07.04
+certifi==2026.10.19
 cffi==2.0.0
 charset-normalizer==3.1.0
 click==8.4.2
@@ -148,7 +148,6 @@ tzdata==2023.3
 umap-learn==0.5.4
 urllib3-secure-extra==0.1.0
 urllib3==2.8.0
-uv==0.11.17
 waitress==3.0.1
 wheel==0.46.3
 wsproto==1.2.0
