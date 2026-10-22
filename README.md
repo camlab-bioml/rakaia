@@ -25,6 +25,7 @@ Tools in the rakaia application include:
 - dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
 - Matched zooming and panning to aligned WSIs with a dual-spatial view
+- H&E patching query to digital pathology models using [hist2query](https://github.com/camlab-bioml/hist2query)
 
 Visit the [official documentation](https://camlab-bioml.github.io/rakaia-doc/) to learn more!
 
