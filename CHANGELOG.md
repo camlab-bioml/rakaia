@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.34.1] - 2026-10-30
+
+### Removed
+
+- `imagecodecs` dependency for better compatibility with Python 3.12+
+
 ## [0.34.0] - 2026-10-21
 
 ### Added
