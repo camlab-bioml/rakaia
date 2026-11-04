@@ -232,6 +232,8 @@ def test_nhood_enrichment_plots(get_current_dir):
     with tempfile.TemporaryDirectory() as tmpdirname:
         visium_hd = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr/'),
                               os.path.join(tmpdirname, 'other_spatial')).get_files()
+        print(visium_hd[0]['uploads'][0])
         from_vis_hd = nhood_enrichment_graph(visium_hd[0]['uploads'][0], overlay_cat='array_row',
                     object_subset_list=[563, 473, 270], nhood_radius_neighbours=5, is_anndata_roi=True)
+
         assert len(from_vis_hd['data'][0]['x']) == 3

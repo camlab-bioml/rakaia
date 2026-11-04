@@ -5,7 +5,6 @@ region expression summary, preview texts, fullscreen canvas configuration, etc.
 import os
 import datetime
 from typing import Union
-from numpy.core._exceptions import _ArrayMemoryError
 import pandas as pd
 from tifffile import imwrite
 import numpy as np
@@ -132,8 +131,7 @@ class RegionSummary:
                 region_index += 1
 
             # exception may not be necessary as there are already catches in the child classes
-            except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError,
-                    _ArrayMemoryError, KeyError):
+            except (AssertionError, ValueError, ZeroDivisionError, IndexError, TypeError, KeyError):
                 pass
 
         layer_dict = {'Channel': aliases, 'Mean': mean_panel, 'Max': max_panel, 'Min': min_panel,
@@ -176,7 +174,7 @@ class RegionSummary:
                           'Median': median_panel, 'SD': std_panel, 'hpf': hpf_panel, 'Total': total_panel}
             self.summary_frame = pd.DataFrame(layer_dict).to_dict(orient='records')
 
-        except (AssertionError, ValueError, ZeroDivisionError, TypeError, _ArrayMemoryError):
+        except (AssertionError, ValueError, ZeroDivisionError, TypeError):
             pass
 
     def get_summary_frame(self):

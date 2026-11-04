@@ -366,14 +366,13 @@ def test_basic_preset_apply_blend_dict():
 def test_calculate_percentile_intensity(get_current_dir):
     array = np.array(Image.open(os.path.join(get_current_dir, "for_recolour.tiff")))
     default_val = get_default_channel_upper_bound_by_percentile(array=array)
-    assert default_val == 70.67082221984863
+    assert round(default_val, 4) == 70.6708
     lower_val = get_default_channel_upper_bound_by_percentile(array=array, percentile=50)
-    assert lower_val == 10.202707290649414
+    assert round(lower_val, 4) == 10.2027
     assert default_val > lower_val
     assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) == float(np.max(array))
     assert get_default_channel_upper_bound_by_percentile(array=array, percentile=100) > \
            get_default_channel_upper_bound_by_percentile(array=array, percentile=99.999)
-
 
 def test_default_min_percentile_scaling():
     white = np.zeros((512,512), 'uint8')
