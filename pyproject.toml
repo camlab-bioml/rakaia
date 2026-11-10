@@ -96,7 +96,7 @@ dependencies = [
   "numcodecs==0.13.1",
   "numexpr==2.8.8",
   "numpy==1.26.4",
-  "oauthlib==4.0.0",
+  "oauthlib==4.0.1",
   "opencv-python-headless==4.8.1.78",
   "outcome==1.2.0",
   "packaging==24.2",
