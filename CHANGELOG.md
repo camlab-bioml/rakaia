@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.34.1] - 2026-11-06
+
+## [0.34.1] - 2026-11-13
 
 ### Changed
 
-- dependency update from `dependabot`: `oauthlib`
+- dependency update from `dependabot`: `oauthlib`, `pyopenssl`, `crytography`, `soupsieve`
 
 ### Removed
 
@@ -82,7 +83,7 @@ embeddings (grouped or ungrouped) with GDC portal links + patch coordinates + TC
 ### Fixed
 
 - Hover-tip info for stitch now includes CosMX
-- Update from dependabot: `pyarrow`, `flask-cors`
+- Update from dependabot: `pyarrow`, `flask-cors`, `crytography`, `pyopenssl`
 
 ### Removed
 
