@@ -7,7 +7,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.32.1] - 2026-06-16
+
+## [0.34.1] - 2026-11-13
+
+### Changed
+
+- dependency update from `dependabot`: `oauthlib`, `pyopenssl`, `crytography`, `soupsieve`
+
+### Removed
+
+- `imagecodecs` dependency for better compatibility with Python 3.12+
+
+## [0.34.0] - 2026-10-21
+
+### Added
+
+- hist2query: TCGA query metadata enrichment table with Fisher testing per clinical variable value
+- hist2query: TCGA patient links to cBioPortal #188
+
+### Fixed
+
+- `null` JS checks on full-screen `WSI` view
+
+### Changed
+
+- Dependabot: `urllib3`, `pymongo`, `certifi`
+
+### Removed
+
+- `uv` as dependency
+
+## [0.33.0] - 2026-09-25
+
+### Added
+
+- Prototype: query WSI zoomed patches on [TCGA UNI](https://huggingface.co/datasets/W8Yi/tcga-wsi-uni2h-features)
+embeddings (grouped or ungrouped) with GDC portal links + patch coordinates + TCGA patient metadata plots
+- Prototype: query WSI zoomed patches with [`Prism2`](https://huggingface.co/paige-ai/Prism2) chat
+- Show viewport coordinates for WSI canvas on change
+- Draw polygons on the WSI canvas with `annotorious`
+- CLI script to convert `annotorious` WSI coords (JSON) to segmentation mask #186
+- Neighbourhood enrichment heatmap in modal from overlay projection
+
+### Changed
+
+- Explicit installation of `libvips` in Actions (OS-specific)
+- Call `multiprocessing` `freeze_support` for enrichment analysis (`squidpy`)
+- Update from dependabot: `soupsieve`
+- Use gene subset for Anndata DGE if sufficiently large i.e. Atera
+
+### Fixed
+
+- Fix check on canvas shapes and annotations on canvas coordinate set
+
+## [0.32.3] - 2026-08-05
+
+### Changed
+
+- Update from dependabot: `cryptography`
+- Add frozen `affine` to dependencies
+
+## [0.32.2] - 2026-07-23
+
+### Changed
+
+- Update from dependabot: `soupsieve`, `Pillow`
+- Allow two-row affine transform matrix upload (add `vstack`)
+
+### Fixed
+
+- Scalebar proportion on canvas change when using non-default pixel ratio #181
+
+## [0.32.1] - 2026-06-24
 
 ### Fixed
 
@@ -16,7 +87,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Removed
 
-- `diskcache` dependency
+- `diskcache` and `imctools` dependencies
 
 ## [0.32.0] - 2026-06-01
 

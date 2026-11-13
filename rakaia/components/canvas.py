@@ -158,7 +158,7 @@ class CanvasImage:
             self.image = np.clip(self.image, 0, 255)
             self.image_blend_cache = SessionServerside(self.image, key=f"image_blend_cache_{self.sesh_id}", use_unique_key=True)
 
-        self.proportion = 0.1 if self.custom_scale_val is None else \
+        self.proportion = float(0.1 / float(self.pixel_ratio)) if self.custom_scale_val is None else \
             float(custom_scale_val / (self.image.shape[1] * self.pixel_ratio))
 
         if None not in (self.mask_config, self.mask_selection) and len(self.mask_config) > 0:
@@ -974,8 +974,8 @@ class CanvasLayout:
                       'yaxis.range[0]': new_y_high, 'yaxis.range[1]': new_y_low}
         # IMP: for yaxis, need to set the min and max in the reverse order
         fig = go.Figure(data=self.figure['data'], layout=self.figure['layout'])
-        shapes = self.figure['layout']['shapes']
-        annotations = self.figure['layout']['annotations']
+        shapes = self.figure['layout']['shapes'] if 'shapes' in self.figure['layout'] else None
+        annotations = self.figure['layout']['annotations'] if 'annotations' in self.figure['layout'] else None
         fig['layout']['shapes'] = None
         fig['layout']['annotations'] = None
         fig.update_layout(xaxis=XAxis(showticklabels=False, range=[new_x_low, new_x_high]),

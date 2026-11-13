@@ -25,6 +25,7 @@ Tools in the rakaia application include:
 - dataset-wide profiling and multi-ROI search
 - database support (mongoDB)
 - Matched zooming and panning to aligned WSIs with a dual-spatial view
+- H&E patching query to digital pathology models using [hist2query](https://github.com/camlab-bioml/hist2query)
 
 Visit the [official documentation](https://camlab-bioml.github.io/rakaia-doc/) to learn more!
 
@@ -190,6 +191,17 @@ docker run -p 8080:8080 -v /home/:/home/ rakaia:latest rakaia -da
 docker run -p 5000:5000 -v /home/:/home/ rakaia:latest rakaia -da -p 5000
 
 ```
+
+## hist2query
+
+Rakaia v0.33.0 introduces in-browser support for [hist2query](https://github.com/camlab-bioml/hist2query),
+a search engine for H&E patches against foundational models UNI2 and Prism2. Please visit the code link
+for more information.
+
+**Important**: users who wish to use `hist2query` must have a registered [Hugging Face](https://huggingface.co/) account
+and must have agreed to the terms for the [UNI2](https://huggingface.co/MahmoodLab/UNI2-h) and
+[Prism2](https://huggingface.co/paige-ai/Prism2) models before their respective use. Users must comply with all terms of model usage when
+using `hist2query` functions in Rakaia.
 
 ### Help
 

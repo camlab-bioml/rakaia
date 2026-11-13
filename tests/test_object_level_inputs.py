@@ -1,5 +1,7 @@
 import random
 import os
+import tempfile
+
 import dash
 import plotly.graph_objs as go
 import pandas as pd
@@ -7,6 +9,8 @@ import plotly
 import pytest
 from dash.exceptions import PreventUpdate
 from statistics import mean, median
+from tifffile import imread
+import numpy as np
 from rakaia.inputs.object import (
     channel_expression_plot,
     object_umap_plot,
@@ -14,8 +18,11 @@ from rakaia.inputs.object import (
     channel_expression_summary,
     channel_expression_from_interactive_subsetting, umap_eligible_patch, patch_umap_figure,
     reset_custom_gate_slider,
-    BarChartPartialModes, filter_overlay_from_heatmap_data)
+    BarChartPartialModes, filter_overlay_from_heatmap_data,
+    nhood_enrichment_graph)
 from rakaia.parsers.object import parse_and_validate_measurements_csv
+from rakaia.parsers.spatial import ZarrSDParser
+
 
 def test_partial_bar_chart_modes(get_current_dir):
     measurements_csv = pd.read_csv(os.path.join(get_current_dir, "cell_measurements.csv"))
@@ -200,3 +207,31 @@ def test_reset_custom_gate_slider():
     assert isinstance(reset_custom_gate_slider(), dash._callback.NoUpdate)
     assert isinstance(reset_custom_gate_slider("quantification-dict"), dash._callback.NoUpdate)
     assert not reset_custom_gate_slider("other_trigger")
+
+def test_nhood_enrichment_plots(get_current_dir):
+    # from adata
+    enrich_from_adata = nhood_enrichment_graph(os.path.join(get_current_dir, 'visium_thalamus.h5ad'),
+                                               overlay_cat = 'array_row', is_anndata_roi=True)
+    assert enrich_from_adata['data'][0]['type'] == 'heatmap'
+    assert len(enrich_from_adata['data'][0]['x']) == len(enrich_from_adata['data'][0]['y'])
+
+    # from mask
+    seg_mask = imread(os.path.join(get_current_dir, 'mask.tiff')).astype(np.uint32)
+    labels = pd.read_csv(os.path.join(get_current_dir, 'multi_roi_clusters.csv'))
+    # pull the same number of labels for the mask, this cluster CSV has more for a different mask
+    matching_to_mask = labels.head(int(np.max(seg_mask)))
+    from_mask = nhood_enrichment_graph(seg_mask, matching_to_mask, 'leiden', is_anndata_roi=False)
+    assert len(from_mask['data'][0]['x']) == len(matching_to_mask['leiden'].unique())
+
+    # with subset
+    from_mask = nhood_enrichment_graph(seg_mask, matching_to_mask, 'leiden', is_anndata_roi=False,
+                                       object_subset_list=[1, 18])
+    assert len(from_mask['data'][0]['x']) == 2
+
+    # visium HD (mask has grid-like)
+    with tempfile.TemporaryDirectory() as tmpdirname:
+        visium_hd = ZarrSDParser(os.path.join(get_current_dir, 'subset_visium_hd.zarr/'),
+                              os.path.join(tmpdirname, 'other_spatial')).get_files()
+        from_vis_hd = nhood_enrichment_graph(visium_hd[0]['uploads'][0], overlay_cat='array_row',
+                    object_subset_list=[563, 473, 270], nhood_radius_neighbours=5, is_anndata_roi=True)
+        assert len(from_vis_hd['data'][0]['x']) == 3
