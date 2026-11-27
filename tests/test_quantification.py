@@ -70,6 +70,38 @@ def test_quantification_multiple_channels(get_current_dir):
                                                      aliases, dataset_options, mask_name="set1_mask") is None
 
 
+def test_quantification_multiple_channels_preserves_channel_order():
+    mask = np.zeros((10, 10), dtype=np.uint16)
+    mask[2:6, 2:6] = 1
+    channel_dict = {
+        "exp+++slide1+++roi1": {
+            "CD3": np.full((10, 10), 10.0, dtype=np.float32),
+            "CD8": np.full((10, 10), 50.0, dtype=np.float32),
+            "Ki67": np.full((10, 10), 200.0, dtype=np.float32),
+        }
+    }
+    requested = ["Ki67", "CD8", "CD3"]
+    frame = quantify_multiple_channels_per_roi(
+        channel_dict, mask, "exp+++slide1+++roi1", requested, mask_name="roi1"
+    )
+    assert frame["Ki67"].iloc[0] == 200.0
+    assert frame["CD8"].iloc[0] == 50.0
+    assert frame["CD3"].iloc[0] == 10.0
+
+    aliases = {"CD3": "T_CD3", "CD8": "T_CD8", "Ki67": "Prolif_Ki67"}
+    aliased = quantify_multiple_channels_per_roi(
+        channel_dict,
+        mask,
+        "exp+++slide1+++roi1",
+        requested,
+        aliases=aliases,
+        mask_name="roi1",
+    )
+    assert aliased["Prolif_Ki67"].iloc[0] == 200.0
+    assert aliased["T_CD8"].iloc[0] == 50.0
+    assert aliased["T_CD3"].iloc[0] == 10.0
+
+
 def test_quantification_multiple_rois(get_current_dir):
     mask = np.array(Image.open(os.path.join(get_current_dir, "mask.tiff")))
     channel_dict = {"set1+++slide0+++acq": {"channel_1": np.full((mask.shape[0], mask.shape[1]), 1),

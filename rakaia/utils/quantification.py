@@ -71,8 +71,7 @@ def quantify_multiple_channels_per_roi(channel_dict, mask, data_selection, chann
                                 chan in channel_dict[data_selection].keys() and
                                 channel_dict[data_selection][chan] is not None]
         array = np.stack(
-            [channel_dict[data_selection][channel] for channel in list(channel_dict[data_selection].keys()) if
-             channel in channels_to_quantify], axis=0)
+            [channel_dict[data_selection][channel] for channel in channels_to_quantify], axis=0)
         chan_names = []
         for chan in channels_to_quantify:
             if aliases and chan in aliases.keys():
