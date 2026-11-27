@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - In-application quantification error when the order of channel
 selection in the dropdown does not match the order in the image stack
-- Check for `vips` installation path in GA for macOS
+- Upgrade GA checkout versions
 
 ## [0.34.1] - 2026-11-13
 
