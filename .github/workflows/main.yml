@@ -58,6 +58,4 @@ jobs:
       - name: Check installed rakaia version
         run: rakaia -v
       - name: Run pytest for rakaia
-        shell: bash -l {0}
-        run: |
-          pytest --headless --cov=rakaia
+        run: python -m pytest --headless --cov=rakaia
