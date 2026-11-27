@@ -57,5 +57,8 @@ jobs:
         run: pip install -e .
       - name: Check installed rakaia version
         run: rakaia -v
+      - name: Install pyvips binary
+        if: runner.os == 'Windows' || runner.os == 'macOS'
+        run: python -m pip install pyvips-binary
       - name: Run pytest for rakaia
         run: python -m pytest --headless --cov=rakaia
